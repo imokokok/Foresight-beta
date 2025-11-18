@@ -31,6 +31,9 @@ export default function ForumPage() {
   const [hotProposals, setHotProposals] = useState<ThreadView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [events, setEvents] = useState<Array<{ id: number; title: string; category?: string; status?: string }>>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [q, setQ] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
@@ -51,6 +54,22 @@ export default function ForumPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("/api/predictions");
+        const json = await res.json();
+        const list: any[] = Array.isArray(json?.data) ? json.data : [];
+        const mapped = list
+          .filter((x) => Number.isFinite(Number(x?.id)))
+          .map((x) => ({ id: Number(x.id), title: String(x.title || `事件 #${x.id}`), category: String(x.category || ""), status: String(x.status || "") }));
+        setEvents(mapped);
+        if (!selectedId && mapped.length > 0) setSelectedId(mapped[0].id);
+      } catch {}
+    };
+    fetchEvents();
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-cyan-50 overflow-hidden text-black">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -66,6 +85,60 @@ export default function ForumPage() {
             <div className="font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">社区频道与提案导航</div>
             <a href="#proposals" className="btn-base btn-sm btn-cta">快速发帖</a>
           </div>
+        </div>
+        {/* 新增：频道式聊天室 */}
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6 mb-8">
+          <aside className="rounded-3xl border border-purple-200/60 bg-white/80 backdrop-blur-sm shadow-sm p-4 lg:sticky lg:top-24 h-fit">
+            <h2 className="text-lg font-bold mb-3">全部频道</h2>
+            <div className="mb-3">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="搜索事件或分类"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white/80"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {Array.from(new Set(events.map(e => String(e.category || '').trim()).filter(Boolean))).map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setQ(cat)}
+                  className={`text-xs px-2 py-1 rounded-full border ${q.trim() === cat ? 'border-purple-400 bg-purple-50 text-purple-700' : 'border-gray-200 bg-white text-gray-700'}`}
+                >{cat}</button>
+              ))}
+              {events.length > 0 && (
+                <button onClick={() => setQ('')} className={`text-xs px-2 py-1 rounded-full border ${q ? 'border-gray-200 bg-white text-gray-700' : 'border-purple-400 bg-purple-50 text-purple-700'}`}>全部</button>
+              )}
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 -mr-1">
+              {events
+                .filter((e) => {
+                  const qq = q.trim().toLowerCase();
+                  if (!qq) return true;
+                  return e.title.toLowerCase().includes(qq) || String(e.category || "").toLowerCase().includes(qq);
+                })
+                .map((ev) => (
+                  <button
+                    key={ev.id}
+                    onClick={() => setSelectedId(ev.id)}
+                    className={`w-full text-left px-3 py-2 rounded-xl border transition-all duration-200 ${selectedId === ev.id ? "border-purple-400 bg-purple-50" : "border-gray-200 bg-white hover:bg-gray-50"}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${String(ev.category || '').includes('科技') ? 'bg-sky-100 text-sky-700' : String(ev.category || '').includes('体育') ? 'bg-emerald-100 text-emerald-700' : String(ev.category || '').includes('娱乐') ? 'bg-pink-100 text-pink-700' : String(ev.category || '').includes('时政') ? 'bg-violet-100 text-violet-700' : String(ev.category || '').includes('天气') ? 'bg-amber-100 text-amber-700' : String(ev.category || '').includes('加密') ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700'}`}>{ev.category || '未分类'}</span>
+                      <div className="text-sm font-semibold text-gray-800 line-clamp-1">{ev.title}</div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">{ev.status ? ev.status : ''}</div>
+                  </button>
+                ))}
+            </div>
+          </aside>
+          <section>
+            {selectedId ? (
+              <ChatPanel eventId={selectedId} roomTitle={events.find(e => e.id === selectedId)?.title} roomCategory={events.find(e => e.id === selectedId)?.category} />
+            ) : (
+              <div className="rounded-3xl border border-purple-200/60 bg-white/80 backdrop-blur-sm shadow-sm p-6 text-center text-gray-600">请选择左侧一个频道开始聊天</div>
+            )}
+          </section>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_320px] gap-6">
           {/* 左侧：频道与分类 */}
@@ -184,11 +257,7 @@ export default function ForumPage() {
           </aside>
         </div>
 
-        {/* 全站聊天模块 */}
-        <section id="global-chat" className="mt-8">
-          <h2 className="text-lg font-semibold mb-3 text-purple-700">全站聊天</h2>
-          <ChatPanel eventId={1} />
-        </section>
+        
       </div>
     </div>
   );
