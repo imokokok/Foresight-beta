@@ -84,10 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: `该邮箱已被锁定，请 ${waitMin} 分钟后重试` }, { status: 429 })
     }
 
-    rec.sentAtList = (rec.sentAtList || []).filter(t => now - t < 3600_000)
-    if (rec.sentAtList.length >= 3) {
-      return NextResponse.json({ success: false, message: '发送过于频繁：每小时最多 3 次' }, { status: 429 })
-    }
+    rec.sentAtList = (rec.sentAtList || [])
 
     const code = genCode()
     rec.code = code
@@ -101,11 +98,30 @@ export async function POST(req: NextRequest) {
     try {
       const messageId = await sendMailSMTP(email, code)
       logs.push({ email, address: walletAddress, status: 'sent', messageId, sentAt: Date.now() })
+      return NextResponse.json({ success: true, message: '验证码已发送', expiresInSec: 300 })
     } catch (err: any) {
+      try {
+        const host = process.env.SMTP_HOST || ''
+        const port = Number(process.env.SMTP_PORT || 0)
+        const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true'
+        const user = process.env.SMTP_USER || ''
+        const maskedUser = user ? (user.replace(/(^.).*(?=@)/, '$1***')) : ''
+        console.error('[email-otp] SMTP send error', {
+          email,
+          address: walletAddress,
+          host,
+          port,
+          secure,
+          user: maskedUser,
+          error: String(err?.message || err)
+        })
+      } catch {}
       logs.push({ email, address: walletAddress, status: 'error', error: String(err?.message || err), sentAt: Date.now() })
+      if (process.env.NODE_ENV !== 'production') {
+        return NextResponse.json({ success: true, message: '开发环境：邮件发送失败，已直接返回验证码', codePreview: code, expiresInSec: 300 })
+      }
+      return NextResponse.json({ success: false, message: '邮件发送失败' }, { status: 500 })
     }
-
-    return NextResponse.json({ success: true, message: '验证码已发送', expiresInSec: 300 })
   } catch (e: any) {
     return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 })
   }
