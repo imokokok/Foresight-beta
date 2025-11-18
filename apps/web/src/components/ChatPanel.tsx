@@ -6,6 +6,8 @@ import { MessageSquare, Sparkles, Loader2, Smile } from 'lucide-react'
 
 interface ChatPanelProps {
   eventId: number
+  roomTitle?: string
+  roomCategory?: string
 }
 
 interface ChatMessageView {
@@ -15,7 +17,7 @@ interface ChatMessageView {
   created_at: string
 }
 
-export default function ChatPanel({ eventId }: ChatPanelProps) {
+export default function ChatPanel({ eventId, roomTitle, roomCategory }: ChatPanelProps) {
 const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissions, multisigSign } = useWallet()
   const [messages, setMessages] = useState<ChatMessageView[]>([])
   const [input, setInput] = useState('')
@@ -115,6 +117,18 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     }
   }
 
+  const catCls = (cat?: string) => {
+    const c = String(cat || '').toLowerCase()
+    if (c.includes('科技')) return 'bg-sky-100 text-sky-700'
+    if (c.includes('体育')) return 'bg-emerald-100 text-emerald-700'
+    if (c.includes('娱乐')) return 'bg-pink-100 text-pink-700'
+    if (c.includes('时政') || c.includes('政治')) return 'bg-violet-100 text-violet-700'
+    if (c.includes('天气')) return 'bg-amber-100 text-amber-700'
+    if (c.includes('加密') || c.includes('crypto')) return 'bg-indigo-100 text-indigo-700'
+    if (c.includes('生活')) return 'bg-rose-100 text-rose-700'
+    return 'bg-gray-100 text-gray-700'
+  }
+
   return (
     <div className="rounded-3xl border border-purple-200/50 bg-white/60 backdrop-blur-xl shadow-lg overflow-hidden">
       <div className="px-4 py-3 panel-base panel-primary flex items-center justify-between">
@@ -122,7 +136,15 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           <div className="inline-flex items-center justify-center w-7 h-7 bg-white/20 rounded-xl">
             <MessageSquare className="w-4 h-4" />
           </div>
-          <div className="font-semibold">即时交流</div>
+          <div className="font-semibold flex items-center gap-2">
+            <span>即时交流</span>
+            {roomCategory ? (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${catCls(roomCategory)}`}>{roomCategory}</span>
+            ) : null}
+            {roomTitle ? (
+              <span className="text-sm text-gray-700">{roomTitle}</span>
+            ) : null}
+          </div>
           <Sparkles className="w-4 h-4 opacity-90" />
         </div>
         <div className="text-xs opacity-90">
