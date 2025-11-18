@@ -11,9 +11,13 @@
     "supabase:test": "node scripts/verify-supabase.js"
   },
   "dependencies": {
+    "@forsight/shared": "file:../../packages/shared",
     "next": "15.5.4",
+    "nodemailer": "^7.0.10",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "@forsight/shared": "file:../../packages/shared"
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.3"
   }
 }

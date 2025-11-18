@@ -16,8 +16,13 @@ function isValidEmail(email: string) {
 
 function isValidUsername(name: string) {
   if (!name) return false
-  if (name.length < 3 || name.length > 32) return false
-  return /^[A-Za-z0-9_.-]+$/.test(name)
+  if (name.length < 3 || name.length > 20) return false
+  return /^\w+$/.test(name)
+}
+
+function getSessionAddress(req: NextRequest) {
+  const raw = req.cookies.get('fs_session')?.value || ''
+  try { const obj = JSON.parse(raw); return normalizeAddress(String(obj?.address || '')) } catch { return '' }
 }
 
 export async function GET(req: NextRequest) {
@@ -67,6 +72,11 @@ export async function POST(req: NextRequest) {
     const username = String(payload?.username || '').trim()
     const email = String(payload?.email || '').trim()
     const remember = !!payload?.rememberMe
+
+    const sessAddr = getSessionAddress(req)
+    if (!sessAddr || sessAddr !== walletAddress) {
+      return NextResponse.json({ success: false, message: '未认证或会话地址不匹配' }, { status: 401 })
+    }
 
     if (!isEthAddress(walletAddress)) {
       return NextResponse.json({ success: false, message: '无效的钱包地址' }, { status: 400 })
