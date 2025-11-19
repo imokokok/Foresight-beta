@@ -2,12 +2,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
 import { useWallet } from '@/contexts/WalletContext'
-import { MessageSquare, Sparkles, Loader2, Smile } from 'lucide-react'
+import { MessageSquare, Sparkles, Loader2, Smile, Pin } from 'lucide-react'
+import ForumSection from '@/components/ForumSection'
 
 interface ChatPanelProps {
   eventId: number
   roomTitle?: string
   roomCategory?: string
+  isProposalRoom?: boolean
 }
 
 interface ChatMessageView {
@@ -17,9 +19,11 @@ interface ChatMessageView {
   created_at: string
 }
 
-export default function ChatPanel({ eventId, roomTitle, roomCategory }: ChatPanelProps) {
+export default function ChatPanel({ eventId, roomTitle, roomCategory, isProposalRoom }: ChatPanelProps) {
 const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissions, multisigSign } = useWallet()
   const [messages, setMessages] = useState<ChatMessageView[]>([])
+  const [forumThreads, setForumThreads] = useState<any[]>([])
+  const [forumMessages, setForumMessages] = useState<ChatMessageView[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +72,27 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   }, [eventId])
 
   useEffect(() => {
+    const loadForum = async () => {
+      try {
+        const res = await fetch(`/api/forum?eventId=${eventId}`)
+        const data = await res.json()
+        const threads = Array.isArray(data?.threads) ? data.threads : []
+        setForumThreads(threads)
+        const fm: ChatMessageView[] = []
+        threads.forEach((t: any) => {
+          fm.push({ id: `thread:${t.id}`, user_id: String(t.user_id || ''), content: `${String(t.title || '')}\n${String(t.content || '')}`.trim(), created_at: String(t.created_at || '') })
+          ;(Array.isArray(t.comments) ? t.comments : []).forEach((c: any) => {
+            fm.push({ id: `comment:${c.id}`, user_id: String(c.user_id || ''), content: String(c.content || ''), created_at: String(c.created_at || '') })
+          })
+        })
+        fm.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        setForumMessages(fm)
+      } catch {}
+    }
+    loadForum()
+  }, [eventId])
+
+  useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
@@ -77,6 +102,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     try {
       const addrs = new Set<string>()
       messages.forEach(m => { if (m.user_id) addrs.add(String(m.user_id).toLowerCase()) })
+      forumMessages.forEach(m => { if (m.user_id) addrs.add(String(m.user_id).toLowerCase()) })
       if (account) addrs.add(String(account).toLowerCase())
       const unknown = Array.from(addrs).filter(a => !nameMap[a])
       if (unknown.length === 0) return
@@ -89,7 +115,22 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           if (Object.keys(next).length > 0) setNameMap(prev => ({ ...prev, ...next }))
         }).catch(() => {})
     } catch {}
-  }, [messages, account])
+  }, [messages, forumMessages, account])
+
+  const mergedMessages = React.useMemo(() => {
+    const all = [...messages, ...forumMessages]
+    const byId: Record<string, ChatMessageView> = {}
+    all.forEach(m => { byId[m.id] = m })
+    const arr = Object.values(byId)
+    arr.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    return arr
+  }, [messages, forumMessages])
+
+  const roomLabel = React.useMemo(() => {
+    const t = String(roomTitle || '').trim()
+    if (!t) return '聊天室'
+    return `聊天室 · ${t}`
+  }, [roomTitle])
 
   const sendMessage = async () => {
     if (!input.trim()) return
@@ -137,7 +178,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
             <MessageSquare className="w-4 h-4" />
           </div>
           <div className="font-semibold flex items-center gap-2">
-            <span>即时交流</span>
+            <span>{roomLabel}</span>
             {roomCategory ? (
               <span className={`text-xs px-2 py-0.5 rounded-full ${catCls(roomCategory)}`}>{roomCategory}</span>
             ) : null}
@@ -152,14 +193,38 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
         </div>
       </div>
 
-      {/* 消息列表 */}
+      <div className="px-4 py-2 bg-white/70 border-t border-b border-gray-100 flex items-center gap-2 text-xs text-gray-700">
+        <span className="px-2 py-0.5 rounded-full bg-pink-100 text-pink-700">公告</span>
+        <div className="flex-1 truncate">
+          {forumThreads.slice(0, 2).map(t => (
+            <span key={t.id} className="mr-3">{String(t.title || '').slice(0, 40)}</span>
+          ))}
+          {forumThreads.length === 0 && <span>暂无公告</span>}
+        </div>
+      </div>
+
+      {isProposalRoom ? (
+        <div className="mx-4 mt-3 mb-4 rounded-3xl border-2 border-pink-400 bg-pink-50/80 shadow-sm">
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="inline-flex items-center gap-2 text-pink-700">
+              <Pin className="w-4 h-4" />
+              <span className="font-semibold">事件提案置顶聊天室</span>
+            </div>
+            <span className="text-xs text-pink-700">仅展示事件提案板块</span>
+          </div>
+          <div className="px-4 pb-4">
+            <ForumSection eventId={eventId} />
+          </div>
+        </div>
+      ) : null}
+
       <div ref={listRef} className="h-72 overflow-y-auto p-4 space-y-3 bg-white/60">
-        {messages.length === 0 && (
+        {mergedMessages.length === 0 && (
           <div className="text-center text-gray-500 text-sm">暂无消息，快来开启讨论吧！</div>
         )}
-        {messages.map((m, i) => {
+        {mergedMessages.map((m, i) => {
           const mine = !!account && !!m.user_id && String(account).toLowerCase() === String(m.user_id).toLowerCase()
-          const prev = i > 0 ? messages[i - 1] : null
+          const prev = i > 0 ? mergedMessages[i - 1] : null
           const dateChanged = prev && new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString()
           return (
             <React.Fragment key={m.id}>
@@ -171,11 +236,9 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
                 </div>
               )}
               <div className={`flex items-end gap-3 ${mine ? 'justify-end' : ''}`}>
-                {/* 头像 */}
                 <div className={`${mine ? 'order-2' : ''} w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold`}> 
                   {displayName(m.user_id).slice(0,2)}
                 </div>
-                {/* 气泡 */}
                 <div className={`${mine ? 'order-1' : ''} max-w-[80%]`}> 
                   <div className={`${mine 
                     ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white' 
@@ -193,7 +256,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
         })}
       </div>
 
-      {/* 输入区 */}
       <div className="p-3 border-t border-gray-100 bg-white relative">
         {!account ? (
             <div className="flex items-center justify-between">
@@ -259,6 +321,12 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
           </>
         )}
         {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+        <div className="mt-3 text-xs text-gray-700">
+          <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-white/80 border border-gray-200">
+            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">文件共享</span>
+            <span>暂无文件</span>
+          </div>
+        </div>
       </div>
     </div>
   )
