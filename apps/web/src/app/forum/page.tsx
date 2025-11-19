@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { MessageSquare, Tag, Flame } from "lucide-react";
-import TopNavBar from "@/components/TopNavBar";
 import ChatPanel from "@/components/ChatPanel";
 import ForumSection from "@/components/ForumSection";
 
@@ -77,7 +76,7 @@ export default function ForumPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-xl"></div>
       </div>
 
-      <TopNavBar />
+      
 
       <div className="relative z-10 px-6 lg:px-10 py-6">
         <div className="px-4 py-3 rounded-3xl mb-6 bg-gradient-to-br from-pink-50/60 to-cyan-50/60 border border-pink-200/60">

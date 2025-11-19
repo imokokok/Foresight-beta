@@ -16,7 +16,7 @@ import {
   ChevronDown,
   X
 } from "lucide-react";
-import TopNavBar from "@/components/TopNavBar";
+ 
 import Link from "next/link";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -147,7 +147,7 @@ export default function MyFollowsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
-      <TopNavBar />
+      
       
       <div className="container mx-auto px-4 py-8 pt-24">
         {/* 页面头部 */}

@@ -2,38 +2,20 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Flame,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  Shield,
-  Zap,
-  Users,
-  BarChart3,
-  Wallet,
-  Gift,
-  Search,
-  ChevronsUpDown,
-  Check,
-  Heart,
-  CheckCircle,
-  ArrowUp
-} from "lucide-react";
-import TopNavBar from "@/components/TopNavBar";
+import { Search, Heart, CheckCircle, Wallet, ChevronRight, ChevronsUpDown, TrendingUp, Users, Flame, Gift, BarChart3 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { followPrediction, unfollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 
 export default function TrendingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWorkerRef = useRef<Worker | null>(null);
   const offscreenActiveRef = useRef<boolean>(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  
   const mainContentRef = useRef<HTMLDivElement | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
 
@@ -119,6 +101,17 @@ export default function TrendingPage() {
     },
   ];
 
+  // 从查询参数初始化搜索
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) {
+      setSearchQuery(q);
+      setSearchInput(q);
+    }
+  }, [searchParams]);
+
   // 专题板块数据
   const categories = [
     { name: "科技", icon: "🚀", color: "from-blue-400 to-cyan-400" },
@@ -128,8 +121,6 @@ export default function TrendingPage() {
   ];
 
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState(searchQuery);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [sortOption, setSortOption] = useState<"default" | "minInvestment-asc" | "insured-desc">("default");
   const [displayCount, setDisplayCount] = useState(6);
@@ -139,6 +130,8 @@ export default function TrendingPage() {
   const sortRef = useRef<HTMLDivElement | null>(null);
   const productsSectionRef = useRef<HTMLElement | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   
   // 登录提示弹窗状态
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -744,35 +737,7 @@ export default function TrendingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // 滚动监听效果 - 侧边栏与顶部导航栏绝对同步上升
-  useEffect(() => {
-    let ticking = false;
-    
-    const handleSidebarScroll = () => {
-      const scrollY = window.scrollY;
-      const topNavHeight = 80; // 顶部导航栏高度（5rem = 80px）
-      
-      // 直接使用滚动距离，确保绝对同步
-      // 当滚动距离超过顶部导航栏高度时，侧边栏完全上升
-      const progress = Math.min(scrollY / topNavHeight, 1);
-      
-      // 使用requestAnimationFrame确保丝滑
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          setScrollProgress(progress);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleSidebarScroll, { passive: true });
-    
-    // 初始调用一次
-    handleSidebarScroll();
-    
-    return () => window.removeEventListener('scroll', handleSidebarScroll);
-  }, []);
+  
 
   const nextHero = () => {
     setCurrentHeroIndex((prevIndex) => (prevIndex + 1) % heroEvents.length);
@@ -1591,10 +1556,10 @@ export default function TrendingPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-200/30 to-cyan-200/30 rounded-full blur-xl"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-200/20 to-purple-200/20 rounded-full blur-xl"></div>
       </div>
-      <TopNavBar />
+      
 
       {/* 集成筛选栏 - 搜索、分类筛选、排序一体化 */}
-      <div className={`relative z-10 px-16 ${sidebarCollapsed ? "ml-20" : "ml-80"} mt-6`}>
+      <div className="relative z-10 px-16 mt-6">
         {/* Realtime 状态指示已移除 */}
         {/* 搜索栏 */}
         <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-purple-200 rounded-2xl px-4 py-3 shadow mb-4">
@@ -1821,48 +1786,10 @@ export default function TrendingPage() {
         )}
       </div>
 
-      {/* 侧边栏 */}
-      <motion.div
-        className={`fixed left-0 h-[calc(100vh-5rem)] bg-gradient-to-b from-white/95 to-gray-50/95 backdrop-blur-sm border-r border-gray-200/40 shadow-xl z-20 transition-all duration-500 ease-out ${
-          sidebarCollapsed ? "w-20 rounded-r-2xl" : "w-80 rounded-r-3xl"
-        } overflow-y-auto scrollbar-hide`}
-        style={{
-          top: `calc(5rem - ${scrollProgress * 5}rem)`,
-          height: `calc(100vh - 5rem + ${scrollProgress * 5}rem)`
-        }}
-        initial={{ x: -320 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.5, type: "spring", stiffness: 100, damping: 15 }}
-      >
-        {/* 侧边栏头部 */}
-        <div className="p-6 border-b border-gray-200/50">
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && (
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-black">事件导航</h2>
-                <span
-                  className={`inline-block w-2 h-2 rounded-full ${rtDotClass}`}
-                  title={`Realtime: ${rtStatus}`}
-                  aria-label={`Realtime ${rtStatus}`}
-                />
-              </div>
-            )}
-            <button
-              onClick={(e) => {
-                setSidebarCollapsed(!sidebarCollapsed);
-                createSmartClickEffect(e);
-              }}
-              className="p-2 rounded-full bg-white/50 hover:bg-white/80 transition-all duration-300 relative overflow-hidden"
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="w-5 h-5 text-black" />
-              ) : (
-                <ChevronLeft className="w-5 h-5 text-black" />
-              )}
-            </button>
-          </div>
-        </div>
+      
+        
 
+        <div style={{ display: "none" }}>
         {/* 近期浏览事件 */}
         <div className="p-4">
           {!sidebarCollapsed && (
@@ -2042,7 +1969,9 @@ export default function TrendingPage() {
             </div>
           </div>
         </div>
+        </div>
 
+        <div style={{ display: "none" }}>
         {/* 我的关注 */}
         <div className="p-4 border-t border-gray-200/50">
           {!sidebarCollapsed && (
@@ -2081,7 +2010,9 @@ export default function TrendingPage() {
             </motion.div>
           </Link>
         </div>
+        </div>
 
+        <div style={{ display: "none" }}>
         {/* 快捷筛选 */}
         <div className="p-4 border-t border-gray-200/50">
           {!sidebarCollapsed && (
@@ -2125,7 +2056,9 @@ export default function TrendingPage() {
             ))}
           </div>
         </div>
+        </div>
 
+        <div style={{ display: "none" }}>
         {/* 未结算事件（依据真实数据） */}
         <div className="p-4 border-t border-gray-200/50">
           {!sidebarCollapsed && (
@@ -2189,7 +2122,9 @@ export default function TrendingPage() {
               })}
           </div>
         </div>
+        </div>
 
+        <div style={{ display: "none" }}>
         {/* 平台数据统计 */}
         <div className="p-4 border-t border-gray-200/50">
           {!sidebarCollapsed && (
@@ -2251,7 +2186,9 @@ export default function TrendingPage() {
             </div>
           </div>
         </div>
+        </div>
 
+        <div style={{ display: "none" }}>
         {/* 快速操作 */}
         <div className="p-4 border-t border-gray-200/50 mt-auto">
           <div className="space-y-2">
@@ -2265,14 +2202,11 @@ export default function TrendingPage() {
             </button>
           </div>
         </div>
-      </motion.div>
+        </div>
+      
 
       {/* 修改后的英雄区 - 轮播显示 */}
-      <section
-        className={`relative z-10 flex flex-col md:flex-row items-center justify-between px-16 py-20 transition-all duration-300 ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        } mt-20`}
-      >
+      <section className="relative z-10 flex flex-col md:flex-row items-center justify-between px-16 py-20 mt-20">
         <div className="w-full md:w-1/2 mb-10 md:mb-0 relative">
           <div className={`relative h-80 rounded-2xl shadow-xl overflow-hidden ${activeSlide?.id ? 'cursor-pointer' : ''}`} onClick={() => { if (activeSlide?.id) router.push(`/prediction/${activeSlide.id}`); }}>
             <motion.img
@@ -2382,9 +2316,7 @@ export default function TrendingPage() {
 
       <section
         ref={productsSectionRef}
-        className={`relative z-10 px-10 py-12 bg-white/50 backdrop-blur-sm rounded-t-3xl transition-all duration-300 ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        }`}
+        className="relative z-10 px-10 py-12 bg-white/50 backdrop-blur-sm rounded-t-3xl"
         style={{ contentVisibility: 'auto', containIntrinsicSize: '1000px' }}
       >
         <h3 className="text-2xl font-bold text-black mb-8 text-center">
@@ -2679,11 +2611,7 @@ export default function TrendingPage() {
         )}
       </AnimatePresence>
 
-      <footer
-        className={`relative z-10 text-center py-8 text-black text-sm transition-all duration-300 ${
-          sidebarCollapsed ? "ml-20" : "ml-80"
-        }`}
-      >
+      <footer className="relative z-10 text-center py-8 text-black text-sm">
         © 2025 Foresight. All rights reserved.
       </footer>
 
