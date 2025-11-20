@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react'
 import Button from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
 import { useWallet } from '@/contexts/WalletContext'
 import { MessageSquare, Sparkles, Loader2, Smile, Pin } from 'lucide-react'
 import ForumSection from '@/components/ForumSection'
@@ -44,32 +45,53 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
   ]
 
   useEffect(() => {
-    const es = new EventSource(`/api/chat/stream?eventId=${eventId}`)
-    const onMessages = (ev: MessageEvent) => {
+    let unsub: any
+    const load = async () => {
       try {
-        const data = JSON.parse(ev.data)
-        if (Array.isArray(data)) {
+        if (supabase) {
+          const { data, error } = await supabase
+            .from('discussions')
+            .select('*')
+            .eq('proposal_id', eventId)
+            .order('created_at', { ascending: true })
+          if (!error) {
+            const list = Array.isArray(data) ? data : []
+            setMessages(list.map((r: any) => ({ id: String(r.id), user_id: String(r.user_id), content: String(r.content), created_at: String(r.created_at) })))
+            return
+          }
+        }
+        const res = await fetch(`/api/discussions?proposalId=${eventId}`)
+        const data = await res.json()
+        const list = Array.isArray(data?.discussions) ? data.discussions : []
+        setMessages(list.map((r: any) => ({ id: String(r.id), user_id: String(r.user_id), content: String(r.content), created_at: String(r.created_at) })))
+      } catch {}
+    }
+    load()
+    if (supabase) {
+      const ch = supabase.channel(`discussions:${eventId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'discussions', filter: `proposal_id=eq.${eventId}` }, (payload) => {
+          const r: any = payload.new
+          const m = { id: String(r.id), user_id: String(r.user_id), content: String(r.content), created_at: String(r.created_at) }
           setMessages(prev => {
             const merged = [...prev]
-            for (const m of data) {
-              if (!merged.find(x => x.id === m.id)) merged.push(m)
-            }
+            if (!merged.find(x => x.id === m.id)) merged.push(m)
             merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             return merged
           })
-        }
-      } catch (e) {}
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'discussions', filter: `proposal_id=eq.${eventId}` }, (payload) => {
+          const r: any = payload.new
+          const m = { id: String(r.id), user_id: String(r.user_id), content: String(r.content), created_at: String(r.created_at) }
+          setMessages(prev => prev.map(x => x.id === m.id ? m : x))
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'discussions', filter: `proposal_id=eq.${eventId}` }, (payload) => {
+          const r: any = payload.old
+          setMessages(prev => prev.filter(x => x.id !== String(r.id)))
+        })
+        .subscribe()
+      unsub = () => { try { supabase?.removeChannel(ch) } catch {} }
     }
-    es.addEventListener('messages', onMessages)
-    es.onerror = async () => {
-      try {
-        const res = await fetch(`/api/chat?eventId=${eventId}&limit=20`)
-        const data = await res.json()
-        const list = Array.isArray(data?.messages) ? data.messages : []
-        setMessages(list)
-      } catch {}
-    }
-    return () => es.close()
+    return () => { if (typeof unsub === 'function') unsub() }
   }, [eventId])
 
   useEffect(() => {
@@ -142,10 +164,10 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     setSending(true)
     setError(null)
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/discussions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, content: input, walletAddress: account })
+        body: JSON.stringify({ proposalId: eventId, content: input, userId: account })
       })
       if (!res.ok) {
         const t = await res.text()

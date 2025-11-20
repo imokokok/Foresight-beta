@@ -10,6 +10,7 @@ import {
   BarChart3,
   MessageSquare,
   Heart,
+  Pin,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,15 +45,9 @@ export default function Sidebar() {
         label: "导航",
         children: [
           { label: "热门趋势", href: "/trending", icon: <BarChart3 className="w-4 h-4" /> },
-          { label: "论坛/提案", href: "/forum", icon: <MessageSquare className="w-4 h-4" /> },
+          { label: "论坛", href: "/forum", icon: <MessageSquare className="w-4 h-4" /> },
+          { label: "提案频道", href: "/proposals", icon: <Pin className="w-4 h-4" /> },
           { label: "我的关注", href: "/my-follows", icon: <Heart className="w-4 h-4" />, requireWallet: true },
-        ],
-      },
-      {
-        label: "信息",
-        children: [
-          { label: "隐私政策", href: "/privacy" },
-          { label: "服务条款", href: "/terms" },
         ],
       },
     ],
@@ -166,38 +161,10 @@ export default function Sidebar() {
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
+              </AnimatePresence>
               </div>
 
-              {/* 信息分组 */}
-              <div>
-                <button
-                  className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-white/70"
-                  onClick={() => toggleGroup("community")}
-                >
-                  <span className="text-sm font-semibold text-black">信息</span>
-                  <ChevronDown className={`w-4 h-4 text-black transition-transform ${openGroups.community ? "rotate-180" : ""}`} />
-                </button>
-                <AnimatePresence initial={false}>
-                  {openGroups.community && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="mt-1"
-                    >
-                      <div className="flex flex-col gap-2">
-                        {menu[1].children!.map((it) => (
-                          <Link key={it.label} href={it.href!} className={`flex items-center gap-2 px-2 py-2 rounded-lg ${isActive(it.href) ? "bg-purple-100" : "hover:bg-white/70"}`}>
-                            <Users className="w-4 h-4 text-black" />
-                            <span className="text-sm text-black">{it.label}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              
             </div>
           </div>
 

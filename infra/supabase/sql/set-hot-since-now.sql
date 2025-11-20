@@ -1,0 +1,1 @@
+UPDATE public.forum_threads SET hot_since = NOW() - INTERVAL '2 minutes' WHERE id = (SELECT id FROM public.forum_threads ORDER BY id DESC LIMIT 1);

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { voteComment, voteThread, getThreadById, getCommentById } from '@/lib/localForumStore'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin, getClient } from '@/lib/supabase'
 
 function toNum(v: any): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
 
@@ -27,14 +26,17 @@ export async function POST(req: NextRequest) {
 
     // 内容存在性与事件ID解析
     let eventId: number | null = null
+    const client = getClient()
     if (type === 'thread') {
-      const t = await getThreadById(id)
+      const { data: t, error } = await client.from('forum_threads').select('event_id, upvotes, downvotes').eq('id', id).maybeSingle()
+      if (error) return NextResponse.json({ message: '查询失败', detail: error.message }, { status: 500 })
       if (!t) return NextResponse.json({ message: '未找到对象' }, { status: 404 })
-      eventId = Number(t.event_id)
+      eventId = Number((t as any).event_id)
     } else {
-      const c = await getCommentById(id)
+      const { data: c, error } = await client.from('forum_comments').select('event_id, upvotes, downvotes').eq('id', id).maybeSingle()
+      if (error) return NextResponse.json({ message: '查询失败', detail: error.message }, { status: 500 })
       if (!c) return NextResponse.json({ message: '未找到对象' }, { status: 404 })
-      eventId = Number(c.event_id)
+      eventId = Number((c as any).event_id)
     }
     if (!Number.isFinite(eventId)) return NextResponse.json({ message: '事件不存在或无效' }, { status: 400 })
 
@@ -70,9 +72,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 更新本地计数用于 UI
-    const result = type === 'thread' ? await voteThread(id, dir) : await voteComment(id, dir)
-    if (!result) return NextResponse.json({ message: '未找到对象' }, { status: 404 })
-    return NextResponse.json({ message: 'ok', data: result, voted: { type, id, dir } })
+    // 更新计数（简化处理，读取后 +1 写回）
+    const admin = supabaseAdmin || client
+    if (type === 'thread') {
+      const { data: cur } = await admin.from('forum_threads').select('upvotes, downvotes').eq('id', id).maybeSingle()
+      const up = Number((cur as any)?.upvotes || 0) + (dir === 'up' ? 1 : 0)
+      const down = Number((cur as any)?.downvotes || 0) + (dir === 'down' ? 1 : 0)
+      const { data: updated, error: uerr } = await admin.from('forum_threads').update({ upvotes: up, downvotes: down }).eq('id', id).select().maybeSingle()
+      if (uerr) return NextResponse.json({ message: '更新失败', detail: uerr.message }, { status: 500 })
+      return NextResponse.json({ message: 'ok', data: updated, voted: { type, id, dir } })
+    } else {
+      const { data: cur } = await admin.from('forum_comments').select('upvotes, downvotes').eq('id', id).maybeSingle()
+      const up = Number((cur as any)?.upvotes || 0) + (dir === 'up' ? 1 : 0)
+      const down = Number((cur as any)?.downvotes || 0) + (dir === 'down' ? 1 : 0)
+      const { data: updated, error: uerr } = await admin.from('forum_comments').update({ upvotes: up, downvotes: down }).eq('id', id).select().maybeSingle()
+      if (uerr) return NextResponse.json({ message: '更新失败', detail: uerr.message }, { status: 500 })
+      return NextResponse.json({ message: 'ok', data: updated, voted: { type, id, dir } })
+    }
   } catch (e: any) {
     return NextResponse.json({ message: '投票失败', detail: String(e?.message || e) }, { status: 500 })
   }

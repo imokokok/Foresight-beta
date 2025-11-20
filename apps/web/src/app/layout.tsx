@@ -3,7 +3,6 @@ import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Sidebar from "@/components/Sidebar";
-import Breadcrumbs from "@/components/Breadcrumbs";
 import TopNavBar from "@/components/TopNavBar";
 
 export default function RootLayout({
@@ -21,7 +20,6 @@ export default function RootLayout({
               <div className="flex flex-1">
                 <Sidebar />
                 <div className="flex-1 min-h-screen bg-white">
-                  <Breadcrumbs />
                   {children}
                 </div>
               </div>
