@@ -1,0 +1,9 @@
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS subject_name TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS action_verb TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS target_value TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS deadline TIMESTAMPTZ;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS title_preview TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS criteria_preview TEXT;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS hot_since TIMESTAMPTZ;
+ALTER TABLE public.forum_threads ADD COLUMN IF NOT EXISTS created_prediction_id BIGINT;

@@ -1,0 +1,1 @@
+SELECT * FROM public.discussions LIMIT 1;

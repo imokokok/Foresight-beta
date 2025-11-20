@@ -1,0 +1,60 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getClient } from '@/lib/supabase'
+
+function toNum(v: any): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
+function actionLabel(v: string): string { const s = String(v || ''); if (s === '价格达到') return '价格是否会达到'; if (s === '将会发生') return '是否将会发生'; if (s === '将会赢得') return '是否将会赢得'; return '是否将会发生' }
+
+export async function POST(req: NextRequest) {
+  try {
+    const ct = req.headers.get('content-type') || ''
+    let body: any = {}
+    if (ct.includes('application/json')) { try { body = await req.json() } catch {} }
+    const { searchParams } = new URL(req.url)
+    const eventId = toNum(body?.eventId ?? searchParams.get('eventId'))
+    if (!eventId) return NextResponse.json({ message: 'eventId 必填' }, { status: 400 })
+    const client = getClient()
+    const { data: threads, error: tErr } = await client
+      .from('forum_threads')
+      .select('*')
+      .eq('event_id', eventId)
+    if (tErr) return NextResponse.json({ message: '查询主题失败', detail: tErr.message }, { status: 500 })
+    const ids = (threads || []).map((t: any) => t.id)
+    let comments: any[] = []
+    if (ids.length > 0) {
+      const { data: rows, error: cErr } = await client
+        .from('forum_comments')
+        .select('thread_id,user_id')
+        .in('thread_id', ids)
+      if (cErr) return NextResponse.json({ message: '查询评论失败', detail: cErr.message }, { status: 500 })
+      comments = rows || []
+    }
+    const stat: Record<string, { comments: number, participants: Set<string> }> = {}
+    threads?.forEach(t => { stat[String(t.id)] = { comments: 0, participants: new Set([String(t.user_id || '')]) } })
+    comments.forEach(c => { const k = String(c.thread_id); if (!stat[k]) stat[k] = { comments: 0, participants: new Set() }; stat[k].comments += 1; if (c.user_id) stat[k].participants.add(String(c.user_id)) })
+    const ranked = (threads || []).map(t => ({ id: Number(t.id), score: Number(t.upvotes || 0) * 2 + (stat[String(t.id)]?.comments || 0) + (stat[String(t.id)]?.participants?.size || 0) }))
+      .sort((a, b) => b.score - a.score)
+    const top = ranked[0]
+    if (!top) return NextResponse.json({ message: '暂无主题' }, { status: 404 })
+    const { data: topRow } = await client.from('forum_threads').select('*').eq('id', top.id).maybeSingle()
+    const subj = String(topRow?.subject_name || topRow?.title || '')
+    const verb = String(topRow?.action_verb || '')
+    const target = String(topRow?.target_value || '')
+    const cat = String(topRow?.category || '其他')
+    const deadline = topRow?.deadline ? new Date(topRow.deadline).toISOString() : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
+    const titlePreview = String(topRow?.title_preview || subj)
+    const criteriaPreview = String(topRow?.criteria_preview || '以客观可验证来源为准，截止前满足条件视为达成')
+    const eventTitle = `${subj}${actionLabel(verb)}${target}`.trim()
+    const seed = (eventTitle || 'prediction').replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+    const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`
+    const { data: pred, error } = await client
+      .from('predictions')
+      .insert({ title: eventTitle || (topRow?.title || ''), description: titlePreview || (topRow?.title || ''), category: cat, deadline, min_stake: 0.1, criteria: criteriaPreview, image_url: imageUrl, reference_url: '', status: 'active' })
+      .select()
+      .maybeSingle()
+    if (error) return NextResponse.json({ message: '创建失败', detail: error.message }, { status: 500 })
+    if (pred?.id) await client.from('forum_threads').update({ created_prediction_id: Number(pred.id), hot_since: new Date().toISOString() }).eq('id', top.id)
+    return NextResponse.json({ message: 'ok', prediction: pred, thread_id: top.id }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ message: '触发失败', detail: String(e?.message || e) }, { status: 500 })
+  }
+}
