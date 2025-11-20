@@ -10,6 +10,7 @@ interface ChatPanelProps {
   roomTitle?: string
   roomCategory?: string
   isProposalRoom?: boolean
+  minHeightPx?: number
 }
 
 interface ChatMessageView {
@@ -19,7 +20,7 @@ interface ChatMessageView {
   created_at: string
 }
 
-export default function ChatPanel({ eventId, roomTitle, roomCategory, isProposalRoom }: ChatPanelProps) {
+export default function ChatPanel({ eventId, roomTitle, roomCategory, isProposalRoom, minHeightPx }: ChatPanelProps) {
 const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissions, multisigSign } = useWallet()
   const [messages, setMessages] = useState<ChatMessageView[]>([])
   const [forumThreads, setForumThreads] = useState<any[]>([])
@@ -170,8 +171,11 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
     return 'bg-gray-100 text-gray-700'
   }
 
+  const containerCls = 'rounded-3xl border border-purple-200/50 bg-white/60 backdrop-blur-xl shadow-lg overflow-hidden flex flex-col'
+  const minH = String(minHeightPx && minHeightPx > 0 ? `${minHeightPx}px` : (isProposalRoom ? '60vh' : '75vh'))
+
   return (
-    <div className="rounded-3xl border border-purple-200/50 bg-white/60 backdrop-blur-xl shadow-lg overflow-hidden">
+    <div className={containerCls} style={{ minHeight: minH }}>
       <div className="px-4 py-3 panel-base panel-primary flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center justify-center w-7 h-7 bg-white/20 rounded-xl">
@@ -181,9 +185,6 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
             <span>{roomLabel}</span>
             {roomCategory ? (
               <span className={`text-xs px-2 py-0.5 rounded-full ${catCls(roomCategory)}`}>{roomCategory}</span>
-            ) : null}
-            {roomTitle ? (
-              <span className="text-sm text-gray-700">{roomTitle}</span>
             ) : null}
           </div>
           <Sparkles className="w-4 h-4 opacity-90" />
@@ -218,7 +219,7 @@ const { account, connectWallet, formatAddress, siweLogin, requestWalletPermissio
         </div>
       ) : null}
 
-      <div ref={listRef} className="h-72 overflow-y-auto p-4 space-y-3 bg-white/60">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-white/60">
         {mergedMessages.length === 0 && (
           <div className="text-center text-gray-500 text-sm">暂无消息，快来开启讨论吧！</div>
         )}

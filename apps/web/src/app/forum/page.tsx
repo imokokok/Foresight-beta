@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Tag, Flame, Pin } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 import ChatPanel from "@/components/ChatPanel";
@@ -33,6 +33,8 @@ export default function ForumPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mode, setMode] = useState<'proposal'|'event'>('proposal');
   const [q, setQ] = useState<string>("");
+  const leftAsideRef = useRef<HTMLDivElement | null>(null);
+  const [leftAsideHeight, setLeftAsideHeight] = useState<number>(0);
 
   useEffect(() => {
     const load = async () => {
@@ -69,6 +71,20 @@ export default function ForumPage() {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    const measure = () => {
+      const el = leftAsideRef.current;
+      if (el) setLeftAsideHeight(el.offsetHeight);
+    };
+    measure();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', measure);
+      const id = setInterval(measure, 500);
+      return () => { window.removeEventListener('resize', measure); clearInterval(id as any); };
+    }
+    return undefined;
+  }, [events.length, q, selectedId, mode]);
+
   const activeEventId = selectedId ?? (events[0]?.id ?? 1);
   const activeTitle = mode === 'proposal' ? '事件提案' : (events.find(e => e.id === activeEventId)?.title || '');
   const activeCategory = mode === 'proposal' ? '置顶提案' : (events.find(e => e.id === activeEventId)?.category || '');
@@ -91,7 +107,7 @@ export default function ForumPage() {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <aside className="rounded-3xl border border-purple-200/60 bg-white/80 backdrop-blur-sm shadow-sm p-4 lg:sticky lg:top-24 h-fit lg:col-span-1">
+          <aside ref={leftAsideRef} className="rounded-3xl border border-purple-200/60 bg-white/80 backdrop-blur-sm shadow-sm p-4 lg:sticky lg:top-24 h-fit lg:col-span-1">
             <h2 className="text-lg font-bold mb-3">全部频道</h2>
             <div className="mb-3">
               <button
@@ -148,14 +164,16 @@ export default function ForumPage() {
             </div>
           </aside>
           <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <main className="space-y-6 lg:col-span-2">
+              <main className={`space-y-6 ${mode === 'event' ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
                 <ChatPanel
                   eventId={activeEventId}
                   roomTitle={activeTitle}
                   roomCategory={activeCategory}
                   isProposalRoom={mode === 'proposal'}
+                  minHeightPx={leftAsideHeight}
                 />
               </main>
+              {mode !== 'event' && (
               <aside className="rounded-3xl border border-purple-200/60 bg-white/80 backdrop-blur-sm shadow-sm p-4 h-fit lg:col-span-1">
                   <div className="mb-4">
                     <h2 className="text-lg font-bold">热门提案</h2>
@@ -218,6 +236,7 @@ export default function ForumPage() {
                     </div>
                   </div>
                 </aside>
+              )}
           </div>
         </div>
       </div>
