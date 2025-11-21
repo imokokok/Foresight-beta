@@ -166,13 +166,15 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
         marketId = ++marketCount;
 
+        uint256 feeBpsToUse = _feeBps == 0 ? feeBps : _feeBps;
+
         IMarket(market).initialize(
             bytes32(marketId),
             address(this),
             msg.sender,
             collateralToken,
             umaOracle, // Force use of the UMA oracle
-            _feeBps,
+            feeBpsToUse,
             resolutionTime,
             data
         );
@@ -182,7 +184,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             creator: msg.sender,
             collateralToken: collateralToken,
             oracle: umaOracle, // Record the UMA oracle
-            feeBps: _feeBps,
+            feeBps: feeBpsToUse,
             resolutionTime: resolutionTime
         });
         isMarketFromFactory[market] = true;
@@ -194,7 +196,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
             msg.sender,
             collateralToken,
             umaOracle, // Emit the UMA oracle address
-            _feeBps,
+            feeBpsToUse,
             resolutionTime
         );
     }

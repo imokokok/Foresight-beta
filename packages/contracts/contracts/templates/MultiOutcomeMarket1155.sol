@@ -56,7 +56,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
     }
 
     function initialize(
-        bytes32 marketId,
+        bytes32,
         address factory_,
         address creator_,
         address collateralToken_,
@@ -80,6 +80,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         creator = creator_;
         collateral = IERC20(collateralToken_);
         collateralDecimals = IERC20Metadata(collateralToken_).decimals();
+        require(collateralDecimals <= 18, "decimals too high");
         oracle = oracle_;
         feeBps = feeBps_;
         resolutionTime = resolutionTime_;
@@ -135,7 +136,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         uint256[] memory ids = new uint256[](outcomeCount);
         uint256[] memory amounts = new uint256[](outcomeCount);
         for (uint256 i = 0; i < outcomeCount; i++) {
-            ids[i] = _tokenId(i);
+            ids[i] = outcome1155.computeTokenId(address(this), i);
             amounts[i] = amountOut;
         }
 
@@ -160,7 +161,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         require(tokenAmount > 0, "amount=0");
         require(outcome1155.hasRole(outcome1155.MINTER_ROLE(), address(this)), "no minter role");
 
-        uint256 idWin = _tokenId(uint256(finalOutcome));
+        uint256 idWin = outcome1155.computeTokenId(address(this), uint256(finalOutcome));
 
         // burn winning tokens from user (market must have MINTER_ROLE on outcome1155)
         outcome1155.burn(msg.sender, idWin, tokenAmount);
@@ -185,7 +186,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         uint256[] memory ids = new uint256[](outcomeCount);
         uint256[] memory amounts = new uint256[](outcomeCount);
         for (uint256 i = 0; i < outcomeCount; i++) {
-            ids[i] = _tokenId(i);
+            ids[i] = outcome1155.computeTokenId(address(this), i);
             amounts[i] = amount18PerOutcome;
         }
         outcome1155.burnBatch(msg.sender, ids, amounts);
@@ -202,9 +203,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         emit FeesWithdrawn(feeRecipient, amount);
     }
 
-    function _tokenId(uint256 outcomeIndex) internal view returns (uint256) {
-        return (uint256(uint160(address(this))) << 32) | outcomeIndex;
-    }
+    
 
     function _to18(uint256 amt) internal view returns (uint256) {
         if (collateralDecimals == 18) return amt;

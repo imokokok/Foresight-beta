@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interfaces/IMarket.sol";
@@ -92,10 +89,6 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     error ResolutionTimeNotReached();
     /// @notice Thrown when the market has already been resolved.
     error AlreadyResolved();
-    /// @notice Thrown when an insufficient amount is provided for an operation.
-    error InsufficientAmount();
-    /// @notice Thrown when the AMM cannot provide the requested output amount.
-    error InsufficientOutput();
 
     /// @dev Modifier to ensure a function is only callable when the market is in the TRADING stage.
     modifier atStage(IMarket.Stages _stage) {
@@ -210,8 +203,10 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @param amount The number of complete sets to deposit.
     function depositCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
         require(amount > 0, "amount must be positive");
-        outcomeToken.burn(msg.sender, 0, amount);
-        outcomeToken.burn(msg.sender, 1, amount);
+        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
+        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
+        outcomeToken.burn(msg.sender, idNo, amount);
+        outcomeToken.burn(msg.sender, idYes, amount);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
         emit CompleteSetDeposited(msg.sender, amount);
     }
@@ -221,7 +216,8 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @param amount The amount of winning tokens to redeem.
     function redeem(uint256 amount) external nonReentrant atStage(IMarket.Stages.RESOLVED) {
         require(amount > 0, "amount must be positive");
-        outcomeToken.burn(msg.sender, resolvedOutcome, amount);
+        uint256 idWin = outcomeToken.computeTokenId(address(this), resolvedOutcome);
+        outcomeToken.burn(msg.sender, idWin, amount);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
         emit Redeemed(msg.sender, amount, resolvedOutcome);
     }
@@ -268,8 +264,10 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @dev Handles adding liquidity for the LMSR.
     function _addLiquidityCPMM(uint256 amount) internal returns (uint256 shares) {
         (uint256 amount0, uint256 amount1) = (amount, amount);
-        outcomeToken.mint(address(this), 0, amount0);
-        outcomeToken.mint(address(this), 1, amount1);
+        uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
+        uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
+        outcomeToken.mint(address(this), idNo, amount0);
+        outcomeToken.mint(address(this), idYes, amount1);
         uint256 liquidity = Math.sqrt(amount0 * amount1);
         shares = liquidity;
         cpmm.k = (cpmm.reserve0 + amount0) * (cpmm.reserve1 + amount1);
