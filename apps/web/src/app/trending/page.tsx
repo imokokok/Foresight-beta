@@ -203,10 +203,8 @@ export default function TrendingPage() {
 
     const wasFollowing = followedEvents.has(Number(predictionId));
 
-    // 创建涟漪效果
     createSmartClickEffect(event);
-    // 立即触发爱心粒子效果，避免等待网络响应导致的延迟
-    createHeartParticles(eventIndex, wasFollowing);
+    createHeartParticles(event.currentTarget as HTMLElement, wasFollowing);
 
     // 乐观更新本地状态（按事件ID而非索引）
     setFollowedEvents((prev) => {
@@ -282,126 +280,40 @@ export default function TrendingPage() {
     }
   };
 
-  // 优雅点击反馈效果
   const createSmartClickEffect = (event: React.MouseEvent) => {
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
     const button = event.currentTarget as HTMLElement;
-
-    // 分析按钮类型和特征
-    const buttonText = button.textContent?.toLowerCase() || "";
-    const buttonClasses = button.className || "";
     const rect = button.getBoundingClientRect();
     const buttonSize = Math.max(rect.width, rect.height);
+    const glowColor = "rgba(139, 92, 246, 0.15)";
+    const baseColor = "#8B5CF6";
 
-    // 根据按钮特征确定特效类型和颜色
-    let effectType = "default";
-    let effectColor = "#8B5CF6"; // 默认紫色
-    let glowColor = "rgba(139, 92, 246, 0.15)";
-
-    if (
-      buttonText.includes("关注") ||
-      buttonText.includes("follow") ||
-      buttonClasses.includes("heart")
-    ) {
-      // 关注按钮 - 使用爱心粒子特效（不在这里处理，在toggleFollow中处理）
-      effectType = "heart";
-      effectColor = "#EF4444";
-      glowColor = "rgba(239, 68, 68, 0.15)";
-    } else if (buttonText.includes("搜索") || buttonText.includes("search")) {
-      // 搜索按钮 - 蓝色光晕+缩放
-      effectType = "search";
-      effectColor = "#3B82F6";
-      glowColor = "rgba(59, 130, 246, 0.15)";
-    } else if (buttonText.includes("重置") || buttonText.includes("reset")) {
-      // 重置按钮 - 灰色涟漪+缩放
-      effectType = "reset";
-      effectColor = "#6B7280";
-      glowColor = "rgba(107, 114, 128, 0.15)";
-    } else if (
-      buttonClasses.includes("category") ||
-      buttonText.includes("科技") ||
-      buttonText.includes("娱乐") ||
-      buttonText.includes("时政") ||
-      buttonText.includes("天气")
-    ) {
-      // 分类标签 - 使用爱心粒子特效，根据方框颜色调整粒子颜色
-      effectType = "category";
-
-      // 根据分类名称设置对应的粒子颜色
-      if (buttonText.includes("科技")) {
-        effectColor = "#3B82F6"; // 蓝色
-        glowColor = "rgba(59, 130, 246, 0.15)";
-      } else if (buttonText.includes("娱乐")) {
-        effectColor = "#EC4899"; // 粉色
-        glowColor = "rgba(236, 72, 153, 0.15)";
-      } else if (buttonText.includes("时政")) {
-        effectColor = "#8B5CF6"; // 紫色
-        glowColor = "rgba(139, 92, 246, 0.15)";
-      } else if (buttonText.includes("天气")) {
-        effectColor = "#10B981"; // 绿色
-        glowColor = "rgba(16, 185, 129, 0.15)";
-      } else {
-        effectColor = "#8B5CF6"; // 默认紫色
-        glowColor = "rgba(139, 92, 246, 0.15)";
-      }
-
-      // 为分类按钮创建爱心粒子特效
-      createHeartParticlesForCategory(event.nativeEvent, effectColor);
-      return; // 直接返回，不执行后续的通用特效
-    } else if (
-      buttonClasses.includes("product") ||
-      buttonClasses.includes("card")
-    ) {
-      // 产品卡片 - 渐变光晕
-      effectType = "product";
-      effectColor = "#A855F7";
-      glowColor = "rgba(168, 85, 247, 0.15)";
-    } else {
-      // 默认按钮 - 紫色光晕+涟漪
-      effectType = "default";
-    }
-
-    // 根据按钮大小调整特效尺寸
-    const sizeMultiplier = Math.max(0.8, Math.min(2.5, buttonSize / 50));
-    const rippleSize =
-      Math.max(rect.width, rect.height) * (1.5 + sizeMultiplier * 0.3);
+    const sizeMultiplier = Math.max(0.8, Math.min(2.0, buttonSize / 50));
+    const rippleSize = Math.max(rect.width, rect.height) * (1.5 + sizeMultiplier * 0.3);
     const glowSize = 1.5 + sizeMultiplier * 0.5;
 
-    // 1. 智能光晕扩散效果 - 根据按钮类型调整颜色（移除震动效果）
     const glow = document.createElement("div");
     glow.style.position = "fixed";
     glow.style.top = "0";
     glow.style.left = "0";
     glow.style.width = "100%";
     glow.style.height = "100%";
-    glow.style.background = `radial-gradient(circle at ${event.clientX}px ${
-      event.clientY
-    }px, 
-      ${glowColor} 0%, 
-      ${glowColor.replace("0.15", "0.1")} 25%, 
-      ${glowColor.replace("0.15", "0.05")} 40%, 
-      transparent 70%)`;
+    glow.style.background = `radial-gradient(circle at ${event.clientX}px ${event.clientY}px, ${glowColor} 0%, ${glowColor.replace("0.15", "0.1")} 25%, ${glowColor.replace("0.15", "0.05")} 40%, transparent 70%)`;
     glow.style.pointerEvents = "none";
     glow.style.zIndex = "9999";
     glow.style.opacity = "0";
-
     document.body.appendChild(glow);
-
-    // 智能光晕动画 - 根据按钮大小调整扩散范围
     glow.animate(
       [
         { opacity: 0, transform: "scale(0.8)" },
         { opacity: 0.6, transform: `scale(${glowSize})` },
         { opacity: 0, transform: `scale(${glowSize * 1.2})` },
       ],
-      {
-        duration: 600,
-        easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-      }
+      { duration: 600, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)" }
     );
-
     setTimeout(() => glow.remove(), 600);
 
-    // 2. 智能水波纹效果 - 根据按钮类型调整效果
     const buttonRect = button.getBoundingClientRect();
     const clickX = event.clientX - buttonRect.left;
     const clickY = event.clientY - buttonRect.top;
@@ -411,88 +323,33 @@ export default function TrendingPage() {
     ripple.style.width = ripple.style.height = rippleSize + "px";
     ripple.style.left = clickX - rippleSize / 2 + "px";
     ripple.style.top = clickY - rippleSize / 2 + "px";
-
-    // 根据按钮类型设置不同的波纹效果
-    if (effectType === "search") {
-      // 搜索按钮：蓝色渐变波纹
-      ripple.style.background = `radial-gradient(circle, rgba(255,255,255,0.9) 0%, 
-        ${effectColor}50 30%, ${effectColor}30 60%, transparent 90%)`;
-      ripple.style.boxShadow = `0 0 25px ${effectColor}40`;
-    } else if (effectType === "reset") {
-      // 重置按钮：灰色简洁波纹
-      ripple.style.background = `radial-gradient(circle, rgba(255,255,255,0.8) 0%, 
-        ${effectColor}40 50%, transparent 80%)`;
-      ripple.style.boxShadow = `0 0 15px ${effectColor}30`;
-    } else if (effectType === "category") {
-      // 分类标签：彩色强烈波纹
-      ripple.style.background = `radial-gradient(circle, rgba(255,255,255,1) 0%, 
-        ${effectColor}60 40%, ${effectColor}30 70%, transparent 95%)`;
-      ripple.style.boxShadow = `0 0 30px ${effectColor}50`;
-    } else {
-      // 默认：紫色渐变波纹
-      ripple.style.background = `radial-gradient(circle, rgba(255,255,255,0.8) 0%, 
-        ${effectColor}40 40%, ${effectColor}20 70%, transparent 95%)`;
-      ripple.style.boxShadow = `0 0 20px ${effectColor}30`;
-    }
-
+    ripple.style.background = `radial-gradient(circle, rgba(255,255,255,0.8) 0%, ${baseColor}40 40%, ${baseColor}20 70%, transparent 95%)`;
+    ripple.style.boxShadow = `0 0 20px ${baseColor}30`;
     ripple.style.transform = "scale(0)";
 
-    // 确保按钮有相对定位
     const originalPosition = button.style.position;
     if (getComputedStyle(button).position === "static") {
       button.style.position = "relative";
     }
-
     button.appendChild(ripple);
 
-    // 智能水波纹动画 - 根据按钮大小调整动画时长
-    const rippleDuration = Math.max(
-      400,
-      Math.min(800, 500 + sizeMultiplier * 100)
-    );
+    const rippleDuration = Math.max(400, Math.min(800, 500 + sizeMultiplier * 100));
     ripple.animate(
       [
         { transform: "scale(0)", opacity: 0.8 },
         { transform: "scale(1)", opacity: 0.4 },
         { transform: "scale(1.5)", opacity: 0 },
       ],
-      {
-        duration: rippleDuration,
-        easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-      }
+      { duration: rippleDuration, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
     );
 
     setTimeout(() => {
       ripple.remove();
-      // 恢复按钮的原始定位
       button.style.position = originalPosition;
     }, rippleDuration);
 
-    // 3. 智能按钮缩放反馈 - 根据按钮类型调整缩放效果
-    let scaleAmount = 0.95;
-    let bounceAmount = 1.05;
-
-    // 根据按钮类型调整缩放参数
-    if (effectType === "search") {
-      scaleAmount = 0.92;
-      bounceAmount = 1.08;
-    } else if (effectType === "reset") {
-      scaleAmount = 0.93;
-      bounceAmount = 1.04;
-    } else if (effectType === "category") {
-      scaleAmount = 0.9;
-      bounceAmount = 1.1;
-    } else if (effectType === "product") {
-      scaleAmount = 0.88;
-      bounceAmount = 1.12;
-    }
-
-    // 根据按钮大小微调缩放比例
-    scaleAmount = Math.max(
-      0.85,
-      Math.min(0.98, scaleAmount - sizeMultiplier * 0.03)
-    );
-
+    let scaleAmount = Math.max(0.85, Math.min(0.98, 0.95 - sizeMultiplier * 0.03));
+    const bounceAmount = 1.05;
     button.style.transition = "transform 150ms ease-out";
     button.style.transform = `scale(${scaleAmount})`;
     setTimeout(() => {
@@ -507,9 +364,9 @@ export default function TrendingPage() {
   };
 
   // 创建爱心粒子效果
-  const createHeartParticles = (eventIndex: number, isUnfollowing: boolean) => {
-    const button = document.querySelector(`[data-event-index="${eventIndex}"]`);
-    if (!button) return;
+  const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean) => {
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
 
     const rect = button.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -577,87 +434,14 @@ export default function TrendingPage() {
     }, 1000);
   };
 
-  // 创建分类按钮的爱心粒子效果
-  const createHeartParticlesForCategory = (
-    event: MouseEvent,
-    color: string
-  ) => {
-    const button = event.target as HTMLElement;
-    if (!button) return;
-
-    const rect = button.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    // 创建粒子容器
-    const particlesContainer = document.createElement("div");
-    particlesContainer.className = "fixed pointer-events-none z-50";
-    particlesContainer.style.left = "0";
-    particlesContainer.style.top = "0";
-    particlesContainer.style.width = "100vw";
-    particlesContainer.style.height = "100vh";
-
-    document.body.appendChild(particlesContainer);
-
-    // 创建多个爱心粒子
-    const particleCount = 8;
-    const particles = [];
-
-    for (let i = 0; i < particleCount; i++) {
-      const particle = document.createElement("div");
-      particle.className = "absolute w-3 h-3";
-      particle.style.background = color;
-      particle.style.left = `${centerX}px`;
-      particle.style.top = `${centerY}px`;
-      particle.style.transform = "translate(-50%, -50%)";
-      particle.style.clipPath =
-        "polygon(50% 15%, 61% 0, 75% 0, 85% 15%, 100% 35%, 100% 50%, 85% 65%, 75% 100%, 50% 85%, 25% 100%, 15% 65%, 0 50%, 0 35%, 15% 15%, 25% 0, 39% 0)";
-
-      particlesContainer.appendChild(particle);
-      particles.push(particle);
-    }
-
-    // 爱心粒子动画 - 向上扩散
-    particles.forEach((particle, index) => {
-      const angle = (index / particleCount) * Math.PI * 2;
-      const distance = 60 + Math.random() * 40; // 随机距离
-      const duration = 800 + Math.random() * 400; // 随机时长
-
-      const targetX = centerX + Math.cos(angle) * distance;
-      const targetY = centerY - Math.abs(Math.sin(angle)) * distance * 1.5; // 主要向上扩散
-
-      particle.animate(
-        [
-          {
-            transform: "translate(-50%, -50%) scale(1) rotate(0deg)",
-            opacity: 1,
-          },
-          {
-            transform: `translate(${targetX - centerX}px, ${
-              targetY - centerY
-            }px) scale(0.3) rotate(${Math.random() * 360}deg)`,
-            opacity: 0,
-          },
-        ],
-        {
-          duration: duration,
-          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-          fill: "forwards",
-        }
-      );
-    });
-
-    // 清理粒子容器
-    setTimeout(() => {
-      particlesContainer.remove();
-    }, 1200);
-  };
 
   // 卡片点击：在鼠标点击位置生成对应分类颜色的粒子（比分类按钮略大）
   const createCategoryParticlesAtCardClick = (
     event: React.MouseEvent,
     category?: string
   ) => {
+    const reduceMotion = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
     const x = event.clientX;
     const y = event.clientY;
 
@@ -842,12 +626,18 @@ export default function TrendingPage() {
               dpr,
             });
           };
-          const onMouseMove = (e: MouseEvent) => {
-            const rect = canvasEl.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            worker!.postMessage({ type: "mouse", x, y, active: true });
-          };
+    let rafPending = false;
+    const onMouseMove = (e: MouseEvent) => {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        const rect = canvasEl.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        worker!.postMessage({ type: "mouse", x, y, active: true });
+        rafPending = false;
+      });
+    };
           const onMouseLeave = () => {
             worker!.postMessage({ type: "mouse", x: 0, y: 0, active: false });
           };
