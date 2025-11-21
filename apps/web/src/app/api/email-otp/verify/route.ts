@@ -63,7 +63,10 @@ export async function POST(req: NextRequest) {
     // 审计记录（内存）：时间戳与 IP
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || ''
     console.log(`[email-otp] verified email=${email} addr=${walletAddress} ip=${ip} at=${new Date().toISOString()}`)
-    try { logs.push({ email, address: walletAddress, status: 'verified', sentAt: Date.now() } as LogItem) } catch {}
+    try {
+      logs.push({ email, address: walletAddress, status: 'verified', sentAt: Date.now() } as LogItem)
+      if (logs.length > 1000) logs.splice(0, logs.length - 1000)
+    } catch {}
 
     // 清理使用过的记录
     store.delete(email)

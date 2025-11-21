@@ -100,6 +100,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     /// @param newFeeBps The new fee in basis points.
     /// @param newFeeTo The new address to receive fees.
     function setFee(uint256 newFeeBps, address newFeeTo) external onlyRole(ADMIN_ROLE) {
+        require(newFeeBps <= 10000, "fee too high");
         feeBps = newFeeBps;
         feeTo = newFeeTo;
         emit FeeChanged(newFeeBps, newFeeTo);
@@ -161,12 +162,14 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         Template memory t = templates[templateId];
         require(t.exists, "template does not exist");
         require(collateralToken != address(0), "collateralToken cannot be the zero address");
+        require(resolutionTime > block.timestamp, "resolution in past");
 
         market = t.implementation.clone();
 
         marketId = ++marketCount;
 
         uint256 feeBpsToUse = _feeBps == 0 ? feeBps : _feeBps;
+        require(feeBpsToUse <= 10000, "fee too high");
 
         IMarket(market).initialize(
             bytes32(marketId),

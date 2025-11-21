@@ -68,7 +68,8 @@ export async function POST(req: NextRequest) {
     try {
       const messageId = await sendMailSMTP(email, code)
       logs.push({ email, address: walletAddress, status: 'sent', messageId, sentAt: Date.now() } as LogItem)
-      return NextResponse.json({ success: true, message: '验证码已发送', expiresInSec: 300 })
+      if (logs.length > 1000) logs.splice(0, logs.length - 1000)
+      return NextResponse.json({ success: true, message: '验证码已发送', expiresInSec: 900 })
     } catch (err: any) {
       try {
         const host = process.env.SMTP_HOST || ''
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
         })
       } catch {}
       logs.push({ email, address: walletAddress, status: 'error', error: String(err?.message || err), sentAt: Date.now() } as LogItem)
+      if (logs.length > 1000) logs.splice(0, logs.length - 1000)
       if (process.env.NODE_ENV !== 'production') {
         return NextResponse.json({ success: true, message: '开发环境：邮件发送失败，已直接返回验证码', codePreview: code, expiresInSec: 300 })
       }

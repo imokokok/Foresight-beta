@@ -5,12 +5,14 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IMarket.sol";
 import "../tokens/OutcomeToken1155.sol";
 
 /// @title MultiOutcomeMarket1155
 /// @notice Multi-outcome market template using a shared ERC1155 for outcome tokens
 contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
+    using SafeERC20 for IERC20;
     bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
 
@@ -127,7 +129,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         require(outcome1155.hasRole(outcome1155.MINTER_ROLE(), address(this)), "no minter role");
 
         // transfer collateral in
-        require(collateral.transferFrom(msg.sender, address(this), collateralAmount), "transferFrom fail");
+        collateral.safeTransferFrom(msg.sender, address(this), collateralAmount);
 
         // normalize to 18 decimals outcome tokens
         uint256 amountOut = _to18(collateralAmount);
@@ -172,7 +174,7 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
         accruedFees += fee;
 
         require(collateral.balanceOf(address(this)) >= net, "insufficient vault");
-        require(collateral.transfer(msg.sender, net), "transfer fail");
+        collateral.safeTransfer(msg.sender, net);
 
         emit Redeem(msg.sender, finalOutcome, tokenAmount, net);
     }
@@ -193,13 +195,13 @@ contract MultiOutcomeMarket1155 is AccessControl, ReentrancyGuard, IMarket {
 
         uint256 collateralOut = _from18(amount18PerOutcome);
         require(collateral.balanceOf(address(this)) >= collateralOut, "insufficient vault");
-        require(collateral.transfer(msg.sender, collateralOut), "transfer fail");
+        collateral.safeTransfer(msg.sender, collateralOut);
     }
 
     function withdrawFees(uint256 amount) external onlyAdmin {
         require(amount > 0 && amount <= accruedFees, "bad amount");
         accruedFees -= amount;
-        require(collateral.transfer(feeRecipient, amount), "transfer fail");
+        collateral.safeTransfer(feeRecipient, amount);
         emit FeesWithdrawn(feeRecipient, amount);
     }
 

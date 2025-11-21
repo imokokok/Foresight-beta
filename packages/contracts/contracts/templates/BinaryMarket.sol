@@ -89,6 +89,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     error ResolutionTimeNotReached();
     /// @notice Thrown when the market has already been resolved.
     error AlreadyResolved();
+    error NotImplemented();
 
     /// @dev Modifier to ensure a function is only callable when the market is in the TRADING stage.
     modifier atStage(IMarket.Stages _stage) {
@@ -124,6 +125,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
         feeBps = _feeBps;
         resolutionTime = _resolutionTime;
         (AMM.AMMType _ammType, uint256 initialLiquidity) = abi.decode(data, (AMM.AMMType, uint256));
+        stage = IMarket.Stages.TRADING;
 
         if (_ammType == AMM.AMMType.CPMM) {
             _initializeCPMM(initialLiquidity);
@@ -203,6 +205,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @param amount The number of complete sets to deposit.
     function depositCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
         require(amount > 0, "amount must be positive");
+        require(address(outcomeToken) != address(0), "outcomeToken not set");
         uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
         uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
         outcomeToken.burn(msg.sender, idNo, amount);
@@ -216,6 +219,7 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     /// @param amount The amount of winning tokens to redeem.
     function redeem(uint256 amount) external nonReentrant atStage(IMarket.Stages.RESOLVED) {
         require(amount > 0, "amount must be positive");
+        require(address(outcomeToken) != address(0), "outcomeToken not set");
         uint256 idWin = outcomeToken.computeTokenId(address(this), resolvedOutcome);
         outcomeToken.burn(msg.sender, idWin, amount);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
@@ -276,41 +280,37 @@ contract BinaryMarket is IMarket, ReentrancyGuard, Initializable {
     }
 
     /// @dev Handles removing liquidity for the CPMM.
-    function _removeLiquidityCPMM(uint256 shares) internal returns (uint256 collateral) {
-// ... existing code ...
+    function _removeLiquidityCPMM(uint256) internal returns (uint256 collateral) {
+        revert NotImplemented();
     }
 
     /// @dev Handles removing liquidity for the LMSR.
-    function _removeLiquidityLMSR(uint256 shares) internal returns (uint256 collateral) {
-// ... existing code ...
+    function _removeLiquidityLMSR(uint256) internal returns (uint256 collateral) {
+        revert NotImplemented();
     }
 
     /// @dev Handles the swap logic for the CPMM.
-    function _swapCPMM(uint256 inputAmount, uint256 outcomeIndex, bool isBuy) internal returns (uint256 outputAmount) {
-// ... existing code ...
+    function _swapCPMM(uint256, uint256, bool) internal returns (uint256 outputAmount) {
+        revert NotImplemented();
     }
 
     /// @dev Handles the swap logic for the LMSR.
-    function _swapLMSR(uint256 inputAmount, uint256 outcomeIndex, bool isBuy) internal returns (uint256 outputAmount) {
-// ... existing code ...
+    function _swapLMSR(uint256, uint256, bool) internal returns (uint256 outputAmount) {
+        revert NotImplemented();
     }
 
     // --- View Functions ---
 
     /// @notice Calculates the amount of outcome tokens that can be purchased for a given amount of collateral.
-    /// @param investmentAmount The amount of collateral to spend.
-    /// @param outcomeIndex The index of the outcome token to buy.
     /// @return The number of outcome tokens that can be bought.
-    function calcBuyAmount(uint256 investmentAmount, uint256 outcomeIndex) public view returns (uint256) {
-// ... existing code ...
+    function calcBuyAmount(uint256, uint256) public view returns (uint256) {
+        revert NotImplemented();
     }
 
     /// @notice Calculates the proceeds from selling a given amount of outcome tokens.
-    /// @param returnAmount The amount of outcome tokens to sell.
-    /// @param outcomeIndex The index of the outcome token to sell.
     /// @return The amount of collateral that will be received.
-    function calcSellAmount(uint256 returnAmount, uint256 outcomeIndex) public view returns (uint256) {
-// ... existing code ...
+    function calcSellAmount(uint256, uint256) public view returns (uint256) {
+        revert NotImplemented();
     }
 
     /// @notice Returns the balance of a specific outcome token for a given account.
