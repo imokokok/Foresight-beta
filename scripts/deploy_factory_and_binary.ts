@@ -6,14 +6,14 @@ async function main() {
   const deployerAddress = await deployer.getAddress();
   console.log("Deployer:", deployerAddress);
 
-  // Deploy BinaryMarket implementation (template)
-  const BinaryMarketFactory = await hre.ethers.getContractFactory(
-    "BinaryMarket"
+  // Deploy CLOBMarket implementation (template)
+  const CLOBMarketFactory = await hre.ethers.getContractFactory(
+    "CLOBMarket"
   );
-  const binaryImpl = await BinaryMarketFactory.deploy();
-  await binaryImpl.waitForDeployment();
-  const binaryImplAddress = await binaryImpl.getAddress();
-  console.log("BinaryMarket implementation:", binaryImplAddress);
+  const clobImpl = await CLOBMarketFactory.deploy();
+  await clobImpl.waitForDeployment();
+  const clobImplAddress = await clobImpl.getAddress();
+  console.log("CLOBMarket implementation:", clobImplAddress);
 
   // Deploy MarketFactory
   const MarketFactoryFactory = await hre.ethers.getContractFactory(
@@ -24,12 +24,12 @@ async function main() {
   const mfAddress = await mf.getAddress();
   console.log("MarketFactory:", mfAddress);
 
-  // Register template
-  const templateId = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("BINARY"));
+  // Register CLOB template
+  const templateId = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("CLOB"));
   const txReg = await mf.registerTemplate(
     templateId,
-    binaryImplAddress,
-    "Binary"
+    clobImplAddress,
+    "CLOB"
   );
   await txReg.wait();
   console.log("Registered BINARY template");
@@ -80,7 +80,13 @@ async function main() {
   const resolutionTime = env.MARKET_RESOLUTION_TS
     ? Number(env.MARKET_RESOLUTION_TS)
     : now + 7 * 24 * 3600;
-  const data = "0x"; // template-specific params (not used in BinaryMarket)
+  // template-specific params: outcome1155 address for CLOBMarket
+  const outcome1155Addr = process.env.OUTCOME1155_ADDRESS;
+  if (!outcome1155Addr) {
+    console.error("Missing OUTCOME1155_ADDRESS env for CLOBMarket");
+    return;
+  }
+  const data = new hre.ethers.AbiCoder().encode(["address"], [outcome1155Addr]);
 
   // Create market
   const txCreate = await mf.createMarket(

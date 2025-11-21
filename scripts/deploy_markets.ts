@@ -41,23 +41,23 @@ async function ensureFactory(deployerAddress: string) {
   return { mf, mfAddress };
 }
 
-async function deployBinaryTemplate(mf: any) {
-  const BinaryMarketFactory = await hre.ethers.getContractFactory("BinaryMarket");
-  const binaryImpl = await BinaryMarketFactory.deploy();
-  await binaryImpl.waitForDeployment();
-  const binaryImplAddress = await binaryImpl.getAddress();
-  console.log("BinaryMarket implementation:", binaryImplAddress);
+async function deployClobTemplate(mf: any) {
+  const CLOBMarketFactory = await hre.ethers.getContractFactory("CLOBMarket");
+  const clobImpl = await CLOBMarketFactory.deploy();
+  await clobImpl.waitForDeployment();
+  const clobImplAddress = await clobImpl.getAddress();
+  console.log("CLOBMarket implementation:", clobImplAddress);
 
-  const templateIdBinary = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("BINARY"));
-  const t = await mf.getTemplate(templateIdBinary);
+  const templateIdClob = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("CLOB"));
+  const t = await mf.getTemplate(templateIdClob);
   if (!t.exists) {
-    const txReg = await mf.registerTemplate(templateIdBinary, binaryImplAddress, "Binary");
+    const txReg = await mf.registerTemplate(templateIdClob, clobImplAddress, "CLOB");
     await txReg.wait();
-    console.log("Registered BINARY template");
+    console.log("Registered CLOB template");
   } else {
-    console.log("BINARY template already registered:", t.implementation);
+    console.log("CLOB template already registered:", t.implementation);
   }
-  return templateIdBinary;
+  return templateIdClob;
 }
 
 async function deployMultiTemplate(mf: any) {
@@ -79,26 +79,28 @@ async function deployMultiTemplate(mf: any) {
   return templateIdMulti;
 }
 
-async function createBinaryMarket(mf: any, deployerAddress: string) {
+async function createClobMarket(mf: any, deployerAddress: string) {
   const env = process.env;
   const network = await hre.ethers.provider.getNetwork();
   const chainId = Number(network.chainId);
   const collateral = getEnvCollateral(chainId, env);
-  if (!collateral) throw new Error("Missing collateral address for binary market.");
+  if (!collateral) throw new Error("Missing collateral address for clob market.");
   const oracle = env.ORACLE_ADDRESS || deployerAddress;
   const feeBps = env.MARKET_FEE_BPS ? Number(env.MARKET_FEE_BPS) : 30;
   const now = Math.floor(Date.now() / 1000);
   const resolutionTime = env.MARKET_RESOLUTION_TS ? Number(env.MARKET_RESOLUTION_TS) : (now + 7 * 24 * 3600);
-  const data = "0x";
+  const outcome1155Address = env.OUTCOME1155_ADDRESS;
+  if (!outcome1155Address) throw new Error("Missing OUTCOME1155_ADDRESS for clob market.");
+  const data = new hre.ethers.AbiCoder().encode(["address"],[outcome1155Address]);
 
-  const templateIdBinary = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("BINARY"));
-  const txCreate = await mf.createMarket(templateIdBinary, collateral, oracle, feeBps, resolutionTime, data);
+  const templateIdClob = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("CLOB"));
+  const txCreate = await mf.createMarket(templateIdClob, collateral, oracle, feeBps, resolutionTime, data);
   const receipt = await txCreate.wait();
   const iface = mf.interface;
   const log = receipt.logs.find((l: any) => { try { return iface.parseLog(l).name === "MarketCreated"; } catch (_) { return false; } });
   if (log) {
     const parsed = iface.parseLog(log);
-    console.log("MarketCreated (BINARY):", {
+    console.log("MarketCreated (CLOB):", {
       marketId: parsed.args.marketId?.toString?.() ?? parsed.args[0].toString(),
       market: parsed.args.market ?? parsed.args[1],
       collateralToken: parsed.args.collateralToken ?? parsed.args[4],
@@ -184,9 +186,9 @@ async function main() {
 
   const { mf } = await ensureFactory(deployerAddress);
 
-  if (mode === "binary" || mode === "both") {
-    await deployBinaryTemplate(mf);
-    await createBinaryMarket(mf, deployerAddress);
+  if (mode === "binary" || mode === "both" || mode === "clob") {
+    await deployClobTemplate(mf);
+    await createClobMarket(mf, deployerAddress);
   }
 
   if (mode === "multi" || mode === "both") {

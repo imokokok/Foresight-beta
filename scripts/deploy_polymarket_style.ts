@@ -34,26 +34,23 @@ async function main() {
     const umaOracleAdapterAddress = await umaOracleAdapter.getAddress();
     console.log(`UMAOracleAdapter deployed to: ${umaOracleAdapterAddress}`);
 
-    // 4. Deploy BinaryMarket template
-    const BinaryMarket = await hre.ethers.getContractFactory("BinaryMarket");
-    const binaryMarketTemplate = await BinaryMarket.deploy();
-    await binaryMarketTemplate.waitForDeployment();
-    const binaryMarketTemplateAddress = await binaryMarketTemplate.getAddress();
-    console.log(`BinaryMarket template deployed to: ${binaryMarketTemplateAddress}`);
+    // 4. Deploy CLOBMarket template
+    const CLOBMarket = await hre.ethers.getContractFactory("CLOBMarket");
+    const clobMarketTemplate = await CLOBMarket.deploy();
+    await clobMarketTemplate.waitForDeployment();
+    const clobMarketTemplateAddress = await clobMarketTemplate.getAddress();
+    console.log(`CLOBMarket template deployed to: ${clobMarketTemplateAddress}`);
 
-    // 5. Register BinaryMarket template
-    const templateId = hre.ethers.id("BINARY_MARKET_V1");
-    await marketFactory.registerTemplate(templateId, binaryMarketTemplateAddress, "Binary Market v1");
-    console.log(`BinaryMarket template registered with ID: ${templateId}`);
+    // 5. Register CLOBMarket template
+    const templateId = hre.ethers.id("CLOB_MARKET_V1");
+    await marketFactory.registerTemplate(templateId, clobMarketTemplateAddress, "CLOB Market v1");
+    console.log(`CLOBMarket template registered with ID: ${templateId}`);
 
-    // 6. Create a new BinaryMarket instance using the UMA adapter (CPMM)
-    const collateralTokenAddress = "0x..."; // Replace with actual ERC20 address
+    // 6. Create a new CLOBMarket instance using the UMA adapter
+    const collateralTokenAddress = process.env.COLLATERAL_TOKEN_ADDRESS || "0x..."; // Replace with actual ERC20 address
     const feeBps = 30; // 0.3%
     const resolutionTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-    const cpmmData = hre.ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint8", "uint256"],
-        [outcomeToken1155Address, 0, 0] // 0 for CPMM, 0 for lmsrB (unused)
-    );
+    const initData = hre.ethers.AbiCoder.defaultAbiCoder().encode(["address"],[outcomeToken1155Address]);
 
     const tx = await marketFactory.createMarket(
         templateId,
@@ -61,40 +58,18 @@ async function main() {
         umaOracleAdapterAddress, // Using UMA Oracle Adapter
         feeBps,
         resolutionTime,
-        cpmmData
+        initData
     );
     const receipt = await tx.wait();
     const marketCreatedEvent = receipt.events.find(event => event.event === 'MarketCreated');
-    const cpmmMarketAddress = marketCreatedEvent.args.market;
-    console.log(`New CPMM BinaryMarket created at: ${cpmmMarketAddress}`);
+    const clobMarketAddress = marketCreatedEvent.args.market;
+    console.log(`New CLOBMarket created at: ${clobMarketAddress}`);
 
     // Grant MINTER_ROLE to the new CPMM market
-    await outcomeToken1155.grantRole(await outcomeToken1155.MINTER_ROLE(), cpmmMarketAddress);
-    console.log(`MINTER_ROLE granted to market: ${cpmmMarketAddress}`);
+    await outcomeToken1155.grantRole(await outcomeToken1155.MINTER_ROLE(), clobMarketAddress);
+    console.log(`MINTER_ROLE granted to market: ${clobMarketAddress}`);
 
-    // 7. Create a new BinaryMarket instance using the UMA adapter (LMSR)
-    const lmsrB = hre.ethers.parseEther("100"); // Liquidity parameter b = 100
-    const lmsrData = hre.ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint8", "uint256"],
-        [outcomeToken1155Address, 1, lmsrB] // 1 for LMSR
-    );
-
-    const tx2 = await marketFactory.createMarket(
-        templateId,
-        collateralTokenAddress,
-        umaOracleAdapterAddress, // Using UMA Oracle Adapter
-        feeBps,
-        resolutionTime,
-        lmsrData
-    );
-    const receipt2 = await tx2.wait();
-    const marketCreatedEvent2 = receipt2.events.find(event => event.event === 'MarketCreated');
-    const lmsrMarketAddress = marketCreatedEvent2.args.market;
-    console.log(`New LMSR BinaryMarket created at: ${lmsrMarketAddress}`);
-
-    // Grant MINTER_ROLE to the new LMSR market
-    await outcomeToken1155.grantRole(await outcomeToken1155.MINTER_ROLE(), lmsrMarketAddress);
-    console.log(`MINTER_ROLE granted to market: ${lmsrMarketAddress}`);
+    // Skip LMSR second market; CLOB is the only model now
 
     // Save deployment info
     const deploymentInfo = {
@@ -103,9 +78,8 @@ async function main() {
         outcomeToken1155: outcomeToken1155Address,
         marketFactory: marketFactoryAddress,
         umaOracleAdapter: umaOracleAdapterAddress,
-        binaryMarketTemplate: binaryMarketTemplateAddress,
-        createdCpmmMarket: cpmmMarketAddress,
-        createdLmsrMarket: lmsrMarketAddress,
+        clobMarketTemplate: clobMarketTemplateAddress,
+        createdClobMarket: clobMarketAddress,
         timestamp: new Date().toISOString()
     };
 

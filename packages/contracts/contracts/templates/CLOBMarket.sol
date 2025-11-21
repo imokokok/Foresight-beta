@@ -24,6 +24,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
     uint256 public resolvedOutcome;
     address public feeRecipient;
     uint256 public accruedFees;
+    bool public paused;
 
     struct Order {
         uint256 id;
@@ -34,6 +35,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         uint256 amount;
         uint256 remaining;
         uint256 escrow;
+        uint256 expiry;
         bool active;
     }
 
@@ -54,10 +56,21 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
     error InvalidStage();
     error AlreadyResolved();
     error ResolutionTimeNotReached();
+    error Paused();
+    error NotAdmin();
 
     modifier atStage(IMarket.Stages _stage) {
         if (stage != _stage) revert InvalidStage();
         _;
+    }
+
+    modifier notPaused() {
+        if (paused) revert Paused();
+        _;
+    }
+
+    function _isAdmin(address a) internal view returns (bool) {
+        return a == factory || a == creator;
     }
 
     function initialize(
@@ -84,7 +97,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         emit Initialized();
     }
 
-    function placeOrder(uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) returns (uint256 id) {
+    function placeOrder(uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused returns (uint256 id) {
         if (outcomeIndex > 1) revert InvalidOutcomeIndex();
         require(price > 0 && amount > 0);
         id = ++nextOrderId;
@@ -95,11 +108,33 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
             IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), escrow);
             buyBook[outcomeIndex].push(id);
         } else {
+            require(outcomeToken.isApprovedForAll(msg.sender, address(this)), "not approved for 1155");
             outcomeToken.safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
             escrow = amount;
             sellBook[outcomeIndex].push(id);
         }
-        orders[id] = Order({ id: id, trader: msg.sender, outcomeIndex: outcomeIndex, isBuy: isBuy, price: price, amount: amount, remaining: amount, escrow: escrow, active: true });
+        orders[id] = Order({ id: id, trader: msg.sender, outcomeIndex: outcomeIndex, isBuy: isBuy, price: price, amount: amount, remaining: amount, escrow: escrow, expiry: type(uint256).max, active: true });
+        emit OrderPlaced(id, msg.sender, outcomeIndex, isBuy, price, amount);
+    }
+
+    function placeOrderWithExpiry(uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 expiry) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused returns (uint256 id) {
+        if (outcomeIndex > 1) revert InvalidOutcomeIndex();
+        require(price > 0 && amount > 0);
+        require(expiry == 0 || expiry > block.timestamp);
+        id = ++nextOrderId;
+        uint256 escrow;
+        uint256 tokenId = outcomeToken.computeTokenId(address(this), outcomeIndex);
+        if (isBuy) {
+            escrow = price * amount;
+            IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), escrow);
+            buyBook[outcomeIndex].push(id);
+        } else {
+            require(outcomeToken.isApprovedForAll(msg.sender, address(this)), "not approved for 1155");
+            outcomeToken.safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
+            escrow = amount;
+            sellBook[outcomeIndex].push(id);
+        }
+        orders[id] = Order({ id: id, trader: msg.sender, outcomeIndex: outcomeIndex, isBuy: isBuy, price: price, amount: amount, remaining: amount, escrow: escrow, expiry: expiry == 0 ? type(uint256).max : expiry, active: true });
         emit OrderPlaced(id, msg.sender, outcomeIndex, isBuy, price, amount);
     }
 
@@ -121,7 +156,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         emit OrderCanceled(id);
     }
 
-    function matchOrders(uint256 outcomeIndex, uint256 maxMatches) external nonReentrant atStage(IMarket.Stages.TRADING) {
+    function matchOrders(uint256 outcomeIndex, uint256 maxMatches) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
         if (outcomeIndex > 1) revert InvalidOutcomeIndex();
         require(maxMatches > 0);
         uint256 matched = 0;
@@ -135,6 +170,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         (uint256 bestBidId, uint256 bidPrice) = _bestBid(outcomeIndex);
         (uint256 bestAskId, uint256 askPrice) = _bestAsk(outcomeIndex);
         if (bestBidId == 0 || bestAskId == 0) return false;
+        if (orders[bestBidId].expiry < block.timestamp || orders[bestAskId].expiry < block.timestamp) return false;
         if (bidPrice < askPrice) return false;
         Order storage b = orders[bestBidId];
         Order storage s = orders[bestAskId];
@@ -164,6 +200,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
 
     function depositCompleteSet(uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) {
         require(amount > 0);
+        require(outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this)), "no minter role");
         uint256 idNo = outcomeToken.computeTokenId(address(this), 0);
         uint256 idYes = outcomeToken.computeTokenId(address(this), 1);
         outcomeToken.burn(msg.sender, idNo, amount);
@@ -174,6 +211,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
 
     function redeem(uint256 amount) external nonReentrant atStage(IMarket.Stages.RESOLVED) {
         require(amount > 0);
+        require(outcomeToken.hasRole(outcomeToken.MINTER_ROLE(), address(this)), "no minter role");
         uint256 idWin = outcomeToken.computeTokenId(address(this), resolvedOutcome);
         outcomeToken.burn(msg.sender, idWin, amount);
         IERC20(collateralToken).safeTransfer(msg.sender, amount);
@@ -195,6 +233,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         for (uint256 i = 0; i < ids.length; i++) {
             Order storage o = orders[ids[i]];
             if (!o.active || o.remaining == 0) continue;
+            if (o.expiry != 0 && o.expiry < block.timestamp) continue;
             if (o.price > bestPrice) {
                 bestPrice = o.price;
                 bestId = o.id;
@@ -211,6 +250,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         for (uint256 i = 0; i < ids.length; i++) {
             Order storage o = orders[ids[i]];
             if (!o.active || o.remaining == 0) continue;
+            if (o.expiry != 0 && o.expiry < block.timestamp) continue;
             if (o.price < bestPrice) {
                 bestPrice = o.price;
                 bestId = o.id;
@@ -222,4 +262,123 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable {
         id = bestId;
         price = bestPrice;
     }
+    
+    function setFee(uint256 newFeeBps, address newRecipient) external {
+        require(msg.sender == factory);
+        require(newFeeBps <= 10000);
+        feeBps = newFeeBps;
+        feeRecipient = newRecipient;
+    }
+
+    function getBestBid(uint256 outcomeIndex) external view returns (uint256 price, uint256 qty) {
+        (uint256 idBest, uint256 p) = _bestBid(outcomeIndex);
+        if (idBest == 0) return (0, 0);
+        uint256 total = 0;
+        uint256[] storage ids = buyBook[outcomeIndex];
+        for (uint256 i = 0; i < ids.length; i++) {
+            Order storage o = orders[ids[i]];
+            if (!o.active || o.remaining == 0) continue;
+            if (o.expiry != 0 && o.expiry < block.timestamp) continue;
+            if (o.price == p) total += o.remaining;
+        }
+        price = p;
+        qty = total;
+    }
+
+    function getBestAsk(uint256 outcomeIndex) external view returns (uint256 price, uint256 qty) {
+        (uint256 idBest, uint256 p) = _bestAsk(outcomeIndex);
+        if (idBest == 0 || p == 0) return (0, 0);
+        uint256 total = 0;
+        uint256[] storage ids = sellBook[outcomeIndex];
+        for (uint256 i = 0; i < ids.length; i++) {
+            Order storage o = orders[ids[i]];
+            if (!o.active || o.remaining == 0) continue;
+            if (o.expiry != 0 && o.expiry < block.timestamp) continue;
+            if (o.price == p) total += o.remaining;
+        }
+        price = p;
+        qty = total;
+    }
+
+    function getOrder(uint256 id) external view returns (address trader, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 remaining, bool active) {
+        Order storage o = orders[id];
+        trader = o.trader;
+        outcomeIndex = o.outcomeIndex;
+        isBuy = o.isBuy;
+        price = o.price;
+        amount = o.amount;
+        remaining = o.remaining;
+        active = o.active;
+    }
+
+    function cancelAll(uint256 outcomeIndex, bool isBuy, uint256 max) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
+        uint256[] storage ids = isBuy ? buyBook[outcomeIndex] : sellBook[outcomeIndex];
+        uint256 count = 0;
+        for (uint256 i = 0; i < ids.length && count < max; i++) {
+            Order storage o = orders[ids[i]];
+            if (!o.active || o.trader != msg.sender || o.remaining == 0) continue;
+            o.active = false;
+            uint256 tokenId = outcomeToken.computeTokenId(address(this), o.outcomeIndex);
+            if (isBuy) {
+                uint256 refund = o.price * o.remaining;
+                o.escrow -= refund;
+                IERC20(collateralToken).safeTransfer(msg.sender, refund);
+            } else {
+                uint256 refundAmount = o.remaining;
+                o.escrow -= refundAmount;
+                outcomeToken.safeTransferFrom(address(this), msg.sender, tokenId, refundAmount, "");
+            }
+            count++;
+        }
+    }
+
+    function cancelExpired(uint256 outcomeIndex, bool isBuy, uint256 max) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
+        uint256[] storage ids = isBuy ? buyBook[outcomeIndex] : sellBook[outcomeIndex];
+        uint256 count = 0;
+        for (uint256 i = 0; i < ids.length && count < max; i++) {
+            Order storage o = orders[ids[i]];
+            if (!o.active || o.expiry == 0 || o.expiry > block.timestamp) continue;
+            o.active = false;
+            uint256 tokenId = outcomeToken.computeTokenId(address(this), o.outcomeIndex);
+            if (isBuy) {
+                uint256 refund = o.price * o.remaining;
+                o.escrow -= refund;
+                IERC20(collateralToken).safeTransfer(o.trader, refund);
+            } else {
+                uint256 refundAmount = o.remaining;
+                o.escrow -= refundAmount;
+                outcomeToken.safeTransferFrom(address(this), o.trader, tokenId, refundAmount, "");
+            }
+            count++;
+        }
+    }
+
+    function sweepBook(uint256 outcomeIndex, bool isBuy, uint256 maxSweeps) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused {
+        if (!_isAdmin(msg.sender)) revert NotAdmin();
+        uint256[] storage ids = isBuy ? buyBook[outcomeIndex] : sellBook[outcomeIndex];
+        uint256 sweeps = 0;
+        uint256 i = 0;
+        while (i < ids.length && sweeps < maxSweeps) {
+            Order storage o = orders[ids[i]];
+            bool removable = (!o.active) || (o.remaining == 0) || (o.expiry != 0 && o.expiry < block.timestamp);
+            if (removable) {
+                ids[i] = ids[ids.length - 1];
+                ids.pop();
+                sweeps++;
+            } else {
+                i++;
+            }
+        }
+    }
+
+    function pauseTrading() external {
+        if (!_isAdmin(msg.sender)) revert NotAdmin();
+        paused = true;
+    }
+
+    function resumeTrading() external {
+        if (!_isAdmin(msg.sender)) revert NotAdmin();
+        paused = false;
+    }
+
 }
