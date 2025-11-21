@@ -17,7 +17,7 @@ export default function TrendingPage() {
   const [canvasReady, setCanvasReady] = useState(false);
 
   // 展示模式：分页 或 滚动（默认分页以避免长列表缓慢下滑）
-  const [viewMode, setViewMode] = useState<"paginate" | "scroll">("scroll");
+  
 
 
   // 添加热点事件轮播数据
@@ -82,14 +82,12 @@ export default function TrendingPage() {
   ];
 
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [displayCount, setDisplayCount] = useState(12);
   const [totalEventsCount, setTotalEventsCount] = useState(0);
   const productsSectionRef = useRef<HTMLElement | null>(null);
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>(
     {}
   );
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 登录提示弹窗状态
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -101,47 +99,7 @@ export default function TrendingPage() {
   const [followError, setFollowError] = useState<string | null>(null);
   // Realtime 订阅状态与过滤信息（用于可视化诊断）
   // 未结算视图模式
-  const [pendingMode, setPendingMode] = useState<"soon" | "popular">("soon");
-  // 活动日志（关注/取消关注/访问）
-  const [activityLog, setActivityLog] = useState<
-    Array<{
-      type: "follow" | "unfollow" | "visit";
-      id: number;
-      title: string;
-      category: string;
-      ts: string;
-    }>
-  >([]);
-
-  function pushActivity(item: {
-    type: "follow" | "unfollow" | "visit";
-    id: number;
-    title: string;
-    category: string;
-    ts: string;
-  }) {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("activity_log")
-          : null;
-      const arr = raw ? JSON.parse(raw) : [];
-      const next = [item, ...(Array.isArray(arr) ? arr : [])].slice(0, 20);
-      window.localStorage.setItem("activity_log", JSON.stringify(next));
-      setActivityLog(next);
-    } catch {}
-  }
-
-  useEffect(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("activity_log")
-          : null;
-      const arr = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(arr)) setActivityLog(arr);
-    } catch {}
-  }, []);
+  
 
   // 返回顶部功能状态
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -281,30 +239,8 @@ export default function TrendingPage() {
     try {
       if (wasFollowing) {
         await unfollowPrediction(Number(predictionId), accountNorm);
-        // 记录取消关注活动
-        const p = predictions.find(
-          (e) => Number(e?.id) === Number(predictionId)
-        );
-        pushActivity({
-          type: "unfollow",
-          id: Number(predictionId),
-          title: String(p?.title || `事件 #${predictionId}`),
-          category: String(p?.category || ""),
-          ts: new Date().toISOString(),
-        });
       } else {
         await followPrediction(Number(predictionId), accountNorm);
-        // 记录关注活动
-        const p = predictions.find(
-          (e) => Number(e?.id) === Number(predictionId)
-        );
-        pushActivity({
-          type: "follow",
-          id: Number(predictionId),
-          title: String(p?.title || `事件 #${predictionId}`),
-          category: String(p?.category || ""),
-          ts: new Date().toISOString(),
-        });
       }
     } catch (err) {
       console.error("关注/取消关注失败:", err);
@@ -815,7 +751,6 @@ export default function TrendingPage() {
     totalEventsCountRef.current = totalEventsCount;
   }, [totalEventsCount]);
   useEffect(() => {
-    if (viewMode !== "scroll") return;
     const handleScroll = () => {
       // 检查是否滚动到底部
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
@@ -843,7 +778,7 @@ export default function TrendingPage() {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [displayCount, totalEventsCount, viewMode]);
+  }, [displayCount, totalEventsCount]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1610,24 +1545,6 @@ export default function TrendingPage() {
   }, [sortedEvents, displayCount, accountNorm]);
   
 
-  function formatTimeLeft(deadlineIso?: string): {
-    label: string;
-    dot: string;
-  } {
-    if (!deadlineIso) return { label: "未知", dot: "bg-gray-400" };
-    const end = new Date(deadlineIso).getTime();
-    const now = Date.now();
-    const diff = end - now;
-    const m = 60 * 1000,
-      h = 60 * m,
-      d = 24 * h;
-    if (diff <= 0) return { label: "已到期", dot: "bg-gray-400" };
-    if (diff < h)
-      return { label: `${Math.ceil(diff / m)} 分钟`, dot: "bg-red-500" };
-    if (diff < 3 * d)
-      return { label: `${Math.ceil(diff / h)} 小时`, dot: "bg-yellow-500" };
-    return { label: `${Math.ceil(diff / d)} 天`, dot: "bg-green-500" };
-  }
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-pink-50 overflow-hidden text-black">
@@ -1648,334 +1565,10 @@ export default function TrendingPage() {
 
 
 
-      <div style={{ display: "none" }}>
-        {/* 我的关注 */}
-        <div className="p-4 border-t border-gray-200/50">
-          {!sidebarCollapsed && (
-            <h3 className="text-sm font-semibold text-black mb-3 uppercase tracking-wide">
-              我的关注
-            </h3>
-          )}
-          <Link href="/my-follows">
-            <motion.div
-              className={`flex items-center p-3 rounded-xl cursor-pointer transition-all duration-300 hover:bg-white/50 bg-gradient-to-r from-purple-100 to-pink-100 border border-purple-200 ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              title={`我的关注（${followedEvents.size}）`}
-            >
-              <div className="flex items-center">
-                <Heart className="w-5 h-5 text-purple-600" />
-                {!sidebarCollapsed && (
-                  <div className="ml-3">
-                    <span className="text-black font-medium block">
-                      查看我的关注
-                    </span>
-                    <span className="text-xs text-gray-600">
-                      管理关注的事件
-                    </span>
-                  </div>
-                )}
-              </div>
-              {!sidebarCollapsed && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded-full">
-                    {followedEvents.size} 项
-                  </span>
 
-                </div>
-              )}
-            </motion.div>
-          </Link>
-        </div>
-      </div>
 
-      <div style={{ display: "none" }}>
-        {/* 快捷筛选 */}
-        <div className="p-4 border-t border-gray-200/50">
-          {!sidebarCollapsed && (
-            <h3 className="text-sm font-semibold text-black mb-3 uppercase tracking-wide">
-              快捷筛选
-            </h3>
-          )}
-          <div
-            className={`grid ${
-              sidebarCollapsed ? "grid-cols-1" : "grid-cols-2"
-            } gap-2`}
-          >
-            <motion.button
-              onClick={(e) => {
-                setSelectedCategory("");
-                createSmartClickEffect(e);
-              }}
-              className={`flex items-center ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              } p-2 rounded-xl border transition-all duration-300 ${
-                selectedCategory === ""
-                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-white/40"
-                  : "bg-white/50 text-black border-gray-200 hover:bg-white/70"
-              }`}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              aria-label="筛选 全部"
-            >
 
-              {!sidebarCollapsed && (
-                <span className="text-sm font-medium">全部</span>
-              )}
-              {!sidebarCollapsed && (
-                <span className="text-xs text-gray-600">
-                  {sortedEvents.length} 个
-                </span>
-              )}
-            </motion.button>
 
-            {categories.map((cat) => (
-              <motion.button
-                key={cat.name}
-                onClick={(e) => {
-                  setSelectedCategory(cat.name);
-                  createSmartClickEffect(e);
-                }}
-                className={`flex items-center ${
-                  sidebarCollapsed ? "justify-center" : "justify-between"
-                } p-2 rounded-xl border transition-all duration-300 ${
-                  selectedCategory === cat.name
-                    ? "bg-gradient-to-r " +
-                      cat.color +
-                      " text-white border-white/40"
-                    : "bg-white/50 text-black border-gray-200 hover:bg-white/70"
-                }`}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                aria-label={`筛选 ${cat.name}`}
-                title={cat.name}
-              >
-                <span className="text-lg">{cat.icon}</span>
-                {!sidebarCollapsed && (
-                  <span className="text-sm font-medium">{cat.name}</span>
-                )}
-                {!sidebarCollapsed && (
-                  <span className="text-xs text-gray-600">
-                    {categoryCounts[cat.name] || 0} 个
-                  </span>
-                )}
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "none" }}>
-        {/* 未结算事件（依据真实数据） */}
-        <div className="p-4 border-t border-gray-200/50">
-          {!sidebarCollapsed && (
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-black uppercase tracking-wide">
-                未结算事件
-              </h3>
-              <div className="flex items-center gap-2 bg-white/60 border border-gray-200 rounded-full p-1">
-                <button
-                  onClick={(e) => {
-                    setPendingMode("soon");
-                    createSmartClickEffect(e);
-                  }}
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    pendingMode === "soon"
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                      : "text-black hover:bg-white"
-                  }`}
-                >
-                  临近截止
-                </button>
-                <button
-                  onClick={(e) => {
-                    setPendingMode("popular");
-                    createSmartClickEffect(e);
-                  }}
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    pendingMode === "popular"
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-                      : "text-black hover:bg-white"
-                  }`}
-                >
-                  关注最多
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="space-y-3">
-            {(pendingMode === "soon"
-              ? predictions
-                  .filter((p) => (p?.status || "active") === "active")
-                  .sort(
-                    (a, b) =>
-                      new Date(a?.deadline || 0).getTime() -
-                      new Date(b?.deadline || 0).getTime()
-                  )
-              : predictions
-                  .filter((p) => (p?.status || "active") === "active")
-                  .sort(
-                    (a, b) =>
-                      Number(b?.followers_count || 0) -
-                      Number(a?.followers_count || 0)
-                  )
-            )
-              .slice(0, 6)
-              .map((p) => {
-                const tl = formatTimeLeft(String(p?.deadline || ""));
-                const lineColor = (tl.dot || "bg-gray-400").replace(
-                  "bg-",
-                  "text-"
-                );
-                return (
-                  <Link key={p.id} href={`/prediction/${p.id}`}>
-                    <motion.div
-                      className={`flex items-center p-3 rounded-xl cursor-pointer transition-all duration-300 ${
-                        sidebarCollapsed ? "justify-center" : "justify-between"
-                      }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-center">
-                        <div className={`${tl.dot} w-1 h-6 rounded mr-2`} />
-
-                        {!sidebarCollapsed && (
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-black truncate max-w-[12rem]">
-                              {p.title}
-                            </p>
-                            {pendingMode === "soon" ? (
-                              <p className="text-xs text-black">
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full mr-2 ${
-                                    tl.dot === "bg-red-500"
-                                      ? "bg-red-500/20 text-red-600"
-                                      : tl.dot === "bg-yellow-500"
-                                      ? "bg-yellow-500/20 text-yellow-600"
-                                      : tl.dot === "bg-green-500"
-                                      ? "bg-green-500/20 text-green-600"
-                                      : "bg-gray-400/20 text-gray-600"
-                                  }`}
-                                >
-                                  剩余 {tl.label}
-                                </span>
-                                · {Number(p?.followers_count || 0)} 人关注
-                              </p>
-                            ) : (
-                              <p className="text-xs text-black">
-                                {Number(p?.followers_count || 0)} 人关注 · 截止{" "}
-                                {new Date(
-                                  p?.deadline || Date.now()
-                                ).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {!sidebarCollapsed && (
-                        <div
-                          className={`w-2 h-2 rounded-full ${tl.dot} ${
-                            (tl.dot || "").includes("bg-red-500")
-                              ? "animate-pulse"
-                              : ""
-                          }`}
-                        />
-                      )}
-                    </motion.div>
-                  </Link>
-                );
-              })}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "none" }}>
-        {/* 平台数据统计 */}
-        <div className="p-4 border-t border-gray-200/50">
-          {!sidebarCollapsed && (
-            <h3 className="text-sm font-semibold text-black mb-3 uppercase tracking-wide">
-              平台数据
-            </h3>
-          )}
-          <div className="space-y-3">
-            <div
-              className={`flex items-center p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              }`}
-            >
-
-              {!sidebarCollapsed && (
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-black">事件总数</p>
-                  <p className="text-xs text-black">1,234</p>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={`flex items-center p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              }`}
-            >
-
-              {!sidebarCollapsed && (
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-black">活跃事件</p>
-                  <p className="text-xs text-black">876</p>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={`flex items-center p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              }`}
-            >
-
-              {!sidebarCollapsed && (
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-black">累计关注数</p>
-                  <p className="text-xs text-black">12,540</p>
-                </div>
-              )}
-            </div>
-
-            <div
-              className={`flex items-center p-3 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 ${
-                sidebarCollapsed ? "justify-center" : "justify-between"
-              }`}
-            >
-
-              {!sidebarCollapsed && (
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-black">
-                    24小时新增事件
-                  </p>
-                  <p className="text-xs text-black">18</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "none" }}>
-        {/* 快速操作 */}
-        <div className="p-4 border-t border-gray-200/50 mt-auto">
-          <div className="space-y-2">
-            <button className="btn-base btn-md btn-cta w-full flex items-center justify-center">
-              <Wallet className="w-4 h-4 mr-2" />
-              {!sidebarCollapsed && "立即投保"}
-            </button>
-            <button className="btn-base btn-md btn-cta w-full flex items-center justify-center">
-
-              {!sidebarCollapsed && "领取奖励"}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* 修改后的英雄区 - 轮播显示 */}
       <section className="relative z-10 flex flex-col md:flex-row items-center justify-between px-16 py-20 ">
