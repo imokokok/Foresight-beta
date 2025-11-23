@@ -45,6 +45,8 @@ describe("CLOBMarket end-to-end (CJS)", function () {
     await outcome1155.connect(seller1).setApprovalForAll(await market.getAddress(), true);
     await outcome1155.connect(seller2).setApprovalForAll(await market.getAddress(), true);
 
+    await market.startTrading();
+
     await collateral.mint(await buyer.getAddress(), 1000000);
     await collateral.connect(buyer).approve(await market.getAddress(), 1000000);
 
@@ -169,6 +171,8 @@ describe("CLOBMarket end-to-end (CJS)", function () {
     await outcome1155.grantMinter(await market.getAddress());
     await outcome1155.grantMinter(await deployer.getAddress());
 
+    await market.startTrading();
+
     await collateral.mint(await user.getAddress(), 10000);
     await collateral.connect(user).approve(await market.getAddress(), 5000);
 
@@ -213,6 +217,8 @@ describe("CLOBMarket end-to-end (CJS)", function () {
 
     await outcome1155.grantMinter(await market.getAddress());
     await outcome1155.grantMinter(await deployer.getAddress());
+
+    await market.startTrading();
 
     const idSell = await outcome1155.computeTokenId(await market.getAddress(), 0);
     await outcome1155.mint(await sellerA.getAddress(), idSell, 100);
@@ -268,6 +274,7 @@ describe("CLOBMarket end-to-end (CJS)", function () {
       data
     );
 
+    await market.startTrading();
     await market.setTickSize(5);
     const ts = await market.tickSize();
     expect(Number(ts)).to.equal(5);
@@ -287,5 +294,64 @@ describe("CLOBMarket end-to-end (CJS)", function () {
     await outcome1155b.mint(await user.getAddress(), idSell2, 10);
     await outcome1155b.connect(user).setApprovalForAll(await market.getAddress(), true);
     await expect(market.connect(user).placeOrder(0, false, 7, 1)).to.be.reverted;
+  });
+
+  it("admin can pause trading: blocks place/match, allows cancel, resume restores", async function () {
+    const [deployer, buyer, seller] = await ethers.getSigners();
+
+    const ERC20Factory = await ethers.getContractFactory("MockERC20");
+    const collateral = await ERC20Factory.deploy("MockUSD", "mUSD");
+    await collateral.waitForDeployment();
+
+    const OutcomeFactory = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeFactory.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const MarketFactory = await ethers.getContractFactory("CLOBMarket");
+    const market = await MarketFactory.deploy();
+    await market.waitForDeployment();
+
+    const now = Math.floor(Date.now() / 1000);
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+    await market.initialize(
+      ethers.ZeroHash,
+      await deployer.getAddress(),
+      await deployer.getAddress(),
+      await collateral.getAddress(),
+      await deployer.getAddress(),
+      0,
+      now + 3600,
+      data
+    );
+
+    await outcome1155.grantMinter(await market.getAddress());
+    await outcome1155.grantMinter(await deployer.getAddress());
+
+    await market.startTrading();
+
+    const idSell = await outcome1155.computeTokenId(await market.getAddress(), 0);
+    await outcome1155.mint(await seller.getAddress(), idSell, 100);
+    await outcome1155.connect(seller).setApprovalForAll(await market.getAddress(), true);
+
+    await collateral.mint(await buyer.getAddress(), 1000000);
+    await collateral.connect(buyer).approve(await market.getAddress(), 1000000);
+
+    const placedTx = await market.connect(seller).placeOrder(0, false, 10, 20);
+    const placedRc = await placedTx.wait();
+    const placedEv = placedRc.logs.find(l => { try { return market.interface.parseLog(l).name === "OrderPlaced" } catch { return false } });
+    const placedId = Number((market.interface.parseLog(placedEv)).args.id);
+
+    await market.pauseTrading();
+
+    await expect(market.connect(buyer).placeOrder(0, true, 10, 5)).to.be.reverted;
+    await expect(market.matchOrders(0, 1)).to.be.reverted;
+
+    await expect(market.connect(seller).cancelOrder(placedId)).to.emit(market, "OrderCanceled");
+
+    await market.resumeTrading();
+    await market.connect(buyer).placeOrder(0, true, 10, 5);
+    const m2 = await market.matchOrders(0, 1);
+    await m2.wait();
   });
 });

@@ -75,6 +75,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     event FeeUpdated(uint256 feeBps, address recipient);
     event FeesWithdrawn(address recipient, uint256 amount);
     event TradingPaused(bool paused);
+    event TradingStarted();
     event Finalized(uint256 refundedBuys, uint256 refundedSells);
     event OrderPlacedSigned(address maker, uint256 id);
     event OrderCanceledSigned(address maker, uint256 id);
@@ -130,7 +131,16 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         feeRecipient = _factory;
         stage = IMarket.Stages.TRADING;
         tickSize = 1;
+        paused = true;
         emit Initialized();
+    }
+
+    function domainSeparatorV4() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function isSaltUsed(address maker, uint256 salt) external view returns (bool) {
+        return usedSalt[maker][salt];
     }
 
     function placeOrder(uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount) external nonReentrant atStage(IMarket.Stages.TRADING) notPaused returns (uint256 id) {
@@ -287,6 +297,7 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
     }
 
     function resolve() external atStage(IMarket.Stages.TRADING) {
+        if (msg.sender != oracle) revert NotAdmin();
         if (block.timestamp < resolutionTime) revert ResolutionTimeNotReached();
         if (stage == IMarket.Stages.RESOLVED) revert AlreadyResolved();
         resolvedOutcome = IOracle(oracle).getOutcome(marketId);
@@ -569,6 +580,13 @@ contract CLOBMarket is IMarket, ReentrancyGuard, Initializable, ERC1155Holder, E
         if (!_isAdmin(msg.sender)) revert NotAdmin();
         paused = false;
         emit TradingPaused(false);
+    }
+
+    function startTrading() external {
+        if (!_isAdmin(msg.sender)) revert NotAdmin();
+        require(paused);
+        paused = false;
+        emit TradingStarted();
     }
 
     function setTickSize(uint256 newTick) external {
