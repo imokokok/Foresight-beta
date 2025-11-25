@@ -1,0 +1,10 @@
+{
+  "name": "contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "echo \"Contracts workspace placeholder (root Hardhat used)\"",
+    "test": "echo \"Use root hardhat:test for now\""
+  }
+}

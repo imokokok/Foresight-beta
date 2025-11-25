@@ -1,0 +1,20 @@
+{
+  "name": "supabase-infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:init": "node ./scripts/run-sql-file.cjs ./sql/supabase-init.sql",
+    "db:fix-follows": "node ./scripts/fix-event-follows-user-id-text.cjs",
+    "db:fix-follows:sql": "node ./scripts/run-sql-file.cjs ./sql/fix-event-follows.sql",
+    "db:follows:check": "node ./scripts/run-sql-file.cjs ./sql/check-event-follows-index.sql",
+    "db:enable-rls": "node ./scripts/enable-event-follows-rls.cjs",
+    "db:realtime:test": "node ./scripts/check-realtime.cjs",
+    "db:follows:clean": "node ./scripts/test-follow-clean.cjs",
+    "db:follows:insert": "node ./scripts/test-follow-insert.cjs",
+    "db:conn:test": "node ./scripts/check-connection.cjs"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
