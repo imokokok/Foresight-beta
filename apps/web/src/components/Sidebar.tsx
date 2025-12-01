@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Heart,
   Pin,
+  Flag,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,11 +46,42 @@ export default function Sidebar() {
       {
         label: "导航",
         children: [
-          { label: "热门趋势", href: "/trending", icon: <BarChart3 className="w-4 h-4" /> },
-          { label: "论坛", href: "/forum", icon: <MessageSquare className="w-4 h-4" /> },
-          { label: "提案频道", href: "/proposals", icon: <Pin className="w-4 h-4" /> },
-          { label: "我的关注", href: "/my-follows", icon: <Heart className="w-4 h-4" />, requireWallet: true },
-          ...(isAdmin ? [{ label: "管理员中心", href: "/admin/predictions/new", icon: <Users className="w-4 h-4" />, requireWallet: true }] : []),
+          {
+            label: "热门趋势",
+            href: "/trending",
+            icon: <BarChart3 className="w-4 h-4" />,
+          },
+          {
+            label: "论坛",
+            href: "/forum",
+            icon: <MessageSquare className="w-4 h-4" />,
+          },
+          {
+            label: "我的Flag",
+            href: "/flags",
+            icon: <Flag className="w-4 h-4" />,
+          },
+          {
+            label: "提案频道",
+            href: "/proposals",
+            icon: <Pin className="w-4 h-4" />,
+          },
+          {
+            label: "我的关注",
+            href: "/my-follows",
+            icon: <Heart className="w-4 h-4" />,
+            requireWallet: true,
+          },
+          ...(isAdmin
+            ? [
+                {
+                  label: "管理员中心",
+                  href: "/admin/predictions/new",
+                  icon: <Users className="w-4 h-4" />,
+                  requireWallet: true,
+                },
+              ]
+            : []),
         ],
       },
     ],
@@ -87,14 +119,22 @@ export default function Sidebar() {
   useEffect(() => {
     const run = async () => {
       try {
-        if (!account) { setIsAdmin(false); return }
-        const res = await fetch(`/api/user-profiles?address=${String(account).toLowerCase()}`, { cache: 'no-store' })
-        const j = await res.json().catch(() => ({}))
-        setIsAdmin(!!j?.profile?.is_admin)
-      } catch { setIsAdmin(false) }
-    }
-    run()
-  }, [account])
+        if (!account) {
+          setIsAdmin(false);
+          return;
+        }
+        const res = await fetch(
+          `/api/user-profiles?address=${String(account).toLowerCase()}`,
+          { cache: "no-store" }
+        );
+        const j = await res.json().catch(() => ({}));
+        setIsAdmin(!!j?.profile?.is_admin);
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    run();
+  }, [account]);
 
   return (
     <>
@@ -123,12 +163,16 @@ export default function Sidebar() {
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`fixed lg:sticky top-0 lg:top-0 z-50 lg:z-10 h-screen lg:h-[calc(100vh)] w-[240px] flex-shrink-0 bg-gradient-to-b from-purple-50 to-pink-50 border-r border-purple-200/40 backdrop-blur ${mobileOpen ? "left-0" : "-left-[260px] lg:left-0"}`}
+        className={`fixed lg:sticky top-0 lg:top-0 z-50 lg:z-10 h-screen lg:h-[calc(100vh)] w-[240px] flex-shrink-0 bg-gradient-to-b from-purple-50 to-pink-50 border-r border-purple-200/40 backdrop-blur ${
+          mobileOpen ? "left-0" : "-left-[260px] lg:left-0"
+        }`}
       >
         <div className="flex flex-col h-full p-3">
           <div className="flex items-center gap-2 mb-3">
             <img src="/images/logo.png" alt="Foresight" className="w-8 h-8" />
-            <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Foresight</span>
+            <span className="font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Foresight
+            </span>
           </div>
 
           <div className="relative mb-3">
@@ -136,7 +180,9 @@ export default function Sidebar() {
             <input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submitSearch(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") submitSearch();
+              }}
               placeholder="搜索事件..."
               className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/80 border border-purple-200/60 text-black"
             />
@@ -151,7 +197,11 @@ export default function Sidebar() {
                   onClick={() => toggleGroup("markets")}
                 >
                   <span className="text-sm font-semibold text-black">导航</span>
-                  <ChevronDown className={`w-4 h-4 text-black transition-transform ${openGroups.markets ? "rotate-180" : ""}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 text-black transition-transform ${
+                      openGroups.markets ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
                 <AnimatePresence initial={false}>
                   {openGroups.markets && (
@@ -166,7 +216,11 @@ export default function Sidebar() {
                           <button
                             key={it.label}
                             onClick={() => onItemClick(it)}
-                            className={`flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${isActive(it.href) ? "bg-purple-100 text-black" : "hover:bg-white/70 text-black"}`}
+                            className={`flex items-center gap-2 px-2 py-2 rounded-lg transition-all ${
+                              isActive(it.href)
+                                ? "bg-purple-100 text-black"
+                                : "hover:bg-white/70 text-black"
+                            }`}
                           >
                             {it.icon}
                             <span className="text-sm">{it.label}</span>
@@ -175,10 +229,8 @@ export default function Sidebar() {
                       </div>
                     </motion.div>
                   )}
-              </AnimatePresence>
+                </AnimatePresence>
               </div>
-
-              
             </div>
           </div>
 
@@ -187,12 +239,20 @@ export default function Sidebar() {
             {account || user ? (
               <div className="flex items-center gap-2 px-2 py-2 rounded-xl bg-white/80 border border-purple-200/60">
                 <img
-                  src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account || user?.email || "guest"}`}
+                  src={`https://api.dicebear.com/7.x/identicon/svg?seed=${
+                    account || user?.email || "guest"
+                  }`}
                   alt="avatar"
                   className="w-7 h-7 rounded-full"
                 />
                 <div className="flex-1">
-                  <div className="text-xs font-semibold text-black">{account ? `${String(account).slice(0,6)}…${String(account).slice(-4)}` : user?.email}</div>
+                  <div className="text-xs font-semibold text-black">
+                    {account
+                      ? `${String(account).slice(0, 6)}…${String(account).slice(
+                          -4
+                        )}`
+                      : user?.email}
+                  </div>
                   <div className="text-[11px] text-gray-600">已登录</div>
                 </div>
               </div>
@@ -208,7 +268,10 @@ export default function Sidebar() {
         </div>
       </motion.aside>
 
-      <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
+      <WalletModal
+        isOpen={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+      />
     </>
   );
 }
