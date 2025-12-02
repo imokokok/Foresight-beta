@@ -1,0 +1,113 @@
+"use client";
+
+import { createChart, ColorType, IChartApi, UTCTimestamp, ISeriesApi } from "lightweight-charts";
+import React, { useEffect, useRef } from "react";
+
+interface KlineChartProps {
+  market: string;
+  chainId: number;
+  outcomeIndex: number;
+  resolution?: string;
+}
+
+export default function KlineChart({ market, chainId, outcomeIndex, resolution = '15m' }: KlineChartProps) {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    // 销毁旧的 chart 实例（如果在 React StrictMode 下重复执行）
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: "white" },
+        textColor: "black",
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 300,
+      grid: {
+        vertLines: { color: "#f0f3fa" },
+        horzLines: { color: "#f0f3fa" },
+      },
+    });
+
+    // 使用 try-catch 包裹以防 API 变更或运行时错误
+    try {
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: "#26a69a",
+        downColor: "#ef5350",
+        borderVisible: false,
+        wickUpColor: "#26a69a",
+        wickDownColor: "#ef5350",
+      });
+      seriesRef.current = candlestickSeries;
+    } catch (e) {
+      console.error("Failed to create candlestick series:", e);
+    }
+
+    chartRef.current = chart;
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!seriesRef.current) return;
+
+    const fetchCandles = async () => {
+      try {
+        const base = process.env.NEXT_PUBLIC_RELAYER_URL || 'http://localhost:3005';
+        const url = `${base}/orderbook/candles?market=${market}&chainId=${chainId}&outcome=${outcomeIndex}&resolution=${resolution}&limit=200`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.success === false) return;
+        
+        const data = (json.data || [])
+          .map((c: any) => {
+            const t = new Date(c.time).getTime() / 1000;
+            return {
+              time: t as UTCTimestamp,
+              open: Number(c.open),
+              high: Number(c.high),
+              low: Number(c.low),
+              close: Number(c.close),
+            };
+          })
+          .filter((d: any) => !Number.isNaN(d.time) && !Number.isNaN(d.open))
+          .sort((a: any, b: any) => a.time - b.time);
+
+        if (seriesRef.current) {
+          seriesRef.current.setData(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch candles", e);
+      }
+    };
+
+    fetchCandles();
+    const interval = setInterval(fetchCandles, 10000); // Poll every 10s
+
+    return () => clearInterval(interval);
+  }, [market, chainId, outcomeIndex, resolution]);
+
+  return <div ref={chartContainerRef} className="w-full h-[300px]" />;
+}

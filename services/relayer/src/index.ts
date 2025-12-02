@@ -1,4 +1,3 @@
-// relayer/src/config.ts
 import { z } from "zod";
 import 'dotenv/config'
 
@@ -40,7 +39,7 @@ import cors from "cors";
 import { ethers, Contract } from "ethers";
 import EntryPointAbi from './abi/EntryPoint.json' with { type: 'json' };
 import { supabaseAdmin } from './supabase.js'
-import { placeSignedOrder, cancelSalt, getDepth, getQueue, getOrderTypes } from './orderbook.js'
+import { placeSignedOrder, cancelSalt, getDepth, getQueue, getOrderTypes, ingestTrade, getCandles } from './orderbook.js'
 
 const app = express();
 app.use(cors());
@@ -146,6 +145,35 @@ app.get("/orderbook/queue", async (req, res) => {
     res.json({ message: 'ok', data })
   } catch (e: any) {
     res.status(400).json({ message: 'queue query failed', detail: String(e?.message || e) })
+  }
+})
+
+app.post("/orderbook/report-trade", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const chainId = Number(req.body.chainId)
+    const txHash = String(req.body.txHash)
+    if (!chainId || !txHash) throw new Error('Missing chainId or txHash')
+    const data = await ingestTrade(chainId, txHash)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    console.error(e)
+    res.status(400).json({ message: 'trade report failed', detail: String(e?.message || e) })
+  }
+})
+
+app.get("/orderbook/candles", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ message: 'Supabase not configured' })
+    const market = String(req.query.market || '')
+    const chainId = Number(req.query.chainId || 0)
+    const outcome = Number(req.query.outcome || 0)
+    const resolution = String(req.query.resolution || '15m')
+    const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 100)))
+    const data = await getCandles(market, chainId, outcome, resolution, limit)
+    res.json({ message: 'ok', data })
+  } catch (e: any) {
+    res.status(400).json({ message: 'candles query failed', detail: String(e?.message || e) })
   }
 })
 

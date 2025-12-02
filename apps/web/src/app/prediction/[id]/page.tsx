@@ -9,6 +9,9 @@ import { useWallet } from "@/contexts/WalletContext";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 import ChatPanel from "@/components/ChatPanel";
+import dynamic from "next/dynamic";
+
+const KlineChart = dynamic(() => import("@/components/KlineChart"), { ssr: false });
 
 
 interface PredictionDetail {
@@ -695,7 +698,16 @@ export default function PredictionDetailPage() {
         }
       }
       const tx = await marketContract.fillOrderSigned(req as any, ord.signature, fillAmount)
-      await tx.wait()
+      const receipt = await tx.wait()
+      // 上报交易以更新 K 线
+      try {
+        const chain = await provider.getNetwork()
+        await fetch(`${base}/orderbook/report-trade`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chainId: Number(chain.chainId), txHash: receipt.hash })
+        })
+      } catch {}
       setOrderMsg('成交成功')
     } catch (e: any) {
       setOrderMsg(e?.message || '成交失败')
@@ -1202,6 +1214,22 @@ export default function PredictionDetailPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* K线图 */}
+              {market && (
+                <div className="mb-8 border border-gray-200 rounded-2xl overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <h4 className="text-sm font-bold text-gray-700">价格走势 (15m)</h4>
+                    <span className="text-xs text-gray-500">实时数据</span>
+                  </div>
+                  <KlineChart 
+                    market={market.market} 
+                    chainId={Number(market.chain_id)} 
+                    outcomeIndex={tradeOutcome} 
+                    resolution="15m"
+                  />
                 </div>
               )}
 
