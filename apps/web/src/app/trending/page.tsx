@@ -2,7 +2,14 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, CheckCircle, Wallet, Pencil, Trash2 } from "lucide-react";
+import {
+  Heart,
+  CheckCircle,
+  Wallet,
+  Pencil,
+  Trash2,
+  ArrowRightCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
@@ -1495,175 +1502,174 @@ export default function TrendingPage() {
       </div>
 
       {/* 修改后的英雄区 - 轮播显示 */}
-      <section className="relative z-10 px-4 md:px-8 lg:px-12 py-12 bg-gradient-leaderboard">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* 左侧主要内容区域：轮播图 + 专题板块 */}
-          <div className="w-full lg:w-2/3 flex flex-col md:flex-row gap-8 items-center">
-            <div className="w-full md:w-3/5 lg:w-3/5 relative">
-              <div
-                className={`relative h-96 rounded-2xl shadow-xl overflow-hidden ${
-                  activeSlide?.id ? "cursor-pointer" : ""
-                }`}
-                onClick={() => {
-                  if (activeSlide?.id)
-                    router.push(`/prediction/${activeSlide.id}`);
-                }}
-              >
-                <motion.img
-                  key={String(
-                    (activeSlide && (activeSlide?.id || activeSlide?.title)) ||
-                      currentHeroIndex
-                  )}
-                  src={activeImage}
-                  alt={activeTitle}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6 }}
-                />
+      <section className="relative z-10 py-12 lg:py-20 bg-gradient-leaderboard overflow-hidden">
+        {/* 背景装饰元素 */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-purple-300/20 rounded-full blur-[100px] mix-blend-overlay" />
+          <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-fuchsia-300/20 rounded-full blur-[100px] mix-blend-overlay" />
+          <div className="absolute top-[40%] left-[60%] w-[300px] h-[300px] bg-pink-200/20 rounded-full blur-[80px] mix-blend-overlay" />
+        </div>
+
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 relative z-10">
+          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+            {/* 左侧主要内容区域：轮播图 + 专题板块 */}
+            <div className="w-full lg:w-2/3 flex flex-col gap-8">
+              {/* 上半部分：大卡片展示区 */}
+              <div className="w-full relative group">
                 <div
-                  className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/20 to-transparent"
+                  className={`relative h-[400px] md:h-[480px] w-full rounded-[2rem] shadow-2xl overflow-hidden border border-white/40 transition-transform duration-500 ${
+                    activeSlide?.id ? "cursor-pointer hover:scale-[1.005]" : ""
+                  }`}
                   onClick={() => {
                     if (activeSlide?.id)
                       router.push(`/prediction/${activeSlide.id}`);
                   }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
-                  <div className="max-w-md">
-                    <h3 className="font-bold text-white text-lg mb-1">
-                      {activeTitle}
-                    </h3>
-                    <p className="text-white/85 text-sm mb-2 line-clamp-2">
-                      {activeDescription}
-                    </p>
-                    <span className="text-white font-bold">
-                      {activeFollowers.toLocaleString()} 人关注
-                    </span>
+                >
+                  <motion.img
+                    key={String(
+                      (activeSlide &&
+                        (activeSlide?.id || activeSlide?.title)) ||
+                        currentHeroIndex
+                    )}
+                    src={activeImage}
+                    alt={activeTitle}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6 }}
+                  />
+                  {/* 渐变遮罩 */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
+
+                  {/* 内容信息 */}
+                  <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="max-w-2xl space-y-3">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30">
+                          {activeCategory || "热门预测"}
+                        </span>
+                        <span className="text-white/80 text-xs font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                          {activeFollowers.toLocaleString()} 人正在关注
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-white text-2xl md:text-4xl leading-tight drop-shadow-lg">
+                        {activeTitle}
+                      </h3>
+                      <p className="text-white/90 text-base md:text-lg line-clamp-2 font-medium drop-shadow-md max-w-xl">
+                        {activeDescription}
+                      </p>
+                    </div>
+                    <button className="shrink-0 px-6 py-3 bg-white text-purple-700 hover:bg-purple-50 rounded-full text-sm font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center gap-2 group/btn">
+                      立即关注
+                      <ArrowRightCircle className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </button>
                   </div>
-                  <button className="px-4 py-2 bg-gradient-to-r from-pink-400 to-purple-500 text-white rounded-full text-sm font-medium">
-                    立即关注
-                  </button>
+                </div>
+              </div>
+
+              {/* 下半部分：热门专题 Grid */}
+              <div>
+                <div className="flex items-center gap-4 mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <span className="w-2 h-8 rounded-full bg-gradient-to-b from-purple-600 to-pink-600" />
+                    热门专题
+                  </h2>
+                  <div className="h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent" />
+                </div>
+
+                <div
+                  className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                  style={{ ["overflowAnchor" as any]: "none" }}
+                >
+                  {categories.map((category, index) => {
+                    const isActive =
+                      String(activeCategory || "") === category.name;
+
+                    return (
+                      <motion.div
+                        key={category.name}
+                        className={`relative p-4 rounded-2xl cursor-pointer transition-all duration-300 border overflow-hidden flex flex-col justify-between h-[140px] ${
+                          isActive
+                            ? "bg-gradient-to-br " +
+                              category.color +
+                              " text-white border-transparent shadow-lg scale-[1.02]"
+                            : "bg-white/60 backdrop-blur-md text-gray-700 hover:bg-white border-white/50 hover:border-purple-200 hover:shadow-xl"
+                        }`}
+                        whileHover={{ y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const idx = heroSlideEvents.findIndex(
+                            (ev: any) => String(ev?.tag || "") === category.name
+                          );
+                          if (idx >= 0) {
+                            setCurrentHeroIndex(idx);
+                          } else {
+                            const fallbackIdx = heroEvents.findIndex(
+                              (ev) => ev.category === category.name
+                            );
+                            if (fallbackIdx >= 0)
+                              setCurrentHeroIndex(fallbackIdx);
+                          }
+                        }}
+                      >
+                        {/* 背景装饰 */}
+                        <div
+                          className={`absolute -right-4 -bottom-4 text-[80px] opacity-10 select-none pointer-events-none transform rotate-12 ${
+                            isActive ? "text-white" : "text-gray-400"
+                          }`}
+                        >
+                          {category.icon}
+                        </div>
+
+                        <div className="relative z-10">
+                          <div className="text-3xl mb-2">{category.icon}</div>
+                          <h3 className="font-bold text-lg leading-none mb-1">
+                            {category.name}
+                          </h3>
+                        </div>
+
+                        <div className="relative z-10 flex items-center justify-between">
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              isActive ? "bg-white/20" : "bg-gray-200/50"
+                            }`}
+                          >
+                            {categoryCounts[category.name] || 0} 热点
+                          </span>
+                          {isActive && (
+                            <motion.div
+                              layoutId="active-indicator"
+                              className="w-2 h-2 rounded-full bg-white shadow-sm"
+                            />
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* 专题板块 */}
-            <div className="w-full md:w-2/5 lg:w-2/5">
-              <h2 className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 text-center md:text-left">
-                热门专题
-              </h2>
-              <div className="h-1.5 w-24 mx-auto md:mx-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 mb-2" />
-              <div
-                className="grid grid-cols-1 gap-4"
-                style={{ ["overflowAnchor" as any]: "none" }}
-              >
-                {categories.map((category, index) => {
-                  const isActive =
-                    String(activeCategory || "") === category.name;
-                  const categoryEvents = allEvents.filter(
-                    (event) => event.tag === category.name
-                  );
+            {/* 右侧排行榜 */}
+            <div className="w-full lg:w-1/3 lg:pl-4">
+              <div className="sticky top-24">
+                <Leaderboard />
 
-                  return (
-                    <motion.div
-                      key={category.name}
-                      className={`group relative p-5 rounded-2xl shadow-xl cursor-pointer transition-all duration-300 border-2 overflow-hidden ${
-                        isActive
-                          ? "bg-gradient-to-r " +
-                            category.color +
-                            " text-white scale-105 border-transparent"
-                          : "bg-white/80 text-gray-800 hover:bg-white border-purple-200/50 hover:shadow-2xl"
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      tabIndex={-1}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onTouchStart={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const y =
-                          typeof window !== "undefined"
-                            ? window.scrollY ||
-                              document.documentElement.scrollTop ||
-                              0
-                            : 0;
-                        const idx = heroSlideEvents.findIndex(
-                          (ev: any) => String(ev?.tag || "") === category.name
-                        );
-                        if (idx >= 0) {
-                          setCurrentHeroIndex(idx);
-                        } else {
-                          const fallbackIdx = heroEvents.findIndex(
-                            (ev) => ev.category === category.name
-                          );
-                          if (fallbackIdx >= 0)
-                            setCurrentHeroIndex(fallbackIdx);
-                        }
-                        if (typeof window !== "undefined") {
-                          requestAnimationFrame(() => {
-                            window.scrollTo({ top: y, behavior: "auto" });
-                          });
-                        }
-                      }}
-                    >
-                      <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-10 bg-gradient-to-br from-white to-transparent" />
-                      <div className="absolute top-3 right-3 text-xs px-2 py-1 rounded-full bg-white/80 text-black shadow">
-                        {categoryCounts[category.name] || 0} 热点
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <span className="text-3xl mr-3">{category.icon}</span>
-                          <div>
-                            <h3 className="font-bold text-xl">
-                              {category.name}
-                            </h3>
-                            <p className="text-sm opacity-85">点选查看该专题</p>
-                          </div>
-                        </div>
-                        {isActive && (
-                          <motion.div
-                            initial={{ opacity: 0.5, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1.1 }}
-                            transition={{
-                              duration: 0.6,
-                              repeat: Infinity,
-                              repeatType: "reverse",
-                            }}
-                            className="w-8 h-8 rounded-full ring-2 ring-white/70"
-                          />
-                        )}
-                      </div>
-
-                      {/* 当前专题的活跃事件标题 */}
-                      {isActive && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-2 text-sm font-medium"
-                        >
-                          {activeTitle}
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  );
-                })}
+                {/* 额外的信息卡片 - 增加右侧丰富度 */}
+                <div className="mt-6 bg-white/40 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50">
+                  <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span>💡</span>
+                    <span>小贴士</span>
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    参与热门预测不仅能获得收益，还能提升您在社区的影响力。关注感兴趣的专题，不错过任何重要动态！
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-          {/* 右侧排行榜 */}
-          <div className="w-full lg:w-1/3 -mr-4 md:-mr-8 lg:-mr-12">
-            <Leaderboard />
           </div>
         </div>
       </section>

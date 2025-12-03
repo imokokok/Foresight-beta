@@ -281,6 +281,7 @@ export default function PredictionDetailPage() {
         
         const isCounterpartyBuy = tradeSide === 'sell' // 我是卖方，找买单
         
+        if (!supabase) return
         const { data, error } = await supabase
           .from('orders')
           .select('id, maker_address, maker_salt, price, remaining, is_buy, created_at')

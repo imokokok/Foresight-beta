@@ -1,6 +1,6 @@
 "use client";
 
-import { createChart, ColorType, IChartApi, UTCTimestamp, ISeriesApi } from "lightweight-charts";
+import { createChart, ColorType, UTCTimestamp } from "lightweight-charts";
 import React, { useEffect, useRef } from "react";
 
 interface KlineChartProps {
@@ -12,8 +12,8 @@ interface KlineChartProps {
 
 export default function KlineChart({ market, chainId, outcomeIndex, resolution = '15m' }: KlineChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const chartRef = useRef<any>(null);
+  const seriesRef = useRef<any>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -39,7 +39,7 @@ export default function KlineChart({ market, chainId, outcomeIndex, resolution =
 
     // 使用 try-catch 包裹以防 API 变更或运行时错误
     try {
-      const candlestickSeries = chart.addCandlestickSeries({
+      const candlestickSeries = (chart as any).addCandlestickSeries({
         upColor: "#26a69a",
         downColor: "#ef5350",
         borderVisible: false,
