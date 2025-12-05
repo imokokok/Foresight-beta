@@ -2187,7 +2187,7 @@ export default function TrendingPage() {
                     return (
                       <motion.div
                         key={sortedEvents[globalIndex]?.id || globalIndex}
-                        className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] shadow-lg shadow-purple-500/5 border border-white/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1 relative transform-gpu flex flex-col h-full min-h-[220px] group"
+                        className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] shadow-lg shadow-purple-500/5 border border-white/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1 relative transform-gpu flex flex-col h-full min-h-[250px] group"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={(e) => {
@@ -2304,14 +2304,14 @@ export default function TrendingPage() {
                           <Link
                             href={`/prediction/${sortedEvents[globalIndex]?.id}`}
                           >
-                            <div className="relative h-32 overflow-hidden bg-gray-100">
+                            <div className="relative h-40 overflow-hidden bg-gray-100">
                               <img
                                 src={product.image}
                                 alt={product.title}
                                 loading="lazy"
                                 decoding="async"
                                 width={800}
-                                height={280}
+                                height={320}
                                 className="w-full h-full object-cover transition-opacity duration-300"
                                 onError={(e) => {
                                   const img =
@@ -2325,14 +2325,14 @@ export default function TrendingPage() {
                             </div>
                           </Link>
                         ) : (
-                          <div className="relative h-32 overflow-hidden bg-gray-100">
+                          <div className="relative h-40 overflow-hidden bg-gray-100">
                             <img
                               src={product.image}
                               alt={product.title}
                               loading="lazy"
                               decoding="async"
                               width={800}
-                              height={280}
+                              height={320}
                               className="w-full h-full object-cover transition-opacity duration-300"
                               onError={(e) => {
                                 const img = e.currentTarget as HTMLImageElement;
