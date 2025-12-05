@@ -264,8 +264,13 @@ export default function PredictionDetailClient({
         const resp = await fetch(`/api/markets/map?id=${params.id}`);
         if (!resp.ok) return;
         const j = await resp.json();
-        if (j?.success && j?.data) setMarket(j.data);
-      } catch {}
+        if (j?.success && j?.data) {
+          console.log("[loadMarket] loaded:", j.data);
+          setMarket(j.data);
+        }
+      } catch (e) {
+        console.error("[loadMarket] error:", e);
+      }
     };
     loadMarket();
   }, [params.id]);
@@ -905,37 +910,66 @@ export default function PredictionDetailClient({
       if (typeof window === "undefined" || !(window as any).ethereum)
         throw new Error("请先连接钱包");
       const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const accountAddr = await signer.getAddress();
+      let signer = await provider.getSigner();
+      let accountAddr = await signer.getAddress();
       const net = await provider.getNetwork();
-      let chainIdNum = Number(net.chainId);
+      const rawHex = (window as any).ethereum?.chainId;
+      let chainIdNum = rawHex
+        ? (String(rawHex).startsWith("0x")
+            ? parseInt(String(rawHex), 16)
+            : Number(rawHex))
+        : Number(net.chainId);
+      
+      console.log("[submitOrder] Debug Network:", {
+        currentChainId: chainIdNum,
+        targetChainId: m.chain_id,
+        marketConf: m,
+        rawChainId: (window as any).ethereum?.chainId
+      });
+
       // 如果钱包在 Chain 1，但市场需要 80002，我们可能希望提示切换，但 resolveAddresses(1) 会返回空
       // 这里如果当前网络不在配置中，尝试使用 m.chain_id 来获取地址配置（跨链读取或提示）
+      const usdcFromMap = (m as any)?.collateral_token ? String((m as any).collateral_token).trim() : "";
       const { usdc } = resolveAddresses(chainIdNum);
+      const currentUsdc = (usdcFromMap || usdc || "").trim();
       
       // 如果当前网络未配置USDC，但我们有目标市场的 Chain ID，
       // 检查是否就是网络不匹配导致的
       // 注意：即便 usdc 存在，如果当前 chainIdNum 不等于 m.chain_id，也应该切换
-      if ((!usdc || (m.chain_id && m.chain_id !== chainIdNum)) && m.chain_id) {
+      // 确保 m.chain_id 存在且有效
+      const targetChainId = m.chain_id ? Number(m.chain_id) : 0;
+      
+      if ((!currentUsdc || (targetChainId && targetChainId !== chainIdNum)) && targetChainId) {
          try {
+           console.log(`[submitOrder] Switching to chain ${targetChainId} from ${chainIdNum}`);
            await (window as any).ethereum.request({
              method: 'wallet_switchEthereumChain',
-             params: [{ chainId: '0x' + m.chain_id.toString(16) }],
+             params: [{ chainId: '0x' + targetChainId.toString(16) }],
            });
            // 切换后重新获取网络状态
            // 注意：这里需要重新创建 provider，因为之前的 provider 可能还绑定在旧网络
            const newProvider = new ethers.BrowserProvider((window as any).ethereum);
            const newNet = await newProvider.getNetwork();
-           chainIdNum = Number(newNet.chainId);
+           const newRawHex = (window as any).ethereum?.chainId;
+           chainIdNum = newRawHex
+             ? (String(newRawHex).startsWith("0x")
+                 ? parseInt(String(newRawHex), 16)
+                 : Number(newRawHex))
+             : Number(newNet.chainId);
+           
+           // 更新 signer 和 accountAddr
+           signer = await newProvider.getSigner();
+           accountAddr = await signer.getAddress();
            
            // 如果切换后的网络仍然不匹配目标网络，可能是用户拒绝了或有其他问题
-           if (chainIdNum !== m.chain_id) {
-              throw new Error(`网络切换失败，当前仍在 Chain ID: ${chainIdNum}，目标: ${m.chain_id}`);
+           if (chainIdNum !== targetChainId) {
+              throw new Error(`网络切换失败，当前仍在 Chain ID: ${chainIdNum}，目标: ${targetChainId}`);
            }
 
            // 重新解析地址
            const { usdc: newUsdc } = resolveAddresses(chainIdNum);
-           if (!newUsdc) throw new Error(`未配置USDC地址 (Chain ID: ${chainIdNum})`);
+           const newUsdcResolved = (usdcFromMap || newUsdc || "").trim();
+           if (!newUsdcResolved) throw new Error(`未配置USDC地址 (Chain ID: ${chainIdNum})`);
            // 继续执行...
          } catch (switchError: any) {
            console.error("Switch chain error:", switchError);
@@ -947,14 +981,14 @@ export default function PredictionDetailClient({
            if (switchError.code === 4001) {
              throw new Error("您取消了网络切换");
            }
-           throw new Error(`请切换网络到 Chain ID: ${m.chain_id} (当前: ${chainIdNum})`);
+           throw new Error(`请切换网络到 Chain ID: ${targetChainId} (当前: ${chainIdNum})`);
          }
-      } else if (!usdc) {
+      } else if (!currentUsdc) {
         console.error(
           `[submitOrder] Missing USDC address for chainId: ${chainIdNum}`
         );
         throw new Error(
-          `未配置USDC地址 (Chain ID: ${chainIdNum})。请切换到 Amoy 测试网 (80002)`
+          `未配置USDC地址 (Chain ID: ${chainIdNum})。目标 Chain ID: ${targetChainId || '未知'}。请切换到 Amoy 测试网 (80002)`
         );
       }
       
@@ -973,7 +1007,8 @@ export default function PredictionDetailClient({
         throw new Error("数量不合法");
 
       // 重新获取正确的 USDC 地址（可能已经切换网络）
-      const { usdc: finalUsdc } = resolveAddresses(chainIdNum);
+      const { usdc: finalUsdcFromEnv } = resolveAddresses(chainIdNum);
+      const finalUsdc = (usdcFromMap || finalUsdcFromEnv || "").trim();
       if (!finalUsdc) throw new Error("无法获取当前网络的 USDC 地址");
 
       const token = new ethers.Contract(finalUsdc, erc20Abi, signer);
@@ -1292,14 +1327,50 @@ export default function PredictionDetailClient({
       }
 
       const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const network = await provider.getNetwork();
-      const chainIdNum = Number(network.chainId);
-      const { foresight, usdc } = resolveAddresses(chainIdNum);
-      if (!foresight || !usdc) {
-        throw new Error(
-          `未配置当前网络 (Chain ID: ${chainIdNum}) 的合约或USDC地址。请切换到 Amoy 测试网 (80002) 或 Polygon (137)`
-        );
+      let signer = await provider.getSigner();
+      let network = await provider.getNetwork();
+      const rawHex = (window as any).ethereum?.chainId;
+      let chainIdNum = rawHex
+        ? (String(rawHex).startsWith("0x")
+            ? parseInt(String(rawHex), 16)
+            : Number(rawHex))
+        : Number(network.chainId);
+      let { foresight, usdc } = resolveAddresses(chainIdNum);
+      const usdcFromMap = (market as any)?.collateral_token ? String((market as any).collateral_token).trim() : "";
+      usdc = (usdcFromMap || usdc || "").trim();
+      const targetChainId = market?.chain_id ? Number(market.chain_id) : 80002;
+      if ((!foresight || !usdc) || chainIdNum !== targetChainId) {
+        try {
+          await (window as any).ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x" + targetChainId.toString(16) }],
+          });
+          const newProvider = new ethers.BrowserProvider((window as any).ethereum);
+          network = await newProvider.getNetwork();
+          const newRawHex = (window as any).ethereum?.chainId;
+          chainIdNum = newRawHex
+            ? (String(newRawHex).startsWith("0x")
+                ? parseInt(String(newRawHex), 16)
+                : Number(newRawHex))
+            : Number(network.chainId);
+          signer = await newProvider.getSigner();
+          ({ foresight, usdc } = resolveAddresses(chainIdNum));
+          usdc = (usdcFromMap || usdc || "").trim();
+          if (chainIdNum !== targetChainId) {
+            throw new Error(`网络切换失败，当前仍在 Chain ID: ${chainIdNum}，目标: ${targetChainId}`);
+          }
+          if (!foresight || !usdc) {
+            throw new Error(`未配置USDC或合约地址 (Chain ID: ${chainIdNum})`);
+          }
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            throw new Error("请在钱包中添加并切换到目标网络");
+          }
+          if (switchError.code === 4001) {
+            throw new Error("您取消了网络切换");
+          }
+          throw new Error(`请切换网络到 Chain ID: ${targetChainId} (当前: ${chainIdNum})`);
+        }
       }
 
       const account = await signer.getAddress();
