@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     );
     const username = String(payload?.username || "").trim();
     const email = String(payload?.email || "").trim();
-    const remember = !!payload?.rememberMe;
+    const remember = false;
 
     const sessAddr = getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
@@ -136,6 +136,12 @@ export async function POST(req: NextRequest) {
     if (!isEthAddress(walletAddress)) {
       return NextResponse.json(
         { success: false, message: "无效的钱包地址" },
+        { status: 400 }
+      );
+    }
+    if (!username || !email) {
+      return NextResponse.json(
+        { success: false, message: "用户名和邮箱为必填项" },
         { status: 400 }
       );
     }
@@ -187,17 +193,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ success: true });
-    if (remember) {
-      res.cookies.set("fs_remember", "1", {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    }
-    return res;
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json(
       { success: false, message: String(e?.message || e) },

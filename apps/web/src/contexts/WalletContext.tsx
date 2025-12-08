@@ -87,11 +87,14 @@ interface WalletContextType extends WalletState {
   multisigSign: (data?: { verifyingContract?: string; action?: string; nonce?: number }) => Promise<{ success: boolean; signature?: string; error?: string }>;
   refreshBalance: () => Promise<void>;
   switchNetwork: (chainIdHex: string) => Promise<{ success: boolean; error?: string }>;
+  getBrowserProvider: () => ethers.BrowserProvider | null;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const LOGOUT_FLAG = "fs_wallet_logged_out";
+const LAST_WALLET_TYPE = "fs_last_wallet_type";
+const LAST_WALLET_ADDRESS = "fs_last_wallet_address";
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [walletState, setWalletState] = useState<WalletState>({
@@ -175,6 +178,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }, []);
     
     return uniqueWallets;
+  };
+
+  const getProviderByType = (type: WalletType | null): any => {
+    if (!type || typeof window === 'undefined') return null;
+    const ethereum: any = (window as any).ethereum;
+    if (ethereum?.providers && Array.isArray(ethereum.providers)) {
+      for (const p of ethereum.providers) {
+        const t = identifyWalletType(p);
+        if (t === type) return p;
+      }
+    }
+    for (const d of discoveredProviders) {
+      const mapped = providerTypeMap.get(d.provider) || walletTypeFromInfo(d.info);
+      if (mapped === type) return d.provider;
+    }
+    if (type === 'binance' && (window as any).BinanceChain) return (window as any).BinanceChain;
+    if (type === 'coinbase' && (window as any).coinbaseWalletExtension) return (window as any).coinbaseWalletExtension;
+    if (type === 'okx') {
+      if ((window as any).okxwallet) return (window as any).okxwallet;
+      if ((window as any).okex) return (window as any).okex;
+      if ((window as any).OKXWallet) return (window as any).OKXWallet;
+      if ((window as any).okxWallet) return (window as any).okxWallet;
+    }
+    if (type === 'metamask' && ethereum && identifyWalletType(ethereum) === 'metamask') return ethereum;
+    return null;
   };
 
   // 识别当前连接的钱包类型
@@ -307,6 +335,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     const checkConnection = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          const loggedOut = sessionStorage.getItem(LOGOUT_FLAG) === 'true';
+          if (loggedOut) return;
+        }
+        const lastTypeRaw = (typeof window !== 'undefined') ? localStorage.getItem(LAST_WALLET_TYPE) : null;
+        const lastType = (lastTypeRaw === 'metamask' || lastTypeRaw === 'coinbase' || lastTypeRaw === 'binance' || lastTypeRaw === 'okx') ? (lastTypeRaw as WalletType) : null;
+        if (lastType) {
+          const lastProvider = getProviderByType(lastType);
+          if (lastProvider && typeof lastProvider.request === 'function') {
+            try {
+              const accs = await lastProvider.request({ method: 'eth_accounts' });
+              if (accs && accs.length > 0) {
+                const browserProvider = new ethers.BrowserProvider(lastProvider);
+                const network = await browserProvider.getNetwork();
+                const hexChainId = (typeof network.chainId === 'bigint') ? ('0x' + network.chainId.toString(16)) : (ethers.toBeHex as any)?.(network.chainId) ?? ('0x' + Number(network.chainId).toString(16));
+                setWalletState(prev => ({ ...prev, account: accs[0], currentWalletType: lastType, chainId: hexChainId }));
+                currentProviderRef.current = lastProvider;
+                setupEventListeners(lastProvider);
+                await _refreshBalance(accs[0]);
+                return;
+              }
+            } catch {}
+          }
+        }
         const ethereum = (window as any).ethereum;
         if (ethereum) {
           const accounts = await ethereum.request({ method: 'eth_accounts' });
@@ -349,6 +401,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         ...prev, 
         account: accounts[0] 
       }));
+      try { if (typeof window !== 'undefined') localStorage.setItem(LAST_WALLET_ADDRESS, String(accounts[0]).toLowerCase()); } catch {}
       // 账户切换后刷新余额
       _refreshBalance(accounts[0]);
     } else {
@@ -360,6 +413,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         balanceEth: null,
         currentWalletType: null
       }));
+      try { if (typeof window !== 'undefined') localStorage.removeItem(LAST_WALLET_ADDRESS); } catch {}
     }
   };
 
@@ -388,7 +442,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       case 137:
         return env.NEXT_PUBLIC_RPC_POLYGON || env.NEXT_PUBLIC_RPC_URL || 'https://polygon-rpc.com';
       case 80002:
-        return env.NEXT_PUBLIC_RPC_POLYGON_AMOY || env.NEXT_PUBLIC_RPC_URL || 'https://rpc-amoy.polygon.technology';
+        return env.NEXT_PUBLIC_RPC_POLYGON_AMOY || env.AMOY_RPC_URL || env.NEXT_PUBLIC_RPC_URL || 'https://rpc-amoy.polygon.technology';
       case 56:
         return env.NEXT_PUBLIC_RPC_BSC || env.NEXT_PUBLIC_RPC_URL || 'https://bsc-dataseed.binance.org';
       default:
@@ -459,16 +513,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const provider: any = currentProviderRef.current || (window as any).ethereum || (window as any).BinanceChain;
     if (!provider || typeof provider.request !== 'function') return;
     const hex = String(targetChainIdHex).toLowerCase();
-    if (hex === '0xaa36a7') {
+    if (hex === '0x13882') {
       try {
         await provider.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId: '0xaa36a7',
-            chainName: 'Sepolia',
-            rpcUrls: [getFallbackRpcUrl(11155111) || 'https://rpc.sepolia.org'],
-            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-            blockExplorerUrls: ['https://sepolia.etherscan.io']
+            chainId: '0x13882',
+            chainName: 'Polygon Amoy Testnet',
+            rpcUrls: [getFallbackRpcUrl(80002) || 'https://rpc-amoy.polygon.technology'],
+            nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+            blockExplorerUrls: ['https://amoy.polygonscan.com']
           }]
         });
       } catch {}
@@ -623,6 +677,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem(LOGOUT_FLAG);
+          try {
+            localStorage.setItem(LAST_WALLET_TYPE, String(actualWalletType || walletType || ''));
+            localStorage.setItem(LAST_WALLET_ADDRESS, String(accounts[0]).toLowerCase());
+          } catch {}
         }
 
         // 连接后立即刷新余额
@@ -905,6 +963,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     multisigSign,
     refreshBalance: () => _refreshBalance(),
     switchNetwork,
+    getBrowserProvider: () => {
+      const raw = currentProviderRef.current;
+      return raw ? new ethers.BrowserProvider(raw) : null;
+    },
   };
 
   if (!mounted) {

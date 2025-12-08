@@ -168,7 +168,7 @@ export default function PredictionDetailClient({
   >({});
 
   // 关注功能相关状态
-  const { account, connectWallet, siweLogin } = useWallet();
+  const { account, connectWallet, siweLogin, switchNetwork, getBrowserProvider } = useWallet();
   const [following, setFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -843,10 +843,6 @@ export default function PredictionDetailClient({
           process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
           "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
       },
-      11155111: {
-        foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_SEPOLIA,
-        usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA,
-      },
       31337: {
         foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
         usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST,
@@ -873,6 +869,18 @@ export default function PredictionDetailClient({
     return { foresight, usdc };
   }
 
+  async function addTargetChain(targetChainId: number) {
+    const hex = "0x" + Number(targetChainId).toString(16);
+    await switchNetwork(hex);
+  }
+
+  async function assertContract(provider: any, address: string, label: string) {
+    const code = await provider.getCode(address);
+    if (!code || code === "0x") {
+      throw new Error(`${label}地址在当前网络不可用`);
+    }
+  }
+
   // 将任意小数按指定 decimals 转为最小单位 BigInt
   function parseUnitsByDecimals(
     value: number | string,
@@ -896,6 +904,16 @@ export default function PredictionDetailClient({
     }
   }
 
+  function formatTxError(e: any): string {
+    const msg = String(e?.message || e || '').toLowerCase();
+    if (msg.includes('insufficient funds') || (msg.includes('insufficient') && msg.includes('gas'))) return 'MATIC余额不足';
+    if (msg.includes('user rejected') || msg.includes('rejected') || Number((e || {}).code) === 4001) return '您已拒绝该交易';
+    if (msg.includes('nonce') && msg.includes('too low')) return '交易序号过低，请稍后重试';
+    if (msg.includes('underpriced')) return '交易费用过低，请提高Gas';
+    if (Number((e || {}).code) === -32603) return '交易提交失败，请检查网络与Gas设置';
+    return String(e?.message || '交易失败');
+  }
+
   async function submitOrder() {
     try {
       setOrderMsg(null);
@@ -907,18 +925,12 @@ export default function PredictionDetailClient({
           : null);
       if (!m) throw new Error("未配置市场");
       if (!prediction) throw new Error("预测事件未加载");
-      if (typeof window === "undefined" || !(window as any).ethereum)
-        throw new Error("请先连接钱包");
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = getBrowserProvider();
+      if (!provider) throw new Error("请先连接钱包");
       let signer = await provider.getSigner();
       let accountAddr = await signer.getAddress();
       const net = await provider.getNetwork();
-      const rawHex = (window as any).ethereum?.chainId;
-      let chainIdNum = rawHex
-        ? (String(rawHex).startsWith("0x")
-            ? parseInt(String(rawHex), 16)
-            : Number(rawHex))
-        : Number(net.chainId);
+      let chainIdNum = Number(net.chainId);
       
       console.log("[submitOrder] Debug Network:", {
         currentChainId: chainIdNum,
@@ -942,20 +954,11 @@ export default function PredictionDetailClient({
       if ((!currentUsdc || (targetChainId && targetChainId !== chainIdNum)) && targetChainId) {
          try {
            console.log(`[submitOrder] Switching to chain ${targetChainId} from ${chainIdNum}`);
-           await (window as any).ethereum.request({
-             method: 'wallet_switchEthereumChain',
-             params: [{ chainId: '0x' + targetChainId.toString(16) }],
-           });
-           // 切换后重新获取网络状态
-           // 注意：这里需要重新创建 provider，因为之前的 provider 可能还绑定在旧网络
-           const newProvider = new ethers.BrowserProvider((window as any).ethereum);
+           await switchNetwork('0x' + targetChainId.toString(16));
+           const newProvider = getBrowserProvider();
+           if (!newProvider) throw new Error("请先连接钱包");
            const newNet = await newProvider.getNetwork();
-           const newRawHex = (window as any).ethereum?.chainId;
-           chainIdNum = newRawHex
-             ? (String(newRawHex).startsWith("0x")
-                 ? parseInt(String(newRawHex), 16)
-                 : Number(newRawHex))
-             : Number(newNet.chainId);
+           chainIdNum = Number(newNet.chainId);
            
            // 更新 signer 和 accountAddr
            signer = await newProvider.getSigner();
@@ -973,12 +976,15 @@ export default function PredictionDetailClient({
            // 继续执行...
          } catch (switchError: any) {
            console.error("Switch chain error:", switchError);
-           // This error code indicates that the chain has not been added to MetaMask.
-           if (switchError.code === 4902) {
-             throw new Error("请在钱包中添加并切换到目标网络");
+           if (Number(switchError?.code || 0) === 4902) {
+             try {
+               await addTargetChain(targetChainId);
+              await switchNetwork('0x' + targetChainId.toString(16));
+             } catch (e: any) {
+               throw new Error("请在钱包中添加并切换到目标网络");
+             }
            }
-           // 如果是用户拒绝（4001），抛出具体信息
-           if (switchError.code === 4001) {
+           if (Number(switchError?.code || 0) === 4001) {
              throw new Error("您取消了网络切换");
            }
            throw new Error(`请切换网络到 Chain ID: ${targetChainId} (当前: ${chainIdNum})`);
@@ -1012,6 +1018,8 @@ export default function PredictionDetailClient({
       if (!finalUsdc) throw new Error("无法获取当前网络的 USDC 地址");
 
       const token = new ethers.Contract(finalUsdc, erc20Abi, signer);
+      await assertContract(provider, finalUsdc, "USDC");
+      await assertContract(provider, m.market, "市场合约");
       let decimals = 6;
       try {
         decimals = await token.decimals();
@@ -1023,15 +1031,31 @@ export default function PredictionDetailClient({
       if (isBuy) {
         // 买方：支付 USDC，检查 USDC 授权给 Market
         const needed = amount * price;
-        const allowance: bigint = await token.allowance(accountAddr, m.market);
+        let allowance: bigint = BigInt(0);
+        try {
+          allowance = await token.allowance(accountAddr, m.market);
+        } catch (e: any) {
+          throw new Error("USDC授权查询失败：地址配置或网络不匹配");
+        }
         if (allowance < needed) {
           setOrderMsg("正在请求 USDC 授权...");
+          const txReq1 = await (token as any).populateTransaction.approve(m.market, needed);
+          (txReq1 as any).from = accountAddr;
+          const est = await provider.estimateGas(txReq1 as any);
+          const fee = await provider.getFeeData();
+          const gp = fee.gasPrice ?? fee.maxFeePerGas ?? BigInt(0);
+          const bal = await provider.getBalance(accountAddr);
+          const req = est * gp;
+          if (req > bal) {
+            throw new Error("MATIC余额不足，无法提交授权交易");
+          }
           const tx = await token.approve(m.market, needed);
           await tx.wait();
           setOrderMsg("授权成功，正在下单...");
         }
       } else {
         // 卖方：支付 Outcome Token，检查 Outcome Token 授权给 Market
+        await assertContract(provider, m.market, "市场合约");
         const marketContract = new ethers.Contract(
           m.market,
           ["function outcomeToken() view returns (address)"],
@@ -1052,6 +1076,16 @@ export default function PredictionDetailClient({
         );
         if (!isApproved) {
           setOrderMsg("正在请求 Outcome Token 授权...");
+          const txReq2 = await (outcome as any).populateTransaction.setApprovalForAll(m.market, true);
+          (txReq2 as any).from = accountAddr;
+          const est2 = await provider.estimateGas(txReq2 as any);
+          const fee2 = await provider.getFeeData();
+          const gp2 = fee2.gasPrice ?? fee2.maxFeePerGas ?? BigInt(0);
+          const bal2 = await provider.getBalance(accountAddr);
+          const req2 = est2 * gp2;
+          if (req2 > bal2) {
+            throw new Error("MATIC余额不足，无法提交授权交易");
+          }
           const tx = await outcome.setApprovalForAll(m.market, true);
           await tx.wait();
           setOrderMsg("授权成功，正在下单...");
@@ -1119,7 +1153,7 @@ export default function PredictionDetailClient({
       if (!resp.ok) throw new Error(j?.detail || j?.message || "下单失败");
       setOrderMsg("下单成功");
     } catch (e: any) {
-      setOrderMsg(e?.message || "下单失败");
+      setOrderMsg(formatTxError(e));
     } finally {
       setOrderSubmitting(false);
     }
@@ -1134,9 +1168,8 @@ export default function PredictionDetailClient({
           ? ({ market: manualMarket, chain_id: Number(manualChainId) } as any)
           : null);
       if (!m) throw new Error("未配置市场");
-      if (typeof window === "undefined" || !(window as any).ethereum)
-        throw new Error("请先连接钱包");
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = getBrowserProvider();
+      if (!provider) throw new Error("请先连接钱包");
       const signer = await provider.getSigner();
       const base =
         process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:3005";
@@ -1194,9 +1227,26 @@ export default function PredictionDetailClient({
         const accountAddr = await signer.getAddress();
         const price = BigInt(ord.price);
         const need = fillAmount * price;
-        const allowance: bigint = await token.allowance(accountAddr, m.market);
+        await assertContract(provider, usdc, "USDC");
+        await assertContract(provider, m.market, "市场合约");
+        let allowance: bigint = BigInt(0);
+        try {
+          allowance = await token.allowance(accountAddr, m.market);
+        } catch (e: any) {
+          throw new Error("USDC授权查询失败：地址配置或网络不匹配");
+        }
         if (allowance < need) {
           setOrderMsg("正在请求 USDC 授权...");
+          const txReq3 = await (token as any).populateTransaction.approve(m.market, need);
+          (txReq3 as any).from = accountAddr;
+          const est = await provider.estimateGas(txReq3 as any);
+          const fee = await provider.getFeeData();
+          const gp = fee.gasPrice ?? fee.maxFeePerGas ?? BigInt(0);
+          const bal = await provider.getBalance(accountAddr);
+          const req = est * gp;
+          if (req > bal) {
+            throw new Error("MATIC余额不足，无法提交授权交易");
+          }
           const tx = await token.approve(m.market, need);
           await tx.wait();
         }
@@ -1220,12 +1270,36 @@ export default function PredictionDetailClient({
         const isAppr = await outcome.isApprovedForAll(accountAddr, m.market);
         if (!isAppr) {
           setOrderMsg("正在请求 Outcome Token 授权...");
+          const txReq4 = await (outcome as any).populateTransaction.setApprovalForAll(m.market, true);
+          (txReq4 as any).from = accountAddr;
+          const est2 = await provider.estimateGas(txReq4 as any);
+          const fee2 = await provider.getFeeData();
+          const gp2 = fee2.gasPrice ?? fee2.maxFeePerGas ?? BigInt(0);
+          const bal2 = await provider.getBalance(accountAddr);
+          const req2 = est2 * gp2;
+          if (req2 > bal2) {
+            throw new Error("MATIC余额不足，无法提交授权交易");
+          }
           const tx = await outcome.setApprovalForAll(m.market, true);
           await tx.wait();
         }
       }
 
       setOrderMsg("正在成交...");
+      const txReq5 = await (marketContract as any).populateTransaction.fillOrderSigned(
+        req as any,
+        ord.signature,
+        fillAmount
+      );
+      (txReq5 as any).from = await signer.getAddress();
+      const est3 = await provider.estimateGas(txReq5 as any);
+      const fee3 = await provider.getFeeData();
+      const gp3 = fee3.gasPrice ?? fee3.maxFeePerGas ?? BigInt(0);
+      const bal3 = await provider.getBalance(await signer.getAddress());
+      const req3 = est3 * gp3;
+      if (req3 > bal3) {
+        throw new Error("MATIC余额不足，无法成交");
+      }
       const tx = await marketContract.fillOrderSigned(
         req as any,
         ord.signature,
@@ -1246,7 +1320,7 @@ export default function PredictionDetailClient({
       } catch {}
       setOrderMsg("成交成功");
     } catch (e: any) {
-      setOrderMsg(e?.message || "成交失败");
+      setOrderMsg(formatTxError(e));
     }
   }
 
@@ -1259,9 +1333,8 @@ export default function PredictionDetailClient({
           ? ({ market: manualMarket, chain_id: Number(manualChainId) } as any)
           : null);
       if (!m) throw new Error("未配置市场");
-      if (typeof window === "undefined" || !(window as any).ethereum)
-        throw new Error("请先连接钱包");
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = getBrowserProvider();
+      if (!provider) throw new Error("请先连接钱包");
       const signer = await provider.getSigner();
       const addr = await signer.getAddress();
       const chain = await provider.getNetwork();
@@ -1322,37 +1395,22 @@ export default function PredictionDetailClient({
       setStaking(true);
 
       if (!prediction) throw new Error("预测事件未加载");
-      if (typeof window === "undefined" || !(window as any).ethereum) {
-        throw new Error("请先连接钱包");
-      }
-
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const provider = getBrowserProvider();
+      if (!provider) throw new Error("请先连接钱包");
       let signer = await provider.getSigner();
       let network = await provider.getNetwork();
-      const rawHex = (window as any).ethereum?.chainId;
-      let chainIdNum = rawHex
-        ? (String(rawHex).startsWith("0x")
-            ? parseInt(String(rawHex), 16)
-            : Number(rawHex))
-        : Number(network.chainId);
+      let chainIdNum = Number(network.chainId);
       let { foresight, usdc } = resolveAddresses(chainIdNum);
       const usdcFromMap = (market as any)?.collateral_token ? String((market as any).collateral_token).trim() : "";
       usdc = (usdcFromMap || usdc || "").trim();
       const targetChainId = market?.chain_id ? Number(market.chain_id) : 80002;
       if ((!foresight || !usdc) || chainIdNum !== targetChainId) {
         try {
-          await (window as any).ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x" + targetChainId.toString(16) }],
-          });
-          const newProvider = new ethers.BrowserProvider((window as any).ethereum);
+          await switchNetwork('0x' + targetChainId.toString(16));
+          const newProvider = getBrowserProvider();
+          if (!newProvider) throw new Error("请先连接钱包");
           network = await newProvider.getNetwork();
-          const newRawHex = (window as any).ethereum?.chainId;
-          chainIdNum = newRawHex
-            ? (String(newRawHex).startsWith("0x")
-                ? parseInt(String(newRawHex), 16)
-                : Number(newRawHex))
-            : Number(network.chainId);
+          chainIdNum = Number(network.chainId);
           signer = await newProvider.getSigner();
           ({ foresight, usdc } = resolveAddresses(chainIdNum));
           usdc = (usdcFromMap || usdc || "").trim();
@@ -1363,10 +1421,15 @@ export default function PredictionDetailClient({
             throw new Error(`未配置USDC或合约地址 (Chain ID: ${chainIdNum})`);
           }
         } catch (switchError: any) {
-          if (switchError.code === 4902) {
-            throw new Error("请在钱包中添加并切换到目标网络");
+          if (Number(switchError?.code || 0) === 4902) {
+            try {
+              await addTargetChain(targetChainId);
+              await switchNetwork('0x' + targetChainId.toString(16));
+            } catch (e: any) {
+              throw new Error("请在钱包中添加并切换到目标网络");
+            }
           }
-          if (switchError.code === 4001) {
+          if (Number(switchError?.code || 0) === 4001) {
             throw new Error("您取消了网络切换");
           }
           throw new Error(`请切换网络到 Chain ID: ${targetChainId} (当前: ${chainIdNum})`);
@@ -1375,6 +1438,8 @@ export default function PredictionDetailClient({
 
       const account = await signer.getAddress();
       const token = new ethers.Contract(usdc, erc20Abi, signer);
+      await assertContract(provider, usdc, "USDC");
+      await assertContract(provider, foresight, "合约");
       let decimals = 6;
       try {
         decimals = await token.decimals();
@@ -1384,8 +1449,23 @@ export default function PredictionDetailClient({
       const amount = parseUnitsByDecimals(amountStr, Number(decimals));
 
       // 先检查并授权
-      const allowance: bigint = await token.allowance(account, foresight);
+      let allowance: bigint = BigInt(0);
+      try {
+        allowance = await token.allowance(account, foresight);
+      } catch (e: any) {
+        throw new Error("USDC授权查询失败：地址配置或网络不匹配");
+      }
       if (allowance < amount) {
+        const txReq6 = await (token as any).populateTransaction.approve(foresight, amount);
+        (txReq6 as any).from = account;
+        const est = await provider.estimateGas(txReq6 as any);
+        const fee = await provider.getFeeData();
+        const gp = fee.gasPrice ?? fee.maxFeePerGas ?? BigInt(0);
+        const bal = await provider.getBalance(account);
+        const req = est * gp;
+        if (req > bal) {
+          throw new Error("MATIC余额不足，无法提交授权交易");
+        }
         const txApprove = await token.approve(foresight, amount);
         await txApprove.wait();
       }
@@ -1409,6 +1489,20 @@ export default function PredictionDetailClient({
         optionIndex = Number(option);
       }
 
+      const txReq7 = await (foresightContract as any).populateTransaction.stake(
+        prediction.id,
+        optionIndex,
+        amount
+      );
+      (txReq7 as any).from = account;
+      const est2 = await provider.estimateGas(txReq7 as any);
+      const fee2 = await provider.getFeeData();
+      const gp2 = fee2.gasPrice ?? fee2.maxFeePerGas ?? BigInt(0);
+      const bal2 = await provider.getBalance(account);
+      const req2 = est2 * gp2;
+      if (req2 > bal2) {
+        throw new Error("MATIC余额不足，无法提交交易");
+      }
       const txStake = await foresightContract.stake(
         prediction.id,
         optionIndex,
@@ -1418,7 +1512,7 @@ export default function PredictionDetailClient({
 
       setStakeSuccess(`押注成功，交易哈希：${receipt?.hash || ""}`);
     } catch (e: any) {
-      setStakeError(e?.message || "押注失败");
+      setStakeError(formatTxError(e));
     } finally {
       setStaking(false);
     }

@@ -29,7 +29,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [rememberMe, setRememberMe] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendLeft, setResendLeft] = useState(0);
   const [codePreview, setCodePreview] = useState<string | null>(null);
@@ -58,6 +57,19 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   // 当弹窗重新打开且没有用户时，重置所有本地状态到初始值
   useEffect(() => {
     if (!isOpen) return;
+    try {
+      const s = window.localStorage.getItem("fs_last_login_account");
+      if (s) {
+        const o = JSON.parse(s);
+        if (o && o.type === "email" && typeof o.value === "string") {
+          setEmail(o.value);
+        }
+      }
+    } catch {}
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     if (!user) {
       setSelectedWallet(null);
       setEmail("");
@@ -71,7 +83,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setProfileLoading(false);
       setUsername("");
       setProfileError(null);
-      setRememberMe(false);
       setEmailVerified(false);
       setResendLeft(0);
       setCodePreview(null);
@@ -82,18 +93,24 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
-      setShowProfileForm(true);
-      setProfileLoading(true);
-      setProfileError(null);
       const addr = String(account || '').toLowerCase();
       if (addr) {
+        // 避免在正在完善资料时自动关闭
+        if (showProfileForm) return;
+
+        setProfileLoading(true);
         fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`)
           .then(r => r.json())
           .then(data => {
             const p = data?.profile;
-            if (p) {
-              setUsername(String(p.username || ''));
-              setEmail(String(p.email || ''));
+            // 只有当用户名或邮箱为空时，才显示完善信息表单
+            if (!p?.username || !p?.email) {
+              setShowProfileForm(true);
+              setUsername(String(p?.username || ''));
+              setEmail(String(p?.email || ''));
+            } else {
+              // 如果信息已完善，直接关闭弹窗
+              onClose();
             }
           })
           .catch(() => {})
@@ -102,7 +119,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
         setProfileLoading(false);
       }
     }
-  }, [user, isOpen, onClose]);
+  }, [user, isOpen, onClose, account, showProfileForm]);
 
   // 当展示资料表单且钱包地址可用时，预填已有资料
   useEffect(() => {
@@ -153,12 +170,42 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setSiweLoading(false);
       if (!res.success) {
         console.error('签名登录失败:', res.error);
+      } else {
+        // 登录成功后刷新会话状态，确保 UI 及时响应
+        if (auth?.refreshSession) {
+          await auth.refreshSession();
+        }
+        const addrCheck = String(res.address || account || '').toLowerCase();
+        if (addrCheck) {
+          try {
+            window.localStorage.setItem(
+              'fs_last_login_account',
+              JSON.stringify({ type: 'wallet', value: addrCheck, ts: Date.now() })
+            );
+          } catch {}
+        }
+        if (addrCheck) {
+          try {
+            const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
+            const d = await r.json();
+            const p = d?.profile;
+            if (!p?.username || !p?.email) {
+              setShowProfileForm(true);
+              setUsername(String(p?.username || ''));
+              setEmail(String(p?.email || ''));
+            } else {
+              onClose();
+            }
+          } catch {}
+        }
       }
       // 连续触发多签签名
       setMultiLoading(true);
       await multisigSign();
       setMultiLoading(false);
-      setShowProfileForm(true);
+      
+      // 登录成功后，检查是否需要完善信息
+      // 这里不直接设置 ShowProfileForm，而是等待 user 状态更新触发 useEffect
     } catch (error) {
       console.error('连接钱包失败:', error);
     } finally {
@@ -183,6 +230,12 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     setEmailLoading(true);
     try {
       await auth.verifyEmailOtp(email, otp);
+      try {
+        window.localStorage.setItem(
+          'fs_last_login_account',
+          JSON.stringify({ type: 'email', value: email, ts: Date.now() })
+        );
+      } catch {}
       onClose();
     } catch {}
     setEmailLoading(false);
@@ -255,6 +308,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
         errors.push('钱包地址无效：需 0x 开头且 40 位十六进制');
       }
+      if (!username || !email) {
+        errors.push('用户名和邮箱为必填项');
+      }
       if (!(username.length >= 3 && username.length <= 20 && /^\w+$/.test(username))) {
         errors.push('用户名不合规：3–20 位，仅允许字母、数字与下划线');
       }
@@ -272,12 +328,16 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       const resp = await fetch('/api/user-profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: addr, username, email, rememberMe })
+        body: JSON.stringify({ walletAddress: addr, username, email })
       });
       const json = await resp.json();
       if (!resp.ok || !json?.success) {
         setProfileError(String(json?.message || '提交失败'));
       } else {
+        // 提交成功后刷新会话并关闭
+        if (auth?.refreshSession) {
+          await auth.refreshSession();
+        }
         onClose();
       }
     } catch (e: any) {
@@ -346,6 +406,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {isOpen && (
         <motion.div 
+          key="wallet-modal-content"
           className="fixed inset-0 z-[9999] flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -462,15 +523,11 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       <div className="text-xs text-gray-500">验证码有效期 15 分钟，失败 3 次将锁定 1 小时。</div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
-                    <label htmlFor="remember-me" className="text-sm text-gray-700">记住我</label>
-                  </div>
                   {profileError && <div className="text-sm text-red-600">{profileError}</div>}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={submitProfile}
-                      disabled={profileLoading}
+                      disabled={!canSubmitProfile || profileLoading}
                       className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
                     >
                       {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -644,7 +701,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
           </motion.div>
         </motion.div>
       )}
-      <InstallPromptModal open={installPromptOpen} onClose={() => setInstallPromptOpen(false)} walletName={installWalletName} installUrl={installUrl} />
+      <InstallPromptModal key="install-prompt-modal" open={installPromptOpen} onClose={() => setInstallPromptOpen(false)} walletName={installWalletName} installUrl={installUrl} />
     </AnimatePresence>,
     document.body
   );

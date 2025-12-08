@@ -19,6 +19,7 @@ interface AuthContextValue {
   // 可选：直接发送魔法链接（不输入验证码）
   sendMagicLink: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,6 +29,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [emailPending, setEmailPending] = useState<string | null>(null);
+
+  const refreshSession = async () => {
+    if (!supabase) return;
+    const { data, error } = await (supabase as any).auth.getSession();
+    if (error) {
+      console.error("Session refresh error:", error);
+    }
+    const sessUser = data?.session?.user || null;
+    setUser(
+      sessUser
+        ? {
+            id: sessUser.id,
+            email: sessUser.email ?? null,
+            user_metadata: sessUser.user_metadata,
+          }
+        : null
+    );
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -52,6 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : null
       );
       setLoading(false);
+      const email = sessUser?.email ?? null;
+      if (email && typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(
+            "fs_last_login_account",
+            JSON.stringify({ type: "email", value: email, ts: Date.now() })
+          );
+        } catch {}
+      }
     });
 
     // 监听会话变化
@@ -61,13 +89,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(
           sessUser
             ? {
-                id: sessUser.id,
-                email: sessUser.email ?? null,
-                user_metadata: sessUser.user_metadata,
-              }
+              id: sessUser.id,
+              email: sessUser.email ?? null,
+              user_metadata: sessUser.user_metadata,
+            }
             : null
         );
         setLoading(false);
+        const email = sessUser?.email ?? null;
+        if (email && typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(
+              "fs_last_login_account",
+              JSON.stringify({ type: "email", value: email, ts: Date.now() })
+            );
+          } catch {}
+        }
       }
     );
 
@@ -161,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verifyEmailOtp,
     sendMagicLink,
     signOut,
+    refreshSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
