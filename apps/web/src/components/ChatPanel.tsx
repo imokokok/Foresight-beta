@@ -3,7 +3,16 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useWallet } from "@/contexts/WalletContext";
-import { MessageSquare, Sparkles, Loader2, Smile, Pin, Users, TrendingUp, MoreHorizontal } from "lucide-react";
+import {
+  MessageSquare,
+  Sparkles,
+  Loader2,
+  Smile,
+  Pin,
+  Users,
+  TrendingUp,
+  MoreHorizontal,
+} from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 
 interface ChatPanelProps {
@@ -318,13 +327,27 @@ export default function ChatPanel({
     const c = String(roomCategory || "").toLowerCase();
     if (c.includes("体育") || c.includes("sport") || c.includes("nba"))
       return "bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-orange-200/50 shadow-md";
-    if (c.includes("娱乐") || c.includes("entertainment") || c.includes("movie"))
+    if (
+      c.includes("娱乐") ||
+      c.includes("entertainment") ||
+      c.includes("movie")
+    )
       return "bg-gradient-to-br from-pink-400 to-rose-500 text-white shadow-pink-200/50 shadow-md";
-    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
+    if (
+      c.includes("时政") ||
+      c.includes("政治") ||
+      c.includes("politics") ||
+      c.includes("news")
+    )
       return "bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-emerald-200/50 shadow-md";
     if (c.includes("天气") || c.includes("weather"))
       return "bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-cyan-200/50 shadow-md";
-    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto"))
+    if (
+      c.includes("科技") ||
+      c.includes("tech") ||
+      c.includes("ai") ||
+      c.includes("crypto")
+    )
       return "bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-violet-200/50 shadow-md";
     return "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-200/50 shadow-md";
   };
@@ -335,15 +358,36 @@ export default function ChatPanel({
 
   const getFooterBg = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育") || c.includes("sport") || c.includes("nba") || c.includes("football"))
+    if (
+      c.includes("体育") ||
+      c.includes("sport") ||
+      c.includes("nba") ||
+      c.includes("football")
+    )
       return "bg-orange-50/95 border-orange-100";
-    if (c.includes("娱乐") || c.includes("entertainment") || c.includes("movie") || c.includes("music"))
+    if (
+      c.includes("娱乐") ||
+      c.includes("entertainment") ||
+      c.includes("movie") ||
+      c.includes("music")
+    )
       return "bg-pink-50/95 border-pink-100";
-    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news") || c.includes("finance"))
+    if (
+      c.includes("时政") ||
+      c.includes("政治") ||
+      c.includes("politics") ||
+      c.includes("news") ||
+      c.includes("finance")
+    )
       return "bg-emerald-50/95 border-emerald-100";
     if (c.includes("天气") || c.includes("weather") || c.includes("climate"))
       return "bg-cyan-50/95 border-cyan-100";
-    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto"))
+    if (
+      c.includes("科技") ||
+      c.includes("tech") ||
+      c.includes("ai") ||
+      c.includes("crypto")
+    )
       return "bg-violet-50/95 border-violet-100";
     // 默认也给科技色，或者保持暖米色。用户说“科技分类还没改”，暗示当前是科技分类但没生效。
     // 如果默认就是科技分类，这里应该兜底到科技色，或者确保逻辑能命中。
@@ -353,25 +397,127 @@ export default function ChatPanel({
 
   const getHeaderGradient = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育") || c.includes("sport") || c.includes("nba")) return "from-orange-500/90 to-amber-500/90";
-    if (c.includes("娱乐") || c.includes("entertainment")) return "from-pink-500/90 to-rose-500/90";
-    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba"))
+      return "from-orange-500/90 to-amber-500/90";
+    if (c.includes("娱乐") || c.includes("entertainment"))
+      return "from-pink-500/90 to-rose-500/90";
+    if (
+      c.includes("时政") ||
+      c.includes("政治") ||
+      c.includes("politics") ||
+      c.includes("news")
+    )
       return "from-emerald-500/90 to-teal-500/90";
-    if (c.includes("天气") || c.includes("weather")) return "from-cyan-500/90 to-blue-500/90";
-    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto")) return "from-violet-500/90 to-purple-500/90";
+    if (c.includes("天气") || c.includes("weather"))
+      return "from-cyan-500/90 to-blue-500/90";
+    if (
+      c.includes("科技") ||
+      c.includes("tech") ||
+      c.includes("ai") ||
+      c.includes("crypto")
+    )
+      return "from-violet-500/90 to-purple-500/90";
     return "from-indigo-500/90 to-purple-600/90";
   };
 
   const getCategoryIconColor = () => {
     const c = String(roomCategory || "").toLowerCase();
-    if (c.includes("体育") || c.includes("sport") || c.includes("nba")) return "text-orange-200";
-    if (c.includes("娱乐") || c.includes("entertainment")) return "text-pink-200";
-    if (c.includes("时政") || c.includes("政治") || c.includes("politics") || c.includes("news"))
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba"))
+      return "text-orange-200";
+    if (c.includes("娱乐") || c.includes("entertainment"))
+      return "text-pink-200";
+    if (
+      c.includes("时政") ||
+      c.includes("政治") ||
+      c.includes("politics") ||
+      c.includes("news")
+    )
       return "text-emerald-200";
     if (c.includes("天气") || c.includes("weather")) return "text-cyan-200";
-    if (c.includes("科技") || c.includes("tech") || c.includes("ai") || c.includes("crypto")) return "text-violet-200";
+    if (
+      c.includes("科技") ||
+      c.includes("tech") ||
+      c.includes("ai") ||
+      c.includes("crypto")
+    )
+      return "text-violet-200";
     return "text-indigo-200";
   };
+
+  const getMonetTexture = () => {
+    const c = String(roomCategory || "").toLowerCase();
+
+    const noise = `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E")`;
+    const strokes = `repeating-linear-gradient(125deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 6px, rgba(0,0,0,0) 6px, rgba(0,0,0,0) 14px)`;
+    const swirl = `repeating-conic-gradient(from 20deg at 30% 60%, rgba(255,255,255,0.06) 0deg 12deg, rgba(0,0,0,0) 12deg 24deg)`;
+    const base = "bg-fixed bg-cover bg-no-repeat";
+    const commonStyle = {
+      backgroundBlendMode: "soft-light, soft-light, normal, normal, normal",
+      backgroundSize: "cover, 320px 320px, 220px 220px, cover, cover",
+      backgroundPosition: "center, 0 0, 30% 40%, center, center",
+      filter: "saturate(1.02) contrast(1.02)",
+    } as React.CSSProperties;
+
+    if (c.includes("体育") || c.includes("sport") || c.includes("nba")) {
+      return {
+        style: {
+          ...commonStyle,
+          backgroundImage: `${noise}, ${strokes}, ${swirl}, radial-gradient(circle at 0% 0%, rgba(255,230,200,0.6) 0%, transparent 60%), linear-gradient(120deg, #FFF8E1 0%, #FFECB3 100%)`,
+          backgroundColor: "#FFF8E1",
+          boxShadow: "inset 0 0 80px rgba(255,200,150,0.2)",
+        },
+        className: base,
+      };
+    }
+
+    if (c.includes("娱乐") || c.includes("entertainment")) {
+      return {
+        style: {
+          ...commonStyle,
+          backgroundImage: `${noise}, ${strokes}, ${swirl}, radial-gradient(circle at 80% 20%, rgba(255,200,230,0.6) 0%, transparent 50%), linear-gradient(150deg, #FCE4EC 0%, #F3E5F5 100%)`,
+          backgroundColor: "#FFF0F5",
+          boxShadow: "inset 0 0 80px rgba(255,180,210,0.15)",
+        },
+        className: base,
+      };
+    }
+
+    if (c.includes("时政") || c.includes("政治") || c.includes("news")) {
+      return {
+        style: {
+          ...commonStyle,
+          backgroundImage: `${noise}, ${strokes}, ${swirl}, radial-gradient(circle at 50% 0%, rgba(200,245,230,0.6) 0%, transparent 70%), linear-gradient(180deg, #E0F2F1 0%, #E0F7FA 100%)`,
+          backgroundColor: "#F0FDF4",
+          boxShadow: "inset 0 0 80px rgba(160,230,200,0.15)",
+        },
+        className: base,
+      };
+    }
+
+    if (c.includes("科技") || c.includes("tech") || c.includes("ai")) {
+      return {
+        style: {
+          ...commonStyle,
+          backgroundImage: `${noise}, ${strokes}, ${swirl}, radial-gradient(circle at 0% 50%, rgba(220,220,255,0.6) 0%, transparent 50%), linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)`,
+          backgroundColor: "#F5F3FF",
+          boxShadow: "inset 0 0 80px rgba(180,190,255,0.15)",
+        },
+        className: base,
+      };
+    }
+
+    return {
+      style: {
+        ...commonStyle,
+        backgroundImage: `${noise}, ${strokes}, ${swirl}, radial-gradient(circle at 90% 10%, rgba(200,240,255,0.5) 0%, transparent 60%), linear-gradient(to bottom right, #E3F2FD 0%, #F3E5F5 100%)`,
+        backgroundColor: "#F8FAFC",
+        boxShadow: "inset 0 0 80px rgba(180,210,255,0.15)",
+      },
+      className: base,
+    };
+  };
+
+  const monet = getMonetTexture();
 
   const containerCls = "flex flex-col h-full bg-transparent relative";
   const minH = String(
@@ -404,13 +550,15 @@ export default function ChatPanel({
               {account && (
                 <>
                   <span className="opacity-60">•</span>
-                  <span className="truncate max-w-[100px]">{displayName(account)}</span>
+                  <span className="truncate max-w-[100px]">
+                    {displayName(account)}
+                  </span>
                 </>
               )}
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4 relative z-10 flex-shrink-0">
           <div className="flex flex-col items-end hidden sm:flex">
             <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
@@ -464,7 +612,8 @@ export default function ChatPanel({
 
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent scrollbar-hide"
+        className={`flex-1 overflow-y-auto p-4 pb-20 space-y-3 ${monet.className} backdrop-blur-[1px] scrollbar-hide`}
+        style={monet.style}
       >
         {mergedMessages.length === 0 && (
           <div className="text-center text-gray-400 text-sm mt-10">
@@ -523,7 +672,9 @@ export default function ChatPanel({
         })}
       </div>
 
-      <div className={`p-3 border-t backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800 ${getFooterBg()}`}>
+      <div
+        className={`p-3 border-t backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800 ${getFooterBg()}`}
+      >
         {!account ? (
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-600 font-medium">
@@ -551,7 +702,7 @@ export default function ChatPanel({
                   type="button"
                   className="text-xs px-2 py-1 rounded-md bg-purple-600 text-white hover:brightness-105"
                   onClick={async () => {
-                    const res = await switchNetwork('0xaa36a7');
+                    const res = await switchNetwork("0xaa36a7");
                     if (res?.success) await refreshBalance();
                   }}
                 >
