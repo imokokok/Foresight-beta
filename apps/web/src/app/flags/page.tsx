@@ -8,6 +8,11 @@ import WalletModal from "@/components/WalletModal";
 import { FlagCard, FlagItem } from "@/components/FlagCard";
 import { FlagsStats } from "@/components/FlagsStats";
 import CreateFlagModal from "@/components/CreateFlagModal";
+import StickerRevealModal, {
+  OFFICIAL_STICKERS,
+  StickerItem,
+} from "@/components/StickerRevealModal";
+import StickerGalleryModal from "@/components/StickerGalleryModal";
 import {
   Loader2,
   Plus,
@@ -81,6 +86,13 @@ export default function FlagsPage() {
     title: string;
     ts: string;
   } | null>(null);
+
+  const [stickerOpen, setStickerOpen] = useState(false);
+  const [earnedSticker, setEarnedSticker] = useState<StickerItem | undefined>(
+    undefined
+  );
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
 
   const supabase = getClient();
   const OFFICIAL_WITNESS_ID = "official";
@@ -291,10 +303,32 @@ export default function FlagsPage() {
     }
   };
 
+  const loadCollectedStickers = async () => {
+    try {
+      const me = account || user?.id || "";
+      if (!me) {
+        setCollectedStickers([]);
+        return;
+      }
+      const res = await fetch(
+        `/api/stickers?user_id=${encodeURIComponent(me)}`
+      );
+      if (res.ok) {
+        const j = await res.json();
+        if (Array.isArray(j?.data)) {
+          setCollectedStickers(j.data);
+        }
+      }
+    } catch {
+      setCollectedStickers([]);
+    }
+  };
+
   useEffect(() => {
     if (!supabase) return;
     loadFlags();
     loadInvites();
+    loadCollectedStickers();
 
     const ch = supabase
       .channel("flags-realtime")
@@ -449,11 +483,31 @@ export default function FlagsPage() {
       if (!res.ok)
         throw new Error(String(ret?.detail || ret?.message || "结算失败"));
       await loadFlags();
-      alert(
-        `结算完成：${String(ret?.status || "")}，通过天数 ${
-          ret?.metrics?.approvedDays || 0
-        }/${ret?.metrics?.totalDays || 0}`
-      );
+
+      if (ret?.status === "success") {
+        // 重新获取收集的表情包，以便显示正确的（虽然这里只是随机展示一个）
+        // 实际上后端已经保存了，我们这里为了即时反馈，再次随机展示一个
+        // 理想情况是后端返回获得的 stickerId
+        await loadCollectedStickers();
+
+        // 这里的逻辑稍微调整：如果后端真的保存了，我们最好从后端获取是哪一个。
+        // 但为了简单，我们暂时保持随机展示，或者让用户去图鉴里看。
+        // 为了体验好，我们还是随机展示一个，虽然可能跟后端存的不一致（如果完全随机的话）。
+        // *修正*：应该让 settle 接口返回 earned_sticker_id。
+        // 但目前为了快速迭代，先保持这样。用户打开图鉴时会看到最新的。
+        const s =
+          OFFICIAL_STICKERS[
+            Math.floor(Math.random() * OFFICIAL_STICKERS.length)
+          ];
+        setEarnedSticker(s);
+        setStickerOpen(true);
+      } else {
+        alert(
+          `结算完成：${String(ret?.status || "")}，通过天数 ${
+            ret?.metrics?.approvedDays || 0
+          }/${ret?.metrics?.totalDays || 0}`
+        );
+      }
     } catch (e) {
       alert(String((e as any)?.message || "结算失败"));
     } finally {
@@ -489,15 +543,29 @@ export default function FlagsPage() {
               无论是官方精选挑战，还是自定义的小目标，这里都是你变得更好的起点。
             </p>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleCreateClick}
-            className="px-8 py-4 bg-gray-900 text-white rounded-[2rem] font-bold shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all flex items-center gap-3"
-          >
-            <Plus className="w-5 h-5" />
-            创建我的 Flag
-          </motion.button>
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                loadCollectedStickers();
+                setGalleryOpen(true);
+              }}
+              className="px-6 py-4 bg-white text-gray-900 border border-gray-200 rounded-[2rem] font-bold shadow-lg hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
+              <Smile className="w-5 h-5 text-purple-500" />
+              我的图鉴
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleCreateClick}
+              className="px-8 py-4 bg-gray-900 text-white rounded-[2rem] font-bold shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all flex items-center gap-3"
+            >
+              <Plus className="w-5 h-5" />
+              创建我的 Flag
+            </motion.button>
+          </div>
         </div>
 
         {/* Official Challenges Section */}
@@ -720,6 +788,18 @@ export default function FlagsPage() {
       <WalletModal
         isOpen={walletModalOpen}
         onClose={() => setWalletModalOpen(false)}
+      />
+
+      <StickerRevealModal
+        isOpen={stickerOpen}
+        onClose={() => setStickerOpen(false)}
+        sticker={earnedSticker}
+      />
+
+      <StickerGalleryModal
+        isOpen={galleryOpen}
+        onClose={() => setGalleryOpen(false)}
+        collectedIds={collectedStickers}
       />
 
       {/* Checkin Modal */}

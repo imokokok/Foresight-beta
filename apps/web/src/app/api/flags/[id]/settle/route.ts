@@ -164,6 +164,20 @@ export async function POST(
           settled_by: settler_id,
           settled_at: new Date().toISOString(),
         });
+        
+      // 如果结算成功，保存表情包
+      if (status === "success") {
+        // 随机选择一个表情包 ID (这里简单模拟，实际可以根据概率配置)
+        // 假设 ID 范围 s1-s8
+        const stickers = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
+        const stickerId = stickers[Math.floor(Math.random() * stickers.length)];
+        
+        await client.from("user_stickers").insert({
+          user_id: owner,
+          sticker_id: stickerId,
+          created_at: new Date().toISOString(),
+        });
+      }
     } catch {}
 
     return NextResponse.json({ status, metrics }, { status: 200 });
