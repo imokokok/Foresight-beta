@@ -41,36 +41,44 @@ export function FlagCard({
 }: FlagCardProps) {
   const statusConfig = {
     active: {
-      color: "text-emerald-600",
-      bg: "bg-emerald-400/10",
-      border: "border-emerald-200/50",
+      color: "text-emerald-800",
+      bg: "bg-emerald-100",
+      border: "border-emerald-200",
       label: "进行中",
       icon: Target,
-      gradient: "from-emerald-500/20 to-teal-500/5",
+      gradient: "from-emerald-100 to-teal-50",
+      shadow: "shadow-emerald-500/20",
+      cardBg: "bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30",
     },
     pending_review: {
-      color: "text-amber-600",
-      bg: "bg-amber-400/10",
-      border: "border-amber-200/50",
+      color: "text-amber-800",
+      bg: "bg-amber-100",
+      border: "border-amber-200",
       label: "审核中",
       icon: Clock,
-      gradient: "from-amber-500/20 to-orange-500/5",
+      gradient: "from-amber-100 to-orange-50",
+      shadow: "shadow-amber-500/20",
+      cardBg: "bg-gradient-to-br from-amber-50 via-white to-amber-50/30",
     },
     success: {
-      color: "text-blue-600",
-      bg: "bg-blue-400/10",
-      border: "border-blue-200/50",
+      color: "text-blue-800",
+      bg: "bg-blue-100",
+      border: "border-blue-200",
       label: "挑战成功",
       icon: CheckCircle2,
-      gradient: "from-blue-500/20 to-indigo-500/5",
+      gradient: "from-blue-100 to-indigo-50",
+      shadow: "shadow-blue-500/20",
+      cardBg: "bg-gradient-to-br from-blue-50 via-white to-blue-50/30",
     },
     failed: {
-      color: "text-rose-600",
-      bg: "bg-rose-400/10",
-      border: "border-rose-200/50",
+      color: "text-rose-800",
+      bg: "bg-rose-100",
+      border: "border-rose-200",
       label: "挑战失败",
       icon: Users,
-      gradient: "from-rose-500/20 to-red-500/5",
+      gradient: "from-rose-100 to-red-50",
+      shadow: "shadow-rose-500/20",
+      cardBg: "bg-gradient-to-br from-rose-50 via-white to-rose-50/30",
     },
   };
 
@@ -78,6 +86,7 @@ export function FlagCard({
   const StatusIcon = s.icon;
 
   const calculateStats = () => {
+    // ... existing logic ...
     const start = new Date(flag.created_at).getTime();
     const end = new Date(flag.deadline).getTime();
     const now = Date.now();
@@ -85,16 +94,13 @@ export function FlagCard({
     const totalDuration = end - start;
     const elapsed = now - start;
 
-    // 进度百分比 (0-100)
     const progress = Math.min(
       100,
       Math.max(0, (elapsed / totalDuration) * 100)
     );
 
-    // 已坚持天数
     const daysActive = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
 
-    // 剩余时间文字
     const msLeft = end - now;
     let remainText = "已结束";
     if (msLeft > 0) {
@@ -116,11 +122,11 @@ export function FlagCard({
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -8, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group relative flex flex-col h-full bg-white/70 backdrop-blur-xl border border-white/60 rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 overflow-hidden"
+      className={`group relative flex flex-col h-full ${s.cardBg} border ${s.border} rounded-[2rem] shadow-sm hover:shadow-2xl ${s.shadow} transition-all duration-500 overflow-hidden`}
     >
       {/* 动态背景光效 */}
       <div
-        className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`}
+        className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-30 group-hover:opacity-100 transition-opacity duration-700`}
       />
 
       <div className="p-6 flex flex-col h-full z-10 relative">

@@ -696,18 +696,18 @@ export default function FlagsPage() {
             {/* Left: Quick Actions / Today's Focus */}
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Daily Check-in Card */}
-              <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 border border-gray-100 shadow-sm group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+              <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-white to-emerald-50/50 p-6 border border-emerald-100/60 shadow-sm group hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-emerald-100/50 transition-colors duration-300" />
                 <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform duration-300">
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                     <div>
                       <span className="text-sm font-bold text-gray-900 block">
                         今日打卡
                       </span>
-                      <span className="text-[10px] text-gray-400 font-bold">
+                      <span className="text-[10px] text-emerald-600/60 font-bold">
                         Keep going
                       </span>
                     </div>
@@ -730,7 +730,7 @@ export default function FlagsPage() {
                         if (activeFlag) openCheckin(activeFlag);
                         else handleCreateClick();
                       }}
-                      className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gray-900/20 flex items-center gap-1.5 group/btn"
+                      className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 group/btn"
                     >
                       {flags.some((f) => f.status === "active")
                         ? "去打卡"
@@ -742,18 +742,18 @@ export default function FlagsPage() {
               </div>
 
               {/* Streak Card */}
-              <div className="relative overflow-hidden rounded-[2rem] bg-white p-6 border border-gray-100 shadow-sm group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+              <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-white to-orange-50/50 p-6 border border-orange-100/60 shadow-sm group hover:shadow-xl hover:shadow-orange-500/10 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-orange-100/50 transition-colors duration-300" />
                 <div className="relative z-10 flex flex-col h-full justify-between min-h-[140px]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-900 group-hover:scale-110 transition-transform duration-300">
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform duration-300">
                       <Zap className="w-5 h-5" />
                     </div>
                     <div>
                       <span className="text-sm font-bold text-gray-900 block">
                         连续坚持
                       </span>
-                      <span className="text-[10px] text-gray-400 font-bold">
+                      <span className="text-[10px] text-orange-600/60 font-bold">
                         Don't stop
                       </span>
                     </div>
@@ -768,7 +768,7 @@ export default function FlagsPage() {
                         天完美达成
                       </p>
                     </div>
-                    <div className="px-3 py-1.5 bg-gray-100 rounded-lg text-xs font-bold text-gray-500">
+                    <div className="px-3 py-1.5 bg-orange-50 rounded-lg text-xs font-bold text-orange-600">
                       加油！
                     </div>
                   </div>
