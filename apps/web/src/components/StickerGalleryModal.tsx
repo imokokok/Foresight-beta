@@ -7,14 +7,18 @@ interface StickerGalleryModalProps {
   isOpen: boolean;
   onClose: () => void;
   collectedIds: string[]; // List of sticker IDs the user has collected
+  stickers?: StickerItem[];
 }
 
 export default function StickerGalleryModal({
   isOpen,
   onClose,
   collectedIds,
+  stickers = [],
 }: StickerGalleryModalProps) {
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
+
+  const displayStickers = stickers.length > 0 ? stickers : OFFICIAL_STICKERS;
 
   // Reset selected sticker when modal opens
   useEffect(() => {
@@ -39,9 +43,9 @@ export default function StickerGalleryModal({
     }
   };
 
-  const total = OFFICIAL_STICKERS.length;
+  const total = displayStickers.length;
   const collected = collectedIds.length;
-  const progress = Math.round((collected / total) * 100);
+  const progress = total > 0 ? Math.round((collected / total) * 100) : 0;
 
   return (
     <AnimatePresence>
@@ -86,7 +90,7 @@ export default function StickerGalleryModal({
 
             {/* Grid */}
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 overflow-y-auto pr-2 pb-4 flex-1 scrollbar-hide">
-              {OFFICIAL_STICKERS.map((sticker) => {
+              {displayStickers.map((sticker) => {
                 const isUnlocked = collectedIds.includes(sticker.id);
                 return (
                   <motion.div
@@ -98,60 +102,62 @@ export default function StickerGalleryModal({
                       aspect-square rounded-3xl flex flex-col items-center justify-center p-4 border-2 transition-all cursor-pointer relative overflow-hidden
                       ${isUnlocked 
                         ? `${sticker.color} border-white shadow-sm hover:shadow-md` 
-                        : "bg-gray-50 border-gray-100 opacity-60"
+                        : "bg-gray-50 border-gray-100 opacity-60 grayscale"
                       }
                     `}
                   >
-                    {isUnlocked ? (
-                      <>
-                        <div className="text-4xl mb-2">{sticker.emoji}</div>
-                        <div className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${getRarityColor(sticker.rarity)}`}>
-                          {getRarityLabel(sticker.rarity)}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="w-8 h-8 text-gray-300 mb-2" />
-                        <div className="text-[10px] font-bold text-gray-400">???</div>
-                      </>
+                    {!isUnlocked && (
+                      <div className="absolute top-2 right-2">
+                        <Lock className="w-4 h-4 text-gray-400" />
+                      </div>
                     )}
+                    
+                    <div className="text-4xl mb-2 overflow-hidden flex items-center justify-center w-16 h-16">
+                      {sticker.image_url ? (
+                        <img src={sticker.image_url} alt={sticker.name} className="w-full h-full object-cover" />
+                      ) : (
+                        sticker.emoji
+                      )}
+                    </div>
+                    <div className="text-xs font-bold text-center text-gray-600 truncate w-full">
+                      {sticker.name}
+                    </div>
                   </motion.div>
                 );
               })}
             </div>
 
-            {/* Detail View (Overlay) */}
+            {/* Selected Sticker Detail Modal (nested) */}
             <AnimatePresence>
               {selectedSticker && (
                 <motion.div
-                  initial={{ opacity: 0, y: 50 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 50 }}
-                  className="absolute inset-x-4 bottom-4 bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl rounded-[2rem] p-6 z-10"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="absolute inset-x-4 bottom-4 bg-white/90 backdrop-blur-md border border-white/50 shadow-lg rounded-3xl p-4 flex items-center gap-4 z-10"
                 >
+                  <div className={`w-16 h-16 rounded-2xl ${selectedSticker.color} flex items-center justify-center text-3xl shadow-inner shrink-0 overflow-hidden`}>
+                     {selectedSticker.image_url ? (
+                        <img src={selectedSticker.image_url} alt={selectedSticker.name} className="w-full h-full object-cover" />
+                      ) : (
+                        selectedSticker.emoji
+                      )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-bold text-gray-900 truncate">{selectedSticker.name}</h4>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${getRarityColor(selectedSticker.rarity)}`}>
+                        {getRarityLabel(selectedSticker.rarity)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 truncate">{selectedSticker.desc}</p>
+                  </div>
                   <button 
                     onClick={() => setSelectedSticker(null)}
-                    className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                    className="p-2 hover:bg-gray-100 rounded-full"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-5 h-5 text-gray-400" />
                   </button>
-                  
-                  <div className="flex gap-6 items-center">
-                    <div className={`w-24 h-24 rounded-3xl flex items-center justify-center text-6xl shadow-inner ${selectedSticker.color}`}>
-                      {selectedSticker.emoji}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-xl font-black text-gray-900">{selectedSticker.name}</h4>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${getRarityColor(selectedSticker.rarity)}`}>
-                          {getRarityLabel(selectedSticker.rarity)}
-                        </span>
-                      </div>
-                      <p className="text-gray-500 font-medium text-sm leading-relaxed">
-                        {selectedSticker.desc}
-                      </p>
-                    </div>
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

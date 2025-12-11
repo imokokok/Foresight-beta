@@ -12,13 +12,10 @@ export async function GET(req: NextRequest) {
     const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ data: [] });
 
-    // Assuming we have a table `user_stickers` with columns: id, user_id, sticker_id, created_at
-    // Since we cannot run SQL migration directly, we assume this table exists or we gracefully handle error.
-    // If table doesn't exist, this will error out, but for now we implement the logic.
-    
+    // Use user_emojis table
     const { data, error } = await client
-      .from("user_stickers")
-      .select("sticker_id")
+      .from("user_emojis")
+      .select("emoji_id")
       .eq("user_id", user_id);
 
     if (error) {
@@ -26,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ data: [] });
     }
 
-    const ids = data ? data.map((r: any) => r.sticker_id) : [];
+    const ids = data ? data.map((r: any) => String(r.emoji_id)) : [];
     // Deduplicate
     return NextResponse.json({ data: Array.from(new Set(ids)) });
   } catch (e) {
@@ -46,10 +43,10 @@ export async function POST(req: NextRequest) {
     const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ error: "No DB" }, { status: 500 });
 
-    const { error } = await client.from("user_stickers").insert({
+    const { error } = await client.from("user_emojis").insert({
       user_id,
-      sticker_id,
-      created_at: new Date().toISOString(),
+      emoji_id: sticker_id,
+      source: 'manual_api',
     });
 
     if (error) {

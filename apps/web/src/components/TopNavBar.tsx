@@ -22,7 +22,6 @@ export default function TopNavBar() {
     formatAddress,
     availableWallets,
     currentWalletType,
-    switchNetwork,
   } = useWallet();
   const { user, loading: authLoading, signOut } = useAuth();
 
@@ -102,14 +101,14 @@ export default function TopNavBar() {
     switch (id.toLowerCase()) {
       case "0x1":
         return "Ethereum";
+      case "0xaa36a7":
+        return "Sepolia";
       case "0x5":
         return "Goerli";
       case "0x89":
         return "Polygon";
       case "0x38":
         return "BSC";
-      case "0x13882":
-        return "Amoy";
       default:
         return id;
     }
@@ -120,14 +119,14 @@ export default function TopNavBar() {
     switch (low) {
       case "0x1":
         return "https://etherscan.io";
+      case "0xaa36a7":
+        return "https://sepolia.etherscan.io";
       case "0x5":
         return "https://goerli.etherscan.io";
       case "0x89":
         return "https://polygonscan.com";
       case "0x38":
         return "https://bscscan.com";
-      case "0x13882":
-        return "https://amoy.polygonscan.com";
       default:
         return "https://etherscan.io";
     }
@@ -173,10 +172,21 @@ export default function TopNavBar() {
     setMenuOpen(false);
   };
 
-  const switchToAmoy = async () => {
-    const res = await switchNetwork("0x13882");
-    if (res?.success) await updateNetworkInfo();
-    setMenuOpen(false);
+  const switchToSepolia = async () => {
+    const ethereum =
+      typeof window !== "undefined" ? window.ethereum : undefined;
+    if (!ethereum) return;
+    try {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0xaa36a7" }],
+      });
+      updateNetworkInfo();
+    } catch (e) {
+      console.error("Switch chain failed:", e);
+    } finally {
+      setMenuOpen(false);
+    }
   };
 
   // 外部点击与 Esc 关闭菜单（兼容门户内菜单）
@@ -427,26 +437,18 @@ export default function TopNavBar() {
                     </button>
                     <div className="my-1 border-t border-purple-100/60" />
                     <button
-                      onClick={switchToAmoy}
+                      onClick={switchToSepolia}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>切换到 Amoy 网络</span>
-                    </button>
-                    <div className="my-1 border-t border-purple-100/60" />
-                    <button
-                      onClick={() => setWalletModalOpen(true)}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>切换账号</span>
+                      <span>切换到 Sepolia 网络</span>
                     </button>
                     <button
                       onClick={handleDisconnectWallet}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-red-50 text-black"
+                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
-                      <LogOut className="w-4 h-4 text-red-600" />
-                      <span>退出登录</span>
+                      <LogOut className="w-4 h-4 text-purple-600" />
+                      <span>断开连接</span>
                     </button>
                   </div>
                 </>,

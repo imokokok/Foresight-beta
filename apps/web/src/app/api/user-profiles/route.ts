@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     );
     const username = String(payload?.username || "").trim();
     const email = String(payload?.email || "").trim();
-    const remember = false;
+    const remember = !!payload?.rememberMe;
 
     const sessAddr = getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
@@ -193,7 +193,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    const res = NextResponse.json({ success: true });
+    if (remember) {
+      res.cookies.set("fs_remember", "1", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+    return res;
   } catch (e: any) {
     return NextResponse.json(
       { success: false, message: String(e?.message || e) },

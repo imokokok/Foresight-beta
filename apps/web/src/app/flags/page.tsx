@@ -93,6 +93,7 @@ export default function FlagsPage() {
   );
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
+  const [allStickers, setAllStickers] = useState<StickerItem[]>([]);
 
   const supabase = getClient();
   const OFFICIAL_WITNESS_ID = "official";
@@ -324,11 +325,31 @@ export default function FlagsPage() {
     }
   };
 
+  const loadAllStickers = async () => {
+    try {
+      const res = await fetch("/api/emojis");
+      const ret = await res.json();
+      if (ret?.data && Array.isArray(ret.data)) {
+        const items = ret.data.map((r: any) => ({
+          id: String(r.id),
+          emoji: "",
+          name: r.name,
+          rarity: r.rarity || "common",
+          desc: r.description || "",
+          color: "bg-blue-50",
+          image_url: r.url,
+        }));
+        setAllStickers(items);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     if (!supabase) return;
     loadFlags();
     loadInvites();
     loadCollectedStickers();
+    loadAllStickers();
 
     const ch = supabase
       .channel("flags-realtime")
@@ -413,6 +434,27 @@ export default function FlagsPage() {
       setCheckinNote("");
       setCheckinImage("");
       await loadFlags();
+
+      // Check for reward
+      if ((ret as any)?.reward) {
+        // Map backend emoji to frontend StickerItem if needed, or pass directly
+        // Backend: { id, name, url, rarity, description }
+        // Frontend: { id, emoji, name, rarity, desc, color }
+        // We'll adapt it.
+        const r = (ret as any).reward;
+        const s: StickerItem = {
+            id: String(r.id),
+            emoji: "", // Use image instead if possible, or fallback
+            name: r.name,
+            rarity: r.rarity || "common",
+            desc: r.description || "获得了一个新表情",
+            color: "bg-blue-100", // Default color
+            // Add image_url to StickerItem definition if not present
+            image_url: r.url
+        } as any; 
+        setEarnedSticker(s);
+        setStickerOpen(true);
+      }
     } catch (e) {
       alert(String((e as any)?.message || "打卡失败，请重试"));
     } finally {
@@ -800,6 +842,7 @@ export default function FlagsPage() {
         isOpen={galleryOpen}
         onClose={() => setGalleryOpen(false)}
         collectedIds={collectedStickers}
+        stickers={allStickers}
       />
 
       {/* Checkin Modal */}

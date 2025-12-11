@@ -185,27 +185,3 @@ export async function getQueue(verifyingContract: string, chainId: number, outco
 export function getOrderTypes() {
   return Types
 }
-
-export async function ingestTrade(networkId: number, txHash: string) {
-  if (!supabaseAdmin) throw new Error('Supabase not configured')
-  if (!networkId || !txHash) throw new Error('Missing chainId or txHash')
-  return { ok: true }
-}
-
-export async function getCandles(market: string, chainId: number, outcome: number, resolution: string, limit: number) {
-  if (!supabaseAdmin) throw new Error('Supabase not configured')
-  const m = market.toLowerCase()
-  const r = resolution || '15m'
-  const l = Math.max(1, Math.min(1000, Number(limit || 100)))
-  const { data, error } = await supabaseAdmin
-    .from('candles')
-    .select('open,high,low,close,time')
-    .eq('market_address', m)
-    .eq('network_id', chainId)
-    .eq('outcome_index', outcome)
-    .eq('resolution', r)
-    .order('time', { ascending: false })
-    .limit(l)
-  if (error) throw new Error(error.message)
-  return data || []
-}

@@ -42,19 +42,6 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
   }, [user, account, open, onClose]);
 
   useEffect(() => {
-    if (!open) return;
-    try {
-      const s = window.localStorage.getItem("fs_last_login_account");
-      if (s) {
-        const o = JSON.parse(s);
-        if (o && o.type === "email" && typeof o.value === "string") {
-          setEmail(o.value);
-        }
-      }
-    } catch {}
-  }, [open]);
-
-  useEffect(() => {
     if (!open) {
       setTab(defaultTab);
       setEmail("");
@@ -83,12 +70,6 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
     setLoading(true);
     try {
       await verifyEmailOtp(email, otp);
-      try {
-        window.localStorage.setItem(
-          'fs_last_login_account',
-          JSON.stringify({ type: 'email', value: email, ts: Date.now() })
-        );
-      } catch {}
       onClose();
     } catch {}
     setLoading(false);
@@ -125,22 +106,12 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
       setPermLoading(true);
       await requestWalletPermissions();
       setPermLoading(false);
-    setSiweLoading(true);
-    const res = await siweLogin();
-    setSiweLoading(false);
-    if (!res.success) {
-      console.error('签名登录失败:', res.error);
-    } else {
-      const addr = String(res.address || account || '').toLowerCase();
-      if (addr) {
-        try {
-          window.localStorage.setItem(
-            'fs_last_login_account',
-            JSON.stringify({ type: 'wallet', value: addr, ts: Date.now() })
-          );
-        } catch {}
+      setSiweLoading(true);
+      const res = await siweLogin();
+      setSiweLoading(false);
+      if (!res.success) {
+        console.error('签名登录失败:', res.error);
       }
-    }
       setMultiLoading(true);
       await multisigSign();
       setMultiLoading(false);

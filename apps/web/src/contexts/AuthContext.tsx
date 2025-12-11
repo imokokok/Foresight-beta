@@ -55,32 +55,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    (supabase as any).auth.getSession().then(({ data, error }: any) => {
-      if (!mounted) return;
-      if (error) {
-        setError(error.message);
-      }
-      const sessUser = data?.session?.user || null;
-      setUser(
-        sessUser
-          ? {
+    const hasRemember = (typeof document !== "undefined") && document.cookie.split(";").some(s => s.trim().startsWith("fs_remember=1"));
+    if (!hasRemember) {
+      setUser(null);
+      setLoading(false);
+    } else {
+      (supabase as any).auth.getSession().then(({ data, error }: any) => {
+        if (!mounted) return;
+        if (error) {
+          setError(error.message);
+        }
+        const sessUser = data?.session?.user || null;
+        setUser(
+          sessUser
+            ? {
               id: sessUser.id,
               email: sessUser.email ?? null,
               user_metadata: sessUser.user_metadata,
             }
-          : null
-      );
-      setLoading(false);
-      const email = sessUser?.email ?? null;
-      if (email && typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem(
-            "fs_last_login_account",
-            JSON.stringify({ type: "email", value: email, ts: Date.now() })
-          );
-        } catch {}
-      }
-    });
+            : null
+        );
+        setLoading(false);
+      });
+    }
 
     // 监听会话变化
     const { data: sub } = (supabase as any).auth.onAuthStateChange(
@@ -96,15 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             : null
         );
         setLoading(false);
-        const email = sessUser?.email ?? null;
-        if (email && typeof window !== "undefined") {
-          try {
-            window.localStorage.setItem(
-              "fs_last_login_account",
-              JSON.stringify({ type: "email", value: email, ts: Date.now() })
-            );
-          } catch {}
-        }
       }
     );
 

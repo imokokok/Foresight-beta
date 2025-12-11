@@ -29,6 +29,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendLeft, setResendLeft] = useState(0);
   const [codePreview, setCodePreview] = useState<string | null>(null);
@@ -57,19 +58,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   // 当弹窗重新打开且没有用户时，重置所有本地状态到初始值
   useEffect(() => {
     if (!isOpen) return;
-    try {
-      const s = window.localStorage.getItem("fs_last_login_account");
-      if (s) {
-        const o = JSON.parse(s);
-        if (o && o.type === "email" && typeof o.value === "string") {
-          setEmail(o.value);
-        }
-      }
-    } catch {}
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
     if (!user) {
       setSelectedWallet(null);
       setEmail("");
@@ -83,6 +71,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setProfileLoading(false);
       setUsername("");
       setProfileError(null);
+      setRememberMe(false);
       setEmailVerified(false);
       setResendLeft(0);
       setCodePreview(null);
@@ -178,14 +167,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
         const addrCheck = String(res.address || account || '').toLowerCase();
         if (addrCheck) {
           try {
-            window.localStorage.setItem(
-              'fs_last_login_account',
-              JSON.stringify({ type: 'wallet', value: addrCheck, ts: Date.now() })
-            );
-          } catch {}
-        }
-        if (addrCheck) {
-          try {
             const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
             const d = await r.json();
             const p = d?.profile;
@@ -230,12 +211,6 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     setEmailLoading(true);
     try {
       await auth.verifyEmailOtp(email, otp);
-      try {
-        window.localStorage.setItem(
-          'fs_last_login_account',
-          JSON.stringify({ type: 'email', value: email, ts: Date.now() })
-        );
-      } catch {}
       onClose();
     } catch {}
     setEmailLoading(false);
@@ -328,7 +303,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       const resp = await fetch('/api/user-profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: addr, username, email })
+        body: JSON.stringify({ walletAddress: addr, username, email, rememberMe })
       });
       const json = await resp.json();
       if (!resp.ok || !json?.success) {
@@ -523,6 +498,10 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       <div className="text-xs text-gray-500">验证码有效期 15 分钟，失败 3 次将锁定 1 小时。</div>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+                    <label htmlFor="remember-me" className="text-sm text-gray-700">记住我</label>
+                  </div>
                   {profileError && <div className="text-sm text-red-600">{profileError}</div>}
                   <div className="flex items-center gap-2">
                     <button

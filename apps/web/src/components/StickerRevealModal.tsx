@@ -10,6 +10,7 @@ export interface StickerItem {
   rarity: "common" | "rare" | "epic" | "legendary";
   desc: string;
   color: string;
+  image_url?: string;
 }
 
 // 模拟官方表情包池
@@ -192,9 +193,13 @@ export default function StickerRevealModal({
                         scale: [1, 1.1, 1]
                       }}
                       transition={{ duration: 3, repeat: Infinity }}
-                      className={`w-32 h-32 mx-auto rounded-3xl ${currentSticker.color} flex items-center justify-center text-6xl shadow-inner mb-6`}
+                      className={`w-32 h-32 mx-auto rounded-3xl ${currentSticker.color} flex items-center justify-center text-6xl shadow-inner mb-6 overflow-hidden`}
                     >
-                      {currentSticker.emoji}
+                      {currentSticker.image_url ? (
+                        <img src={currentSticker.image_url} alt={currentSticker.name} className="w-full h-full object-cover" />
+                      ) : (
+                        currentSticker.emoji
+                      )}
                     </motion.div>
 
                     <h3 className="text-2xl font-black text-gray-900 mb-2">

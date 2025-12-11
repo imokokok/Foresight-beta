@@ -141,6 +141,35 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
+    // Reward Logic: Randomly reward an emoji
+    let rewardedEmoji = null;
+    try {
+      // 1. Fetch available emojis
+      const { data: allEmojis } = await client
+        .from("emojis")
+        .select("*");
+      
+      if (allEmojis && allEmojis.length > 0) {
+        // Simple random selection
+        const randomEmoji = allEmojis[Math.floor(Math.random() * allEmojis.length)];
+        
+        // 2. Insert into user_emojis
+        const { error: rewardError } = await client
+            .from("user_emojis")
+            .insert({
+                user_id: userId,
+                emoji_id: randomEmoji.id,
+                source: 'checkin'
+            });
+
+        if (!rewardError) {
+             rewardedEmoji = randomEmoji;
+        }
+      }
+    } catch (e) {
+      console.error("Reward error", e);
+    }
+
     let { data, error } = await client
       .from("flags")
       .update({
@@ -174,7 +203,7 @@ export async function POST(req: NextRequest) {
         );
       data = fallback.data;
     }
-    return NextResponse.json({ message: "ok", data }, { status: 200 });
+    return NextResponse.json({ message: "ok", data, reward: rewardedEmoji }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { message: "打卡失败", detail: String(e?.message || e) },
