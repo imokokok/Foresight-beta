@@ -35,6 +35,8 @@ interface TradingPanelProps {
   userOrders: any[];
   cancelOrder: (id: string) => void;
   outcomes: any[];
+  onMint: (amount: string) => Promise<void>;
+  onRedeem: (amount: string) => Promise<void>;
 }
 
 export function TradingPanel({
@@ -61,8 +63,13 @@ export function TradingPanel({
   userOrders,
   cancelOrder,
   outcomes,
+  onMint,
+  onRedeem
 }: TradingPanelProps) {
-  const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders">("trade");
+  const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "pool">("trade");
+  const [mintAmount, setMintAmount] = useState("");
+  const [mintMode, setMintMode] = useState<"mint" | "redeem">("mint");
+  const [isMinting, setIsMinting] = useState(false);
 
   // Format Helpers
   const formatPrice = (p: string) => {
@@ -127,10 +134,94 @@ export function TradingPanel({
           >
             订单 ({userOrders.length})
           </button>
+          <button
+            onClick={() => setActiveTab("pool")}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+              activeTab === "pool"
+                ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
+            }`}
+          >
+            铸币
+          </button>
       </div>
 
       {/* Content Area */}
       <div className="flex-1 p-5 overflow-y-auto">
+        {activeTab === "pool" && (
+           <div className="space-y-6">
+              <div className="bg-purple-50 p-4 rounded-xl text-sm text-purple-800 leading-relaxed">
+                <p className="font-bold mb-1">什么是铸币 (Mint)?</p>
+                <p className="opacity-80">
+                  如果您想成为首个卖家或提供流动性，您需要先将 USDC 转换为完整的预测代币组 (如 Yes + No)。
+                  <br/>
+                  1 USDC = 1 Yes + 1 No。
+                  <br/>
+                  铸币后，您可以出售其中一种代币(如 Sell Yes)，即相当于押注另一种(Hold No)。
+                </p>
+              </div>
+
+              <div className="bg-gray-100 p-1.5 rounded-xl grid grid-cols-2 shadow-inner">
+                <button
+                  onClick={() => setMintMode("mint")}
+                  className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+                    mintMode === "mint"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  铸币 (USDC → Set)
+                </button>
+                <button
+                  onClick={() => setMintMode("redeem")}
+                  className={`py-2.5 rounded-lg text-sm font-bold transition-all ${
+                    mintMode === "redeem"
+                      ? "bg-white text-purple-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  赎回 (Set → USDC)
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-xs font-bold text-gray-500 uppercase">
+                    {mintMode === "mint" ? "输入 USDC 数量" : "输入成套代币数量"}
+                 </label>
+                 <div className="relative">
+                    <input
+                      type="number"
+                      value={mintAmount}
+                      onChange={(e) => setMintAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-16 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all"
+                    />
+                    <span className="absolute right-4 top-3.5 text-gray-400 font-medium">
+                       {mintMode === "mint" ? "USDC" : "Sets"}
+                    </span>
+                 </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                   if (!mintAmount || parseFloat(mintAmount) <= 0) return;
+                   setIsMinting(true);
+                   try {
+                     if (mintMode === "mint") await onMint(mintAmount);
+                     else await onRedeem(mintAmount);
+                     setMintAmount("");
+                   } finally {
+                     setIsMinting(false);
+                   }
+                }}
+                disabled={isMinting || !market}
+                className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                 {isMinting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (mintMode === "mint" ? "确认铸币" : "确认赎回")}
+              </button>
+           </div>
+        )}
+
         {activeTab === "trade" && (
           <div className="space-y-6">
             {/* Outcome Selector (if multi) */}

@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/supabase';
 
+export async function GET(req: NextRequest) {
+  try {
+    const client = getClient();
+    if (!client) {
+      return NextResponse.json(
+        { success: false, message: 'Supabase not configured' },
+        { status: 500 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const chainId = searchParams.get('chainId');
+    const contract = searchParams.get('contract');
+    const maker = searchParams.get('maker');
+    const status = searchParams.get('status') || 'open';
+
+    let query = client.from('orders').select('*');
+
+    if (chainId) query = query.eq('chain_id', chainId);
+    if (contract) query = query.eq('verifying_contract', contract.toLowerCase());
+    if (maker) query = query.eq('maker_address', maker.toLowerCase());
+    if (status && status !== 'all') query = query.eq('status', status);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (e: any) {
+    return NextResponse.json(
+      { success: false, message: e?.message || String(e) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const client = getClient();

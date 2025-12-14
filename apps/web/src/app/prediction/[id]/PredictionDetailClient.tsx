@@ -14,6 +14,91 @@ import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
 import { Loader2 } from "lucide-react";
 
+// ERC20/合约 ABI（最小化）
+const erc20Abi = [
+  "function decimals() view returns (uint8)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 value) returns (bool)",
+];
+
+const marketAbi = [
+  "function mintCompleteSet(uint256 amount) external",
+  "function depositCompleteSet(uint256 amount) external",
+  "function outcomeToken() view returns (address)"
+];
+
+const erc1155Abi = [
+  "function isApprovedForAll(address account, address operator) view returns (bool)",
+  "function setApprovalForAll(address operator, bool approved) external"
+];
+
+// 地址解析（基于 chainId）
+function resolveAddresses(chainId: number): {
+  foresight: string;
+  usdc: string;
+} {
+  const defaultForesight = (
+    process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS || ""
+  ).trim();
+  const defaultUsdc = (process.env.NEXT_PUBLIC_USDC_ADDRESS || "").trim();
+
+  const map: Record<number, { foresight?: string; usdc?: string }> = {
+    137: {
+      foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_POLYGON,
+      usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON,
+    },
+    80002: {
+      foresight:
+        process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_AMOY ||
+        "0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02",
+      usdc:
+        process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
+        "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+    },
+    11155111: {
+      foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_SEPOLIA,
+      usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA,
+    },
+    31337: {
+      foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
+      usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST,
+    },
+    1337: {
+      foresight: process.env.NEXT_PUBLIC_FORESIGHT_ADDRESS_LOCALHOST,
+      usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST,
+    },
+  };
+
+  const fromMap = map[chainId] || {};
+  const foresight = (fromMap.foresight || defaultForesight || "").trim();
+  const usdc = (fromMap.usdc || defaultUsdc || "").trim();
+
+  return { foresight, usdc };
+}
+
+// 将任意小数按指定 decimals 转为最小单位 BigInt
+function parseUnitsByDecimals(
+  value: number | string,
+  decimals: number
+): bigint {
+  const str = typeof value === "number" ? String(value) : value;
+  try {
+    return ethers.parseUnits(str, decimals);
+  } catch {
+    // 兜底处理，避免浮点误差
+    const parts = str.split(".");
+    if (parts.length === 1) {
+      return BigInt(parts[0]) * BigInt(10) ** BigInt(decimals);
+    }
+    const [intPart, fracRaw] = parts;
+    const frac = (fracRaw || "").slice(0, decimals).padEnd(decimals, "0");
+    return (
+      BigInt(intPart || "0") * BigInt(10) ** BigInt(decimals) +
+      BigInt(frac || "0")
+    );
+  }
+}
+
 export interface PredictionDetail {
   id: number;
   title: string;
@@ -177,15 +262,20 @@ export default function PredictionDetailClient({
       const fetchOrders = async () => {
           try {
              const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
-             // Note: API might need updating to support filtering by user/market easily, 
-             // or we use the queue endpoint if it supported user filter.
-             // For now assuming we have a way or just fetching open orders.
-             // Mocking empty for safety if API doesn't support direct user query on this route.
-             // Real implementation would call /api/orderbook/orders?maker=...
-          } catch {}
+             const q = `contract=${market.market}&chainId=${market.chain_id}&maker=${account}&status=open`;
+             const res = await fetch(`${base}/orderbook/orders?${q}`);
+             const json = await res.json();
+             if (json.success && json.data) {
+                 setOpenOrders(json.data);
+             }
+          } catch (e) {
+              console.error("Fetch orders failed", e);
+          }
       };
-      // const timer = setInterval(fetchOrders, 5000);
-      // return () => clearInterval(timer);
+      
+      fetchOrders();
+      const timer = setInterval(fetchOrders, 5000);
+      return () => clearInterval(timer);
   }, [market, account]);
 
 
@@ -203,44 +293,306 @@ export default function PredictionDetailClient({
   };
 
   const cancelOrder = async (salt: string) => {
-      // Implement cancel logic
+    if (!account || !market) return;
+    try {
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
+      
+      // 1. Sign cancellation message
+      // Simple signature of the salt is usually enough for authentication of cancel
+      // Or EIP-712 CancelOrder(uint256 salt)
+      const provider = new ethers.BrowserProvider(walletProvider);
+      const signer = await provider.getSigner();
+      
+      // For simplicity in this demo, we assume the API accepts a signed message of the salt
+      // Real implementation should match contract's cancel requirement or relayer's auth
+      const message = `Cancel Order: ${salt}`;
+      const signature = await signer.signMessage(message);
+
+      const res = await fetch(`${base}/orderbook/cancel-salt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          salt,
+          maker: account,
+          signature,
+          message 
+        }),
+      });
+      
+      const json = await res.json();
+      if (json.success) {
+        setOrderMsg("订单已取消");
+        // Optimistic update
+        setOpenOrders(prev => prev.filter(o => o.maker_salt !== salt));
+      } else {
+        throw new Error(json.message || "取消失败");
+      }
+    } catch (e: any) {
+      alert(e.message || "取消订单失败");
+    }
   };
 
-  // Reuse the heavy submitOrder logic from previous file (simplified here for brevity, 
-  // you should copy the full logic or import it if extracted)
-  const submitOrder = async () => {
-      // ... (Copy the full submitOrder logic from previous file or keep it here)
-      // For this refactor, I will assume we paste the logic back or keep it.
-      // Since I cannot "import" functions from the old file I'm overwriting, 
-      // I must re-implement it.
+  const handleMint = async (amountStr: string) => {
+    try {
+      if (!market || !account || !walletProvider) return;
+      setOrderMsg("准备铸币...");
       
-      setIsSubmitting(true);
-      setOrderMsg(null);
+      const provider = new ethers.BrowserProvider(walletProvider);
+      const signer = await provider.getSigner();
       
-      try {
-          if (!market) throw new Error("市场未加载");
-          if (!account) throw new Error("请连接钱包");
-          
-          // ... (The rest of the web3 logic: switch chain, approve, sign, post)
-          // To save tokens and time, I'll put a placeholder here that implies the logic is 
-          // essentially the same as before. 
-          // In a real scenario, I would copy the 200 lines of submitOrder here.
-          
-          // Let's at least simulate a delay
-          await new Promise(r => setTimeout(r, 1000));
-          setOrderMsg("功能重构中 - 请确保完整逻辑已迁移");
-          
-      } catch (e: any) {
-          setOrderMsg(e.message);
-      } finally {
-          setIsSubmitting(false);
+      // Check network
+      const network = await provider.getNetwork();
+      if (Number(network.chainId) !== market.chain_id) {
+         await switchNetwork(market.chain_id);
+         await new Promise(r => setTimeout(r, 1000));
       }
+
+      // Resolve decimals
+      const addresses = resolveAddresses(market.chain_id);
+      const collateralToken = market.collateral_token || addresses.usdc;
+      console.log("[Mint] Market:", market.market, "Collateral:", collateralToken);
+      
+      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
+      const decimals = await tokenContract.decimals();
+      const amountBN = parseUnitsByDecimals(amountStr, Number(decimals));
+      console.log("[Mint] Amount:", amountStr, "Decimals:", decimals, "BN:", amountBN.toString());
+
+      // Approve
+      const allowance = await tokenContract.allowance(account, market.market);
+      console.log("[Mint] Allowance:", allowance.toString());
+      
+      if (allowance < amountBN) {
+        setOrderMsg("请授权 USDC...");
+        const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
+        await txApp.wait();
+        console.log("[Mint] Approved");
+      }
+
+      // Mint
+      setOrderMsg("正在铸币...");
+      const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+      
+      // Estimate gas to check for revert reasons early
+      try {
+        await marketContract.mintCompleteSet.estimateGas(amountBN);
+      } catch (err: any) {
+        console.error("[Mint] EstimateGas Failed:", err);
+        throw new Error("铸币交易预估失败，请检查余额或权限: " + (err.reason || err.message));
+      }
+
+      const tx = await marketContract.mintCompleteSet(amountBN);
+      console.log("[Mint] Tx sent:", tx.hash);
+      await tx.wait();
+      
+      setOrderMsg("铸币成功！您现在可以出售代币了。");
+      // Refresh balance if possible
+    } catch (e: any) {
+      console.error(e);
+      setOrderMsg("铸币失败: " + (e.message || "未知错误"));
+    }
   };
-  
-  // Re-implement Submit Order Logic properly
-  // ... (Pasting essential parts for it to work)
-  // [Code omitted for brevity in this specific tool call, but in real file I'd include it]
-  // Ideally we should extract this to a hook `useTrading.ts`.
+
+  const handleRedeem = async (amountStr: string) => {
+    try {
+      if (!market || !account || !walletProvider) return;
+      setOrderMsg("准备赎回...");
+      
+      const provider = new ethers.BrowserProvider(walletProvider);
+      const signer = await provider.getSigner();
+      
+      // Check network
+      const network = await provider.getNetwork();
+      if (Number(network.chainId) !== market.chain_id) {
+         await switchNetwork(market.chain_id);
+         await new Promise(r => setTimeout(r, 1000));
+      }
+
+      // Resolve decimals (Collateral decimals used for amount)
+      const addresses = resolveAddresses(market.chain_id);
+      const collateralToken = market.collateral_token || addresses.usdc;
+      const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
+      const decimals = await tokenContract.decimals();
+      const amountBN = parseUnitsByDecimals(amountStr, Number(decimals));
+
+      // Check 1155 Approval
+      const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+      const outcomeTokenAddress = await marketContract.outcomeToken();
+      const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+      
+      const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+      if (!isApproved) {
+         setOrderMsg("请授权预测代币...");
+         const txApp = await outcome1155.setApprovalForAll(market.market, true);
+         await txApp.wait();
+      }
+
+      // Redeem (Deposit Complete Set)
+      setOrderMsg("正在赎回...");
+      const tx = await marketContract.depositCompleteSet(amountBN);
+      await tx.wait();
+      
+      setOrderMsg("赎回成功！USDC 已退回。");
+    } catch (e: any) {
+      console.error(e);
+      setOrderMsg("赎回失败: " + (e.message || "未知错误"));
+    }
+  };
+
+  const submitOrder = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setOrderMsg(null);
+
+    try {
+      if (!market) throw new Error("市场信息未加载");
+      if (!account) throw new Error("请先连接钱包");
+      if (!walletProvider) throw new Error("钱包未初始化");
+
+      const price = parseFloat(priceInput);
+      const amount = parseFloat(amountInput);
+      
+      if (isNaN(price) || price <= 0 || price >= 1) throw new Error("价格无效 (0-1)");
+      if (isNaN(amount) || amount <= 0) throw new Error("数量无效");
+
+      // 1. Check Network
+      const provider = new ethers.BrowserProvider(walletProvider);
+      const network = await provider.getNetwork();
+      const currentChainId = Number(network.chainId);
+      
+      if (currentChainId !== market.chain_id) {
+        try {
+          await switchNetwork(market.chain_id);
+          // Wait a bit for network switch to settle
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (e: any) {
+          throw new Error(`请切换到正确网络 (Chain ID: ${market.chain_id})`);
+        }
+      }
+
+      // Refresh signer after switch
+      const signer = await provider.getSigner();
+      const addresses = resolveAddresses(market.chain_id);
+      
+      // 2. Check Allowance (only for Buy orders or if using collateral)
+      // For Buy: User pays USDC (or collateral)
+      // For Sell: User pays Conditional Tokens (CT)
+      // Simplified: Assume USDC for Buy, CT for Sell.
+      // Note: If selling, we need to approve the CT contract (Market) to spend the CT tokens?
+      // Actually CT are usually held by the user.
+      // Let's assume Buy = Pay Collateral, Sell = Pay CT.
+      
+      const collateralToken = market.collateral_token || addresses.usdc;
+      
+      if (tradeSide === 'buy') {
+          const tokenContract = new ethers.Contract(collateralToken, erc20Abi, signer);
+          const decimals = await tokenContract.decimals();
+          const cost = parseUnitsByDecimals(amount * price, Number(decimals)); // Approx cost
+          
+          const allowance = await tokenContract.allowance(account, market.market);
+          if (allowance < cost) {
+             setOrderMsg("正在请求授权...");
+             const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
+             await tx.wait();
+             setOrderMsg("授权成功，正在下单...");
+          }
+       } else {
+          // For Sell: User needs to approve the Market to spend their Outcome Tokens
+          const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+          const outcomeTokenAddress = await marketContract.outcomeToken();
+          const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+          
+          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
+          if (!isApproved) {
+             setOrderMsg("请求预测代币授权...");
+             const tx = await outcome1155.setApprovalForAll(market.market, true);
+             await tx.wait();
+             setOrderMsg("授权成功，正在下单...");
+          }
+       }
+
+      // 3. Construct Order
+      const salt = Math.floor(Math.random() * 1000000).toString();
+      const expiry = Math.floor(Date.now() / 1000) + 3600 * 24; // 24h expiry
+      
+      // Convert to appropriate units
+      // Price is usually scaled by 1e18 or similar in CLOB
+      // Amount is base units
+      const priceBN = ethers.parseUnits(price.toString(), 18);
+      const amountBN = ethers.parseUnits(amount.toString(), 18); // Assume 18 decimals for amount (CT)
+
+      const domain = {
+        name: "Foresight",
+        version: "1",
+        chainId: market.chain_id,
+        verifyingContract: market.market,
+      };
+
+      const types = {
+        Order: [
+          { name: "salt", type: "uint256" },
+          { name: "maker", type: "address" },
+          { name: "isBuy", type: "bool" },
+          { name: "outcomeIndex", type: "uint256" }, // Use uint256 to match common solidity patterns for index
+          { name: "amount", type: "uint256" },
+          { name: "price", type: "uint256" },
+          { name: "expiry", type: "uint256" },
+        ],
+      };
+
+      const value = {
+        salt: BigInt(salt),
+        maker: account,
+        isBuy: tradeSide === "buy",
+        outcomeIndex: BigInt(tradeOutcome),
+        amount: amountBN,
+        price: priceBN,
+        expiry: BigInt(expiry),
+      };
+
+      // 4. Sign Order
+      const signature = await signer.signTypedData(domain, types, value);
+
+      // 5. Submit to Relayer
+      const base = process.env.NEXT_PUBLIC_RELAYER_URL || "/api";
+      const payload = {
+        order: {
+          ...value,
+          salt: salt, // Send as string to avoid JSON BigInt issues
+          outcomeIndex: tradeOutcome, // Send as number for JSON
+          amount: amountBN.toString(),
+          price: priceBN.toString(),
+          expiry: expiry.toString(),
+          // Ensure BigInts are stringified if needed, but value has them.
+          // We override specific fields for JSON serialization
+        },
+        signature,
+        chainId: market.chain_id,
+        contract: market.market
+      };
+
+      // Use /orders endpoint which handles POST
+      const res = await fetch(`${base}/orderbook/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setOrderMsg("下单成功！");
+        setAmountInput("");
+        // Refresh orders
+      } else {
+        throw new Error(json.message || "下单失败");
+      }
+
+    } catch (e: any) {
+      console.error(e);
+      setOrderMsg(e.message || "交易失败");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   if (loading) {
@@ -329,6 +681,8 @@ export default function PredictionDetailClient({
                     userOrders={openOrders}
                     cancelOrder={cancelOrder}
                     outcomes={outcomes}
+                    onMint={handleMint}
+                    onRedeem={handleRedeem}
                 />
              </div>
           </div>
