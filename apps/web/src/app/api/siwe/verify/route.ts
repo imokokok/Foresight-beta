@@ -29,15 +29,13 @@ export async function POST(req: NextRequest) {
     }
 
     const address = msg.address
+    const chainId = msg.chainId
     const res = NextResponse.json({ success: true, address })
-    // 简单会话：写入地址到 cookie（生产建议使用 JWT 或服务端会话）
-    res.cookies.set('fs_session', JSON.stringify({ address }), {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24,
-    })
+    
+    // 🔥 使用 JWT 创建安全的会话
+    const { createSession } = await import('@/lib/session')
+    await createSession(res, address, chainId)
+    
     // 清除一次性 nonce
     res.cookies.set('siwe_nonce', '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 })
     return res
