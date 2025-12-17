@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
 
 type MenuItem = {
@@ -31,7 +32,8 @@ export default function Sidebar() {
   const router = useRouter();
   const { account } = useWallet();
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const profileCtx = useUserProfileOptional();
+  const isAdmin = !!profileCtx?.isAdmin;
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     markets: true,
@@ -121,26 +123,6 @@ export default function Sidebar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        if (!account) {
-          setIsAdmin(false);
-          return;
-        }
-        const res = await fetch(
-          `/api/user-profiles?address=${String(account).toLowerCase()}`,
-          { cache: "no-store" }
-        );
-        const j = await res.json().catch(() => ({}));
-        setIsAdmin(!!j?.profile?.is_admin);
-      } catch {
-        setIsAdmin(false);
-      }
-    };
-    run();
-  }, [account]);
 
   return (
     <>

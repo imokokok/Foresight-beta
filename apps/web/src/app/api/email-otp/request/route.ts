@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem, OtpRecord } from '@/lib/serverUtils'
+import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem, OtpRecord, parseRequestBody, logApiError } from '@/lib/serverUtils'
 
 function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email)
@@ -27,9 +27,7 @@ async function sendMailSMTP(email: string, code: string) {
 export async function POST(req: NextRequest) {
   try {
     const { store, logs } = getEmailOtpShared()
-    const bodyText = await req.text()
-    let payload: any = {}
-    try { payload = JSON.parse(bodyText) } catch {}
+    const payload = await parseRequestBody(req as any)
 
     const email = String(payload?.email || '').trim().toLowerCase()
     const walletAddress = normalizeAddress(String(payload?.walletAddress || ''))
@@ -95,6 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: '邮件发送失败' }, { status: 500 })
     }
   } catch (e: any) {
+    logApiError('POST /api/email-otp/request', e)
     return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 })
   }
 }

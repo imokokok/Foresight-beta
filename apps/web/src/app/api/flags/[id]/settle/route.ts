@@ -1,29 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { Database } from "@/lib/database.types";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
-function toNum(v: any): number | null {
+function toNum(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get("content-type") || "";
-  const t = await req.text();
-  if (ct.includes("application/json")) {
-    try {
-      return JSON.parse(t);
-    } catch {
-      return {};
-    }
-  }
-  if (ct.includes("application/x-www-form-urlencoded")) {
-    const p = new URLSearchParams(t);
-    return Object.fromEntries(p.entries());
-  }
-  try {
-    return JSON.parse(t);
-  } catch {
-    return {};
-  }
 }
 
 export async function POST(
@@ -35,7 +17,7 @@ export async function POST(
     const flagId = toNum(id);
     if (!flagId)
       return NextResponse.json({ message: "flagId 必填" }, { status: 400 });
-    const body = await parseBody(req as any);
+    const body = await parseRequestBody(req as any);
     const settler_id = String(body?.settler_id || "").trim();
     const minDays = Math.max(1, Number(body?.min_days || 10));
     const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)));
@@ -49,11 +31,7 @@ export async function POST(
       .select("*")
       .eq("id", flagId)
       .maybeSingle();
-    const flag = rawFlag as {
-      user_id: string;
-      deadline: string;
-      created_at: string;
-    } | null;
+    const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
     if (fErr)
       return NextResponse.json(
         { message: "查询失败", detail: fErr.message },
@@ -163,22 +141,21 @@ export async function POST(
           metrics,
           settled_by: settler_id,
           settled_at: new Date().toISOString(),
-        });
-        
-      // 如果结算成功，保存表情包
+        } as Database["public"]["Tables"]["flag_settlements"]["Insert"]);
+
       if (status === "success") {
-        // 随机选择一个表情包 ID (这里简单模拟，实际可以根据概率配置)
-        // 假设 ID 范围 s1-s8
         const stickers = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
         const stickerId = stickers[Math.floor(Math.random() * stickers.length)];
-        
+
         await client.from("user_stickers").insert({
           user_id: owner,
           sticker_id: stickerId,
           created_at: new Date().toISOString(),
         });
       }
-    } catch {}
+    } catch (e) {
+      logApiError("POST /api/flags/[id]/settle settlement insert failed", e);
+    }
 
     return NextResponse.json({ status, metrics }, { status: 200 });
   } catch (e: any) {

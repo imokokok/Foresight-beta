@@ -26,6 +26,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { followPrediction, unfollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 import Leaderboard from "@/components/Leaderboard";
@@ -146,6 +147,7 @@ export default function TrendingPage({
   // 关注功能状态管理
   const [followedEvents, setFollowedEvents] = useState<Set<number>>(new Set());
   const { account, siweLogin } = useWallet();
+  const profileCtx = useUserProfileOptional();
   const accountNorm = account?.toLowerCase();
   const [followError, setFollowError] = useState<string | null>(null);
   // Realtime 订阅状态与过滤信息（用于可视化诊断）
@@ -1318,21 +1320,12 @@ export default function TrendingPage({
   }, [sortedEvents]);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        if (!accountNorm) {
-          setIsAdmin(false);
-          return;
-        }
-        const r = await fetch(`/api/user-profiles?address=${accountNorm}`, {
-          cache: "no-store",
-        });
-        const j = await r.json().catch(() => ({}));
-        setIsAdmin(!!j?.profile?.is_admin);
-      } catch {}
-    };
-    loadProfile();
-  }, [accountNorm]);
+    if (!accountNorm) {
+      setIsAdmin(false);
+      return;
+    }
+    setIsAdmin(!!profileCtx?.isAdmin);
+  }, [accountNorm, profileCtx?.isAdmin]);
 
   const openEdit = (p: any) => {
     setEditTargetId(Number(p?.id));

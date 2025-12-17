@@ -1,6 +1,7 @@
 // 分类API路由 - 处理GET请求（仅使用 Supabase）
 import { NextResponse } from 'next/server';
 import { getClient } from '@/lib/supabase';
+import { logApiError } from '@/lib/serverUtils';
 
 export async function GET() {
   try {
@@ -16,7 +17,7 @@ export async function GET() {
       .order('name', { ascending: true });
     
     if (error) {
-      console.error('获取分类列表失败:', error);
+      logApiError('GET /api/categories query failed', error);
       return NextResponse.json({ success: false, message: '获取分类列表失败' }, { status: 500 });
     }
 
@@ -32,8 +33,7 @@ export async function GET() {
     });
     
   } catch (error) {
-    // 全局异常：返回错误
-    console.error('获取分类列表失败:', error);
+    logApiError('GET /api/categories unhandled error', error);
     return NextResponse.json({ success: false, message: '获取分类列表失败' }, { status: 500 });
   }
 }

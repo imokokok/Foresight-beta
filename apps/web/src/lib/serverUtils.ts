@@ -49,3 +49,50 @@ export function isAdminAddress(addr: string) {
   const a = normalizeAddress(String(addr || '').toLowerCase())
   return list.includes(a)
 }
+
+export async function parseRequestBody(req: Request): Promise<Record<string, any>> {
+  const contentType = req.headers.get('content-type') || ''
+  try {
+    if (contentType.includes('application/json')) {
+      const text = await req.text()
+      try {
+        return JSON.parse(text)
+      } catch {
+        return {}
+      }
+    }
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const text = await req.text()
+      const params = new URLSearchParams(text)
+      return Object.fromEntries(params.entries())
+    }
+    if (contentType.includes('multipart/form-data')) {
+      const form = await (req as any).formData?.()
+      if (form && typeof (form as any).entries === 'function') {
+        const obj: Record<string, any> = {}
+        for (const [k, v] of (form as any).entries()) {
+          obj[k] = v as any
+        }
+        return obj
+      }
+      return {}
+    }
+    const text = await req.text()
+    if (text) {
+      try {
+        return JSON.parse(text)
+      } catch {
+        return {}
+      }
+    }
+    return {}
+  } catch {
+    return {}
+  }
+}
+
+export function logApiError(scope: string, error: unknown) {
+  try {
+    console.error(scope, error)
+  } catch {}
+}

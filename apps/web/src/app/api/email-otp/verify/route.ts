@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem } from '@/lib/serverUtils'
+import { getEmailOtpShared, normalizeAddress, getSessionAddress, LogItem, parseRequestBody, logApiError } from '@/lib/serverUtils'
+import { Database } from '@/lib/database.types'
 
 export async function POST(req: NextRequest) {
   try {
     const { store, logs } = getEmailOtpShared()
-    const bodyText = await req.text()
-    let payload: any = {}
-    try { payload = JSON.parse(bodyText) } catch {}
+    const payload = await parseRequestBody(req)
 
     const email = String(payload?.email || '').trim().toLowerCase()
     const code = String(payload?.code || '').trim()
@@ -51,11 +50,11 @@ export async function POST(req: NextRequest) {
       if (!existing) {
         await client
           .from('user_profiles')
-          .insert({ wallet_address: walletAddress, email })
+          .insert({ wallet_address: walletAddress, email } as Database['public']['Tables']['user_profiles']['Insert'])
       } else {
         await client
           .from('user_profiles')
-          .update({ email })
+          .update({ email } as Database['public']['Tables']['user_profiles']['Update'])
           .eq('wallet_address', walletAddress)
       }
     }
@@ -66,7 +65,9 @@ export async function POST(req: NextRequest) {
     try {
       logs.push({ email, address: walletAddress, status: 'verified', sentAt: Date.now() } as LogItem)
       if (logs.length > 1000) logs.splice(0, logs.length - 1000)
-    } catch {}
+    } catch (e) {
+      logApiError('[email-otp] push verified log failed', e)
+    }
 
     // 清理使用过的记录
     store.delete(email)

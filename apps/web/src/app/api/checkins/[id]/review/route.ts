@@ -1,41 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { SupabaseClient } from "@supabase/supabase-js";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
-function toNum(v: any): number | null {
+function toNum(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get("content-type") || "";
-  try {
-    if (ct.includes("application/json")) {
-      const t = await req.text();
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    if (ct.includes("application/x-www-form-urlencoded")) {
-      const t = await req.text();
-      const p = new URLSearchParams(t);
-      return Object.fromEntries(p.entries());
-    }
-    const t = await req.text();
-    if (t) {
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  } catch {
-    return {};
-  }
 }
 
 export async function POST(
@@ -47,7 +17,7 @@ export async function POST(
     const checkinId = toNum(id);
     if (!checkinId)
       return NextResponse.json({ message: "checkinId 必填" }, { status: 400 });
-    const body = await parseBody(req as any);
+    const body = await parseRequestBody(req as any);
     const actionRaw = String(body?.action || "")
       .trim()
       .toLowerCase();
@@ -80,16 +50,15 @@ export async function POST(
       .eq("id", checkinId)
       .maybeSingle();
 
-    const chk = rawChk as {
-      id: number;
-      flag_id: number;
-      review_status: string;
-    } | null;
+    const chk = rawChk as Pick<
+      Database["public"]["Tables"]["flag_checkins"]["Row"],
+      "id" | "flag_id" | "review_status"
+    > | null;
 
     if (chkErr) {
-      const payload = {
+      const payload: Database["public"]["Tables"]["discussions"]["Insert"] = {
         user_id: reviewer_id,
-        proposal_id: 0, // Placeholder for type compatibility. This logic seems to be using discussions as a log, which might fail FK constraint at runtime if proposal 0 doesn't exist.
+        proposal_id: checkinId,
         content: JSON.stringify({
           type: "checkin_review",
           checkin_id: checkinId,
@@ -98,7 +67,7 @@ export async function POST(
           ts: new Date().toISOString(),
         }),
       };
-      await client.from("discussions").insert(payload as any);
+      await client.from("discussions").insert(payload);
       return NextResponse.json({ message: "ok" }, { status: 200 });
     }
     if (!chk)
@@ -110,12 +79,7 @@ export async function POST(
       .eq("id", chk.flag_id)
       .maybeSingle();
 
-    const flag = rawFlag as {
-      verification_type: string;
-      witness_id: string;
-      user_id: string;
-      status: string;
-    } | null;
+    const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
     if (fErr)
       return NextResponse.json(
@@ -144,14 +108,14 @@ export async function POST(
         reviewer_id,
         review_reason: reason,
         reviewed_at: new Date().toISOString(),
-      } as any)
+      } as Database["public"]["Tables"]["flag_checkins"]["Update"])
       .eq("id", checkinId)
       .select("*")
       .maybeSingle();
     if (uErr) {
-      const payload = {
+      const payload: Database["public"]["Tables"]["discussions"]["Insert"] = {
         user_id: reviewer_id,
-        proposal_id: 0,
+        proposal_id: checkinId,
         content: JSON.stringify({
           type: "checkin_review",
           checkin_id: checkinId,
@@ -160,7 +124,11 @@ export async function POST(
           ts: new Date().toISOString(),
         }),
       };
-      await client.from("discussions").insert(payload as any);
+      try {
+        await client.from("discussions").insert(payload);
+      } catch (e) {
+        logApiError("POST /api/checkins/[id]/review fallback log insert failed", e);
+      }
       return NextResponse.json({ message: "ok" }, { status: 200 });
     }
 

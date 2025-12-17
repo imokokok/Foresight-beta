@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/supabase'
+import { logApiError } from '@/lib/serverUtils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,9 +16,13 @@ export async function GET(req: NextRequest) {
       .eq('id', id)
       .limit(1)
       .maybeSingle()
-    if (error) return NextResponse.json({ success: false, message: error.message }, { status: 500 })
+    if (error) {
+      logApiError('GET /api/orderbook/order query failed', error)
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 })
+    }
     return NextResponse.json({ success: true, data })
   } catch (e: any) {
+    logApiError('GET /api/orderbook/order unhandled error', e)
     return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 })
   }
 }

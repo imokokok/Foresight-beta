@@ -4,7 +4,10 @@ import {
   normalizeAddress,
   getSessionAddress,
   isAdminAddress,
+  logApiError,
+  parseRequestBody,
 } from "@/lib/serverUtils";
+import { Database } from "@/lib/database.types";
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr);
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest) {
           { profiles: [], error: error.message },
           { status: 200 }
         );
-      const rows = (data || []).map((p: any) => ({
+      const rows = (data || []).map((p: Database["public"]["Tables"]["user_profiles"]["Row"]) => ({
         ...p,
         is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || ""),
       }));
@@ -71,12 +74,7 @@ export async function GET(req: NextRequest) {
       .eq("wallet_address", address)
       .maybeSingle();
 
-    const data = rawData as {
-      wallet_address: string;
-      username: string | null;
-      email: string | null;
-      is_admin: boolean;
-    } | null;
+    const data = rawData as Database["public"]["Tables"]["user_profiles"]["Row"] | null;
 
     if (error) {
       const fallback = {
@@ -113,11 +111,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const bodyText = await req.text();
-    let payload: any = {};
-    try {
-      payload = JSON.parse(bodyText);
-    } catch {}
+    const payload = await parseRequestBody(req);
     const walletAddress = normalizeAddress(
       String(payload?.walletAddress || "")
     );
@@ -173,7 +167,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       const { error: updError } = await client
         .from("user_profiles")
-        .update({ username, email } as any)
+        .update({ username, email } as Database["public"]["Tables"]["user_profiles"]["Update"])
         .eq("wallet_address", walletAddress);
       if (updError) {
         return NextResponse.json(
@@ -184,7 +178,7 @@ export async function POST(req: NextRequest) {
     } else {
       const { error: insError } = await client
         .from("user_profiles")
-        .insert({ wallet_address: walletAddress, username, email } as any);
+        .insert({ wallet_address: walletAddress, username, email } as Database["public"]["Tables"]["user_profiles"]["Insert"]);
       if (insError) {
         return NextResponse.json(
           { success: false, message: "创建档案失败: " + insError.message },

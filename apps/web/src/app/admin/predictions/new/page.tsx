@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import DatePicker from "@/components/ui/DatePicker";
 import { motion } from "framer-motion";
 import {
@@ -27,6 +28,7 @@ import {
 export default function AdminCreatePredictionPage() {
   const router = useRouter();
   const { account, siweLogin } = useWallet();
+  const profileCtx = useUserProfileOptional();
   const [form, setForm] = useState<any>({
     title: "",
     description: "",
@@ -86,16 +88,9 @@ export default function AdminCreatePredictionPage() {
   };
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        if (!account) return
-        const r = await fetch(`/api/user-profiles?address=${String(account).toLowerCase()}`, { cache: 'no-store' })
-        const j = await r.json().catch(() => ({}))
-        if (!j?.profile?.is_admin) router.replace('/trending')
-      } catch {}
-    }
-    check()
-  }, [account, router])
+    if (!account) return;
+    if (!profileCtx?.isAdmin) router.replace("/trending");
+  }, [account, profileCtx?.isAdmin, router]);
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gray-50/50">

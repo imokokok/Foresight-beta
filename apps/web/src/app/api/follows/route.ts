@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { normalizeAddress } from "@/lib/serverUtils";
+import { normalizeAddress, parseRequestBody, logApiError } from "@/lib/serverUtils";
 
 // Helper: detect missing relation error for graceful setup message
 function isMissingRelation(error?: { message?: string }) {
@@ -57,53 +57,6 @@ function isOnConflictNoUniqueConstraint(error?: { message?: string }) {
   );
 }
 
-// 使用共享包中的地址规范化与校验
-
-// 取消所有本地降级，仅使用 Supabase
-
-// Robust body parser to handle various client payloads (single-read)
-async function parseRequestBody(req: Request) {
-  const contentType = req.headers.get("content-type") || "";
-  try {
-    if (contentType.includes("application/json")) {
-      const text = await req.text();
-      try {
-        return JSON.parse(text);
-      } catch {
-        return {};
-      }
-    }
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const text = await req.text();
-      const params = new URLSearchParams(text);
-      return Object.fromEntries(params.entries());
-    }
-    if (contentType.includes("multipart/form-data")) {
-      const form = await (req as any).formData?.();
-      if (form && typeof (form as any).entries === "function") {
-        const obj: Record<string, any> = {};
-        for (const [k, v] of (form as any).entries()) {
-          obj[k] = v as any;
-        }
-        return obj;
-      }
-      return {};
-    }
-    // Fallback: try text->JSON
-    const text = await req.text();
-    if (text) {
-      try {
-        return JSON.parse(text);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  } catch (_) {
-    return {};
-  }
-}
-
 // POST /api/follows  body: { predictionId: number, walletAddress: string }
 export async function POST(req: Request) {
   try {
@@ -155,13 +108,10 @@ export async function POST(req: Request) {
       .eq("id", predictionId);
 
     if (pidCheckError) {
-      // 读取预测事件失败，多半是环境密钥或RLS问题，返回通用错误
-      try {
-        console.error("POST /api/follows check prediction error", {
-          predictionId,
-          message: pidCheckError?.message,
-        });
-      } catch {}
+      logApiError("POST /api/follows check prediction error", {
+        predictionId,
+        message: pidCheckError?.message,
+      });
       return NextResponse.json(
         { message: "服务端读取预测事件失败，请稍后重试" },
         { status: 500 }
@@ -184,14 +134,11 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (error) {
-      // 记录未分类错误，便于诊断（出现在开发服务器终端）
-      try {
-        console.error("POST /api/follows upsert error", {
-          predictionId,
-          walletAddress,
-          message: error?.message,
-        });
-      } catch {}
+      logApiError("POST /api/follows upsert error", {
+        predictionId,
+        walletAddress,
+        message: error?.message,
+      });
       if (
         isMissingRelation(error) ||
         isUserIdForeignKeyViolation(error) ||

@@ -3,9 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWallet } from '@/contexts/WalletContext';
 import { useAuthOptional } from '@/contexts/AuthContext';
+import { useUserProfileOptional } from '@/contexts/UserProfileContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Loader2 } from 'lucide-react';
 import InstallPromptModal from './InstallPromptModal';
+
+type WalletStep =
+  | 'select'
+  | 'connecting'
+  | 'permissions'
+  | 'sign'
+  | 'multisig'
+  | 'profile'
+  | 'completed';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -15,6 +25,7 @@ interface WalletModalProps {
 const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const { connectWallet, availableWallets, isConnecting, siweLogin, requestWalletPermissions, multisigSign, account } = useWallet();
   const auth = useAuthOptional();
+  const userProfile = useUserProfileOptional();
   const user = auth?.user ?? null;
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -37,6 +48,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   const [installPromptOpen, setInstallPromptOpen] = useState(false);
   const [installWalletName, setInstallWalletName] = useState<string>('');
   const [installUrl, setInstallUrl] = useState<string>('');
+  const [walletStep, setWalletStep] = useState<WalletStep>('select');
 
   useEffect(() => {
     setMounted(true);
@@ -75,6 +87,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       setEmailVerified(false);
       setResendLeft(0);
       setCodePreview(null);
+      setWalletStep('select');
     }
   }, [isOpen, user]);
 
@@ -148,13 +161,14 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     }
     setSelectedWallet(walletType);
     try {
+      setWalletStep('connecting');
       await connectWallet(walletType as any);
-      // 连接成功后请求权限
       setPermLoading(true);
+      setWalletStep('permissions');
       await requestWalletPermissions();
       setPermLoading(false);
-      // 触发 SIWE 签名登录
       setSiweLoading(true);
+      setWalletStep('sign');
       const res = await siweLogin();
       setSiweLoading(false);
       if (!res.success) {
@@ -172,21 +186,20 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             const p = d?.profile;
             if (!p?.username || !p?.email) {
               setShowProfileForm(true);
+              setWalletStep('profile');
               setUsername(String(p?.username || ''));
               setEmail(String(p?.email || ''));
             } else {
+              setWalletStep('completed');
               onClose();
             }
           } catch {}
         }
       }
-      // 连续触发多签签名
       setMultiLoading(true);
+      setWalletStep('multisig');
       await multisigSign();
       setMultiLoading(false);
-      
-      // 登录成功后，检查是否需要完善信息
-      // 这里不直接设置 ShowProfileForm，而是等待 user 状态更新触发 useEffect
     } catch (error) {
       console.error('连接钱包失败:', error);
     } finally {
@@ -309,10 +322,13 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       if (!resp.ok || !json?.success) {
         setProfileError(String(json?.message || '提交失败'));
       } else {
-        // 提交成功后刷新会话并关闭
         if (auth?.refreshSession) {
           await auth.refreshSession();
         }
+        if (userProfile?.refreshProfile) {
+          await userProfile.refreshProfile();
+        }
+        setWalletStep('completed');
         onClose();
       }
     } catch (e: any) {
@@ -375,6 +391,38 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  let stepHint = '选择邮箱登录或连接钱包';
+  if (walletStep === 'connecting') {
+    stepHint = '正在连接钱包，请在钱包中确认';
+  } else if (walletStep === 'permissions') {
+    stepHint = '正在请求钱包权限';
+  } else if (walletStep === 'sign') {
+    stepHint = '请在钱包中签名完成登录';
+  } else if (walletStep === 'multisig') {
+    stepHint = '正在完成多签确认';
+  } else if (showProfileForm && !emailVerified) {
+    stepHint = '请完善资料并完成邮箱验证码验证';
+  } else if (showProfileForm && emailVerified) {
+    stepHint = '邮箱已验证，可以保存资料完成绑定';
+  } else if (walletStep === 'completed' || user) {
+    stepHint = '钱包绑定完成，可以开始使用 Foresight';
+  }
+
+  const step1Active = walletStep === 'connecting';
+  const step2Active =
+    walletStep === 'permissions' ||
+    walletStep === 'sign' ||
+    walletStep === 'multisig';
+  const step3Active = showProfileForm && !emailVerified;
+
+  const step1Done = walletStep !== 'select' && !step1Active;
+  const step2Done =
+    walletStep === 'profile' ||
+    walletStep === 'completed' ||
+    (!!user && !showProfileForm);
+  const step3Done =
+    emailVerified || walletStep === 'completed' || (!!user && !showProfileForm);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -434,6 +482,116 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                   <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </motion.button>
+            </div>
+
+            <div className="relative px-6 pt-3 pb-4 border-b border-purple-50">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center flex-1">
+                  <div
+                    className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+                      step1Done
+                        ? 'border-purple-500 bg-purple-500 text-white'
+                        : step1Active
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-gray-200 text-gray-400'
+                    }`}
+                  >
+                    {step1Done ? (
+                      '✓'
+                    ) : step1Active ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      '1'
+                    )}
+                  </div>
+                  <div
+                    className={`ml-2 text-[11px] ${
+                      step1Done
+                        ? 'text-purple-600'
+                        : step1Active
+                        ? 'text-gray-900'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    连接钱包
+                  </div>
+                  <div
+                    className={`flex-1 h-px mx-2 ${
+                      step2Done || step2Active
+                        ? 'bg-gradient-to-r from-purple-400 to-pink-400'
+                        : 'bg-gray-200'
+                    }`}
+                  />
+                </div>
+                <div className="flex items-center flex-1">
+                  <div
+                    className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+                      step2Done
+                        ? 'border-purple-500 bg-purple-500 text-white'
+                        : step2Active
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-gray-200 text-gray-400'
+                    }`}
+                  >
+                    {step2Done ? (
+                      '✓'
+                    ) : step2Active ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      '2'
+                    )}
+                  </div>
+                  <div
+                    className={`ml-2 text-[11px] ${
+                      step2Done
+                        ? 'text-purple-600'
+                        : step2Active
+                        ? 'text-gray-900'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    签名登录
+                  </div>
+                  <div
+                    className={`flex-1 h-px mx-2 ${
+                      step3Done || step3Active
+                        ? 'bg-gradient-to-r from-purple-400 to-pink-400'
+                        : 'bg-gray-200'
+                    }`}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <div
+                    className={`flex items-center justify-center w-6 h-6 rounded-full border-2 text-[11px] ${
+                      step3Done
+                        ? 'border-purple-500 bg-purple-500 text-white'
+                        : step3Active
+                        ? 'border-purple-500 text-purple-600'
+                        : 'border-gray-200 text-gray-400'
+                    }`}
+                  >
+                    {step3Done ? (
+                      '✓'
+                    ) : step3Active ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      '3'
+                    )}
+                  </div>
+                  <div
+                    className={`ml-2 text-[11px] ${
+                      step3Done
+                        ? 'text-purple-600'
+                        : step3Active
+                        ? 'text-gray-900'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    完善资料
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">{stepHint}</div>
             </div>
 
             {showProfileForm && (

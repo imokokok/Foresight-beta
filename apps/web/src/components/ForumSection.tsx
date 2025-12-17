@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
+import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 
 interface ForumSectionProps {
   eventId: number;
@@ -146,33 +147,24 @@ export default function ForumSection({ eventId }: ForumSectionProps) {
   }, [eventId, account]);
 
   useEffect(() => {
-    try {
+    const run = async () => {
       const addrs = new Set<string>();
       threads.forEach((t) => {
-        if (t.user_id) addrs.add(String(t.user_id).toLowerCase());
+        if (t.user_id) addrs.add(String(t.user_id));
         (t.comments || []).forEach((c) => {
-          if (c.user_id) addrs.add(String(c.user_id).toLowerCase());
+          if (c.user_id) addrs.add(String(c.user_id));
         });
       });
-      if (account) addrs.add(String(account).toLowerCase());
-      const unknown = Array.from(addrs).filter((a) => !nameMap[a]);
+      if (account) addrs.add(String(account));
+      const unknown = Array.from(addrs).filter(
+        (a) => !nameMap[String(a || "").toLowerCase()]
+      );
       if (unknown.length === 0) return;
-      fetch(
-        `/api/user-profiles?addresses=${encodeURIComponent(unknown.join(","))}`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          const arr = Array.isArray(data?.profiles) ? data.profiles : [];
-          const next: Record<string, string> = {};
-          arr.forEach((p: any) => {
-            if (p?.wallet_address && p?.username)
-              next[String(p.wallet_address).toLowerCase()] = String(p.username);
-          });
-          if (Object.keys(next).length > 0)
-            setNameMap((prev) => ({ ...prev, ...next }));
-        })
-        .catch(() => {});
-    } catch {}
+      const next = await fetchUsernamesByAddresses(unknown);
+      if (Object.keys(next).length === 0) return;
+      setNameMap((prev) => ({ ...prev, ...next }));
+    };
+    run();
   }, [threads, account, nameMap]);
 
   const postThread = async () => {

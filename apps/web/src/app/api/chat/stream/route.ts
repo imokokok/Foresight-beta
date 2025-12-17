@@ -1,6 +1,7 @@
 import { getMessagesByEvent } from '@/lib/localChatStore'
+import { logApiError } from '@/lib/serverUtils'
 
-function toNum(v: any): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
+function toNum(v: unknown): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -22,30 +23,34 @@ export async function GET(req: Request) {
         lastTs = messages[messages.length - 1]?.created_at
       }
 
-      // 发送初始消息
       try {
         const initial = await getMessagesByEvent(eventId!, 50)
         await flush(initial)
-      } catch {}
+      } catch (e) {
+        logApiError('GET /api/chat/stream initial load failed', e)
+      }
 
-      // 心跳保持
       const ping = setInterval(() => {
-        try { controller.enqueue(encoder.encode(`event: ping\n` + `data: keepalive\n\n`)) } catch {}
+        try { controller.enqueue(encoder.encode(`event: ping\n` + `data: keepalive\n\n`)) } catch (e) {
+          logApiError('GET /api/chat/stream ping enqueue failed', e)
+        }
       }, 15000)
 
-      // 轮询新消息
       const poll = setInterval(async () => {
         try {
           const next = await getMessagesByEvent(eventId!, 50, lastTs)
           if (next.length) await flush(next)
-        } catch {}
+        } catch (e) {
+          logApiError('GET /api/chat/stream poll failed', e)
+        }
       }, 1000)
 
-      // 关闭处理
       ;(req as any).signal?.addEventListener?.('abort', () => {
         clearInterval(ping)
         clearInterval(poll)
-        try { controller.close() } catch {}
+        try { controller.close() } catch (e) {
+          logApiError('GET /api/chat/stream close failed', e)
+        }
       })
     }
   })

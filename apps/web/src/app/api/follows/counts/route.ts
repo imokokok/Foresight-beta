@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getClient } from '@/lib/supabase'
+import type { Database } from '@/lib/database.types'
+import { parseRequestBody, logApiError } from '@/lib/serverUtils'
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false
@@ -17,36 +19,17 @@ function isUserIdTypeIntegerError(error?: { message?: string }) {
   return msg.includes('out of range for type integer') || msg.includes('invalid input syntax for type integer')
 }
 
-// 强制使用 Supabase，仅当结构错误时返回明确的修复提示
-
-async function parseRequestBody(req: Request) {
-  const contentType = req.headers.get('content-type') || ''
-  try {
-    if (contentType.includes('application/json')) {
-      const text = await req.text()
-      try { return JSON.parse(text) } catch { return {} }
-    }
-    if (contentType.includes('application/x-www-form-urlencoded')) {
-      const text = await req.text()
-      const params = new URLSearchParams(text)
-      return Object.fromEntries(params.entries())
-    }
-    const text = await req.text()
-    if (text) {
-      try { return JSON.parse(text) } catch { return {} }
-    }
-    return {}
-  } catch (_) {
-    return {}
-  }
-}
-
-// POST /api/follows/counts  body: { eventIds: number[] }
 export async function POST(req: Request) {
   try {
-    const body = await parseRequestBody(req) as any
+    const body = await parseRequestBody(req)
     const rawIds = Array.isArray(body?.eventIds) ? body.eventIds : []
-    const ids = Array.from(new Set(rawIds.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n) && n > 0)))
+    const ids = Array.from(
+      new Set(
+        rawIds
+          .map((n: unknown) => Number(n))
+          .filter((n: number) => Number.isFinite(n) && n > 0)
+      )
+    )
 
     if (ids.length === 0) {
       return NextResponse.json({ message: 'eventIds 必须为正整数数组' }, { status: 400 })
@@ -70,12 +53,14 @@ export async function POST(req: Request) {
     }
 
     const counts: Record<number, number> = {}
-    for (const r of rows || []) {
-      const eid = Number((r as any).event_id)
+    const rowsTyped = (rows || []) as Database['public']['Tables']['event_follows']['Row'][]
+    for (const r of rowsTyped) {
+      const eid = Number(r.event_id)
       if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1
     }
     return NextResponse.json({ counts }, { status: 200 })
   } catch (e: any) {
+    logApiError('POST /api/follows/counts', e)
     if (e?.type === 'setup') {
       const err = e.error
       return NextResponse.json({

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import Link from "next/link";
 
 // Mock data for browsing history (in a real app this would come from local storage or API)
@@ -72,6 +73,7 @@ type TabType = "overview" | "predictions" | "history" | "following";
 export default function ProfilePage() {
   const { account, disconnectWallet: disconnect } = useWallet();
   const { user } = useAuth();
+  const profileCtx = useUserProfileOptional();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [history, setHistory] = useState(MOCK_HISTORY);
   const [username, setUsername] = useState("匿名用户");
@@ -83,9 +85,8 @@ export default function ProfilePage() {
   const [positionsCount, setPositionsCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
 
-  // Load history and username
+  // Load history and aggregates
   useEffect(() => {
-    // Load history
     const loadHistory = async () => {
       if (!account) return;
       try {
@@ -99,34 +100,6 @@ export default function ProfilePage() {
       }
     };
     loadHistory();
-
-    // Load profile (username)
-    const loadProfile = async () => {
-      if (!account) return;
-      try {
-        const res = await fetch(`/api/user-profiles?address=${account}`);
-        const data = await res.json();
-        if (data?.profile?.username) {
-          setUsername(data.profile.username);
-        } else if (user?.user_metadata?.username) {
-          setUsername(user.user_metadata.username);
-        } else if (user?.email) {
-          setUsername(user.email.split("@")[0]);
-        } else {
-          setUsername(`User ${account.slice(0, 4)}`);
-        }
-      } catch (e) {
-        console.error("Failed to load profile", e);
-        // Fallback logic if API fails
-        if (user?.user_metadata?.username) {
-          setUsername(user.user_metadata.username);
-        } else if (user?.email) {
-          setUsername(user.email.split("@")[0]);
-        } else {
-          setUsername(`User ${account.slice(0, 4)}`);
-        }
-      }
-    };
     const loadPortfolio = async () => {
       if (!account) return;
       try {
@@ -160,10 +133,30 @@ export default function ProfilePage() {
       }
     };
 
-    loadProfile();
     loadPortfolio();
     loadFollowing();
-  }, [user, account]);
+  }, [account]);
+
+  useEffect(() => {
+    if (!account) {
+      setUsername("匿名用户");
+      return;
+    }
+    const p = profileCtx?.profile;
+    if (p?.username) {
+      setUsername(p.username);
+      return;
+    }
+    if (user?.user_metadata?.username) {
+      setUsername(user.user_metadata.username);
+      return;
+    }
+    if (user?.email) {
+      setUsername(user.email.split("@")[0]);
+      return;
+    }
+    setUsername(`User ${account.slice(0, 4)}`);
+  }, [account, user, profileCtx?.profile]);
 
   const tabs = [
     { id: "overview", label: "总览", icon: User },

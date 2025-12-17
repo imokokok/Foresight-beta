@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import { formatUnits } from "ethers";
 
+const BIGINT_ZERO = BigInt(0);
+const BIGINT_THRESHOLD = BigInt("1000000000000");
+
 interface TradingPanelProps {
   market: any;
   prediction: any;
@@ -68,9 +71,8 @@ export function TradingPanel({
   const formatPrice = (p: string) => {
     try {
       const v = BigInt(p);
-      if (v === BigInt(0)) return "-";
-      const threshold = BigInt(10) ** BigInt(12);
-      const decimals = v > threshold ? 18 : 6;
+      if (v === BIGINT_ZERO) return "-";
+      const decimals = v > BIGINT_THRESHOLD ? 18 : 6;
       return Number(formatUnits(v, decimals)).toFixed(2);
     } catch {
       return "-";
@@ -80,9 +82,8 @@ export function TradingPanel({
   const formatAmount = (raw: string) => {
     try {
       const v = BigInt(raw);
-      if (v === BigInt(0)) return "0";
-      const threshold = BigInt(10) ** BigInt(12);
-      if (v > threshold) {
+      if (v === BIGINT_ZERO) return "0";
+      if (v > BIGINT_THRESHOLD) {
         return Number(formatUnits(v, 18)).toFixed(4);
       }
       return raw;
@@ -352,15 +353,11 @@ export function TradingPanel({
                   {depthBuy.map((row, i) => (
                     <div
                       key={i}
-                      onClick={() => fillPrice(formatPrice(row.price))}
+                      onClick={() => fillPrice(row.price)}
                       className="flex justify-between text-xs cursor-pointer hover:bg-emerald-50 p-2 rounded-lg transition-colors group"
                     >
-                      <span className="text-emerald-600 font-medium group-hover:text-emerald-700">
-                        {formatPrice(row.price)}
-                      </span>
-                      <span className="text-gray-500 group-hover:text-gray-700">
-                        {formatAmount(row.qty)}
-                      </span>
+                      <span className="text-emerald-600 font-medium group-hover:text-emerald-700">{row.price}</span>
+                      <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
                     </div>
                   ))}
                 </div>
@@ -378,15 +375,11 @@ export function TradingPanel({
                   {depthSell.map((row, i) => (
                     <div
                       key={i}
-                      onClick={() => fillPrice(formatPrice(row.price))}
+                      onClick={() => fillPrice(row.price)}
                       className="flex justify-between text-xs cursor-pointer hover:bg-rose-50 p-2 rounded-lg transition-colors group"
                     >
-                      <span className="text-rose-600 font-medium group-hover:text-rose-700">
-                        {formatPrice(row.price)}
-                      </span>
-                      <span className="text-gray-500 group-hover:text-gray-700">
-                        {formatAmount(row.qty)}
-                      </span>
+                      <span className="text-rose-600 font-medium group-hover:text-rose-700">{row.price}</span>
+                      <span className="text-gray-500 group-hover:text-gray-700">{row.qty}</span>
                     </div>
                   ))}
                 </div>

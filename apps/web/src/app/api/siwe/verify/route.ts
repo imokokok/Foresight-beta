@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SiweMessage } from 'siwe'
+import { parseRequestBody, logApiError } from '@/lib/serverUtils'
 
 export async function POST(req: NextRequest) {
   try {
-    const bodyText = await req.text()
-    let payload: any = {}
-    try { payload = JSON.parse(bodyText) } catch {}
+    const payload = await parseRequestBody(req as any)
 
     const messageStr: string = payload?.message || ''
     const signature: string = payload?.signature || ''
@@ -43,6 +42,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set('siwe_nonce', '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 })
     return res
   } catch (e: any) {
+    logApiError('POST /api/siwe/verify', e)
     return NextResponse.json({ success: false, message: '服务器错误', detail: String(e?.message || e) }, { status: 500 })
   }
 }

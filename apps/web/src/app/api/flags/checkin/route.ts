@@ -1,39 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
-
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get("content-type") || "";
-  try {
-    if (ct.includes("application/json")) {
-      const t = await req.text();
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    if (ct.includes("application/x-www-form-urlencoded")) {
-      const t = await req.text();
-      const p = new URLSearchParams(t);
-      return Object.fromEntries(p.entries());
-    }
-    const t = await req.text();
-    if (t) {
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  } catch {
-    return {};
-  }
-}
+import { Database } from "@/lib/database.types";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await parseBody(req as any);
+    const body = await parseRequestBody(req as any);
     const client = (supabaseAdmin || getClient()) as any;
     if (!client)
       return NextResponse.json({ message: "服务未配置" }, { status: 500 });
@@ -54,11 +26,7 @@ export async function POST(req: NextRequest) {
       .eq("id", flagId)
       .maybeSingle();
 
-    const flag = rawFlag as {
-      user_id: string;
-      verification_type: string;
-      witness_id?: string;
-    } | null;
+    const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
 
     if (findErr)
       return NextResponse.json(
@@ -99,7 +67,7 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       );
 
-    const historyPayload = {
+    const historyPayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
       proposal_id: flagId,
       user_id: userId,
       content: JSON.stringify({
@@ -111,9 +79,12 @@ export async function POST(req: NextRequest) {
     };
     try {
       await client.from("discussions").insert(historyPayload);
-    } catch {}
+    } catch (e) {
+      logApiError("POST /api/flags/checkin history insert failed", e);
+    }
 
-    let insertedCheckin: any = null;
+    let insertedCheckin: Database["public"]["Tables"]["flag_checkins"]["Row"] | null =
+      null;
     try {
       const ins = await client
         .from("flag_checkins")
@@ -122,11 +93,13 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           note,
           image_url: imageUrl || null,
-        })
+        } as Database["public"]["Tables"]["flag_checkins"]["Insert"])
         .select("*")
         .maybeSingle();
       insertedCheckin = ins?.data || null;
-    } catch {}
+    } catch (e) {
+      logApiError("POST /api/flags/checkin insert failed", e);
+    }
 
     // Auto-approve logic:
     // 1. If witness_id is 'official' (handled above)
@@ -149,9 +122,11 @@ export async function POST(req: NextRequest) {
             review_status: "approved",
             reviewer_id: isSelfSupervised ? "self" : "official",
             reviewed_at: new Date().toISOString(),
-          })
+          } as Database["public"]["Tables"]["flag_checkins"]["Update"])
           .eq("id", insertedCheckin.id);
-      } catch {}
+      } catch (e) {
+        logApiError("POST /api/flags/checkin auto-approve update failed", e);
+      }
     }
 
     // Reward Logic: Randomly reward a sticker (if auto-approved)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
 function toNum(v: any): number | null {
   const n = Number(v);
@@ -15,18 +16,17 @@ function actionLabel(v: string): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const ct = req.headers.get("content-type") || "";
-    let body: any = {};
-    if (ct.includes("application/json")) {
-      try {
-        body = await req.json();
-      } catch {}
-    }
+    const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = toNum(body?.eventId ?? searchParams.get("eventId"));
     if (!eventId)
       return NextResponse.json({ message: "eventId 必填" }, { status: 400 });
     const client = getClient() as any;
+    if (!client)
+      return NextResponse.json(
+        { message: "Supabase 未配置" },
+        { status: 500 }
+      );
     const { data: rawThreads, error: tErr } = await client
       .from("forum_threads")
       .select("*")
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         { message: "查询主题失败", detail: tErr.message },
         { status: 500 }
       );
-    const ids = (threads || []).map((t: any) => t.id);
+    const ids = (threads || []).map((t) => t.id);
     let comments: any[] = [];
     if (ids.length > 0) {
       const { data: rows, error: cErr } = await client
@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
       deadline?: string;
       title_preview?: string;
       criteria_preview?: string;
+      user_id?: string;
+      created_at?: string;
     } | null;
 
     const subj = String(topRow?.subject_name || topRow?.title || "");
@@ -163,6 +165,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (e: any) {
+    logApiError("POST /api/forum/triggers/run", e);
     return NextResponse.json(
       { message: "触发失败", detail: String(e?.message || e) },
       { status: 500 }

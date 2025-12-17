@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
+import { logApiError } from "@/lib/serverUtils";
 
 // GET /api/following?address=0x...
 export async function GET(req: Request) {
@@ -28,13 +30,12 @@ export async function GET(req: Request) {
       .eq("user_id", address)
       .order("created_at", { ascending: false });
 
-    const followData = rawFollowData as Array<{
-      event_id: number;
-      created_at: string;
-    }> | null;
+    const followData =
+      (rawFollowData ||
+        null) as Database["public"]["Tables"]["event_follows"]["Row"][] | null;
 
     if (followError) {
-      console.error("Failed to fetch following IDs:", followError);
+      logApiError("GET /api/following fetch ids failed", followError);
       return NextResponse.json(
         { message: "Failed to fetch following" },
         { status: 500 }
@@ -58,7 +59,10 @@ export async function GET(req: Request) {
         .in("id", eventIds);
 
     if (predictionsError) {
-      console.error("Failed to fetch followed predictions:", predictionsError);
+      logApiError(
+        "GET /api/following fetch predictions failed",
+        predictionsError
+      );
       return NextResponse.json(
         { message: "Failed to fetch predictions" },
         { status: 500 }
@@ -73,14 +77,31 @@ export async function GET(req: Request) {
 
     const counts: Record<number, number> = {};
     if (!allFollowsError && allFollows) {
-      allFollows.forEach((f: any) => {
+      const allFollowRows =
+        (allFollows ||
+          []) as Database["public"]["Tables"]["event_follows"]["Row"][];
+      for (const f of allFollowRows) {
         const eid = f.event_id;
         counts[eid] = (counts[eid] || 0) + 1;
-      });
+      }
     }
 
     // 4. 组装数据
-    const following = (predictionsData || []).map((prediction: any) => ({
+    type FollowingItem = {
+      id: number;
+      title: string;
+      image_url: string | null;
+      category: string;
+      deadline: string;
+      followers_count: number;
+      followed_at: string | undefined;
+    };
+
+    const predictionRows =
+      (predictionsData ||
+        []) as Database["public"]["Tables"]["predictions"]["Row"][];
+
+    const following: FollowingItem[] = predictionRows.map((prediction) => ({
       id: prediction.id,
       title: prediction.title,
       image_url: prediction.image_url,
@@ -91,14 +112,15 @@ export async function GET(req: Request) {
     }));
 
     // 保持原来的排序（按关注时间倒序）
-    following.sort((a: any, b: any) => {
-      const timeA = new Date(a.followed_at).getTime();
-      const timeB = new Date(b.followed_at).getTime();
+    following.sort((a, b) => {
+      const timeA = a.followed_at ? new Date(a.followed_at).getTime() : 0;
+      const timeB = b.followed_at ? new Date(b.followed_at).getTime() : 0;
       return timeB - timeA;
     });
 
     return NextResponse.json({ following });
   } catch (error: any) {
+    logApiError("GET /api/following unhandled error", error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
 import { useWallet } from "@/contexts/WalletContext";
+import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 
@@ -214,33 +215,24 @@ export default function ChatPanel({
   }, [messages.length]);
 
   useEffect(() => {
-    try {
+    const run = async () => {
       const addrs = new Set<string>();
       messages.forEach((m) => {
-        if (m.user_id) addrs.add(String(m.user_id).toLowerCase());
+        if (m.user_id) addrs.add(String(m.user_id));
       });
       forumMessages.forEach((m) => {
-        if (m.user_id) addrs.add(String(m.user_id).toLowerCase());
+        if (m.user_id) addrs.add(String(m.user_id));
       });
-      if (account) addrs.add(String(account).toLowerCase());
-      const unknown = Array.from(addrs).filter((a) => !nameMap[a]);
+      if (account) addrs.add(String(account));
+      const unknown = Array.from(addrs).filter(
+        (a) => !nameMap[String(a || "").toLowerCase()]
+      );
       if (unknown.length === 0) return;
-      fetch(
-        `/api/user-profiles?addresses=${encodeURIComponent(unknown.join(","))}`
-      )
-        .then((r) => r.json())
-        .then((data) => {
-          const arr = Array.isArray(data?.profiles) ? data.profiles : [];
-          const next: Record<string, string> = {};
-          arr.forEach((p: any) => {
-            if (p?.wallet_address && p?.username)
-              next[String(p.wallet_address).toLowerCase()] = String(p.username);
-          });
-          if (Object.keys(next).length > 0)
-            setNameMap((prev) => ({ ...prev, ...next }));
-        })
-        .catch(() => {});
-    } catch {}
+      const next = await fetchUsernamesByAddresses(unknown);
+      if (Object.keys(next).length === 0) return;
+      setNameMap((prev) => ({ ...prev, ...next }));
+    };
+    run();
   }, [messages, forumMessages, account, nameMap]);
 
   const mergedMessages = React.useMemo(() => {

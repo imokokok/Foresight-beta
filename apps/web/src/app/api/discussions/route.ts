@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin, getClient } from '@/lib/supabase'
+import { parseRequestBody, logApiError } from '@/lib/serverUtils'
 
-function toNum(v: any): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
-
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get('content-type') || ''
-  try {
-    if (ct.includes('application/json')) { const t = await req.text(); try { return JSON.parse(t) } catch { return {} } }
-    if (ct.includes('application/x-www-form-urlencoded')) { const t = await req.text(); const p = new URLSearchParams(t); return Object.fromEntries(p.entries()) }
-    const t = await req.text(); if (t) { try { return JSON.parse(t) } catch { return {} } }
-    return {}
-  } catch { return {} }
-}
+function toNum(v: unknown): number | null { const n = Number(v); return Number.isFinite(n) ? n : null }
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +17,7 @@ export async function GET(req: NextRequest) {
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: true })
     if (error) {
-      try { console.error('[discussions:get]', error?.message || error) } catch {}
+      logApiError('[discussions:get]', error)
       return NextResponse.json({ message: '查询失败', detail: error.message }, { status: 500 })
     }
     return NextResponse.json({ discussions: data || [] }, { status: 200 })
@@ -37,7 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await parseBody(req)
+    const body = await parseRequestBody(req)
     const proposalId = toNum(body?.proposalId)
     const content = String(body?.content || '')
     const userId = String(body?.userId || '')
@@ -52,7 +43,7 @@ export async function POST(req: NextRequest) {
       .select()
       .maybeSingle()
     if (error) {
-      try { console.error('[discussions:post]', error?.message || error) } catch {}
+      logApiError('[discussions:post]', error)
       return NextResponse.json({ message: '创建失败', detail: error.message }, { status: 500 })
     }
     return NextResponse.json({ discussion: data }, { status: 200 })

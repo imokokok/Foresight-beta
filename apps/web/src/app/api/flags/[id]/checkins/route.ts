@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { Database } from "@/lib/database.types";
+import { logApiError } from "@/lib/serverUtils";
 
-function toNum(v: any): number | null {
+function toNum(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -40,8 +42,8 @@ export async function GET(
       );
     if (!f.data)
       return NextResponse.json({ message: "Flag 不存在" }, { status: 404 });
-    const owner = String((f.data as any).user_id || "");
-    const wit = String((f.data as any).witness_id || "");
+    const owner = String((f.data as Database["public"]["Tables"]["flags"]["Row"]).user_id || "");
+    const wit = String((f.data as Database["public"]["Tables"]["flags"]["Row"]).witness_id || "");
     const allowed =
       viewer.toLowerCase() === owner.toLowerCase() ||
       (!!wit && viewer.toLowerCase() === wit.toLowerCase());
@@ -59,16 +61,18 @@ export async function GET(
       .range(offset, offset + limit - 1);
 
     if (!res.error) {
-      const items = (res.data || []).map((r: any) => ({
-        id: String(r.id),
-        note: String(r.note || ""),
-        image_url: String(r.image_url || ""),
-        created_at: String(r.created_at || ""),
-        review_status: String(r.review_status || "pending"),
-        reviewer_id: String(r.reviewer_id || ""),
-        review_reason: String(r.review_reason || ""),
-        reviewed_at: String(r.reviewed_at || ""),
-      }));
+      const items = (res.data || []).map(
+        (r: Database["public"]["Tables"]["flag_checkins"]["Row"]) => ({
+          id: String(r.id),
+          note: String(r.note || ""),
+          image_url: String(r.image_url || ""),
+          created_at: String(r.created_at || ""),
+          review_status: String(r.review_status || "pending"),
+          reviewer_id: String(r.reviewer_id || ""),
+          review_reason: String(r.review_reason || ""),
+          reviewed_at: String(r.reviewed_at || ""),
+        })
+      );
       return NextResponse.json({ items, total: items.length }, { status: 200 });
     }
 
@@ -86,7 +90,7 @@ export async function GET(
         { status: 500 }
       );
     const items = (d.data || [])
-      .map((r: any) => {
+      .map((r: Database["public"]["Tables"]["discussions"]["Row"]) => {
         try {
           const obj = JSON.parse(String(r.content || "{}"));
           if (obj && obj.type === "checkin") {
@@ -97,10 +101,17 @@ export async function GET(
               created_at: String(r.created_at || ""),
             };
           }
-        } catch {}
+        } catch (e) {
+          logApiError("GET /api/flags/[id]/checkins parse fallback item failed", e);
+        }
         return null;
       })
-      .filter(Boolean) as any[];
+      .filter(Boolean) as {
+        id: string;
+        note: string;
+        image_url: string;
+        created_at: string;
+      }[];
     return NextResponse.json({ items, total: items.length }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(

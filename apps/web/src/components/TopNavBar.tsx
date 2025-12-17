@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Copy, LogOut, Wallet, ExternalLink } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
 
 export default function TopNavBar() {
@@ -25,6 +26,7 @@ export default function TopNavBar() {
     switchNetwork,
   } = useWallet();
   const { user, loading: authLoading, signOut } = useAuth();
+  const userProfile = useUserProfileOptional();
 
   const [mounted, setMounted] = useState(false);
   // 新增：头像菜单状态与复制状态
@@ -139,30 +141,6 @@ export default function TopNavBar() {
 
   useEffect(() => {
     updateNetworkInfo();
-  }, [account]);
-
-  const [profile, setProfile] = useState<{
-    username?: string;
-    email?: string;
-  } | null>(null);
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const addr = String(account || "").toLowerCase();
-        if (!addr) {
-          setProfile(null);
-          return;
-        }
-        const res = await fetch(
-          `/api/user-profiles?address=${encodeURIComponent(addr)}`
-        );
-        const data = await res.json();
-        setProfile(data?.profile || null);
-      } catch {
-        setProfile(null);
-      }
-    };
-    load();
   }, [account]);
 
   const openOnExplorer = () => {
@@ -378,10 +356,10 @@ export default function TopNavBar() {
                     <div className="px-3 py-3 mb-2 rounded-lg bg-white/70 flex items-center justify-between">
                       <div>
                         <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                          {profile?.username || formatAddress(account)}
+                          {userProfile?.profile?.username || formatAddress(account)}
                         </div>
                         <div className="mt-1 text-[11px] text-gray-600 flex items-center gap-2">
-                          {profile?.username ? (
+                          {userProfile?.profile?.username ? (
                             <span>{formatAddress(account)}</span>
                           ) : null}
                           <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-gray-800">

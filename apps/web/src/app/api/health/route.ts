@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClient } from '@/lib/supabase'
+import { logApiError } from '@/lib/serverUtils'
 
 export async function GET(_req: NextRequest) {
   try {
@@ -81,6 +82,7 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json({ status, env, checks, rlsHint })
   } catch (error: any) {
+    logApiError('GET /api/health', error)
     return NextResponse.json(
       { status: 'error', message: error?.message || String(error) },
       { status: 500 }

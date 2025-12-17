@@ -1,39 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { parseRequestBody } from "@/lib/serverUtils";
 
-function toNum(v: any): number | null {
+function toNum(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get("content-type") || "";
-  try {
-    if (ct.includes("application/json")) {
-      const t = await req.text();
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    if (ct.includes("application/x-www-form-urlencoded")) {
-      const t = await req.text();
-      const p = new URLSearchParams(t);
-      return Object.fromEntries(p.entries());
-    }
-    const t = await req.text();
-    if (t) {
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  } catch {
-    return {};
-  }
 }
 
 export async function PATCH(
@@ -44,7 +15,7 @@ export async function PATCH(
     const { id: pid } = await context.params;
     const id = toNum(pid);
     if (!id) return NextResponse.json({ message: "id 必填" }, { status: 400 });
-    const body = await parseBody(req);
+    const body = await parseRequestBody(req);
     const content = String(body?.content || "");
     if (!content.trim())
       return NextResponse.json({ message: "content 必填" }, { status: 400 });

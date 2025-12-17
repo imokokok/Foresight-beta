@@ -1,39 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { Database } from "@/lib/database.types";
+import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 
-function toNum(v: any): number | null {
+function toNum(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
-}
-
-async function parseBody(req: Request): Promise<Record<string, any>> {
-  const ct = req.headers.get("content-type") || "";
-  try {
-    if (ct.includes("application/json")) {
-      const t = await req.text();
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    if (ct.includes("application/x-www-form-urlencoded")) {
-      const t = await req.text();
-      const p = new URLSearchParams(t);
-      return Object.fromEntries(p.entries());
-    }
-    const t = await req.text();
-    if (t) {
-      try {
-        return JSON.parse(t);
-      } catch {
-        return {};
-      }
-    }
-    return {};
-  } catch {
-    return {};
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -60,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await parseBody(req as any);
+    const body = await parseRequestBody(req as any);
     const client = (supabaseAdmin || getClient()) as any;
     if (!client)
       return NextResponse.json({ message: "服务未配置" }, { status: 500 });
@@ -83,7 +55,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
 
-    const payload = {
+    const payload: Database["public"]["Tables"]["flags"]["Insert"] = {
       user_id,
       title,
       description,
@@ -91,11 +63,12 @@ export async function POST(req: NextRequest) {
       verification_type,
       status: "active",
     };
-    let data: any, error: any;
+    let data: Database["public"]["Tables"]["flags"]["Row"] | null = null;
+    let error: { message?: string } | null = null;
     if (witness_id) {
       const res = await client
         .from("flags")
-        .insert({ ...payload, witness_id } as any)
+        .insert({ ...payload, witness_id })
         .select("*")
         .maybeSingle();
       data = res.data;
@@ -113,7 +86,7 @@ export async function POST(req: NextRequest) {
     } else {
       const res = await client
         .from("flags")
-        .insert(payload as any)
+        .insert(payload)
         .select("*")
         .maybeSingle();
       data = res.data;
@@ -125,9 +98,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     try {
-      if (witness_id && data && (data as any)?.id) {
-        const flagIdNum = Number((data as any)?.id);
-        const payload = {
+      if (witness_id && data && data.id) {
+        const flagIdNum = data.id;
+        const payload: Database["public"]["Tables"]["discussions"]["Insert"] = {
           proposal_id: flagIdNum,
           user_id: witness_id,
           content: JSON.stringify({
@@ -142,7 +115,9 @@ export async function POST(req: NextRequest) {
         };
         await client.from("discussions").insert(payload);
       }
-    } catch {}
+    } catch (e) {
+      logApiError("POST /api/flags witness invite insert failed", e);
+    }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
