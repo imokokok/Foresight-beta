@@ -33,7 +33,9 @@
     "disconnectWallet": "断开连接",
     "signMessage": "签名消息",
     "welcome": "欢迎来到 Foresight",
-    "signToConnect": "签名以连接"
+    "signToConnect": "签名以连接",
+    "loggedIn": "已登录",
+    "noEmail": "未绑定邮箱"
   },
   "wallet": {
     "connected": "已连接",

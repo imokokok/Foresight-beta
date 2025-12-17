@@ -136,6 +136,9 @@ export default function Sidebar() {
         <button
           className="px-3 py-2 rounded-xl bg-white/80 text-black border border-gray-200 shadow-sm"
           onClick={() => setMobileOpen((v) => !v)}
+          aria-label={tCommon("menu")}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-sidebar"
         >
           {tCommon("menu")}
         </button>
@@ -154,6 +157,9 @@ export default function Sidebar() {
       </AnimatePresence>
 
       <motion.aside
+        id="mobile-sidebar"
+        role="navigation"
+        aria-label="主导航"
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -179,7 +185,10 @@ export default function Sidebar() {
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-white rounded-2xl shadow-sm rotate-1 border border-gray-100" />
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                aria-hidden="true"
+              />
               <input
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -187,6 +196,7 @@ export default function Sidebar() {
                   if (e.key === "Enter") submitSearch();
                 }}
                 placeholder="Search..."
+                aria-label={tCommon("search")}
                 className="w-full pl-10 pr-4 py-3 rounded-2xl bg-transparent text-sm font-bold text-gray-700 placeholder:text-gray-300 focus:outline-none"
               />
             </div>
@@ -207,6 +217,8 @@ export default function Sidebar() {
                   <button
                     key={it.label}
                     onClick={() => onItemClick(it)}
+                    aria-label={it.label}
+                    aria-current={isActive(it.href) ? "page" : undefined}
                     className={`group w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 relative overflow-hidden ${
                       isActive(it.href)
                         ? "bg-white text-gray-900 shadow-md shadow-gray-100/50 border border-gray-100"
@@ -218,6 +230,7 @@ export default function Sidebar() {
                     )}
                     <div
                       className={`transition-transform duration-300 ${isActive(it.href) ? "scale-110 text-purple-500" : "group-hover:scale-110"}`}
+                      aria-hidden="true"
                     >
                       {it.icon}
                     </div>
@@ -268,6 +281,7 @@ export default function Sidebar() {
               <button
                 className="w-full py-3.5 rounded-2xl bg-gray-900 text-white font-bold shadow-lg shadow-gray-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group"
                 onClick={() => setWalletModalOpen(true)}
+                aria-label={tAuth("connectWallet")}
               >
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                 <span className="relative z-10">{tAuth("connectWallet")}</span>

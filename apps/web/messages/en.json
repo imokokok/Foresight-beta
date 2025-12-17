@@ -33,7 +33,9 @@
     "disconnectWallet": "Disconnect",
     "signMessage": "Sign Message",
     "welcome": "Welcome to Foresight",
-    "signToConnect": "Sign to connect"
+    "signToConnect": "Sign to connect",
+    "loggedIn": "Logged in",
+    "noEmail": "No email"
   },
   "wallet": {
     "connected": "Connected",

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useTranslations } from "@/lib/i18n";
 
 export default function TopNavBar() {
   const {
@@ -28,6 +29,8 @@ export default function TopNavBar() {
   } = useWallet();
   const { user, loading: authLoading, signOut } = useAuth();
   const userProfile = useUserProfileOptional();
+  const tWallet = useTranslations("wallet");
+  const tAuth = useTranslations("auth");
 
   const [mounted, setMounted] = useState(false);
   // 新增：头像菜单状态与复制状态
@@ -378,21 +381,21 @@ export default function TopNavBar() {
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>刷新余额</span>
+                      <span>{tWallet("refreshBalance")}</span>
                     </button>
                     <button
                       onClick={copyAddress}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <Copy className="w-4 h-4 text-purple-600" />
-                      <span>{copied ? "已复制 ✓" : "复制地址"}</span>
+                      <span>{copied ? tWallet("addressCopied") : tWallet("copyAddress")}</span>
                     </button>
                     <button
                       onClick={openOnExplorer}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <ExternalLink className="w-4 h-4 text-purple-600" />
-                      <span>在区块浏览器查看</span>
+                      <span>{tWallet("viewOnExplorer")}</span>
                     </button>
                     <div className="my-1 border-t border-purple-100/60" />
                     <button
@@ -400,14 +403,14 @@ export default function TopNavBar() {
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>切换到 Sepolia 网络</span>
+                      <span>{tWallet("switchNetwork")} - Sepolia</span>
                     </button>
                     <button
                       onClick={handleDisconnectWallet}
                       className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                     >
                       <LogOut className="w-4 h-4 text-purple-600" />
-                      <span>断开连接</span>
+                      <span>{tAuth("disconnectWallet")}</span>
                     </button>
                   </div>
                 </>,
@@ -435,9 +438,9 @@ export default function TopNavBar() {
             <button
               onClick={() => setWalletModalOpen(true)}
               className="btn-base btn-md btn-cta"
-              title="登录"
+              title={tAuth("login")}
             >
-              登录
+              {tAuth("login")}
             </button>
           </div>
         )}

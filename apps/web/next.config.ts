@@ -56,6 +56,56 @@ const nextConfig: NextConfig = {
   // 实验性特性
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
+    // 优化字体加载
+    optimizeFonts: true,
+  },
+
+  // Webpack 优化
+  webpack: (config, { dev, isServer }) => {
+    // 生产环境优化
+    if (!dev && !isServer) {
+      // 代码分割优化
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: "all",
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // 第三方库单独打包
+            vendor: {
+              name: "vendor",
+              chunks: "all",
+              test: /node_modules/,
+              priority: 20,
+            },
+            // 公共代码
+            common: {
+              name: "common",
+              minChunks: 2,
+              chunks: "all",
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+            // React 相关
+            react: {
+              name: "react",
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 30,
+            },
+            // 大型库单独打包
+            ethers: {
+              name: "ethers",
+              test: /[\\/]node_modules[\\/](ethers|@ethersproject)[\\/]/,
+              priority: 25,
+            },
+          },
+        },
+      };
+    }
+
+    return config;
   },
 };
 
