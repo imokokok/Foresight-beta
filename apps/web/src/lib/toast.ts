@@ -1,19 +1,35 @@
 import { toast as sonnerToast } from "sonner";
 
 /**
+ * 安全的日志记录函数
+ * 防止 console 调用时的错误传播
+ */
+function safeLog(
+  level: "log" | "error" | "warn",
+  prefix: string,
+  message: string,
+  description?: string
+) {
+  if (process.env.NODE_ENV !== "development") return;
+
+  try {
+    const desc = description ? ` - ${String(description)}` : "";
+    console[level](`${prefix} ${message}${desc}`);
+  } catch (e) {
+    // 忽略日志错误，不影响 Toast 显示
+  }
+}
+
+/**
  * 统一的 Toast 通知工具
  * 替代所有 alert() 调用，提供更好的用户体验
- *
- * 注意：为避免日志系统错误传播，Toast 直接使用 console 而不通过 logger
  */
 export const toast = {
   /**
    * 成功提示
    */
   success: (message: string, description?: string) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`✅ [Toast Success] ${message}`, description || "");
-    }
+    safeLog("log", "✅ [Toast Success]", message, description);
     return sonnerToast.success(message, {
       description,
     });
@@ -27,9 +43,7 @@ export const toast = {
     description?: string,
     options?: { action?: { label: string; onClick: () => void } }
   ) => {
-    if (process.env.NODE_ENV === "development") {
-      console.error(`❌ [Toast Error] ${message}`, description || "");
-    }
+    safeLog("error", "❌ [Toast Error]", message, description);
     return sonnerToast.error(message, {
       description,
       ...options,
@@ -40,9 +54,7 @@ export const toast = {
    * 警告提示
    */
   warning: (message: string, description?: string) => {
-    if (process.env.NODE_ENV === "development") {
-      console.warn(`⚠️ [Toast Warning] ${message}`, description || "");
-    }
+    safeLog("warn", "⚠️ [Toast Warning]", message, description);
     return sonnerToast.warning(message, {
       description,
     });
@@ -52,9 +64,7 @@ export const toast = {
    * 信息提示
    */
   info: (message: string, description?: string) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`ℹ️ [Toast Info] ${message}`, description || "");
-    }
+    safeLog("log", "ℹ️ [Toast Info]", message, description);
     return sonnerToast.info(message, {
       description,
     });
