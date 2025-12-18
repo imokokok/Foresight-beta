@@ -1578,18 +1578,18 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12 relative z-10">
           {/* 探索与热搜栏 */}
-          <div className="w-full mb-8 bg-white/70 backdrop-blur-2xl border border-white/60 rounded-2xl p-2 shadow-2xl shadow-purple-500/10 flex flex-col md:flex-row items-center gap-2 md:gap-4">
+          <div className="w-full mb-8 glass-card rounded-2xl p-2 flex flex-col md:flex-row items-center gap-2 md:gap-4">
             {/* 搜索框 */}
             <div className="relative flex-1 w-full group">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-brand transition-colors" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索感兴趣的预测事件、话题..."
-                className="block w-full pl-11 pr-4 py-3 bg-white/50 border border-white/40 rounded-xl text-sm text-gray-900 placeholder-gray-500 hover:bg-white hover:border-purple-400 hover:shadow-md focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/50 transition-all duration-300"
+                className="input-base pl-11"
               />
               <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
                 <button className="p-1.5 rounded-lg transition-colors text-gray-400 hover:text-gray-600">
@@ -2000,7 +2000,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     return (
                       <motion.div
                         key={sortedEvents[globalIndex]?.id || globalIndex}
-                        className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] shadow-lg shadow-purple-500/5 border border-white/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1 relative transform-gpu flex flex-col h-full min-h-[250px] group"
+                        className="glass-card glass-card-hover rounded-2xl overflow-hidden relative transform-gpu flex flex-col h-full min-h-[250px] group"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={(e) => {

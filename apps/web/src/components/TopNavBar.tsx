@@ -341,13 +341,13 @@ export default function TopNavBar() {
                   <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)} />
                   <div
                     ref={menuContentRef}
-                    className="fixed z-[9999] w-64 bg-white/90 backdrop-blur-md border border-[rgba(168,85,247,0.25)] rounded-xl shadow-2xl p-2"
+                    className="fixed z-[9999] w-64 glass-card p-2 rounded-2xl"
                     role="menu"
                     aria-label="用户菜单"
                     style={{ top: menuPos.top, left: menuPos.left }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="px-3 py-3 mb-2 rounded-lg bg-white/70 flex items-center justify-between">
+                    <div className="px-3 py-3 mb-2 rounded-xl bg-white/40 flex items-center justify-between border border-white/40">
                       <div>
                         <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                           {userProfile?.profile?.username || formatAddress(account)}

@@ -5,6 +5,8 @@
   --foreground: #171717;
   --brand: #6b21a8;
   --brandAccent: #db2777;
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --card-border: rgba(255, 255, 255, 0.5);
 }
 
 @theme inline {
@@ -14,19 +16,47 @@
   --font-mono: var(--font-geist-mono);
   --color-brand: var(--brand);
   --color-brand-accent: var(--brandAccent);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-brand: 0 10px 25px -5px rgba(107, 33, 168, 0.1), 0 8px 10px -6px rgba(107, 33, 168, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --card-border: rgba(255, 255, 255, 0.1);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  @apply antialiased selection:bg-brand/20 selection:text-brand;
+}
+
+/* 玻璃拟态卡片 */
+.glass-card {
+  @apply bg-[var(--card-bg)] backdrop-blur-xl border border-[var(--card-border)] shadow-soft;
+}
+
+.glass-card-hover {
+  @apply transition-all duration-300 hover:shadow-brand hover:-translate-y-1;
+}
+
+/* 渐变文字 */
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-brand to-brand-accent font-bold;
+}
+
+/* 统一输入框样式 */
+.input-base {
+  @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm transition-all duration-300 shadow-sm
+         focus:outline-none focus:ring-2 focus:ring-brand/10 focus:border-brand/40 hover:border-brand/20 hover:shadow-md;
 }
 
 /* 隐藏滚动条但保留滚动功能 */

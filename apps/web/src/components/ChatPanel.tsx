@@ -14,6 +14,7 @@ interface ChatPanelProps {
   isProposalRoom?: boolean;
   minHeightPx?: number;
   minHeightVh?: number;
+  hideHeader?: boolean;
 }
 
 interface ChatMessageView {
@@ -30,6 +31,7 @@ export default function ChatPanel({
   isProposalRoom,
   minHeightPx,
   minHeightVh,
+  hideHeader = false,
 }: ChatPanelProps) {
   const {
     account,
@@ -319,23 +321,25 @@ export default function ChatPanel({
 
   return (
     <div className={containerCls} style={{ minHeight: minH }}>
-      <div
-        className={`px-4 py-4 bg-gradient-to-r ${getHeaderGradient()} text-white border-b border-white/10 flex items-center justify-between relative overflow-hidden`}
-      >
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-        <div className="flex items-center gap-2 relative z-10">
-          <div className="inline-flex items-center justify-center w-8 h-8 bg-white/20 rounded-xl shadow-sm">
-            <MessageSquare className="w-4 h-4 text-white" />
+      {!hideHeader && (
+        <div
+          className={`px-4 py-4 bg-gradient-to-r ${getHeaderGradient()} text-white border-b border-white/10 flex items-center justify-between relative overflow-hidden`}
+        >
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
+          <div className="flex items-center gap-2 relative z-10">
+            <div className="inline-flex items-center justify-center w-8 h-8 bg-white/20 rounded-xl shadow-sm">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </div>
+            <div className="font-bold flex items-center gap-2">
+              <span className="tracking-tight">{roomLabel}</span>
+            </div>
+            <Sparkles className="w-4 h-4 text-white/90" />
           </div>
-          <div className="font-bold flex items-center gap-2">
-            <span className="tracking-tight">{roomLabel}</span>
+          <div className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-lg border border-white/20 relative z-10">
+            {account ? `你：${displayName(account)}` : "未连接钱包"}
           </div>
-          <Sparkles className="w-4 h-4 text-white/90" />
         </div>
-        <div className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-lg border border-white/20 relative z-10">
-          {account ? `你：${displayName(account)}` : "未连接钱包"}
-        </div>
-      </div>
+      )}
 
       <div className="px-4 py-2 bg-white/10 border-b border-white/20 flex items-center gap-2 text-xs text-white">
         <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">公告</span>
@@ -411,10 +415,10 @@ export default function ChatPanel({
         })}
       </div>
 
-      <div className="p-3 border-t border-white/30 bg-white/20 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-white">
+      <div className="p-3 border-t border-white/30 bg-white/40 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800">
         {!account ? (
           <div className="flex items-center justify-between">
-            <div className="text-sm text-white font-medium">发送消息需连接钱包</div>
+            <div className="text-sm text-slate-700 font-medium">发送消息需连接钱包</div>
             <Button
               size="sm"
               variant="cta"
@@ -437,7 +441,7 @@ export default function ChatPanel({
                   key={idx}
                   type="button"
                   onClick={() => setInput(p)}
-                  className="text-xs px-2 py-1 rounded-full border border-white/30 bg-white/10 text-slate-800 hover:bg-white/20 transition-colors"
+                  className="text-xs px-2 py-1 rounded-full border border-gray-200 bg-white/60 text-slate-600 hover:bg-white hover:text-brand transition-colors shadow-sm"
                 >
                   {p}
                 </button>
@@ -457,7 +461,7 @@ export default function ChatPanel({
                   }}
                   placeholder="输入消息，按 Enter 发送，Shift+Enter 换行"
                   rows={2}
-                  className="w-full resize-none px-3 py-2 border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-white/40 bg-white/15 focus:bg-white/25 transition-all shadow-inner placeholder:text-white/70 text-white"
+                  className="input-base w-full resize-none px-3 py-2 bg-white/90 text-slate-900 placeholder:text-slate-400"
                 />
                 {/* 表情选择 */}
                 <div className="absolute right-2 bottom-2">

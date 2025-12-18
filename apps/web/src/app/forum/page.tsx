@@ -14,9 +14,12 @@ import {
   BarChart3,
   MessageCircle,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import ChatPanel from "@/components/ChatPanel";
+import { useWallet } from "@/contexts/WalletContext";
+import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 
 type PredictionItem = {
   id: number;
@@ -60,12 +63,30 @@ function normalizeCategory(raw?: string): string {
 }
 
 export default function ForumPage() {
+  const { account, formatAddress } = useWallet();
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nameMap, setNameMap] = useState<Record<string, string>>({});
+
+  const displayName = (addr: string) => {
+    const key = String(addr || "").toLowerCase();
+    return nameMap[key] || formatAddress(addr);
+  };
+
+  useEffect(() => {
+    if (!account) return;
+    const run = async () => {
+      const res = await fetchUsernamesByAddresses([account]);
+      if (res && Object.keys(res).length > 0) {
+        setNameMap((prev) => ({ ...prev, ...res }));
+      }
+    };
+    run();
+  }, [account]);
 
   useEffect(() => {
     let cancelled = false;
@@ -325,18 +346,23 @@ export default function ForumPage() {
       >
         {/* LEFT PANEL */}
         <div className="w-80 flex-shrink-0 border-r border-white/30 flex flex-col overflow-x-hidden">
-          <div className="p-4 border-b border-gray-50">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="p-5 border-b border-white/20 bg-white/10">
+            <div className="flex items-center gap-3 mb-5">
               <div
-                className={`w-8 h-8 bg-gradient-to-r ${getStrongHeaderGradient(
-                  activeCat
-                )} rounded-lg flex items-center justify-center text-white shadow-md`}
+                className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand shadow-lg shadow-indigo-200/50 border border-white/50`}
               >
-                <MessageSquare size={16} fill="currentColor" />
+                <MessageSquare size={20} fill="currentColor" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white leading-tight">Forum</h2>
-                <p className="text-[11px] text-white/80">Community Discussions</p>
+                <h2 className="text-xl font-black text-slate-800 leading-tight tracking-tight">
+                  Forum
+                </h2>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-1 h-1 rounded-full bg-brand animate-pulse"></div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em]">
+                    Community
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -357,14 +383,15 @@ export default function ForumPage() {
             </div>
 
             <div className="relative group">
+              <div className="absolute inset-0 bg-black/5 rounded-xl blur-md group-focus-within:bg-brand/5 transition-all"></div>
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 group-focus-within:text-white transition-colors"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand transition-colors z-10"
                 size={16}
               />
               <input
                 type="text"
-                placeholder="Search topics..."
-                className="w-full pl-9 pr-4 py-2.5 bg-white/15 border border-white/30 rounded-xl text-sm focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all outline-none placeholder:text-white/70 text-white"
+                placeholder="搜索话题或讨论..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:ring-4 focus:ring-brand/5 focus:border-brand/40 transition-all outline-none relative z-0 shadow-sm group-hover:shadow-md"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -434,15 +461,21 @@ export default function ForumPage() {
         <div className="flex-1 flex flex-col">
           {/* Header */}
           <header
-            className={`h-16 px-6 border-b border-white/10 flex items-center justify-between bg-gradient-to-r ${getStrongHeaderGradient(
+            className={`h-16 px-6 border-b border-white/20 flex items-center justify-between bg-gradient-to-r ${getStrongHeaderGradient(
               activeCat
-            )} sticky top-0 z-10 text-white`}
+            )} sticky top-0 z-20 text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.15)]`}
           >
             <div className="flex items-center gap-4 min-w-0">
+              <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
+                <MessageSquare className="w-5 h-5 text-white" />
+              </div>
               <div className="flex flex-col min-w-0">
-                <h2 className="font-bold text-white truncate text-lg">
-                  {currentTopic?.title || ""}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-white truncate text-lg">
+                    {currentTopic?.title || "聊天室"}
+                  </h2>
+                  <Sparkles className="w-4 h-4 text-white/80" />
+                </div>
                 <div className="flex items-center gap-2 text-xs text-white/80">
                   <span className="flex items-center gap-1 bg-white/20 text-white px-2 py-0.5 rounded-full border border-white/30 font-medium">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -455,6 +488,12 @@ export default function ForumPage() {
             </div>
 
             <div className="flex items-center gap-6">
+              <div className="text-xs font-medium bg-white/20 text-white px-3 py-1.5 rounded-xl border border-white/20">
+                {account ? `你：${displayName(account)}` : "未连接钱包"}
+              </div>
+
+              <div className="w-px h-8 bg-white/30" />
+
               <div className="flex flex-col items-end">
                 <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
                   Followers
@@ -486,32 +525,29 @@ export default function ForumPage() {
           </header>
 
           {/* Chat Content inside frame */}
-          <div className="flex-1 relative px-4 py-4 overflow-x-hidden bg-transparent">
+          <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
             <div
-              className={`relative h-full rounded-3xl border border-white/30 bg-white/15 backdrop-blur-md shadow-sm overflow-hidden`}
-            >
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${getChatFrameGradient(
-                  activeCat
-                )} opacity-60`}
-              />
-              <div className="absolute inset-0 flex flex-col z-10">
-                {currentTopic?.id ? (
-                  <ChatPanel
-                    eventId={currentTopic.id}
-                    roomTitle={currentTopic.title}
-                    roomCategory={currentTopic.category}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center text-sm text-white/80">
-                    {loading
-                      ? "加载话题中..."
-                      : error
-                        ? "加载失败，请稍后重试"
-                        : "请选择一个话题开始讨论"}
-                  </div>
-                )}
-              </div>
+              className={`absolute inset-0 bg-gradient-to-br ${getChatFrameGradient(
+                activeCat
+              )} opacity-30`}
+            />
+            <div className="flex-1 flex flex-col z-10 relative">
+              {currentTopic?.id ? (
+                <ChatPanel
+                  eventId={currentTopic.id}
+                  roomTitle={currentTopic.title}
+                  roomCategory={currentTopic.category}
+                  hideHeader={true}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-sm text-white/80 backdrop-blur-md">
+                  {loading
+                    ? "加载话题中..."
+                    : error
+                      ? "加载失败，请稍后重试"
+                      : "请选择一个话题开始讨论"}
+                </div>
+              )}
             </div>
           </div>
         </div>

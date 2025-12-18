@@ -23,7 +23,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
-const base = "btn-base focus:btn-focus disabled:opacity-50 disabled:cursor-not-allowed";
+const base =
+  "btn-base focus:btn-focus active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transform-gpu";
 const sizes: Record<Size, string> = {
   sm: "btn-sm",
   md: "btn-md",

@@ -163,12 +163,12 @@ export default function Sidebar() {
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className={`fixed lg:sticky top-0 lg:top-0 z-50 lg:z-10 h-screen lg:h-[calc(100vh)] w-[260px] flex-shrink-0 bg-gradient-to-b from-violet-50/90 via-purple-50/50 to-fuchsia-50/90 backdrop-blur-xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${
+        className={`fixed lg:sticky top-0 lg:top-0 z-50 lg:z-30 h-screen lg:h-[calc(100vh)] w-[260px] flex-shrink-0 bg-white/40 backdrop-blur-2xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${
           mobileOpen ? "left-0" : "-left-[280px] lg:left-0"
         }`}
       >
         {/* Paper Texture Overlay */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.04] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
+        <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
 
         {/* Colorful Mesh Gradient at bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
@@ -182,23 +182,24 @@ export default function Sidebar() {
             <span className="font-black text-xl text-gray-800 tracking-tight">Foresight</span>
           </div>
 
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-white rounded-2xl shadow-sm rotate-1 border border-gray-100" />
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                aria-hidden="true"
-              />
-              <input
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitSearch();
-                }}
-                placeholder="Search..."
-                aria-label={tCommon("search")}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-transparent text-sm font-bold text-gray-700 placeholder:text-gray-300 focus:outline-none"
-              />
+          <div className="relative mb-8 px-2">
+            <div className="relative group p-1 bg-slate-100/50 rounded-2xl border border-slate-200/60 shadow-inner">
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand transition-colors z-10"
+                  aria-hidden="true"
+                />
+                <input
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitSearch();
+                  }}
+                  placeholder="探索新预测..."
+                  aria-label={tCommon("search")}
+                  className="w-full pl-11 pr-4 py-3 bg-white border-2 border-transparent rounded-xl text-sm font-bold text-slate-800 placeholder:text-slate-400 shadow-xl shadow-brand/5 focus:outline-none focus:border-brand/30 focus:ring-4 focus:ring-brand/5 transition-all"
+                />
+              </div>
             </div>
           </div>
 
