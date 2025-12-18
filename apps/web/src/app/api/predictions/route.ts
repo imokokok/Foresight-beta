@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabaseAdmin, supabase, type Prediction } from "@/lib/supabase";
 import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 
+// 预测列表可以短暂缓存
+export const revalidate = 30; // 30秒缓存
+
 export async function GET(request: NextRequest) {
   try {
     // 对于获取预测事件列表，允许匿名访问（不需要登录）

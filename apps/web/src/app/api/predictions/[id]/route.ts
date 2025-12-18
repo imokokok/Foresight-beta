@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient, type Prediction } from "@/lib/supabase";
 import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 
+// 预测详情可以短暂缓存
+export const revalidate = 30; // 30秒缓存
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await Promise.resolve(params);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Crown, Trophy, ChevronRight, TrendingUp } from "lucide-react";
@@ -58,10 +58,12 @@ const leaderboardData = [
   },
 ];
 
-export default function Leaderboard() {
+function Leaderboard() {
   const [period, setPeriod] = useState("week");
-  const top3 = leaderboardData.slice(0, 3);
-  const others = leaderboardData.slice(3);
+  
+  // 使用 useMemo 优化数据切片
+  const top3 = useMemo(() => leaderboardData.slice(0, 3), []);
+  const others = useMemo(() => leaderboardData.slice(3), []);
 
   return (
     <div className="bg-gradient-to-br from-blue-50/80 via-purple-50/80 to-pink-50/80 backdrop-blur-xl rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80 relative overflow-hidden group hover:shadow-purple-500/10 transition-all duration-500">
@@ -237,3 +239,6 @@ export default function Leaderboard() {
     </div>
   );
 }
+
+// 使用 memo 优化组件，避免不必要的重渲染
+export default memo(Leaderboard);

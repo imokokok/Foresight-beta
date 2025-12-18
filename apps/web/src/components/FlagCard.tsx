@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { motion } from "framer-motion";
 import {
   Clock,
@@ -34,7 +35,7 @@ interface FlagCardProps {
   onSettle?: () => void;
 }
 
-export function FlagCard({ flag, isMine, onCheckin, onViewHistory, onSettle }: FlagCardProps) {
+export const FlagCard = memo(function FlagCard({ flag, isMine, onCheckin, onViewHistory, onSettle }: FlagCardProps) {
   const statusConfig = {
     active: {
       color: "text-emerald-800",
@@ -239,4 +240,4 @@ export function FlagCard({ flag, isMine, onCheckin, onViewHistory, onSettle }: F
       </div>
     </motion.div>
   );
-}
+});

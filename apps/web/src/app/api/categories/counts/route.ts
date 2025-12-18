@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 
+// 分类统计数据可以短暂缓存
+export const revalidate = 60; // 1分钟缓存
+
 export async function GET() {
   try {
     const client = getClient();

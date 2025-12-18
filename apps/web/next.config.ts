@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
   // 启用 gzip 压缩
   compress: true,
 
+  // 生产环境自动移除 console.log
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' 
+      ? {
+          exclude: ['error', 'warn'], // 保留 error 和 warn
+        }
+      : false,
+  },
+
   images: {
     remotePatterns: [
       {

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { parseRequestBody } from "@/lib/serverUtils";
 
+// 论坛数据可以短暂缓存
+export const revalidate = 30; // 30秒缓存
+
 function actionLabel(v: string): string {
   const s = String(v || "");
   if (s === "价格达到") return "价格是否会达到";

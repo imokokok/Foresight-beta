@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { logApiError } from "@/lib/serverUtils";
 
+// 分类数据很少变化，可以缓存较长时间
+export const revalidate = 3600; // 1小时缓存
+
 export async function GET() {
   try {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
@@ -31,6 +34,8 @@ export async function GET() {
       {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
+          // 添加 HTTP 缓存头
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
         },
       }
     );

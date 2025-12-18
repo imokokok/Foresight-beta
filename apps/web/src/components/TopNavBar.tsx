@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Copy, LogOut, Wallet, ExternalLink } from "lucide-react";
@@ -73,32 +73,32 @@ export default function TopNavBar() {
     };
   }, [connectError, mounted]);
 
-  // 头像菜单：复制与断开
-  const handleConnectWallet = async (walletType?: "metamask" | "coinbase" | "binance") => {
+  // 头像菜单：复制与断开 - 使用 useCallback 优化
+  const handleConnectWallet = useCallback(async (walletType?: "metamask" | "coinbase" | "binance") => {
     await connectWallet(walletType);
     setWalletSelectorOpen(false);
-  };
+  }, [connectWallet]);
 
-  const handleWalletSelectorToggle = () => {
+  const handleWalletSelectorToggle = useCallback(() => {
     setWalletSelectorOpen(!walletSelectorOpen);
-  };
+  }, [walletSelectorOpen]);
 
-  const handleDisconnectWallet = async () => {
+  const handleDisconnectWallet = useCallback(async () => {
     await disconnectWallet();
     try {
       await fetch("/api/siwe/logout", { method: "GET" });
     } catch {}
     setMenuOpen(false);
-  };
+  }, [disconnectWallet]);
 
-  const copyAddress = async () => {
+  const copyAddress = useCallback(async () => {
     if (!account) return;
     try {
       await navigator.clipboard.writeText(account);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {}
-  };
+  }, [account]);
 
   // 新增：网络名称、区块浏览器、余额刷新、网络切换
   const networkName = (id: string | null) => {
