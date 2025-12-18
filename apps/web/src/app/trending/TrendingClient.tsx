@@ -1433,8 +1433,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       return;
     }
 
+    let channel: any = null;
+    let isSubscribed = true;
+
     const filterIn = `event_id=in.(${ids.join(",")})`;
-    const channel = (supabase as any).channel("event_follows_trending");
+    channel = (supabase as any).channel("event_follows_trending");
 
     channel
       .on(
@@ -1446,6 +1449,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           filter: filterIn,
         },
         (payload: any) => {
+          if (!isSubscribed) return;
           const row = payload?.new || {};
           const eid = Number(row?.event_id);
           const uid = String(row?.user_id || "");
@@ -1480,6 +1484,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           filter: filterIn,
         },
         (payload: any) => {
+          if (!isSubscribed) return;
           const row = payload?.old || {};
           const eid = Number(row?.event_id);
           const uid = String(row?.user_id || "");
@@ -1507,8 +1512,21 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       )
       .subscribe();
 
+    // 清理函数
     return () => {
-      (supabase as any).removeChannel(channel);
+      isSubscribed = false;
+      
+      if (channel) {
+        try {
+          // 先取消订阅
+          channel.unsubscribe();
+          // 再移除频道
+          (supabase as any).removeChannel(channel);
+          channel = null;
+        } catch (error) {
+          console.error('Failed to cleanup WebSocket channel:', error);
+        }
+      }
     };
   }, [sortedEvents, displayCount, accountNorm, queryClient]);
 

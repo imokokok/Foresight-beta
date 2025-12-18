@@ -14,7 +14,8 @@ async function getPredictions() {
   const { data: predictions, error } = await client
     .from("predictions")
     .select("id,title,description,min_stake,category,image_url,deadline,status,criteria,type")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(100);  // 限制最多返回100条，防止数据量过大
 
   if (error || !predictions) {
     console.error("Server fetch predictions error:", error);

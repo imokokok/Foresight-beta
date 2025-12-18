@@ -59,16 +59,20 @@ export default function ChatPanel({
   const quickPrompts = ["这条预测的依据是什么？", "有没有最新进展？", "我认为概率更高的理由是…"];
 
   useEffect(() => {
-    let unsub: any;
+    let channel: any = null;
+    let isSubscribed = true;
+    
     const load = async () => {
       try {
+        if (!isSubscribed) return;
+        
         if (supabase) {
           const { data, error } = await supabase
             .from("discussions")
             .select("*")
             .eq("proposal_id", eventId)
             .order("created_at", { ascending: true });
-          if (!error) {
+          if (!error && isSubscribed) {
             const list = Array.isArray(data) ? data : [];
             setMessages(
               list.map((r: any) => ({
@@ -83,6 +87,8 @@ export default function ChatPanel({
         }
         const res = await fetch(`/api/discussions?proposalId=${eventId}`);
         const data = await res.json();
+        if (!isSubscribed) return;
+        
         const list = Array.isArray(data?.discussions) ? data.discussions : [];
         setMessages(
           list.map((r: any) => ({
@@ -94,9 +100,11 @@ export default function ChatPanel({
         );
       } catch {}
     };
+    
     load();
+    
     if (supabase) {
-      const ch = supabase
+      channel = supabase
         .channel(`discussions:${eventId}`)
         .on(
           "postgres_changes",
@@ -107,6 +115,7 @@ export default function ChatPanel({
             filter: `proposal_id=eq.${eventId}`,
           },
           (payload) => {
+            if (!isSubscribed) return;
             const r: any = payload.new;
             const m = {
               id: String(r.id),
@@ -133,6 +142,7 @@ export default function ChatPanel({
             filter: `proposal_id=eq.${eventId}`,
           },
           (payload) => {
+            if (!isSubscribed) return;
             const r: any = payload.new;
             const m = {
               id: String(r.id),
@@ -152,19 +162,29 @@ export default function ChatPanel({
             filter: `proposal_id=eq.${eventId}`,
           },
           (payload) => {
+            if (!isSubscribed) return;
             const r: any = payload.old;
             setMessages((prev) => prev.filter((x) => x.id !== String(r.id)));
           }
         )
         .subscribe();
-      unsub = () => {
-        try {
-          supabase?.removeChannel(ch);
-        } catch {}
-      };
     }
+    
+    // 清理函数
     return () => {
-      if (typeof unsub === "function") unsub();
+      isSubscribed = false;
+      
+      if (channel) {
+        try {
+          // 先取消订阅
+          channel.unsubscribe();
+          // 再移除频道
+          supabase?.removeChannel(channel);
+          channel = null;
+        } catch (error) {
+          console.error('Failed to cleanup WebSocket channel:', error);
+        }
+      }
     };
   }, [eventId]);
 
