@@ -1,0 +1,134 @@
+import { toast as sonnerToast } from "sonner";
+import { logger } from "./logger";
+
+/**
+ * 统一的 Toast 通知工具
+ * 替代所有 alert() 调用，提供更好的用户体验
+ */
+export const toast = {
+  /**
+   * 成功提示
+   */
+  success: (message: string, description?: string) => {
+    logger.info("Toast Success", { message, description });
+    return sonnerToast.success(message, {
+      description,
+    });
+  },
+
+  /**
+   * 错误提示
+   */
+  error: (
+    message: string,
+    description?: string,
+    options?: { action?: { label: string; onClick: () => void } }
+  ) => {
+    logger.error("Toast Error", { message, description });
+    return sonnerToast.error(message, {
+      description,
+      ...options,
+    });
+  },
+
+  /**
+   * 警告提示
+   */
+  warning: (message: string, description?: string) => {
+    logger.warn("Toast Warning", { message, description });
+    return sonnerToast.warning(message, {
+      description,
+    });
+  },
+
+  /**
+   * 信息提示
+   */
+  info: (message: string, description?: string) => {
+    logger.info("Toast Info", { message, description });
+    return sonnerToast.info(message, {
+      description,
+    });
+  },
+
+  /**
+   * 加载中提示
+   */
+  loading: (message: string, description?: string) => {
+    return sonnerToast.loading(message, {
+      description,
+    });
+  },
+
+  /**
+   * 异步操作 Promise 提示
+   */
+  promise: <T>(
+    promise: Promise<T>,
+    options: {
+      loading: string;
+      success: string | ((data: T) => string);
+      error: string | ((error: Error) => string);
+    }
+  ) => {
+    return sonnerToast.promise(promise, options);
+  },
+
+  /**
+   * 关闭指定 Toast
+   */
+  dismiss: (toastId?: string | number) => {
+    return sonnerToast.dismiss(toastId);
+  },
+};
+
+/**
+ * API 错误处理器
+ * 根据 HTTP 状态码返回友好的中文错误信息
+ */
+export function handleApiError(error: unknown, defaultMessage = "操作失败") {
+  logger.error("API Error", { error });
+
+  if (error instanceof Error) {
+    // 网络错误
+    if (error.message.includes("fetch")) {
+      toast.error("网络连接失败", "请检查网络连接后重试", {
+        action: {
+          label: "重试",
+          onClick: () => window.location.reload(),
+        },
+      });
+      return;
+    }
+
+    // 其他错误
+    toast.error(defaultMessage, error.message);
+    return;
+  }
+
+  // HTTP 错误
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = (error as { status: number }).status;
+    const errorMessages: Record<number, { title: string; description: string }> = {
+      400: { title: "请求错误", description: "提交的数据格式不正确" },
+      401: { title: "未授权", description: "请先连接钱包并登录" },
+      403: { title: "权限不足", description: "您没有权限执行此操作" },
+      404: { title: "资源不存在", description: "请求的内容未找到" },
+      409: { title: "数据冲突", description: "操作与现有数据冲突" },
+      429: { title: "请求过于频繁", description: "请稍后再试" },
+      500: { title: "服务器错误", description: "服务器遇到问题，请稍后重试" },
+      503: { title: "服务暂时不可用", description: "服务器维护中，请稍后再试" },
+    };
+
+    const errorInfo = errorMessages[status] || {
+      title: defaultMessage,
+      description: "请检查后重试",
+    };
+
+    toast.error(errorInfo.title, errorInfo.description);
+    return;
+  }
+
+  // 未知错误
+  toast.error(defaultMessage, "请稍后重试");
+}

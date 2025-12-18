@@ -11,6 +11,7 @@ import StickerRevealModal, {
   StickerItem,
 } from "@/components/StickerRevealModal";
 import StickerGalleryModal from "@/components/StickerGalleryModal";
+import { toast } from "@/lib/toast";
 import {
   Loader2,
   Plus,
@@ -374,7 +375,7 @@ export default function FlagsPage() {
         }
       }
     } catch (e) {
-      alert("打卡失败，请重试");
+      toast.error("打卡失败", "网络错误，请稍后重试");
     } finally {
       setCheckinSubmitting(false);
     }
@@ -420,7 +421,7 @@ export default function FlagsPage() {
       // refresh history
       if (historyFlag) openHistory(historyFlag);
     } catch (e) {
-      alert("审核失败");
+      toast.error("审核失败", "请检查网络连接后重试");
     } finally {
       setReviewSubmittingId(null);
     }
@@ -447,14 +448,15 @@ export default function FlagsPage() {
           setStickerOpen(true);
         }
       } else {
-        alert(
-          `结算完成：${String(ret?.status || "")}，通过天数 ${
+        toast.success(
+          "结算完成",
+          `状态：${String(ret?.status || "")}，通过天数 ${
             ret?.metrics?.approvedDays || 0
           }/${ret?.metrics?.totalDays || 0}`
         );
       }
     } catch (e) {
-      alert(String((e as any)?.message || "结算失败"));
+      toast.error("结算失败", String((e as any)?.message || "请稍后重试"));
     } finally {
       setSettlingId(null);
     }

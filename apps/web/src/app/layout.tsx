@@ -6,6 +6,7 @@ import { UserProfileProvider } from "@/contexts/UserProfileContext";
 import Sidebar from "@/components/Sidebar";
 import TopNavBar from "@/components/TopNavBar";
 import ReactQueryProvider from "@/components/ReactQueryProvider";
+import ToastProvider from "@/components/providers/ToastProvider";
 
 export const metadata: Metadata = {
   title: {
@@ -92,6 +93,7 @@ export default function RootLayout({
           <AuthProvider>
             <WalletProvider>
               <UserProfileProvider>
+                <ToastProvider />
                 <div className="flex min-h-screen flex-col">
                   <TopNavBar />
                   <div className="flex flex-1 relative">

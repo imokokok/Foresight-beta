@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
+import { toast } from "@/lib/toast";
 
 // Components
 import { MarketHeader } from "@/components/market/MarketHeader";
@@ -314,8 +315,9 @@ export default function PredictionDetailClient() {
       } else {
         throw new Error(json.message || "取消失败");
       }
+      toast.success("订单已取消", "您的订单已成功取消");
     } catch (e: any) {
-      alert(e.message || "取消订单失败");
+      toast.error("取消订单失败", e.message || "请稍后重试");
     }
   };
 

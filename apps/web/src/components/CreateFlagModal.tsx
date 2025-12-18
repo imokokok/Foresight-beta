@@ -27,6 +27,7 @@ import {
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DatePicker from "@/components/ui/DatePicker";
+import { toast } from "@/lib/toast";
 
 interface CreateFlagModalProps {
   isOpen: boolean;
@@ -140,18 +141,18 @@ export default function CreateFlagModal({
 
   const handleSubmit = async () => {
     if (!user && !account) {
-      alert("请先连接钱包");
+      toast.warning("需要连接钱包", "请先连接钱包才能创建 Flag");
       return;
     }
 
     // 必填项校验
     if (!title.trim()) {
-      alert("请输入 Flag 标题");
+      toast.warning("标题不能为空", "请输入 Flag 标题");
       return;
     }
 
     if (verifType === "witness" && !witnessId.trim() && !isOfficial) {
-      alert("请填写见证人 ID 或地址");
+      toast.warning("见证人信息缺失", "请填写见证人 ID 或地址");
       return;
     }
 
@@ -184,10 +185,11 @@ export default function CreateFlagModal({
       });
 
       if (!res.ok) throw new Error("Create failed");
+      toast.success("创建成功", "Flag 已创建，快去打卡吧！");
       onSuccess();
       onClose();
     } catch (e) {
-      alert("创建失败，请重试");
+      toast.error("创建失败", "请检查网络连接后重试");
     } finally {
       setLoading(false);
     }

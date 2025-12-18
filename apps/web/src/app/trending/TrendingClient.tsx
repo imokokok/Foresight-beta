@@ -31,6 +31,8 @@ import { followPrediction, unfollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
 import Leaderboard from "@/components/Leaderboard";
 import DatePicker from "@/components/ui/DatePicker";
+import { toast } from "@/lib/toast";
+import { EventCardSkeleton } from "@/components/ui/Skeleton";
 
 const HERO_EVENTS = [
   {
@@ -1341,9 +1343,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             : p
         )
       );
+      toast.success("更新成功", "预测事件已成功更新");
       setEditOpen(false);
     } catch (e: any) {
-      alert(String(e?.message || e || "更新失败"));
+      toast.error("更新失败", String(e?.message || e || "请稍后重试"));
     } finally {
       setSavingEdit(false);
     }
@@ -1364,8 +1367,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       queryClient.setQueryData(["predictions"], (old: any[]) =>
         old?.filter((p: any) => p?.id !== id)
       );
+      toast.success("删除成功", "预测事件已被删除");
     } catch (e: any) {
-      alert(String(e?.message || e || "删除失败"));
+      toast.error("删除失败", String(e?.message || e || "请稍后重试"));
     } finally {
       setDeleteBusyId(null);
     }
@@ -1987,7 +1991,13 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             {followError && (
               <div className="mb-4 px-4 py-2 bg-red-100 text-red-700 rounded">{followError}</div>
             )}
-            {sortedEvents.length === 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <EventCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : sortedEvents.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-900 text-lg">暂无预测事件数据</p>
                 <p className="text-gray-500 mt-2">请稍后再试或联系管理员</p>

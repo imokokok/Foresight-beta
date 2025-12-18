@@ -1,142 +1,142 @@
 /**
- * 简单的内存限流器
- * 生产环境建议使用 Redis (Upstash/Vercel KV)
+ * Rate Limiting 工具
+ * 基于内存的简单限流实现（生产环境建议使用 Redis）
  */
 
-interface RateLimitRecord {
+interface RateLimitConfig {
+  /**
+   * 时间窗口（毫秒）
+   */
+  interval: number;
+  /**
+   * 窗口内最大请求数
+   */
+  limit: number;
+}
+
+interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
 
-const store = new Map<string, RateLimitRecord>();
+// 内存存储（开发环境）
+const store = new Map<string, RateLimitEntry>();
 
-// 定期清理过期记录
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, record] of store.entries()) {
-      if (now > record.resetAt) {
-        store.delete(key);
-      }
+// 定期清理过期记录（每分钟）
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt < now) {
+      store.delete(key);
     }
-  }, 60000); // 每分钟清理一次
-}
-
-export interface RateLimitConfig {
-  /**
-   * 时间窗口内允许的最大请求数
-   */
-  limit: number;
-
-  /**
-   * 时间窗口（毫秒）
-   */
-  windowMs: number;
-}
-
-export interface RateLimitResult {
-  /**
-   * 是否允许请求
-   */
-  success: boolean;
-
-  /**
-   * 剩余请求数
-   */
-  remaining: number;
-
-  /**
-   * 重置时间戳
-   */
-  resetAt: number;
-
-  /**
-   * 是否被限流
-   */
-  limited: boolean;
-}
+  }
+}, 60 * 1000);
 
 /**
- * 检查速率限制
- * @param identifier 唯一标识符（IP、用户ID等）
+ * 检查请求是否超出限流
+ * @param identifier 标识符（通常是 IP 地址或用户 ID）
  * @param config 限流配置
- * @returns 限流结果
+ * @returns 是否允许通过
  */
 export function checkRateLimit(
   identifier: string,
-  config: RateLimitConfig = { limit: 10, windowMs: 60000 }
-): RateLimitResult {
+  config: RateLimitConfig = { interval: 60 * 1000, limit: 60 }
+): { success: boolean; remaining: number; reset: number } {
   const now = Date.now();
-  const key = identifier;
+  const key = `ratelimit:${identifier}`;
 
-  let record = store.get(key);
+  const entry = store.get(key);
 
-  // 如果记录不存在或已过期，创建新记录
-  if (!record || now > record.resetAt) {
-    record = {
-      count: 1,
-      resetAt: now + config.windowMs,
-    };
-    store.set(key, record);
-
+  // 如果没有记录或已过期，创建新记录
+  if (!entry || entry.resetAt < now) {
+    const resetAt = now + config.interval;
+    store.set(key, { count: 1, resetAt });
     return {
       success: true,
       remaining: config.limit - 1,
-      resetAt: record.resetAt,
-      limited: false,
+      reset: resetAt,
     };
   }
 
-  // 检查是否超过限制
-  if (record.count >= config.limit) {
+  // 如果未超出限制，增加计数
+  if (entry.count < config.limit) {
+    entry.count++;
     return {
-      success: false,
-      remaining: 0,
-      resetAt: record.resetAt,
-      limited: true,
+      success: true,
+      remaining: config.limit - entry.count,
+      reset: entry.resetAt,
     };
   }
 
-  // 增加计数
-  record.count++;
-  store.set(key, record);
-
+  // 超出限制
   return {
-    success: true,
-    remaining: config.limit - record.count,
-    resetAt: record.resetAt,
-    limited: false,
+    success: false,
+    remaining: 0,
+    reset: entry.resetAt,
   };
 }
 
 /**
- * 从请求中获取 IP 地址
+ * Next.js API Route 中间件包装器
  */
-export function getIP(request: Request): string {
-  // Vercel/Cloudflare 等平台的标准头
-  const headers = request.headers;
+export function withRateLimit(
+  handler: (req: Request) => Promise<Response>,
+  config?: RateLimitConfig
+) {
+  return async (req: Request): Promise<Response> => {
+    // 获取客户端 IP
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
 
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-    headers.get("x-real-ip") ||
-    headers.get("cf-connecting-ip") ||
-    "unknown"
-  );
+    const result = checkRateLimit(ip, config);
+
+    // 添加 Rate Limit Headers
+    const headers = new Headers({
+      "X-RateLimit-Limit": String(config?.limit || 60),
+      "X-RateLimit-Remaining": String(result.remaining),
+      "X-RateLimit-Reset": String(result.reset),
+    });
+
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Too Many Requests",
+          message: "请求过于频繁，请稍后再试",
+          retryAfter: Math.ceil((result.reset - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            ...Object.fromEntries(headers.entries()),
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((result.reset - Date.now()) / 1000)),
+          },
+        }
+      );
+    }
+
+    // 执行原始处理器
+    const response = await handler(req);
+
+    // 添加 Rate Limit Headers 到响应
+    for (const [key, value] of headers.entries()) {
+      response.headers.set(key, value);
+    }
+
+    return response;
+  };
 }
 
 /**
  * 预定义的限流配置
  */
-export const RateLimits = {
-  // 严格限制（登录、注册等）
-  strict: { limit: 5, windowMs: 60000 }, // 5次/分钟
-
-  // 中等限制（创建订单、发帖等）
-  moderate: { limit: 20, windowMs: 60000 }, // 20次/分钟
-
-  // 宽松限制（查询、浏览等）
-  relaxed: { limit: 100, windowMs: 60000 }, // 100次/分钟
-
-  // 极宽松（静态资源等）
-  lenient: { limit: 1000, windowMs: 60000 }, // 1000次/分钟
+export const rateLimitPresets = {
+  /** 严格限制（登录、注册等敏感操作）*/
+  strict: { interval: 15 * 60 * 1000, limit: 5 }, // 15分钟5次
+  /** 一般限制（API 调用）*/
+  normal: { interval: 60 * 1000, limit: 60 }, // 1分钟60次
+  /** 宽松限制（查询操作）*/
+  relaxed: { interval: 60 * 1000, limit: 120 }, // 1分钟120次
 };
