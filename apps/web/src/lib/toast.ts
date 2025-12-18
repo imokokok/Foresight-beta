@@ -10,13 +10,32 @@ function safeLog(
   message: string,
   description?: string
 ) {
-  if (process.env.NODE_ENV !== "development") return;
+  // 开发环境才记录日志
+  if (typeof process === "undefined" || process.env.NODE_ENV !== "development") return;
 
   try {
-    const desc = description ? ` - ${String(description)}` : "";
-    console[level](`${prefix} ${message}${desc}`);
+    // 安全转换 description
+    let desc = "";
+    if (description != null) {
+      try {
+        desc = ` - ${String(description)}`;
+      } catch {
+        desc = " - [无法转换的内容]";
+      }
+    }
+
+    // 使用固定的 console 方法，避免动态访问
+    const logMessage = `${prefix} ${message}${desc}`;
+    if (level === "error") {
+      console.error(logMessage);
+    } else if (level === "warn") {
+      console.warn(logMessage);
+    } else {
+      console.log(logMessage);
+    }
   } catch (e) {
-    // 忽略日志错误，不影响 Toast 显示
+    // 完全忽略日志错误，确保不影响 Toast 显示
+    // 连这个 catch 都不要记录，避免递归
   }
 }
 
