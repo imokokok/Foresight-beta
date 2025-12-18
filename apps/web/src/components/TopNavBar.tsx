@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Copy, LogOut, Wallet, ExternalLink } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
@@ -9,6 +8,7 @@ import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import WalletModal from "./WalletModal";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useTranslations } from "@/lib/i18n";
+import LazyImage from "@/components/ui/LazyImage";
 
 export default function TopNavBar() {
   const {
@@ -303,31 +303,26 @@ export default function TopNavBar() {
         {account ? (
           <div className="relative group" ref={menuRef}>
             <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
-              <Image
-                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
-                alt="User avatar"
-                title={account}
-                width={40}
-                height={40}
-                unoptimized
+              <div
+                ref={avatarRef}
                 role="button"
                 aria-label="打开用户菜单"
                 aria-expanded={menuOpen}
                 tabIndex={0}
-                className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md"
+                className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md overflow-hidden"
                 onClick={() => setMenuOpen((v) => !v)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") setMenuOpen((v) => !v);
                 }}
-                // Pass the ref to the parent div or handle differently because Image component doesn't forward ref directly to img usually?
-                // Actually Next/Image forwards ref to the underlying img element in newer versions or we can wrap it.
-                // But here the ref is used for positioning. Let's attach ref to the wrapper or handle it.
-                // The original code had ref={avatarRef} on the img.
-                // We can try putting it on Image, or wrap it.
-                // Let's wrap it in a div or check if Image supports ref.
-                // Next.js 13+ Image supports ref.
-                ref={avatarRef}
-              />
+              >
+                <LazyImage
+                  src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
+                  alt="用户头像"
+                  className="w-10 h-10 rounded-full object-cover"
+                  placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
+                  rootMargin={0}
+                />
+              </div>
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full ring-2 ring-white dark:ring-[#0a0a0a]" />
             {/* 显示当前连接的钱包类型 */}

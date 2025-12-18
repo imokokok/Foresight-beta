@@ -2,6 +2,7 @@
 export * from "./CardSkeleton";
 export * from "./ProfileSkeleton";
 export * from "./TableSkeleton";
+export { default as FlagCardSkeleton, FlagCardListSkeleton } from "./FlagCardSkeleton";
 
 /**
  * 通用文本骨架屏

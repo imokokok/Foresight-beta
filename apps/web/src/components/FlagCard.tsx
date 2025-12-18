@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Camera,
 } from "lucide-react";
+import LazyImage from "@/components/ui/LazyImage";
 
 export type FlagItem = {
   id: number;
@@ -208,10 +209,12 @@ export const FlagCard = memo(function FlagCard({ flag, isMine, onCheckin, onView
               <div className="flex -space-x-2 overflow-hidden">
                 {flag.proof_image_url ? (
                   <div className="w-10 h-10 rounded-full border-2 border-white shadow-md overflow-hidden ring-2 ring-gray-100 relative z-10">
-                    <img
+                    <LazyImage
                       src={flag.proof_image_url}
                       alt={flag.title || "打卡图片"}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-full"
+                      placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
+                      rootMargin={100}
                     />
                   </div>
                 ) : (

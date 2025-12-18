@@ -6,6 +6,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
+import EmptyState from "@/components/EmptyState";
 
 interface ChatPanelProps {
   eventId: number;
@@ -386,7 +387,25 @@ export default function ChatPanel({
         className="flex-1 overflow-y-auto p-4 pb-20 space-y-3 bg-transparent custom-scrollbar"
       >
         {mergedMessages.length === 0 && (
-          <div className="text-center text-gray-400 text-sm mt-10">暂无消息，快来开启讨论吧！</div>
+          <EmptyState
+            icon={MessageSquare}
+            title="暂无消息"
+            description="这里还没有讨论内容。快来发表你的第一条见解，开启精彩对话吧！"
+            action={
+              account
+                ? {
+                    label: "发送第一条消息",
+                    onClick: () => {
+                      const inputEl = document.querySelector("textarea") as HTMLTextAreaElement;
+                      if (inputEl) {
+                        inputEl.focus();
+                        setInput("你好！👋 很高兴加入讨论");
+                      }
+                    },
+                  }
+                : undefined
+            }
+          />
         )}
         {mergedMessages.map((m, i) => {
           const mine =

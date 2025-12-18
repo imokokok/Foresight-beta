@@ -33,6 +33,7 @@ import Leaderboard from "@/components/Leaderboard";
 import DatePicker from "@/components/ui/DatePicker";
 import { toast } from "@/lib/toast";
 import { EventCardSkeleton } from "@/components/ui/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 const HERO_EVENTS = [
   {
@@ -2016,10 +2017,15 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                 ))}
               </div>
             ) : sortedEvents.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-900 text-lg">暂无预测事件数据</p>
-                <p className="text-gray-500 mt-2">请稍后再试或联系管理员</p>
-              </div>
+              <EmptyState
+                icon={TrendingUp}
+                title="暂无预测"
+                description="当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！"
+                action={{
+                  label: "创建预测",
+                  onClick: () => router.push("/prediction/new"),
+                }}
+              />
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -4,6 +4,7 @@ import React, { useState, memo, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Crown, Trophy, ChevronRight, TrendingUp } from "lucide-react";
+import LazyImage from "@/components/ui/LazyImage";
 
 // Mock data
 const leaderboardData = [
@@ -116,10 +117,12 @@ function Leaderboard() {
               transition={{ delay: 0.1 }}
               className="w-14 h-14 rounded-full p-[3px] bg-gradient-to-b from-slate-300 to-slate-100 shadow-lg ring-2 ring-white"
             >
-              <img
+              <LazyImage
                 src={top3[1].avatar}
+                alt={`${top3[1].name} 头像`}
                 className="w-full h-full rounded-full bg-white object-cover"
-                alt=""
+                placeholderClassName="rounded-full bg-gradient-to-br from-slate-100 to-slate-200"
+                rootMargin={50}
               />
             </motion.div>
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white shadow-sm">
@@ -147,10 +150,12 @@ function Leaderboard() {
               animate={{ scale: 1 }}
               className="w-20 h-20 rounded-full p-[4px] bg-gradient-to-b from-amber-300 via-yellow-400 to-orange-500 shadow-xl shadow-orange-500/20 ring-4 ring-white"
             >
-              <img
+              <LazyImage
                 src={top3[0].avatar}
+                alt={`${top3[0].name} 头像`}
                 className="w-full h-full rounded-full bg-white object-cover"
-                alt=""
+                placeholderClassName="rounded-full bg-gradient-to-br from-amber-100 to-yellow-100"
+                rootMargin={50}
               />
             </motion.div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-0.5 rounded-full border-2 border-white shadow-md">
@@ -176,10 +181,12 @@ function Leaderboard() {
               transition={{ delay: 0.2 }}
               className="w-14 h-14 rounded-full p-[3px] bg-gradient-to-b from-orange-300 to-orange-100 shadow-lg ring-2 ring-white"
             >
-              <img
+              <LazyImage
                 src={top3[2].avatar}
+                alt={`${top3[2].name} 头像`}
                 className="w-full h-full rounded-full bg-white object-cover"
-                alt=""
+                placeholderClassName="rounded-full bg-gradient-to-br from-orange-100 to-orange-200"
+                rootMargin={50}
               />
             </motion.div>
             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-200 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white shadow-sm">
@@ -211,10 +218,12 @@ function Leaderboard() {
               <span className="w-6 text-center text-xs font-bold text-gray-400 group-hover/item:text-purple-500 transition-colors">
                 {item.rank}
               </span>
-              <img
+              <LazyImage
                 src={item.avatar}
-                alt={item.name}
+                alt={`${item.name} 头像`}
                 className="w-8 h-8 rounded-full bg-gray-100 object-cover group-hover/item:ring-2 ring-purple-100 transition-all"
+                placeholderClassName="rounded-full bg-gradient-to-br from-gray-100 to-gray-200"
+                rootMargin={100}
               />
               <span className="text-sm font-medium text-gray-700 group-hover/item:text-gray-900 transition-colors">
                 {item.name}
