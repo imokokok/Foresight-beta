@@ -180,6 +180,7 @@ export default function AdminCreatePredictionPage() {
                       <option value="体育">体育 Sports</option>
                       <option value="商业">商业 Business</option>
                       <option value="加密货币">加密货币 Crypto</option>
+                      <option value="更多">更多 More</option>
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                       <ChevronDown className="w-4 h-4" />

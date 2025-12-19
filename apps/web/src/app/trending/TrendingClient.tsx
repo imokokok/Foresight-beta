@@ -121,6 +121,7 @@ const CATEGORY_MAPPING: Record<string, string> = {
   体育: "sports",
   商业: "business",
   加密货币: "crypto",
+  更多: "more",
 };
 
 const ID_TO_CATEGORY_NAME: Record<string, string> = {
@@ -131,6 +132,7 @@ const ID_TO_CATEGORY_NAME: Record<string, string> = {
   sports: "体育",
   crypto: "加密货币",
   business: "商业",
+  more: "更多",
 };
 
 const fetchPredictions = async () => {

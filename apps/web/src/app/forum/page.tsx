@@ -30,7 +30,16 @@ type PredictionItem = {
   followers_count?: number;
 };
 
-const ALLOWED_CATEGORIES = ["体育", "娱乐", "时政", "天气", "科技", "商业", "加密货币"] as const;
+const ALLOWED_CATEGORIES = [
+  "体育",
+  "娱乐",
+  "时政",
+  "天气",
+  "科技",
+  "商业",
+  "加密货币",
+  "更多",
+] as const;
 const CATEGORIES = [{ id: "all", name: "All Topics", icon: Globe }].concat(
   ALLOWED_CATEGORIES.map((c) => ({ id: c, name: c, icon: Activity }))
 );
@@ -61,6 +70,7 @@ function normalizeCategory(raw?: string): string {
   if (["sports", "体育", "football", "soccer", "basketball", "nba"].includes(s)) return "体育";
   if (["business", "商业", "finance", "biz"].includes(s)) return "商业";
   if (["crypto", "加密货币", "btc", "eth", "blockchain", "web3"].includes(s)) return "加密货币";
+  if (["more", "更多", "other", "其他"].includes(s)) return "更多";
   return "科技";
 }
 
@@ -157,6 +167,8 @@ export default function ForumPage() {
         return "bg-cyan-100 text-cyan-700 border-cyan-200 hover:bg-cyan-200";
       case "科技":
         return "bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200";
+      case "更多":
+        return "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200";
       default:
         return "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200";
     }
@@ -174,6 +186,8 @@ export default function ForumPage() {
         return "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-cyan-200 shadow-md border-transparent";
       case "科技":
         return "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-violet-200 shadow-md border-transparent";
+      case "更多":
+        return "bg-gradient-to-r from-gray-500 to-slate-500 text-white shadow-gray-200 shadow-md border-transparent";
       default:
         return "bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-slate-200 shadow-md border-transparent";
     }
@@ -191,6 +205,8 @@ export default function ForumPage() {
         return "bg-cyan-200 text-cyan-800";
       case "科技":
         return "bg-violet-200 text-violet-800";
+      case "更多":
+        return "bg-gray-200 text-gray-800";
       default:
         return "bg-gray-200 text-gray-800";
     }
@@ -208,6 +224,8 @@ export default function ForumPage() {
         return "border-cyan-200 hover:border-cyan-300";
       case "科技":
         return "border-violet-200 hover:border-violet-300";
+      case "更多":
+        return "border-gray-200 hover:border-gray-300";
       default:
         return "border-slate-200 hover:border-slate-300";
     }
@@ -225,6 +243,8 @@ export default function ForumPage() {
         return "bg-gradient-to-br from-cyan-100/60 to-white/0";
       case "科技":
         return "bg-gradient-to-br from-violet-100/60 to-white/0";
+      case "更多":
+        return "bg-gradient-to-br from-gray-100/60 to-white/0";
       default:
         return "bg-gradient-to-br from-slate-100/60 to-white/0";
     }
@@ -242,6 +262,8 @@ export default function ForumPage() {
         return "text-cyan-600";
       case "科技":
         return "text-violet-600";
+      case "更多":
+        return "text-gray-600";
       default:
         return "text-slate-600";
     }
@@ -259,6 +281,8 @@ export default function ForumPage() {
         return "bg-white/80 border-cyan-200 shadow-md shadow-cyan-100/50 scale-[1.02]";
       case "科技":
         return "bg-white/80 border-violet-200 shadow-md shadow-violet-100/50 scale-[1.02]";
+      case "更多":
+        return "bg-white/80 border-gray-200 shadow-md shadow-gray-100/50 scale-[1.02]";
       default:
         return "bg-white/80 border-indigo-200 shadow-md shadow-indigo-100/50 scale-[1.02]";
     }
@@ -276,6 +300,8 @@ export default function ForumPage() {
         return "bg-cyan-500";
       case "科技":
         return "bg-violet-500";
+      case "更多":
+        return "bg-gray-500";
       default:
         return "bg-indigo-500";
     }
@@ -293,6 +319,8 @@ export default function ForumPage() {
         return "from-cyan-200/70 via-blue-100/60 to-white/0";
       case "科技":
         return "from-violet-200/70 via-purple-100/60 to-white/0";
+      case "更多":
+        return "from-gray-200/70 via-slate-100/60 to-white/0";
       default:
         return "from-indigo-200/70 via-purple-100/60 to-white/0";
     }
@@ -310,6 +338,8 @@ export default function ForumPage() {
         return "from-cyan-500/90 to-blue-600/90";
       case "科技":
         return "from-violet-500/90 to-purple-600/90";
+      case "更多":
+        return "from-gray-500/90 to-slate-600/90";
       default:
         return "from-indigo-500/90 to-purple-600/90";
     }
@@ -327,6 +357,8 @@ export default function ForumPage() {
         return "from-cyan-100/70 via-blue-100/60 to-white/0";
       case "科技":
         return "from-violet-100/70 via-purple-100/60 to-white/0";
+      case "更多":
+        return "from-gray-100/70 via-slate-100/60 to-white/0";
       default:
         return "from-indigo-100/70 via-purple-100/60 to-white/0";
     }

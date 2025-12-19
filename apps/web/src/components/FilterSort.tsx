@@ -61,6 +61,7 @@ export default function FilterSort({
     { id: "entertainment", label: "娱乐", icon: "🎬", color: "from-pink-500 to-rose-600" },
     { id: "weather", label: "天气", icon: "🌤️", color: "from-cyan-500 to-sky-600" },
     { id: "business", label: "商业", icon: "💼", color: "from-slate-500 to-gray-600" },
+    { id: "more", label: "更多", icon: "⋯", color: "from-gray-400 to-gray-500" },
   ];
 
   // 排序选项

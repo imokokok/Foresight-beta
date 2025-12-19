@@ -62,11 +62,11 @@ export default function ChatPanel({
   useEffect(() => {
     let channel: any = null;
     let isSubscribed = true;
-    
+
     const load = async () => {
       try {
         if (!isSubscribed) return;
-        
+
         if (supabase) {
           const { data, error } = await supabase
             .from("discussions")
@@ -89,7 +89,7 @@ export default function ChatPanel({
         const res = await fetch(`/api/discussions?proposalId=${eventId}`);
         const data = await res.json();
         if (!isSubscribed) return;
-        
+
         const list = Array.isArray(data?.discussions) ? data.discussions : [];
         setMessages(
           list.map((r: any) => ({
@@ -101,9 +101,9 @@ export default function ChatPanel({
         );
       } catch {}
     };
-    
+
     load();
-    
+
     if (supabase) {
       channel = supabase
         .channel(`discussions:${eventId}`)
@@ -170,11 +170,11 @@ export default function ChatPanel({
         )
         .subscribe();
     }
-    
+
     // 清理函数
     return () => {
       isSubscribed = false;
-      
+
       if (channel) {
         try {
           // 先取消订阅
@@ -183,7 +183,7 @@ export default function ChatPanel({
           supabase?.removeChannel(channel);
           channel = null;
         } catch (error) {
-          console.error('Failed to cleanup WebSocket channel:', error);
+          console.error("Failed to cleanup WebSocket channel:", error);
         }
       }
     };
@@ -303,6 +303,7 @@ export default function ChatPanel({
     if (c.includes("生活")) return "bg-rose-100 text-rose-700";
     if (c.includes("科技")) return "bg-violet-100 text-violet-700";
     if (c.includes("体育")) return "bg-orange-100 text-orange-700";
+    if (c.includes("更多")) return "bg-gray-100 text-gray-700";
     return "bg-gray-100 text-gray-700";
   };
 
@@ -318,6 +319,8 @@ export default function ChatPanel({
       return "bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-cyan-200/50 shadow-md";
     if (c.includes("科技"))
       return "bg-gradient-to-br from-violet-400 to-purple-500 text-white shadow-violet-200/50 shadow-md";
+    if (c.includes("更多"))
+      return "bg-gradient-to-br from-gray-400 to-slate-500 text-white shadow-gray-200/50 shadow-md";
     return "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-200/50 shadow-md";
   };
 
@@ -328,6 +331,7 @@ export default function ChatPanel({
     if (c.includes("时政") || c.includes("政治")) return "from-emerald-500/90 to-teal-500/90";
     if (c.includes("天气")) return "from-cyan-500/90 to-blue-500/90";
     if (c.includes("科技")) return "from-violet-500/90 to-purple-500/90";
+    if (c.includes("更多")) return "from-gray-500/90 to-slate-600/90";
     return "from-indigo-500/90 to-purple-600/90";
   };
 
