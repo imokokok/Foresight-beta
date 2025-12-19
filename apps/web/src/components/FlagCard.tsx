@@ -36,7 +36,13 @@ interface FlagCardProps {
   onSettle?: () => void;
 }
 
-export const FlagCard = memo(function FlagCard({ flag, isMine, onCheckin, onViewHistory, onSettle }: FlagCardProps) {
+export const FlagCard = memo(function FlagCard({
+  flag,
+  isMine,
+  onCheckin,
+  onViewHistory,
+  onSettle,
+}: FlagCardProps) {
   const statusConfig = {
     active: {
       color: "text-emerald-800",
@@ -184,7 +190,27 @@ export const FlagCard = memo(function FlagCard({ flag, isMine, onCheckin, onView
               )}
             </div>
 
-            {/* Stats - Hand-drawn style container */}
+            <div className="mb-3">
+              {flag.verification_type === "self" ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-[11px] font-bold text-purple-700">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>自我验证</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-[11px] font-bold text-indigo-700">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>好友监督</span>
+                  {flag.witness_id && (
+                    <span className="text-[10px] text-gray-500">
+                      {flag.witness_id.length > 12
+                        ? `${flag.witness_id.slice(0, 6)}...${flag.witness_id.slice(-4)}`
+                        : flag.witness_id}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="bg-gray-50 rounded-xl p-3 border-2 border-dashed border-gray-200 mb-4 relative group-hover:border-purple-200 transition-colors">
               <div className="flex items-center justify-between text-xs font-black mb-2">
                 <div className="flex items-center gap-1.5 text-gray-700">

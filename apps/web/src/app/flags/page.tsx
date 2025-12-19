@@ -325,18 +325,26 @@ export default function FlagsPage() {
     try {
       const me = account || user?.id || "";
       if (!me) return;
-      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}&role=witness`, {
+      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}`, {
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({ flags: [] }));
       const list = (data.flags || []) as FlagItem[];
-      const pending = list.filter((f) => f.status === "pending_review");
+      const lower = String(me).toLowerCase();
+      const pending = list.filter(
+        (f) =>
+          f.status === "pending_review" &&
+          f.verification_type === "witness" &&
+          String(f.witness_id || "").toLowerCase() === lower
+      );
       setInvitesCount(pending.length);
       if (pending.length > 0) {
         setInviteNotice({
           id: pending[0].id,
           title: pending[0].title,
         });
+      } else {
+        setInviteNotice(null);
       }
     } catch (e) {
       console.error(e);
@@ -542,6 +550,21 @@ export default function FlagsPage() {
     completedFlags,
   ]);
 
+  const viewerId = String(account || user?.id || "").toLowerCase();
+
+  const witnessFlags = useMemo(
+    () =>
+      viewerId
+        ? flags.filter(
+            (f) =>
+              f.verification_type === "witness" &&
+              String(f.witness_id || "").toLowerCase() === viewerId &&
+              String(f.user_id || "").toLowerCase() !== viewerId
+          )
+        : [],
+    [flags, viewerId]
+  );
+
   return (
     <div className="h-[calc(100vh-64px)] w-full bg-[#FAFAFA] relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
       {/* Organic Background Blobs */}
@@ -557,8 +580,8 @@ export default function FlagsPage() {
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0 z-10 h-full max-w-[1600px] mx-auto w-full">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-8 px-8 pt-4">
-          <div>
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-6 px-8 pt-4">
+          <div className="space-y-3">
             <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2 relative inline-block">
               My Vision Board
               <div className="absolute -top-6 -right-8 transform rotate-12">
@@ -577,6 +600,34 @@ export default function FlagsPage() {
                 <span>{completedFlags.length} Achieved</span>
               </div>
             </div>
+            {invitesCount > 0 && (
+              <div className="flex items-center gap-3 bg-white/80 px-4 py-2 rounded-2xl border border-amber-200 shadow-sm">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="flex-1 text-xs font-bold text-amber-800">
+                  你有 {invitesCount} 个打卡等待审核
+                  {inviteNotice?.title ? ` · ${inviteNotice.title}` : ""}
+                </div>
+                <button
+                  onClick={() => {
+                    if (!viewerId) return;
+                    const pending = flags.filter(
+                      (f) =>
+                        f.status === "pending_review" &&
+                        f.verification_type === "witness" &&
+                        String(f.witness_id || "").toLowerCase() === viewerId
+                    );
+                    if (pending.length > 0) {
+                      openHistory(pending[0]);
+                    }
+                  }}
+                  className="text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-xl hover:bg-amber-200 transition-colors"
+                >
+                  去审核
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -600,24 +651,39 @@ export default function FlagsPage() {
             </button>
 
             {/* Filter Tabs - Sticker Style */}
-            <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
-              {[
-                { id: "all", label: "All" },
-                { id: "active", label: "Active" },
-                { id: "success", label: "Done" },
-              ].map((tab) => (
+            <div className="flex items-center gap-2">
+              <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
+                {[
+                  { id: "all", label: "All" },
+                  { id: "active", label: "Active" },
+                  { id: "success", label: "Done" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setStatusFilter(tab.id as any)}
+                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                      statusFilter === tab.id
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {witnessFlags.length > 0 && (
                 <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id as any)}
-                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
-                    statusFilter === tab.id
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
+                  onClick={() => {
+                    if (witnessFlags.length > 0) {
+                      openHistory(witnessFlags[0]);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-purple-50 text-[11px] font-black text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
                 >
-                  {tab.label}
+                  监督请求 {witnessFlags.length}
                 </button>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -968,7 +1034,20 @@ export default function FlagsPage() {
               className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0">
-                <h3 className="text-xl font-black text-gray-900">挑战记录</h3>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900">挑战记录</h3>
+                  {historyFlag.verification_type === "witness" && historyFlag.witness_id && (
+                    <div className="mt-1 text-xs font-bold text-gray-500 flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      <span>监督人</span>
+                      <span className="text-gray-700">
+                        {historyFlag.witness_id.length > 12
+                          ? `${historyFlag.witness_id.slice(0, 6)}...${historyFlag.witness_id.slice(-4)}`
+                          : historyFlag.witness_id}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={() => setHistoryOpen(false)}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -1002,11 +1081,10 @@ export default function FlagsPage() {
                             />
                           )}
 
-                          {/* Review status */}
                           {item.review_status === "pending" &&
                             historyFlag.verification_type === "witness" && (
                               <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
-                                {item.reviewer_id === (account || user?.id) ? (
+                                {String(historyFlag.witness_id || "").toLowerCase() === viewerId ? (
                                   <>
                                     <button
                                       disabled={!!reviewSubmittingId}
