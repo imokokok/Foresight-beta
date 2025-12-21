@@ -27,7 +27,14 @@ import {
   Scale,
   ChevronDown,
   Loader2,
+  Save,
+  RotateCcw,
+  ChevronUp,
+  FileText,
 } from "lucide-react";
+import { toast } from "@/lib/toast";
+
+const DRAFT_KEY = "admin_prediction_new_draft_v1";
 
 export default function AdminCreatePredictionPage() {
   const router = useRouter();
@@ -47,6 +54,71 @@ export default function AdminCreatePredictionPage() {
   >([{ label: "Yes" }, { label: "No" }]);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showDraftMenu, setShowDraftMenu] = useState(false);
+
+  const manualSaveDraft = () => {
+    const payload = { form, outcomes, ts: Date.now() };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    setLastSaved(new Date());
+    setMsg("草稿已保存");
+    toast.success("已保存草稿", "您的进度已安全存储到本地");
+    setShowDraftMenu(false);
+  };
+
+  // 2. 智能恢复：检测并提示恢复
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        // 使用 setTimeout 确保 UI 渲染后再弹出 confirm，避免 React 严格模式下的双重调用干扰
+        setTimeout(() => {
+          if (window.confirm("检测到上次未完成的草稿，是否继续？")) {
+            if (data.form) setForm((prev: any) => ({ ...prev, ...data.form }));
+            if (data.outcomes) setOutcomes(data.outcomes);
+            if (data.ts) setLastSaved(new Date(data.ts));
+            toast.success("已恢复草稿", "您可以继续编辑上次的内容");
+          }
+        }, 100);
+      } catch (e) {
+        console.error("Failed to load draft", e);
+      }
+    }
+  }, []);
+
+  // 1. 无感知自动保存
+  useEffect(() => {
+    // 只有当表单有内容时才保存，避免覆盖已有草稿为空
+    if (!form.title && !form.description && outcomes.length === 2 && outcomes[0].label === "Yes") {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const payload = { form, outcomes, ts: Date.now() };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      setLastSaved(new Date());
+    }, 1000); // 1秒防抖
+    return () => clearTimeout(timer);
+  }, [form, outcomes]);
+
+  // 4. 一键重置
+  const clearDraft = () => {
+    if (!window.confirm("确定要清空当前草稿吗？此操作无法撤销，所有内容将丢失。")) return;
+    localStorage.removeItem(DRAFT_KEY);
+    setForm({
+      title: "",
+      description: "",
+      category: "科技",
+      deadline: "",
+      minStake: 1,
+      criteria: "",
+      type: "binary",
+    });
+    setOutcomes([{ label: "Yes" }, { label: "No" }]);
+    setLastSaved(null);
+    setMsg("草稿已清空");
+  };
 
   const setField = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
   const onAddOutcome = () => setOutcomes((p) => [...p, { label: `选项${p.length}` }]);
@@ -118,7 +190,16 @@ export default function AdminCreatePredictionPage() {
                 Admin Console
               </div>
             </div>
-            <h1 className="text-4xl font-black text-slate-800 tracking-tight">创建预测事件</h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-4xl font-black text-slate-800 tracking-tight">创建预测事件</h1>
+              {/* 3. 状态反馈 */}
+              {lastSaved && (
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white/50 px-3 py-1.5 rounded-full border border-white shadow-sm animate-in fade-in duration-500">
+                  <Save className="w-3.5 h-3.5 text-brand" />
+                  <span>自动保存于 {lastSaved.toLocaleTimeString()}</span>
+                </div>
+              )}
+            </div>
             <p className="text-slate-500 mt-2 font-bold max-w-md leading-relaxed">
               在这里配置全球预测市场的核心数据。请确保规则描述准确且无歧义。
             </p>
@@ -371,18 +452,18 @@ export default function AdminCreatePredictionPage() {
 
             {/* Submit Action */}
             <div className="pt-10 border-t border-dashed border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-3 text-xs font-bold text-slate-400 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
-                <span>重要：发布后部分关键信息（如标题、截止日期）将无法修改。</span>
-              </div>
+              <div className="flex flex-col gap-2 relative">
+                <div className="flex items-center gap-3 text-xs font-bold text-slate-400 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
+                  <AlertCircle className="w-4 h-4 text-amber-500" />
+                  <span>重要：发布后部分关键信息（如标题、截止日期）将无法修改。</span>
+                </div>
 
-              <div className="flex items-center gap-4 w-full md:w-auto">
                 {msg && (
                   <motion.div
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`px-4 py-2 rounded-xl text-xs font-black ${
-                      msg.includes("成功")
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black w-fit ${
+                      msg.includes("成功") || msg.includes("保存")
                         ? "text-emerald-600 bg-emerald-50"
                         : "text-red-600 bg-red-50"
                     }`}
@@ -390,6 +471,54 @@ export default function AdminCreatePredictionPage() {
                     {msg}
                   </motion.div>
                 )}
+              </div>
+
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                {/* Draft Actions */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowDraftMenu(!showDraftMenu)}
+                    className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-brand transition-colors px-3 py-2 rounded-lg hover:bg-brand/5 border border-transparent hover:border-brand/10"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    草稿操作
+                    <ChevronUp
+                      className={`w-3.5 h-3.5 transition-transform ${showDraftMenu ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {showDraftMenu && (
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-50 animate-in slide-in-from-bottom-2 fade-in duration-200">
+                      <div className="text-[10px] font-black text-slate-400 px-2 py-1 uppercase tracking-wider mb-1">
+                        草稿箱管理
+                      </div>
+                      <button
+                        type="button"
+                        onClick={manualSaveDraft}
+                        className="w-full flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-brand px-2 py-2 rounded-lg hover:bg-brand/5 transition-colors text-left"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        保存当前草稿
+                      </button>
+
+                      {lastSaved && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearDraft();
+                            setShowDraftMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-red-500 px-2 py-2 rounded-lg hover:bg-red-50 transition-colors text-left mt-1"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          放弃并重置
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Button
                   disabled={submitting}
                   onClick={submit}
