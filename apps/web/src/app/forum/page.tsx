@@ -20,6 +20,7 @@ import { motion } from "framer-motion";
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
+import { useCategories } from "@/hooks/useQueries";
 
 type PredictionItem = {
   id: number;
@@ -83,6 +84,7 @@ export default function ForumPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
+  const { data: categoriesData } = useCategories();
 
   const displayName = (addr: string) => {
     const key = String(addr || "").toLowerCase();
@@ -131,7 +133,29 @@ export default function ForumPage() {
     };
   }, []);
 
-  const categories = CATEGORIES;
+  const categories = useMemo(() => {
+    if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+      const dynamic = (categoriesData as any[])
+        .map((item) => {
+          const name = String((item as any).name || "").trim();
+          if (!name) {
+            return null;
+          }
+          return {
+            id: name,
+            name,
+            icon: Activity,
+          };
+        })
+        .filter(Boolean) as {
+        id: string;
+        name: string;
+        icon: typeof Activity;
+      }[];
+      return [{ id: "all", name: "All Topics", icon: Globe }].concat(dynamic);
+    }
+    return CATEGORIES;
+  }, [categoriesData]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

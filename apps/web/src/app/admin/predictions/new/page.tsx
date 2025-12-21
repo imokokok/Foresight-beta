@@ -28,11 +28,13 @@ import {
   ChevronDown,
   Loader2,
 } from "lucide-react";
+import { useCategories } from "@/hooks/useQueries";
 
 export default function AdminCreatePredictionPage() {
   const router = useRouter();
   const { account, siweLogin } = useWallet();
   const profileCtx = useUserProfileOptional();
+  const { data: categoriesData } = useCategories();
   const [form, setForm] = useState<any>({
     title: "",
     description: "",
@@ -173,14 +175,30 @@ export default function AdminCreatePredictionPage() {
                       onChange={(e) => setField("category", e.target.value)}
                       className="input-base !bg-white/60 font-bold appearance-none cursor-pointer"
                     >
-                      <option value="科技">科技 Technology</option>
-                      <option value="娱乐">娱乐 Entertainment</option>
-                      <option value="时政">时政 Politics</option>
-                      <option value="天气">天气 Weather</option>
-                      <option value="体育">体育 Sports</option>
-                      <option value="商业">商业 Business</option>
-                      <option value="加密货币">加密货币 Crypto</option>
-                      <option value="更多">更多 More</option>
+                      {Array.isArray(categoriesData) && categoriesData.length > 0 ? (
+                        (categoriesData as any[]).map((item) => {
+                          const name = String((item as any).name || "").trim();
+                          if (!name) {
+                            return null;
+                          }
+                          return (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          );
+                        })
+                      ) : (
+                        <>
+                          <option value="科技">科技 Technology</option>
+                          <option value="娱乐">娱乐 Entertainment</option>
+                          <option value="时政">时政 Politics</option>
+                          <option value="天气">天气 Weather</option>
+                          <option value="体育">体育 Sports</option>
+                          <option value="商业">商业 Business</option>
+                          <option value="加密货币">加密货币 Crypto</option>
+                          <option value="更多">更多 More</option>
+                        </>
+                      )}
                     </select>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                       <ChevronDown className="w-4 h-4" />

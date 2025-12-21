@@ -1,18 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import {
-  MessageCircle,
-  ArrowBigUp,
-  ArrowBigDown,
-  Share2,
-  MoreHorizontal,
-  Clock,
-  Sparkles,
-  TrendingUp,
-  Hash,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { MessageCircle, Share2, MoreHorizontal, ArrowUp, ArrowDown } from "lucide-react";
+import { toast } from "@/lib/toast";
 
 interface ProposalCardProps {
   proposal: any;
@@ -23,11 +12,7 @@ interface ProposalCardProps {
 export default function ProposalCard({ proposal, onVote, onClick }: ProposalCardProps) {
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
-  const totalVotes = upvotes + downvotes;
   const score = upvotes - downvotes;
-
-  // Calculate percentage for progress bar
-  const upvotePercent = totalVotes === 0 ? 50 : Math.round((upvotes / totalVotes) * 100);
 
   // Determine status color based on category or heat
   const isHot = score > 10 || (proposal.comments?.length || 0) > 5;
@@ -41,115 +26,131 @@ export default function ProposalCard({ proposal, onVote, onClick }: ProposalCard
   };
 
   const cat = categoryConfig[proposal.category] || categoryConfig.General;
+  const author = String(proposal.user_id || "").trim();
+  const authorLabel = author ? `${author.slice(0, 6)}...${author.slice(-4)}` : "Anonymous";
+  const onShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/proposals/${proposal.id}`;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast.success("链接已复制", "已复制提案链接到剪贴板");
+      } else {
+        toast.info("无法自动复制", url);
+      }
+    } catch {
+      toast.error("复制失败", "请手动复制地址栏链接");
+    }
+  };
 
   return (
-    <div className="relative h-full group cursor-pointer" onClick={() => onClick(proposal.id)}>
-      <div className="h-full rounded-2xl bg-white border border-gray-100 hover:border-purple-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col relative">
-        {/* Hover Highlight */}
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-400 to-pink-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+    <div className="relative group cursor-pointer" onClick={() => onClick(proposal.id)}>
+      <div className="rounded-2xl bg-white border border-gray-100 hover:border-purple-300 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.06)] transition-all duration-300 flex overflow-hidden">
+        {/* Left: Voting Column (Forum Style) */}
+        <div className="w-12 bg-gray-50/50 border-r border-gray-100 flex flex-col items-center py-4 gap-1 shrink-0">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onVote(proposal.id, "up");
+            }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              proposal.userVote === "up"
+                ? "bg-purple-100 text-purple-600"
+                : "text-gray-400 hover:bg-purple-50 hover:text-purple-500"
+            }`}
+          >
+            <ArrowUp className="w-5 h-5" />
+          </motion.button>
 
-        <div className="p-5 flex flex-col h-full">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${cat.bg} ${cat.color} border ${cat.border}`}
-              >
-                <Hash className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">
-                  Category
-                </div>
-                <div className="text-xs font-bold text-gray-700">
-                  {proposal.category || "General"}
-                </div>
-              </div>
+          <span
+            className={`text-sm font-black ${
+              proposal.userVote === "up"
+                ? "text-purple-600"
+                : proposal.userVote === "down"
+                  ? "text-gray-500"
+                  : "text-gray-700"
+            }`}
+          >
+            {score}
+          </span>
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onVote(proposal.id, "down");
+            }}
+            className={`p-1.5 rounded-lg transition-colors ${
+              proposal.userVote === "down"
+                ? "bg-gray-200 text-gray-700"
+                : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            }`}
+          >
+            <ArrowDown className="w-5 h-5" />
+          </motion.button>
+        </div>
+
+        {/* Right: Main Content */}
+        <div className="flex-1 p-5 flex flex-col">
+          {/* Header Metadata */}
+          <div className="flex items-center gap-2 mb-2 text-xs">
+            {/* Category Pill */}
+            <div
+              className={`px-2 py-0.5 rounded-md font-bold ${cat.bg} ${cat.color} border ${cat.border} flex items-center gap-1`}
+            >
+              {proposal.category || "General"}
             </div>
 
-            <div className="flex items-center gap-2">
-              {isHot && (
-                <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-50 text-orange-600 text-[10px] font-bold border border-orange-100">
-                  <FlameIcon className="w-3 h-3" />
-                  <span>HOT</span>
-                </div>
-              )}
-              <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                {new Date(proposal.created_at).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            </div>
+            <span className="text-gray-300">•</span>
+
+            <span className="text-gray-400 font-medium">
+              Posted by <span className="text-gray-600 hover:underline">{authorLabel}</span>
+            </span>
+
+            <span className="text-gray-300">•</span>
+
+            <span className="text-gray-400">
+              {new Date(proposal.created_at).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+
+            {isHot && (
+              <div className="ml-auto flex items-center gap-1 text-orange-500 font-bold px-2 py-0.5 bg-orange-50 rounded-full text-[10px]">
+                <FlameIcon className="w-3 h-3" />
+                HOT
+              </div>
+            )}
           </div>
 
-          {/* Content */}
-          <div className="mb-4 flex-grow">
-            <h3 className="text-base font-black text-gray-800 tracking-tight mb-2 leading-snug group-hover:text-purple-600 transition-colors line-clamp-2">
+          {/* Title & Preview */}
+          <div className="mb-3">
+            <h3 className="text-lg font-bold text-gray-900 leading-snug group-hover:text-purple-700 transition-colors mb-1.5">
               {proposal.title}
             </h3>
-            <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 font-medium">
-              {proposal.content}
-            </p>
-          </div>
-
-          {/* Voting Bar - Styled */}
-          <div className="mb-4">
-            <div className="flex h-2 w-full rounded-full overflow-hidden bg-gray-100">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-pink-500 h-full"
-                style={{ width: `${upvotePercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-[10px] font-bold text-purple-600">
-                {upvotePercent}% Support
-              </span>
-              <span className="text-[10px] font-bold text-gray-400">{totalVotes} Votes</span>
-            </div>
+            <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">{proposal.content}</p>
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-3 border-t border-gray-100 flex items-center justify-between mt-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-400 group-hover:text-purple-500 transition-colors">
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>{proposal.comments?.length || 0}</span>
-              </div>
+          <div className="mt-auto flex items-center gap-4">
+            <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold hover:bg-gray-50 px-2 py-1 -ml-2 rounded-lg transition-colors">
+              <MessageCircle className="w-4 h-4" />
+              <span>{proposal.comments?.length || 0} Comments</span>
             </div>
 
-            <div className="flex items-center gap-1">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onVote(proposal.id, "up");
-                }}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all border ${
-                  proposal.userVote === "up"
-                    ? "bg-purple-100 text-purple-700 border-purple-200"
-                    : "bg-white text-gray-500 border-gray-100 hover:border-purple-200 hover:text-purple-600"
-                }`}
-              >
-                <ArrowUp className="w-3.5 h-3.5" />
-                <span className="text-xs font-bold">{upvotes}</span>
-              </motion.button>
+            <button
+              type="button"
+              onClick={onShare}
+              className="flex items-center gap-1.5 text-gray-400 text-xs font-bold hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors group/share"
+            >
+              <Share2 className="w-4 h-4 group-hover/share:text-purple-500" />
+              <span className="group-hover/share:text-purple-500">Share</span>
+            </button>
 
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onVote(proposal.id, "down");
-                }}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all border ${
-                  proposal.userVote === "down"
-                    ? "bg-gray-200 text-gray-700 border-gray-300"
-                    : "bg-white text-gray-500 border-gray-100 hover:border-gray-200 hover:text-gray-600"
-                }`}
-              >
-                <ArrowDown className="w-3.5 h-3.5" />
-                <span className="text-xs font-bold">{downvotes}</span>
-              </motion.button>
+            <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
             </div>
           </div>
         </div>

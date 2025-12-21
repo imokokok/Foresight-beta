@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, ArrowUpDown, Calendar, TrendingUp, Clock, X, ChevronDown } from "lucide-react";
+import { useCategories } from "@/hooks/useQueries";
 
 export interface FilterSortState {
   category: string | null;
@@ -17,24 +18,18 @@ interface FilterSortProps {
   className?: string;
 }
 
-/**
- * 筛选和排序组件
- *
- * 特性：
- * - 分类筛选
- * - 多种排序方式
- * - 状态筛选
- * - 响应式设计
- * - 状态持久化
- *
- * @example
- * ```tsx
- * <FilterSort
- *   onFilterChange={(filters) => handleFilterChange(filters)}
- *   initialFilters={{ category: null, sortBy: 'trending' }}
- * />
- * ```
- */
+const DEFAULT_CATEGORIES = [
+  { id: "all", label: "全部", icon: "🌐", color: "from-gray-500 to-gray-600" },
+  { id: "crypto", label: "加密货币", icon: "🪙", color: "from-amber-500 to-orange-600" },
+  { id: "sports", label: "体育", icon: "⚽", color: "from-green-500 to-emerald-600" },
+  { id: "politics", label: "政治", icon: "🗳️", color: "from-blue-500 to-indigo-600" },
+  { id: "tech", label: "科技", icon: "💻", color: "from-purple-500 to-violet-600" },
+  { id: "entertainment", label: "娱乐", icon: "🎬", color: "from-pink-500 to-rose-600" },
+  { id: "weather", label: "天气", icon: "🌤️", color: "from-cyan-500 to-sky-600" },
+  { id: "business", label: "商业", icon: "💼", color: "from-slate-500 to-gray-600" },
+  { id: "more", label: "更多", icon: "⋯", color: "from-gray-400 to-gray-500" },
+];
+
 export default function FilterSort({
   onFilterChange,
   initialFilters = { category: null, sortBy: "trending" },
@@ -51,20 +46,38 @@ export default function FilterSort({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
-  // 分类选项
-  const categories = [
-    { id: "all", label: "全部", icon: "🌐", color: "from-gray-500 to-gray-600" },
-    { id: "crypto", label: "加密货币", icon: "🪙", color: "from-amber-500 to-orange-600" },
-    { id: "sports", label: "体育", icon: "⚽", color: "from-green-500 to-emerald-600" },
-    { id: "politics", label: "政治", icon: "🗳️", color: "from-blue-500 to-indigo-600" },
-    { id: "tech", label: "科技", icon: "💻", color: "from-purple-500 to-violet-600" },
-    { id: "entertainment", label: "娱乐", icon: "🎬", color: "from-pink-500 to-rose-600" },
-    { id: "weather", label: "天气", icon: "🌤️", color: "from-cyan-500 to-sky-600" },
-    { id: "business", label: "商业", icon: "💼", color: "from-slate-500 to-gray-600" },
-    { id: "more", label: "更多", icon: "⋯", color: "from-gray-400 to-gray-500" },
-  ];
+  const { data: categoriesData } = useCategories();
 
-  // 排序选项
+  const categories =
+    Array.isArray(categoriesData) && categoriesData.length > 0
+      ? [
+          DEFAULT_CATEGORIES[0],
+          ...((categoriesData as any[])
+            .map((item) => {
+              const name = String((item as any).name || "").trim();
+              if (!name) {
+                return null;
+              }
+              const legacy = DEFAULT_CATEGORIES.find((c) => c.label === name);
+              const id = legacy?.id || name.toLowerCase();
+              const icon = legacy?.icon || "🏷️";
+              const color = legacy?.color || "from-gray-400 to-gray-500";
+              return {
+                id,
+                label: name,
+                icon,
+                color,
+              };
+            })
+            .filter(Boolean) as {
+            id: string;
+            label: string;
+            icon: string;
+            color: string;
+          }[]),
+        ]
+      : DEFAULT_CATEGORIES;
+
   const sortOptions = [
     { id: "trending", label: "热门优先", icon: TrendingUp, description: "根据关注度和活跃度排序" },
     { id: "newest", label: "最新发布", icon: Clock, description: "按创建时间倒序" },

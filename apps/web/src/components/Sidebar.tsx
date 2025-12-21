@@ -257,9 +257,13 @@ export default function Sidebar() {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gray-50 p-0.5 border border-gray-100 overflow-hidden">
                     <Image
-                      src={`https://api.dicebear.com/7.x/notionists/svg?seed=${
-                        account || user?.email || "guest"
-                      }&backgroundColor=e9d5ff`}
+                      src={
+                        account
+                          ? `https://api.dicebear.com/7.x/identicon/svg?seed=${account}`
+                          : `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
+                              user?.email || "guest"
+                            )}&backgroundColor=e9d5ff`
+                      }
                       alt="avatar"
                       width={40}
                       height={40}
