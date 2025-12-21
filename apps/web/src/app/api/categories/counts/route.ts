@@ -9,7 +9,10 @@ export async function GET() {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase is not configured" },
+        { status: 500 }
+      );
     }
     const { data: rawCategories, error: categoriesError } = await client
       .from("categories")
@@ -18,7 +21,7 @@ export async function GET() {
     const categories = rawCategories as Array<{ name: string }> | null;
 
     if (categoriesError) {
-      throw new Error(`获取分类列表失败: ${categoriesError.message}`);
+      throw new Error(`Failed to fetch category list: ${categoriesError.message}`);
     }
 
     const categoryCounts = [];
@@ -29,7 +32,7 @@ export async function GET() {
       .eq("status", "active");
 
     if (predictionsError) {
-      console.error("查询分类事件数量失败:", predictionsError);
+      console.error("Failed to query category event counts:", predictionsError);
     }
 
     const predictions = rawPredictions as Array<{ id: number; category: string }> | null;
@@ -55,7 +58,7 @@ export async function GET() {
       {
         success: true,
         data: categoryCounts,
-        message: "获取分类热点数量成功",
+        message: "Fetched category counts successfully",
       },
       {
         headers: {
@@ -65,7 +68,10 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error("获取分类热点数量失败:", error);
-    return NextResponse.json({ success: false, message: "获取分类热点数量失败" }, { status: 500 });
+    console.error("Failed to fetch category counts:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch category counts" },
+      { status: 500 }
+    );
   }
 }

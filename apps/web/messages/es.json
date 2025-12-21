@@ -1,0 +1,652 @@
+{
+  "common": {
+    "appName": "Foresight",
+    "welcome": "Bienvenido",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "more": "Más",
+    "less": "Menos",
+    "menu": "Menú",
+    "explore": "Explorar nuevas predicciones",
+    "userLevelDreamer": "Soñador nivel {level}",
+    "mainNav": "Navegación principal",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "nav": {
+    "home": "Inicio",
+    "trending": "Tendencias",
+    "leaderboard": "Ranking",
+    "forum": "Foro",
+    "flags": "Mis Flags",
+    "proposals": "Propuestas",
+    "profile": "Perfil",
+    "admin": "Centro de administración",
+    "myFollows": "Mis seguimientos"
+  },
+  "forum": {
+    "title": "Debates de la comunidad",
+    "loginRequired": "Conecta tu billetera para iniciar un hilo",
+    "connectAndSign": "Conectar y firmar",
+    "form": {
+      "subjectPlaceholder": "Nombre del tema",
+      "action": {
+        "priceReach": "alcance de precio",
+        "willWin": "ganará",
+        "willHappen": "ocurrirá"
+      },
+      "targetPlaceholder": "Valor objetivo / condición",
+      "deadlinePlaceholder": "Fecha límite",
+      "categoryLabel": "Categoría",
+      "category": {
+        "tech": "Tecnología",
+        "entertainment": "Entretenimiento",
+        "politics": "Política",
+        "weather": "Clima",
+        "sports": "Deportes",
+        "business": "Negocios",
+        "crypto": "Cripto",
+        "more": "Más"
+      },
+      "previewTitle": "Previsualización del título",
+      "previewCriteria": "Criterios de liquidación",
+      "previewTitleFallback": "Completa el formulario para generar un título",
+      "previewCriteriaFallback": "Completa el formulario para generar los criterios de liquidación",
+      "submitPosting": "Publicando…",
+      "submit": "Publicar hilo",
+      "errors": {
+        "subjectRequired": "Introduce un nombre de tema",
+        "targetRequired": "Introduce un valor objetivo o condición",
+        "deadlineRequired": "Introduce una fecha límite",
+        "deadlineInvalid": "Formato de fecha límite no válido",
+        "deadlinePast": "La fecha límite debe ser posterior a ahora",
+        "categoryRequired": "Selecciona una categoría"
+      }
+    },
+    "preview": {
+      "title": {
+        "priceReach": "El precio de {subjectName} alcanza {target} antes de {deadline}",
+        "willWin": "{subjectName} ganará {target} antes de {deadline}",
+        "willHappen": "{subjectName} tendrá {target} antes de {deadline}",
+        "default": "{subjectName} {action}{target} antes de {deadline}"
+      },
+      "criteria": {
+        "priceReach": "Según fuentes de datos de precios autorizadas, alcanzar o superar el objetivo antes de la fecha límite se considera éxito",
+        "willWin": "Según los resultados oficiales del evento, ganar el título antes de la fecha límite se considera éxito",
+        "willHappen": "Según anuncios oficiales o medios de confianza, que el evento ocurra antes de la fecha límite se considera éxito",
+        "default": "Según fuentes objetivas y verificables, cumplir la condición antes de la fecha límite se considera éxito"
+      }
+    },
+    "list": {
+      "loading": "Cargando…",
+      "empty": "Aún no hay hilos"
+    },
+    "thread": {
+      "meta": {
+        "prefix": "Por",
+        "in": "a las",
+        "suffix": ""
+      },
+      "vote": {
+        "upvoted": "Votado positivo",
+        "downvoted": "Votado negativo"
+      }
+    },
+    "comments": {
+      "title": "Comentarios"
+    },
+    "reply": {
+      "placeholder": "Escribe un comentario…",
+      "sending": "Enviando…",
+      "submit": "Comentar"
+    },
+    "errors": {
+      "loadFailed": "Error al cargar",
+      "createFailed": "Error al crear el hilo",
+      "commentFailed": "Error al publicar el comentario",
+      "voteFailed": "Error al votar",
+      "walletRequired": "Primero conecta tu billetera",
+      "walletRequiredForVote": "Conecta tu billetera antes de votar",
+      "alreadyVoted": "Ya has votado"
+    }
+  },
+  "chat": {
+    "quickPrompt": {
+      "reason": "¿Cuál es la base de esta predicción?",
+      "update": "¿Hay novedades recientes?",
+      "opinion": "Creo que la probabilidad es mayor porque…"
+    },
+    "header": {
+      "title": "Sala de chat",
+      "withTopic": "Sala de chat · {title}",
+      "youLabel": "Tú: {name}",
+      "walletDisconnected": "Billetera no conectada"
+    },
+    "announcement": {
+      "badge": "Aviso",
+      "empty": "Aún no hay avisos"
+    },
+    "empty": {
+      "title": "Aún no hay mensajes",
+      "description": "Todavía no hay conversación aquí. Comparte tu primera opinión y empieza el diálogo.",
+      "actionLabel": "Enviar el primer mensaje",
+      "defaultInput": "¡Hola! 👋 Encantado de unirme a la conversación"
+    },
+    "input": {
+      "walletRequired": "Conecta tu billetera para enviar mensajes",
+      "connectAndSign": "Conectar y firmar",
+      "placeholder": "Escribe un mensaje, pulsa Enter para enviar, Shift+Enter para nueva línea",
+      "toggleEmojisAria": "Abrir selector de emojis",
+      "sending": "Enviando…",
+      "send": "Enviar"
+    },
+    "errors": {
+      "walletRequired": "Conecta tu billetera antes de enviar mensajes",
+      "sendFailed": "Error al enviar el mensaje"
+    }
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "register": "Registrarse",
+    "connectWallet": "Conectar billetera",
+    "disconnectWallet": "Desconectar",
+    "signMessage": "Firmar mensaje",
+    "welcome": "Bienvenido a Foresight",
+    "signToConnect": "Firma para conectar",
+    "loggedIn": "Sesión iniciada",
+    "noEmail": "Sin correo electrónico"
+  },
+  "wallet": {
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "balance": "Saldo",
+    "address": "Dirección",
+    "copyAddress": "Copiar dirección",
+    "addressCopied": "Dirección copiada",
+    "viewOnExplorer": "Ver en el explorador",
+    "switchNetwork": "Cambiar red",
+    "refreshBalance": "Actualizar saldo",
+    "noWallet": "No se detectó billetera",
+    "installMetaMask": "Instalar MetaMask",
+    "connectFailedTitle": "Error al conectar la billetera",
+    "installMetaMaskExtension": "Instalar la extensión de MetaMask",
+    "unknownNetwork": "Red desconocida"
+  },
+  "prediction": {
+    "title": "Predicción",
+    "createPrediction": "Crear predicción",
+    "predictions": "Predicciones",
+    "category": "Categoría",
+    "deadline": "Fecha límite",
+    "minStake": "Apuesta mínima",
+    "status": "Estado",
+    "active": "Activa",
+    "completed": "Completada",
+    "cancelled": "Cancelada",
+    "description": "Descripción",
+    "criteria": "Criterios"
+  },
+  "trading": {
+    "buy": "Comprar",
+    "sell": "Vender",
+    "price": "Precio",
+    "amount": "Cantidad",
+    "total": "Total",
+    "limitOrder": "Orden limitada",
+    "marketOrder": "Orden de mercado",
+    "placeOrder": "Realizar orden",
+    "cancelOrder": "Cancelar orden",
+    "myOrders": "Mis órdenes",
+    "orderBook": "Libro de órdenes",
+    "depth": "Profundidad",
+    "bids": "Ofertas",
+    "asks": "Demandas",
+    "filled": "Completada",
+    "open": "Abierta",
+    "tabTrade": "Operar",
+    "selectOutcome": "Seleccionar resultado",
+    "orderType": "Tipo de orden",
+    "autoMatchBest": "Emparejar automáticamente el mejor precio",
+    "sharesUnit": "Participaciones",
+    "totalInvestment": "Inversión total",
+    "potentialReturn": "Retorno potencial",
+    "submitting": "Procesando…",
+    "emptyBids": "Aún no hay ofertas",
+    "emptyAsks": "Aún no hay demandas",
+    "emptyOrders": "Aún no hay órdenes abiertas",
+    "bestBid": "Mejor oferta: {price}",
+    "bestAsk": "Mejor demanda: {price}"
+  },
+  "market": {
+    "tabs": {
+      "desc": "Detalles del mercado",
+      "rules": "Reglas de resolución",
+      "comments": "Debate"
+    },
+    "about": {
+      "title": "Sobre este mercado",
+      "referenceSource": "Fuente de referencia"
+    },
+    "rules": {
+      "criteriaTitle": "Criterios de resolución",
+      "arbitrator": "Árbitro",
+      "resolutionTime": "Tiempo de resolución",
+      "resolutionTimeValue": "Dentro de las 24 horas posteriores a {deadline}",
+      "arbitratorName": "Foresight Oracle Committee"
+    },
+    "comments": {
+      "loading": "Cargando comentarios..."
+    },
+    "chart": {
+      "loading": "Cargando datos de mercado...",
+      "outcomeFallback": "Resultado {index}"
+    }
+  },
+  "errors": {
+    "somethingWrong": "¡Ups! Algo salió mal.",
+    "pageNotFound": "Página no encontrada",
+    "serverError": "Error del servidor",
+    "networkError": "Error de red",
+    "tryAgain": "Intentar de nuevo",
+    "goHome": "Ir al inicio",
+    "contactSupport": "Contactar soporte",
+    "followActionFailed": "La acción de seguir falló, inténtalo más tarde"
+  },
+  "login": {
+    "tabEmail": "Inicio con correo",
+    "tabWallet": "Inicio con billetera",
+    "close": "Cerrar",
+    "emailContinueTitle": "Continuar con correo",
+    "emailContinueDescription": "Te enviaremos un correo con un enlace de acceso y un código de 6 dígitos.",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "you@example.com",
+    "sendOtp": "Enviar código",
+    "sendMagicLink": "Enviar enlace mágico",
+    "agreePrefix": "Al continuar, aceptas nuestros",
+    "terms": "Términos de servicio",
+    "and": "y",
+    "privacy": "Política de privacidad",
+    "agreeSuffix": ".",
+    "switchToWallet": "También puedes cambiar a \"Inicio con billetera\".",
+    "otpTitle": "Introduce el código de 6 dígitos de tu correo",
+    "otpDescriptionPrefix": "Hemos enviado un correo a",
+    "otpDescriptionSuffix": ".",
+    "verifyAndLogin": "Verificar e iniciar sesión",
+    "resend": "Reenviar",
+    "otpHint": "También puedes completar el inicio haciendo clic en el enlace del correo.",
+    "walletContinueTitle": "Continuar con billetera",
+    "walletContinueDescription": "Compatible con las billeteras más populares (MetaMask, Coinbase, Binance, OKX, etc.).",
+    "notInstalled": "No instalada",
+    "clickToConnect": "Haz clic para conectar",
+    "detectingWallets": "Detectando extensiones de billetera instaladas…",
+    "switchToEmail": "También puedes cambiar a \"Inicio con correo\"."
+  },
+  "search": {
+    "placeholder": "Buscar predicciones, temas, usuarios...",
+    "resultsTitle": "Resultados de búsqueda",
+    "emptyTitle": "No se encontraron resultados",
+    "emptyDescription": "Prueba con otras palabras clave o mira las búsquedas populares",
+    "recentTitle": "Búsquedas recientes",
+    "clear": "Limpiar",
+    "hotTitle": "Búsquedas populares",
+    "clearSearchAria": "Limpiar búsqueda",
+    "hintConfirm": "Confirmar",
+    "hintClose": "Cerrar",
+    "hintOpen": "Abrir búsqueda",
+    "hot": {
+      "usElection": "Elecciones de EE. UU.",
+      "btcPrice": "Precio de BTC",
+      "worldCup": "Mundial",
+      "ai": "Desarrollo de IA",
+      "climate": "Cambio climático"
+    }
+  },
+  "trending": {
+    "hero": {
+      "globalClimateSummit": {
+        "title": "Cumbre mundial del clima",
+        "description": "Debatiendo estrategias globales contra el cambio climático"
+      },
+      "aiSafetySummit": {
+        "title": "Conferencia sobre seguridad de IA",
+        "description": "Enfoque en regulación y seguridad de la IA"
+      },
+      "globalFinanceForum": {
+        "title": "Foro internacional de finanzas",
+        "description": "Explorando monedas digitales y el futuro de la economía"
+      },
+      "charitySportsMatch": {
+        "title": "Partido benéfico deportivo",
+        "description": "Atletas de todo el mundo unidos por la caridad"
+      },
+      "extremeWeatherAlert": {
+        "title": "Alerta de clima extremo",
+        "description": "Múltiples regiones emiten alertas de clima extremo"
+      },
+      "techProductLaunch": {
+        "title": "Lanzamiento de nuevo producto tecnológico",
+        "description": "Los últimos productos tecnológicos hacen su gran debut"
+      },
+      "worldChampionshipFinal": {
+        "title": "Final del campeonato mundial",
+        "description": "Los mejores equipos se enfrentan en la gran final"
+      }
+    },
+    "category": {
+      "tech": "Tecnología",
+      "entertainment": "Entretenimiento",
+      "politics": "Política",
+      "weather": "Clima",
+      "sports": "Deportes",
+      "business": "Negocios",
+      "crypto": "Cripto",
+      "more": "Más"
+    },
+    "metrics": {
+      "marketVol": "Volumen de mercado",
+      "greed": "Índice de codicia",
+      "poolSize": "Tamaño del fondo",
+      "participants": "Participantes",
+      "events": "Eventos",
+      "successRate": "Tasa de éxito"
+    },
+    "badges": {
+      "dailyPick": "Selección del día",
+      "trending": "En tendencia"
+    },
+    "sections": {
+      "popularCategories": "Categorías populares",
+      "hotEvents": "Eventos en tendencia"
+    },
+    "actions": {
+      "viewAll": "Ver todo",
+      "placePrediction": "Hacer predicción",
+      "viewDetails": "Ver detalles",
+      "createPrediction": "Crear predicción"
+    },
+    "search": {
+      "placeholder": "Buscar eventos..."
+    },
+    "empty": {
+      "title": "Aún no hay predicciones",
+      "description": "No hay eventos de predicción disponibles. Prueba cambiar de categoría o crea uno nuevo."
+    },
+    "state": {
+      "loading": "Cargando datos...",
+      "errorTitle": "Error al cargar",
+      "reload": "Recargar",
+      "loadMore": "Cargando más...",
+      "scrollHint": "Desplázate hacia abajo para cargar más",
+      "allLoadedPrefix": "Mostrando todas las ",
+      "allLoadedSuffix": " predicciones"
+    },
+    "card": {
+      "volumePrefix": "Volumen $",
+      "optionFallbackPrefix": "Opción "
+    },
+    "login": {
+      "title": "Por favor inicia sesión",
+      "description": "Para seguir eventos de predicción debes conectar tu billetera. Haz clic en el botón \"Conectar billetera\" en la esquina superior derecha.",
+      "benefitsTitle": "Después de iniciar sesión podrás:",
+      "benefitFollow": "Seguir eventos que te interesen",
+      "benefitParticipate": "Participar en predicciones y apuestas",
+      "benefitRewards": "Obtener recompensas de predicción",
+      "later": "Más tarde",
+      "now": "Iniciar sesión ahora"
+    },
+    "admin": {
+      "editDialogTitle": "Editar evento",
+      "fieldTitle": "Título",
+      "fieldCategory": "Categoría",
+      "fieldStatus": "Estado",
+      "fieldDeadline": "Fecha límite",
+      "fieldMinStake": "Apuesta mínima",
+      "confirmDelete": "¿Seguro que quieres eliminar este evento?",
+      "updateFailed": "Error al actualizar",
+      "deleteFailed": "Error al eliminar",
+      "updateSuccessTitle": "Actualización correcta",
+      "updateSuccessDesc": "El evento de predicción se ha actualizado correctamente",
+      "deleteSuccessTitle": "Eliminación correcta",
+      "deleteSuccessDesc": "El evento de predicción se ha eliminado",
+      "retryLater": "Inténtalo de nuevo más tarde",
+      "cancel": "Cancelar",
+      "saving": "Guardando…",
+      "save": "Guardar",
+      "editAria": "Editar",
+      "deleteAria": "Eliminar",
+      "deadlinePlaceholder": "Selecciona la fecha límite"
+    }
+  },
+  "flags": {
+    "header": {
+      "title": "Mi tablero de sueños",
+      "badge": "Sueña en grande",
+      "activeLabel": "En curso",
+      "achievedLabel": "Completado"
+    },
+    "stats": {
+      "ongoingBadge": "En curso",
+      "flagsLabel": "Flags",
+      "activeDescription": "Retos que estás realizando",
+      "achievedBadge": "Logrado",
+      "goalsLabel": "Metas",
+      "successDescription": "Metas que ya has alcanzado",
+      "focusLabel": "Índice de enfoque",
+      "scoreBadge": "Puntuación"
+    },
+    "card": {
+      "status": {
+        "active": "En curso",
+        "pending_review": "En revisión",
+        "success": "Reto conseguido",
+        "failed": "Reto fallido"
+      },
+      "time": {
+        "finished": "Finalizado",
+        "daysLeftSuffix": " días restantes",
+        "hoursLeftSuffix": " horas restantes",
+        "daysLabel": "Días"
+      },
+      "verification": {
+        "self": "Auto verificación",
+        "friend": "Verificación de amigo"
+      },
+      "proofImageAlt": "Imagen de check-in"
+    },
+    "invites": {
+      "textPrefix": "Tienes ",
+      "textSuffix": " registros pendientes de revisión",
+      "button": "Revisar ahora"
+    },
+    "gallery": {
+      "button": "Galería de stickers"
+    },
+    "filters": {
+      "all": "Todos",
+      "active": "En curso",
+      "success": "Completados",
+      "witnessRequests": "Solicitudes de testigo"
+    },
+    "state": {
+      "loading": "Cargando tu tablero de sueños..."
+    },
+    "createCard": {
+      "title": "Fija una nueva meta",
+      "subtitle": "Comienza un nuevo viaje"
+    },
+    "sidebar": {
+      "trendingTitle": "Retos en tendencia",
+      "viewAll": "Ver todo",
+      "quote": {
+        "text": "\"El único entrenamiento malo es el que no se hace.\"",
+        "label": "Motivación diaria"
+      }
+    },
+    "official": {
+      "title": "Retos oficiales destacados",
+      "subtitle": "Más de 10 plantillas de retos seleccionadas",
+      "cta": "Comenzar ahora",
+      "templates": {
+        "early_bird": {
+          "title": "Reto Ave Temprana",
+          "description": "Despiértate y haz check-in antes de las 8 a. m. durante 7 días"
+        },
+        "reading_marathon": {
+          "title": "Maratón de Lectura",
+          "description": "Lee al menos 30 minutos al día durante 30 días"
+        },
+        "fitness_pro": {
+          "title": "Experto en Fitness",
+          "description": "Haz ejercicio 3 veces por semana y mantén el hábito 4 semanas"
+        },
+        "weather_prophet": {
+          "title": "Profeta del Clima",
+          "description": "Predice el clima de mañana y observa los cambios diarios"
+        },
+        "no_takeout": {
+          "title": "Hoy sin comida a domicilio",
+          "description": "Cocina tú mismo o come saludable, sin pedir comida a domicilio"
+        },
+        "sleep_early": {
+          "title": "Adiós, Ave Nocturna",
+          "description": "Deja el móvil y duerme antes de las 23:00 esta noche"
+        },
+        "walk_10k": {
+          "title": "Camina 10.000 pasos",
+          "description": "Recorre la ciudad a pie y mantente activo"
+        },
+        "digital_detox": {
+          "title": "Presente en el Momento",
+          "description": "Deja el móvil y disfruta de 1 hora de tranquilidad"
+        },
+        "declutter": {
+          "title": "Día de Orden",
+          "description": "Deshazte de algo que ya no necesitas y aligera tu vida"
+        },
+        "call_parents": {
+          "title": "Llama a tus padres",
+          "description": "Llama a tus padres y cuéntales cómo va tu vida"
+        }
+      }
+    },
+    "checkin": {
+      "title": "Momento de check-in",
+      "subtitle": "Registra cada paso de tu progreso",
+      "noteLabel": "Reflexión",
+      "notePlaceholder": "¿Cómo te sientes hoy? Escribe algo...",
+      "imageLabel": "URL de imagen (opcional)",
+      "imagePlaceholder": "https://...",
+      "cancel": "Cancelar",
+      "submit": "Confirmar check-in",
+      "submitLoading": "Enviando…"
+    },
+    "history": {
+      "title": "Historial del reto",
+      "witnessLabel": "Testigo",
+      "empty": "Aún no hay registros de check-in",
+      "actions": {
+        "approve": "Aprobar",
+        "reject": "Rechazar"
+      },
+      "status": {
+        "waitingReview": "Esperando revisión",
+        "approved": "Verificado",
+        "rejected": "Rechazado"
+      }
+    },
+    "toast": {
+      "walletRequiredTitle": "Billetera requerida",
+      "walletRequiredDesc": "Conecta tu billetera antes de crear un Flag.",
+      "titleRequiredTitle": "El título es obligatorio",
+      "titleRequiredDesc": "Introduce un título para el Flag.",
+      "witnessRequiredTitle": "Falta información del testigo",
+      "witnessRequiredDesc": "Introduce el ID o la dirección del testigo.",
+      "createSuccessTitle": "Creado",
+      "createSuccessDesc": "Tu Flag ha sido creado. ¡Es hora de hacer check-in!",
+      "createFailedTitle": "Error al crear",
+      "createFailedDesc": "Revisa tu conexión de red e inténtalo de nuevo.",
+      "loadFailedTitle": "Error al cargar Flags",
+      "noDataTitle": "Aún no hay Flags",
+      "noDataDesc": "Todavía no has creado ningún Flag.",
+      "checkinFailedTitle": "Error en el check-in",
+      "checkinFailedDesc": "Error de red, inténtalo de nuevo más tarde.",
+      "reviewFailedTitle": "Error en la revisión",
+      "reviewFailedDesc": "Revisa tu conexión de red e inténtalo de nuevo.",
+      "settleConfirmMessage": "¿Liquidar este Flag ahora? Los reembolsos dependerán del nivel de cumplimiento.",
+      "settleSuccessTitle": "Liquidación completada",
+      "statusLabel": "Estado",
+      "approvedDaysLabel": "Días aprobados",
+      "settleFailedTitle": "Error en la liquidación",
+      "retryLater": "Inténtalo de nuevo más tarde."
+    },
+    "modal": {
+      "header": {
+        "joinChallengeTitle": "Unirse al reto",
+        "joinChallengeSubtitle": "¡Logremos la meta juntos!",
+        "newFlagTitle": "Nuevo Flag",
+        "newFlagSubtitle": "Empieza tu viaje hoy"
+      },
+      "form": {
+        "titleLabel": "Título del Flag",
+        "titlePlaceholder": "p. ej. Leer 10 páginas al día",
+        "descLabel": "Detalles y reglas",
+        "descPlaceholder": "Describe tu plan...",
+        "verificationLabel": "Verificación",
+        "selfCheck": "Auto verificación",
+        "friendCheck": "Verificación de amigo",
+        "witnessLabel": "ID / dirección del testigo",
+        "witnessPlaceholder": "Introduce el ID o la dirección del amigo",
+        "targetDateLabel": "Fecha objetivo (opcional)",
+        "targetDatePlaceholder": "Selecciona la fecha"
+      },
+      "footer": {
+        "cancel": "Cancelar",
+        "joinNow": "Unirse ahora",
+        "createFlag": "Crear Flag"
+      },
+      "templates": {
+        "early_morning": {
+          "title": "Check-in de madrugón a las {hour}:00",
+          "desc": "Objetivo: Despertar y hacer check-in antes de las {hour}:00\\nPrueba: Nota matutina o foto"
+        },
+        "drink_water_8": {
+          "title": "Beber {cups} vasos de agua",
+          "desc": "Objetivo: Beber {cups} vasos de agua hoy\\nPrueba: Registro sencillo o foto"
+        },
+        "steps_10k": {
+          "title": "Pasos ≥ {steps}",
+          "desc": "Objetivo: Alcanzar al menos {steps} pasos hoy\\nPrueba: Captura de pantalla del dispositivo"
+        },
+        "read_20_pages": {
+          "title": "Leer {pages} páginas",
+          "desc": "Objetivo: Leer {pages} páginas hoy\\nPrueba: Título del libro y número de páginas"
+        },
+        "meditate_10m": {
+          "title": "Meditar {minutes} minutos",
+          "desc": "Objetivo: Meditar {minutes} minutos\\nPrueba: Registro del temporizador o captura"
+        },
+        "sleep_before_11": {
+          "title": "Dormir antes de las {hour}:00",
+          "desc": "Objetivo: Acostarse antes de las {hour}:00 hoy\\nPrueba: Nota personal o captura de la app"
+        },
+        "sunlight_20m": {
+          "title": "Tomar el sol {minutes} minutos",
+          "desc": "Objetivo: Recibir {minutes} minutos de luz solar\\nPrueba: Lugar y tiempo registrados"
+        },
+        "tidy_room_10m": {
+          "title": "Ordenar la habitación {minutes} minutos",
+          "desc": "Objetivo: Ordenar al menos {minutes} minutos\\nPrueba: Fotos de antes y después"
+        }
+      }
+    }
+  }
+}

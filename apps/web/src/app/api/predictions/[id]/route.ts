@@ -14,20 +14,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const includeStats = includeStatsParam !== "0";
     const includeOutcomes = (url.searchParams.get("includeOutcomes") || "0") !== "0";
 
-    // 验证ID参数
     if (!id || isNaN(parseInt(id))) {
-      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid prediction id" },
+        { status: 400 }
+      );
     }
 
     const predictionId = parseInt(id);
 
-    // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase client is not configured" },
+        { status: 500 }
+      );
     }
 
-    // 查询预测详情
     const sel = includeOutcomes ? "*, outcomes:prediction_outcomes(*)" : "*";
     const { data: prediction, error } = await (client as any)
       .from("predictions")
@@ -37,11 +40,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     if (error) {
       if ((error as any)?.code === "PGRST116") {
-        return NextResponse.json({ success: false, message: "预测事件不存在" }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: "Prediction not found" },
+          { status: 404 }
+        );
       }
-      console.error("获取预测事件详情失败:", error);
+      console.error("Failed to fetch prediction detail:", error);
       return NextResponse.json(
-        { success: false, message: "获取预测事件详情失败" },
+        { success: false, message: "Failed to fetch prediction detail" },
         { status: 500 }
       );
     }
@@ -86,16 +92,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // 计算当前概率（基于CPMM恒定乘积做市商模型）
     let yesProbability = 0;
     let noProbability = 0;
 
     if (totalAmount > 0) {
-      // 简单的概率计算：基于押注金额比例
       yesProbability = yesAmount / totalAmount;
       noProbability = noAmount / totalAmount;
     } else {
-      // 如果没有押注，默认各50%
       yesProbability = 0.5;
       noProbability = 0.5;
     }
@@ -122,7 +125,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         noProbability: parseFloat(noProbability.toFixed(4)),
         betCount,
       },
-      // 添加时间信息
       timeInfo: {
         createdAgo: getTimeAgo(prediction.created_at),
         deadlineIn: getTimeRemaining(prediction.deadline),
@@ -141,7 +143,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       {
         success: true,
         data: predictionDetail,
-        message: "获取预测事件详情成功",
+        message: "Prediction detail fetched successfully",
       },
       {
         headers: {
@@ -151,8 +153,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     );
   } catch (error) {
-    console.error("获取预测事件详情异常:", error);
-    return NextResponse.json({ success: false, message: "获取预测事件详情失败" }, { status: 500 });
+    console.error("Unexpected error while fetching prediction detail:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch prediction detail" },
+      { status: 500 }
+    );
   }
 }
 
@@ -193,20 +198,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await Promise.resolve(params);
     const predictionId = parseInt(String(id));
     if (!Number.isFinite(predictionId)) {
-      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid prediction id" },
+        { status: 400 }
+      );
     }
     const body = await request.json().catch(() => ({}));
     const sessAddr = getSessionAddress(request);
     const addr = normalizeAddress(String(sessAddr || body.walletAddress || ""));
     if (!/^0x[a-f0-9]{40}$/.test(addr)) {
       return NextResponse.json(
-        { success: false, message: "未认证或钱包地址无效" },
+        { success: false, message: "Unauthorized or invalid wallet address" },
         { status: 401 }
       );
     }
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase client is not configured" },
+        { status: 500 }
+      );
     }
     const { data: prof } = await (client as any)
       .from("user_profiles")
@@ -215,7 +226,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(addr);
     if (!isAdmin) {
-      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
+      return NextResponse.json(
+        { success: false, message: "Admin permission is required" },
+        { status: 403 }
+      );
     }
     const upd: any = {};
     if (typeof body.title === "string") upd.title = body.title;
@@ -228,7 +242,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (typeof body.image_url === "string") upd.image_url = body.image_url;
     if (typeof body.status === "string") upd.status = body.status;
     if (Object.keys(upd).length === 0) {
-      return NextResponse.json({ success: false, message: "无可更新字段" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "No fields to update" }, { status: 400 });
     }
     const { data, error } = await client
       .from("predictions")
@@ -238,11 +252,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .maybeSingle();
     if (error) {
       return NextResponse.json(
-        { success: false, message: "更新失败", detail: error.message },
+        { success: false, message: "Failed to update prediction", detail: error.message },
         { status: 500 }
       );
     }
-    return NextResponse.json({ success: true, data, message: "更新成功" }, { status: 200 });
+    return NextResponse.json(
+      { success: true, data, message: "Prediction updated successfully" },
+      { status: 200 }
+    );
   } catch (e: any) {
     return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
   }
@@ -256,19 +273,25 @@ export async function DELETE(
     const { id } = await Promise.resolve(params);
     const predictionId = parseInt(String(id));
     if (!Number.isFinite(predictionId)) {
-      return NextResponse.json({ success: false, message: "无效的预测事件ID" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid prediction id" },
+        { status: 400 }
+      );
     }
     const sessAddr = getSessionAddress(request);
     const addr = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(addr)) {
       return NextResponse.json(
-        { success: false, message: "未认证或钱包地址无效" },
+        { success: false, message: "Unauthorized or invalid wallet address" },
         { status: 401 }
       );
     }
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase client is not configured" },
+        { status: 500 }
+      );
     }
     const { data: prof } = await (client as any)
       .from("user_profiles")
@@ -277,16 +300,19 @@ export async function DELETE(
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(addr);
     if (!isAdmin) {
-      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
+      return NextResponse.json(
+        { success: false, message: "Admin permission is required" },
+        { status: 403 }
+      );
     }
     const { error } = await client.from("predictions").delete().eq("id", predictionId);
     if (error) {
       return NextResponse.json(
-        { success: false, message: "删除失败", detail: error.message },
+        { success: false, message: "Failed to delete prediction", detail: error.message },
         { status: 500 }
       );
     }
-    return NextResponse.json({ success: true, message: "已删除" }, { status: 200 });
+    return NextResponse.json({ success: true, message: "Prediction deleted" }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
   }

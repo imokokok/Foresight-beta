@@ -20,6 +20,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import Link from "next/link";
+import { useTranslations } from "@/lib/i18n";
 
 // Mock data for browsing history (in a real app this would come from local storage or API)
 const MOCK_HISTORY = [
@@ -413,6 +414,7 @@ function PredictionsTab() {
   const [predictions, setPredictions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const tEvents = useTranslations();
 
   useEffect(() => {
     if (!account) {
@@ -488,7 +490,7 @@ function PredictionsTab() {
                 />
                 <div className="flex-1">
                   <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors">
-                    {pred.title}
+                    {tEvents(pred.title)}
                   </h4>
                   <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                     <span
@@ -632,6 +634,7 @@ function FollowingTab() {
   const { account } = useWallet();
   const [following, setFollowing] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const tEvents = useTranslations();
 
   useEffect(() => {
     if (!account) {
@@ -696,7 +699,7 @@ function FollowingTab() {
                 </button>
               </div>
               <h4 className="font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
-                {item.title}
+                {tEvents(item.title)}
               </h4>
               <div className="mt-auto text-xs text-gray-500 flex items-center gap-2">
                 <span className="bg-gray-100 px-2 py-1 rounded-md">

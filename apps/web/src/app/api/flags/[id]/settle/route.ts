@@ -12,14 +12,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const flagId = toNum(id);
-    if (!flagId) return NextResponse.json({ message: "flagId 必填" }, { status: 400 });
+    if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const body = await parseRequestBody(req as any);
     const settler_id = String(body?.settler_id || "").trim();
     const minDays = Math.max(1, Number(body?.min_days || 10));
     const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)));
 
     const client = (supabaseAdmin || getClient()) as any;
-    if (!client) return NextResponse.json({ message: "服务未配置" }, { status: 500 });
+    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -28,11 +28,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .maybeSingle();
     const flag = rawFlag as Database["public"]["Tables"]["flags"]["Row"] | null;
     if (fErr)
-      return NextResponse.json({ message: "查询失败", detail: fErr.message }, { status: 500 });
-    if (!flag) return NextResponse.json({ message: "Flag 不存在" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Failed to query flag", detail: fErr.message },
+        { status: 500 }
+      );
+    if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
     const owner = String(flag.user_id || "");
     if (!settler_id || settler_id.toLowerCase() !== owner.toLowerCase())
-      return NextResponse.json({ message: "仅创建者可结算" }, { status: 403 });
+      return NextResponse.json({ message: "Only the owner can settle this flag" }, { status: 403 });
 
     const end = new Date(String(flag.deadline));
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
@@ -140,7 +143,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ status, metrics }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
-      { message: "结算失败", detail: String(e?.message || e) },
+      { message: "Failed to settle flag", detail: String(e?.message || e) },
       { status: 500 }
     );
   }

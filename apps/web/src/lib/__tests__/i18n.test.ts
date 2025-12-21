@@ -40,11 +40,10 @@ describe("Internationalization (i18n)", () => {
       expect(locale).toBe("en");
     });
 
-    it("should fallback to zh-CN for invalid locale", () => {
+    it("should fallback to a valid locale for invalid preference", () => {
       localStorage.setItem("preferred-language", "invalid");
       const locale = getCurrentLocale();
-      // 这里应该返回有效的 locale
-      expect(["zh-CN", "en"]).toContain(locale);
+      expect(["zh-CN", "en", "es"]).toContain(locale);
     });
   });
 
@@ -59,6 +58,12 @@ describe("Internationalization (i18n)", () => {
       const translations = getTranslation("en");
       expect(translations.common.appName).toBe("Foresight");
       expect(translations.auth.login).toBe("Login");
+    });
+
+    it("should return Spanish translations when specified", () => {
+      const translations = getTranslation("es");
+      expect(translations.common.appName).toBe("Foresight");
+      expect(translations.auth.login).toBe("Iniciar sesión");
     });
 
     it("should return Chinese for invalid locale", () => {

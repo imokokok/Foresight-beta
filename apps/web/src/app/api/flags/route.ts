@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ flags: [] }, { status: 200 });
     return NextResponse.json({ flags: data || [] }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ flags: [], message: "查询失败" }, { status: 500 });
+    return NextResponse.json({ flags: [], message: "Failed to fetch flags" }, { status: 500 });
   }
 }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req as any);
     const client = (supabaseAdmin || getClient()) as any;
-    if (!client) return NextResponse.json({ message: "服务未配置" }, { status: 500 });
+    if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const title = String(body?.title || "");
     const description = String(body?.description || "");
@@ -40,10 +40,11 @@ export async function POST(req: NextRequest) {
       String(body?.verification_type || "self") === "witness" ? "witness" : "self";
     const witness_id = String(body?.witness_id || "").trim();
     const user_id = String(body?.user_id || "").trim() || "anonymous";
-    if (!title || !deadlineRaw) return NextResponse.json({ message: "参数缺失" }, { status: 400 });
+    if (!title || !deadlineRaw)
+      return NextResponse.json({ message: "Missing required parameters" }, { status: 400 });
     const deadline = new Date(deadlineRaw);
     if (Number.isNaN(deadline.getTime()))
-      return NextResponse.json({ message: "截止时间格式错误" }, { status: 400 });
+      return NextResponse.json({ message: "Invalid deadline format" }, { status: 400 });
 
     const payload: Database["public"]["Tables"]["flags"]["Insert"] = {
       user_id,
@@ -75,7 +76,10 @@ export async function POST(req: NextRequest) {
       error = res.error;
     }
     if (error)
-      return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
+      return NextResponse.json(
+        { message: "Failed to create flag", detail: error.message },
+        { status: 500 }
+      );
     try {
       if (witness_id && data && data.id) {
         const flagIdNum = data.id;
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
-      { message: "创建失败", detail: String(e?.message || e) },
+      { message: "Failed to create flag", detail: String(e?.message || e) },
       { status: 500 }
     );
   }

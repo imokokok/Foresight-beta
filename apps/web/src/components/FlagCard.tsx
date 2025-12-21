@@ -13,6 +13,7 @@ import {
   Camera,
 } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
+import { useTranslations } from "@/lib/i18n";
 
 export type FlagItem = {
   id: number;
@@ -43,12 +44,13 @@ export const FlagCard = memo(function FlagCard({
   onViewHistory,
   onSettle,
 }: FlagCardProps) {
+  const tFlags = useTranslations("flags");
   const statusConfig = {
     active: {
       color: "text-emerald-800",
       bg: "bg-emerald-100",
       border: "border-emerald-200",
-      label: "进行中",
+      label: tFlags("card.status.active"),
       icon: Target,
       gradient: "from-emerald-100 to-teal-50",
       shadow: "shadow-emerald-500/20",
@@ -58,7 +60,7 @@ export const FlagCard = memo(function FlagCard({
       color: "text-amber-800",
       bg: "bg-amber-100",
       border: "border-amber-200",
-      label: "审核中",
+      label: tFlags("card.status.pending_review"),
       icon: Clock,
       gradient: "from-amber-100 to-orange-50",
       shadow: "shadow-amber-500/20",
@@ -68,7 +70,7 @@ export const FlagCard = memo(function FlagCard({
       color: "text-blue-800",
       bg: "bg-blue-100",
       border: "border-blue-200",
-      label: "挑战成功",
+      label: tFlags("card.status.success"),
       icon: CheckCircle2,
       gradient: "from-blue-100 to-indigo-50",
       shadow: "shadow-blue-500/20",
@@ -78,7 +80,7 @@ export const FlagCard = memo(function FlagCard({
       color: "text-rose-800",
       bg: "bg-rose-100",
       border: "border-rose-200",
-      label: "挑战失败",
+      label: tFlags("card.status.failed"),
       icon: Users,
       gradient: "from-rose-100 to-red-50",
       shadow: "shadow-rose-500/20",
@@ -90,7 +92,6 @@ export const FlagCard = memo(function FlagCard({
   const StatusIcon = s.icon;
 
   const calculateStats = () => {
-    // ... existing logic ...
     const start = new Date(flag.created_at).getTime();
     const end = new Date(flag.deadline).getTime();
     const now = Date.now();
@@ -103,11 +104,15 @@ export const FlagCard = memo(function FlagCard({
     const daysActive = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
 
     const msLeft = end - now;
-    let remainText = "已结束";
+    let remainText = tFlags("card.time.finished");
     if (msLeft > 0) {
       const d = Math.floor(msLeft / 86400000);
       const h = Math.floor((msLeft % 86400000) / 3600000);
-      remainText = d > 0 ? `剩 ${d} 天` : `剩 ${h} 小时`;
+      if (d > 0) {
+        remainText = `${d}${tFlags("card.time.daysLeftSuffix")}`;
+      } else {
+        remainText = `${h}${tFlags("card.time.hoursLeftSuffix")}`;
+      }
     }
 
     return { progress, daysActive, remainText };
@@ -194,12 +199,12 @@ export const FlagCard = memo(function FlagCard({
               {flag.verification_type === "self" ? (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 text-[11px] font-bold text-purple-700">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>自我验证</span>
+                  <span>{tFlags("card.verification.self")}</span>
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 text-[11px] font-bold text-indigo-700">
                   <Users className="w-3.5 h-3.5" />
-                  <span>好友监督</span>
+                  <span>{tFlags("card.verification.friend")}</span>
                   {flag.witness_id && (
                     <span className="text-[10px] text-gray-500">
                       {flag.witness_id.length > 12
@@ -215,7 +220,9 @@ export const FlagCard = memo(function FlagCard({
               <div className="flex items-center justify-between text-xs font-black mb-2">
                 <div className="flex items-center gap-1.5 text-gray-700">
                   <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
-                  <span>{daysActive} Days</span>
+                  <span>
+                    {daysActive} {tFlags("card.time.daysLabel")}
+                  </span>
                 </div>
                 <span className="text-gray-400 bg-white px-2 py-0.5 rounded-md shadow-sm border border-gray-100">
                   {remainText}
@@ -237,7 +244,7 @@ export const FlagCard = memo(function FlagCard({
                   <div className="w-10 h-10 rounded-full border-2 border-white shadow-md overflow-hidden ring-2 ring-gray-100 relative z-10">
                     <LazyImage
                       src={flag.proof_image_url}
-                      alt={flag.title || "打卡图片"}
+                      alt={flag.title || tFlags("card.proofImageAlt")}
                       className="w-full h-full object-cover rounded-full"
                       placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
                       rootMargin={100}

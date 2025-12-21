@@ -14,16 +14,144 @@
     "filter": "Filter",
     "more": "More",
     "less": "Less",
-    "menu": "Menu"
+    "menu": "Menu",
+    "explore": "Explore",
+    "userLevelDreamer": "Level {level} Dreamer",
+    "mainNav": "Main navigation",
+    "yes": "Yes",
+    "no": "No"
   },
   "nav": {
+    "home": "Home",
     "trending": "Trending",
     "leaderboard": "Leaderboard",
     "forum": "Forum",
     "flags": "My Flags",
     "proposals": "Proposals",
     "profile": "Profile",
-    "admin": "Admin Center"
+    "admin": "Admin Center",
+    "myFollows": "My follows"
+  },
+  "forum": {
+    "title": "Community discussions",
+    "loginRequired": "Connect wallet to start a thread",
+    "connectAndSign": "Connect & sign",
+    "form": {
+      "subjectPlaceholder": "Subject name",
+      "action": {
+        "priceReach": "price reaches",
+        "willWin": "will win",
+        "willHappen": "will happen"
+      },
+      "targetPlaceholder": "Target value / condition",
+      "deadlinePlaceholder": "Deadline",
+      "categoryLabel": "Category",
+      "category": {
+        "tech": "Technology",
+        "entertainment": "Entertainment",
+        "politics": "Politics",
+        "weather": "Weather",
+        "sports": "Sports",
+        "business": "Business",
+        "crypto": "Crypto",
+        "more": "More"
+      },
+      "previewTitle": "Title preview",
+      "previewCriteria": "Settlement criteria",
+      "previewTitleFallback": "Complete the form to generate a title",
+      "previewCriteriaFallback": "Complete the form to generate settlement criteria",
+      "submitPosting": "Publishing…",
+      "submit": "Publish thread",
+      "errors": {
+        "subjectRequired": "Please enter a subject name",
+        "targetRequired": "Please enter a target value or condition",
+        "deadlineRequired": "Please enter a deadline",
+        "deadlineInvalid": "Invalid deadline format",
+        "deadlinePast": "Deadline must be later than now",
+        "categoryRequired": "Please select a category"
+      }
+    },
+    "preview": {
+      "title": {
+        "priceReach": "Price of {subjectName} reaches {target} before {deadline}",
+        "willWin": "{subjectName} will win {target} before {deadline}",
+        "willHappen": "{subjectName} will have {target} happen before {deadline}",
+        "default": "{subjectName} will {action}{target} before {deadline}"
+      },
+      "criteria": {
+        "priceReach": "Based on authoritative price data sources, reaching or exceeding the target before the deadline counts as success",
+        "willWin": "Based on official event results, winning the title before the deadline counts as success",
+        "willHappen": "Based on official announcements or reputable media reports, the event happening before the deadline counts as success",
+        "default": "Based on objective verifiable sources, meeting the condition before the deadline counts as success"
+      }
+    },
+    "list": {
+      "loading": "Loading…",
+      "empty": "No threads yet"
+    },
+    "thread": {
+      "meta": {
+        "prefix": "By",
+        "in": "at",
+        "suffix": ""
+      },
+      "vote": {
+        "upvoted": "Upvoted",
+        "downvoted": "Downvoted"
+      }
+    },
+    "comments": {
+      "title": "Comments"
+    },
+    "reply": {
+      "placeholder": "Write a comment…",
+      "sending": "Sending…",
+      "submit": "Comment"
+    },
+    "errors": {
+      "loadFailed": "Failed to load",
+      "createFailed": "Failed to create thread",
+      "commentFailed": "Failed to post comment",
+      "voteFailed": "Failed to vote",
+      "walletRequired": "Please connect your wallet first",
+      "walletRequiredForVote": "Connect your wallet before voting",
+      "alreadyVoted": "You have already voted"
+    }
+  },
+  "chat": {
+    "quickPrompt": {
+      "reason": "What is the reasoning behind this prediction?",
+      "update": "Any latest updates?",
+      "opinion": "I think the probability is higher because…"
+    },
+    "header": {
+      "title": "Chat room",
+      "withTopic": "Chat room · {title}",
+      "youLabel": "You: {name}",
+      "walletDisconnected": "Wallet not connected"
+    },
+    "announcement": {
+      "badge": "Announcement",
+      "empty": "No announcements yet"
+    },
+    "empty": {
+      "title": "No messages yet",
+      "description": "There is no discussion here yet. Share your first insight and start the conversation!",
+      "actionLabel": "Send the first message",
+      "defaultInput": "Hi! 👋 Happy to join the discussion"
+    },
+    "input": {
+      "walletRequired": "Connect your wallet to send messages",
+      "connectAndSign": "Connect & sign",
+      "placeholder": "Type a message, press Enter to send, Shift+Enter for new line",
+      "toggleEmojisAria": "Toggle emoji picker",
+      "sending": "Sending…",
+      "send": "Send"
+    },
+    "errors": {
+      "walletRequired": "Please connect your wallet before sending messages",
+      "sendFailed": "Failed to send message"
+    }
   },
   "auth": {
     "login": "Login",
@@ -48,7 +176,10 @@
     "switchNetwork": "Switch Network",
     "refreshBalance": "Refresh Balance",
     "noWallet": "No wallet detected",
-    "installMetaMask": "Install MetaMask"
+    "installMetaMask": "Install MetaMask",
+    "connectFailedTitle": "Wallet connection failed",
+    "installMetaMaskExtension": "Install MetaMask browser extension",
+    "unknownNetwork": "Unknown network"
   },
   "prediction": {
     "title": "Prediction",
@@ -80,7 +211,45 @@
     "bids": "Bids",
     "asks": "Asks",
     "filled": "Filled",
-    "open": "Open"
+    "open": "Open",
+    "tabTrade": "Trade",
+    "selectOutcome": "Select outcome",
+    "orderType": "Order type",
+    "autoMatchBest": "Auto match best price",
+    "sharesUnit": "Shares",
+    "totalInvestment": "Total investment",
+    "potentialReturn": "Potential return",
+    "submitting": "Processing…",
+    "emptyBids": "No bids yet",
+    "emptyAsks": "No asks yet",
+    "emptyOrders": "No open orders",
+    "bestBid": "Best bid: {price}",
+    "bestAsk": "Best ask: {price}"
+  },
+  "market": {
+    "tabs": {
+      "desc": "Market details",
+      "rules": "Resolution rules",
+      "comments": "Discussion"
+    },
+    "about": {
+      "title": "About this market",
+      "referenceSource": "Reference source"
+    },
+    "rules": {
+      "criteriaTitle": "Resolution criteria",
+      "arbitrator": "Arbitrator",
+      "resolutionTime": "Resolution time",
+      "resolutionTimeValue": "Within 24 hours after {deadline}",
+      "arbitratorName": "Foresight Oracle Committee"
+    },
+    "comments": {
+      "loading": "Loading comments..."
+    },
+    "chart": {
+      "loading": "Market data loading...",
+      "outcomeFallback": "Outcome {index}"
+    }
   },
   "errors": {
     "somethingWrong": "Oops! Something went wrong!",
@@ -89,6 +258,395 @@
     "networkError": "Network Error",
     "tryAgain": "Try Again",
     "goHome": "Go Home",
-    "contactSupport": "Contact Support"
+    "contactSupport": "Contact Support",
+    "followActionFailed": "Follow action failed, please try again later"
+  },
+  "login": {
+    "tabEmail": "Email login",
+    "tabWallet": "Wallet login",
+    "close": "Close",
+    "emailContinueTitle": "Continue with email",
+    "emailContinueDescription": "We will send you an email with a login link and a 6-digit code.",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "sendOtp": "Send code",
+    "sendMagicLink": "Send magic link",
+    "agreePrefix": "By continuing, you agree to our",
+    "terms": "Terms of Service",
+    "and": "and",
+    "privacy": "Privacy Policy",
+    "agreeSuffix": ".",
+    "switchToWallet": "You can also switch to “Wallet login”.",
+    "otpTitle": "Enter the 6-digit code from your email",
+    "otpDescriptionPrefix": "We have sent an email to",
+    "otpDescriptionSuffix": ".",
+    "verifyAndLogin": "Verify and log in",
+    "resend": "Resend",
+    "otpHint": "You can also complete login by clicking the link in the email.",
+    "walletContinueTitle": "Continue with wallet",
+    "walletContinueDescription": "Supports popular wallets (MetaMask, Coinbase, Binance, OKX, etc.).",
+    "notInstalled": "Not installed",
+    "clickToConnect": "Click to connect",
+    "detectingWallets": "Detecting installed wallet extensions…",
+    "switchToEmail": "You can also switch to “Email login”."
+  },
+  "search": {
+    "placeholder": "Search predictions, topics, users...",
+    "resultsTitle": "Search results",
+    "emptyTitle": "No results found",
+    "emptyDescription": "Try other keywords or browse hot searches",
+    "recentTitle": "Recent searches",
+    "clear": "Clear",
+    "hotTitle": "Hot searches",
+    "clearSearchAria": "Clear search",
+    "hintConfirm": "Confirm",
+    "hintClose": "Close",
+    "hintOpen": "Open search",
+    "hot": {
+      "usElection": "US election",
+      "btcPrice": "BTC price",
+      "worldCup": "World Cup",
+      "ai": "AI development",
+      "climate": "Climate change"
+    }
+  },
+  "trending": {
+    "hero": {
+      "globalClimateSummit": {
+        "title": "Global Climate Summit",
+        "description": "Discussing global strategies to tackle climate change"
+      },
+      "aiSafetySummit": {
+        "title": "AI Safety Conference",
+        "description": "Focusing on AI regulation and safety issues"
+      },
+      "globalFinanceForum": {
+        "title": "International Finance Forum",
+        "description": "Exploring digital currencies and the future of the economy"
+      },
+      "charitySportsMatch": {
+        "title": "Charity Sports Match",
+        "description": "Global athletes joining forces for charity"
+      },
+      "extremeWeatherAlert": {
+        "title": "Extreme Weather Alert",
+        "description": "Multiple regions issuing extreme weather warnings"
+      },
+      "techProductLaunch": {
+        "title": "New Tech Product Launch",
+        "description": "The latest tech products making a stunning debut"
+      },
+      "worldChampionshipFinal": {
+        "title": "World Championship Final",
+        "description": "Top teams clash in the ultimate showdown"
+      }
+    },
+    "category": {
+      "tech": "Technology",
+      "entertainment": "Entertainment",
+      "politics": "Politics",
+      "weather": "Weather",
+      "sports": "Sports",
+      "business": "Business",
+      "crypto": "Crypto",
+      "more": "More"
+    },
+    "metrics": {
+      "marketVol": "Market Vol",
+      "greed": "Greed",
+      "poolSize": "Pool Size",
+      "participants": "Participants",
+      "events": "Events",
+      "successRate": "Success Rate"
+    },
+    "badges": {
+      "dailyPick": "Daily Pick",
+      "trending": "Trending"
+    },
+    "sections": {
+      "popularCategories": "Popular Categories",
+      "hotEvents": "Trending Events"
+    },
+    "actions": {
+      "viewAll": "View All",
+      "placePrediction": "Place Prediction",
+      "viewDetails": "View Details",
+      "createPrediction": "Create Prediction"
+    },
+    "search": {
+      "placeholder": "Search events..."
+    },
+    "empty": {
+      "title": "No predictions yet",
+      "description": "There are no prediction events available. Try switching categories or create a new one!"
+    },
+    "state": {
+      "loading": "Loading data...",
+      "errorTitle": "Failed to load",
+      "reload": "Reload",
+      "loadMore": "Loading more...",
+      "scrollHint": "Scroll down to load more",
+      "allLoadedPrefix": "Showing all ",
+      "allLoadedSuffix": " predictions"
+    },
+    "card": {
+      "volumePrefix": "Volume $",
+      "optionFallbackPrefix": "Option "
+    },
+    "login": {
+      "title": "Please sign in",
+      "description": "Following prediction events requires connecting your wallet. Click the “Connect Wallet” button in the top-right corner to sign in.",
+      "benefitsTitle": "After signing in you can:",
+      "benefitFollow": "Follow prediction events you care about",
+      "benefitParticipate": "Participate in predictions and staking",
+      "benefitRewards": "Earn prediction rewards",
+      "later": "Maybe later",
+      "now": "Sign in now"
+    },
+    "admin": {
+      "editDialogTitle": "Edit Event",
+      "fieldTitle": "Title",
+      "fieldCategory": "Category",
+      "fieldStatus": "Status",
+      "fieldDeadline": "Deadline",
+      "fieldMinStake": "Minimum Stake",
+      "confirmDelete": "Are you sure you want to delete this event?",
+      "updateFailed": "Update failed",
+      "deleteFailed": "Delete failed",
+      "updateSuccessTitle": "Update successful",
+      "updateSuccessDesc": "Prediction event has been updated successfully",
+      "deleteSuccessTitle": "Deletion successful",
+      "deleteSuccessDesc": "Prediction event has been deleted",
+      "retryLater": "Please try again later",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "save": "Save",
+      "editAria": "Edit",
+      "deleteAria": "Delete",
+      "deadlinePlaceholder": "Select deadline"
+    }
+  },
+  "flags": {
+    "header": {
+      "title": "My Vision Board",
+      "badge": "Dream Big!",
+      "activeLabel": "Active",
+      "achievedLabel": "Achieved"
+    },
+    "stats": {
+      "ongoingBadge": "Ongoing",
+      "flagsLabel": "Flags",
+      "activeDescription": "Challenges currently in progress",
+      "achievedBadge": "Achieved",
+      "goalsLabel": "Goals",
+      "successDescription": "Goals you have already achieved",
+      "focusLabel": "Focus Score",
+      "scoreBadge": "Score"
+    },
+    "card": {
+      "status": {
+        "active": "Active",
+        "pending_review": "Pending review",
+        "success": "Challenge succeeded",
+        "failed": "Challenge failed"
+      },
+      "time": {
+        "finished": "Finished",
+        "daysLeftSuffix": " days left",
+        "hoursLeftSuffix": " hours left",
+        "daysLabel": "Days"
+      },
+      "verification": {
+        "self": "Self check",
+        "friend": "Friend check"
+      },
+      "proofImageAlt": "Check-in image"
+    },
+    "invites": {
+      "textPrefix": "You have ",
+      "textSuffix": " check-ins waiting for review",
+      "button": "Review now"
+    },
+    "gallery": {
+      "button": "Sticker Gallery"
+    },
+    "filters": {
+      "all": "All",
+      "active": "Active",
+      "success": "Done",
+      "witnessRequests": "Witness requests"
+    },
+    "state": {
+      "loading": "Loading your vision board..."
+    },
+    "createCard": {
+      "title": "Pin a new goal",
+      "subtitle": "Start a new journey"
+    },
+    "sidebar": {
+      "trendingTitle": "Trending",
+      "viewAll": "View All",
+      "quote": {
+        "text": "\"The only bad workout is the one that didn't happen.\"",
+        "label": "Daily Motivation"
+      }
+    },
+    "official": {
+      "title": "Official Featured Challenges",
+      "subtitle": "Over 10 curated challenge templates",
+      "cta": "Start now",
+      "templates": {
+        "early_bird": {
+          "title": "Early Bird Challenge",
+          "description": "Wake up and check in before 8 AM for 7 days"
+        },
+        "reading_marathon": {
+          "title": "Reading Marathon",
+          "description": "Read at least 30 minutes every day for 30 days"
+        },
+        "fitness_pro": {
+          "title": "Fitness Pro",
+          "description": "Work out 3 times a week and keep it up for 4 weeks"
+        },
+        "weather_prophet": {
+          "title": "Weather Prophet",
+          "description": "Predict tomorrow's weather and observe daily changes"
+        },
+        "no_takeout": {
+          "title": "No Takeout Today",
+          "description": "Cook for yourself or eat healthy, skip all takeout orders"
+        },
+        "sleep_early": {
+          "title": "Night Owl Buster",
+          "description": "Put your phone down and fall asleep before 11 PM tonight"
+        },
+        "walk_10k": {
+          "title": "Walk 10,000 Steps",
+          "description": "Explore the city on foot and stay active"
+        },
+        "digital_detox": {
+          "title": "Be Here Now",
+          "description": "Stay off your phone and enjoy 1 hour of quiet focus"
+        },
+        "declutter": {
+          "title": "Declutter Day",
+          "description": "Let go of one unneeded item and travel lighter"
+        },
+        "call_parents": {
+          "title": "Call Your Parents",
+          "description": "Give your parents a call and share your recent life"
+        }
+      }
+    },
+    "checkin": {
+      "title": "Check-in Moment",
+      "subtitle": "Capture every bit of your progress",
+      "noteLabel": "Reflection",
+      "notePlaceholder": "How do you feel today? Write something…",
+      "imageLabel": "Image URL (optional)",
+      "imagePlaceholder": "https://...",
+      "cancel": "Cancel",
+      "submit": "Confirm check-in",
+      "submitLoading": "Submitting…"
+    },
+    "history": {
+      "title": "Challenge History",
+      "witnessLabel": "Witness",
+      "empty": "No check-ins yet",
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject"
+      },
+      "status": {
+        "waitingReview": "Waiting for review",
+        "approved": "Verified",
+        "rejected": "Rejected"
+      }
+    },
+    "toast": {
+      "walletRequiredTitle": "Wallet required",
+      "walletRequiredDesc": "Please connect your wallet before creating a Flag.",
+      "titleRequiredTitle": "Title is required",
+      "titleRequiredDesc": "Please enter a Flag title.",
+      "witnessRequiredTitle": "Missing witness info",
+      "witnessRequiredDesc": "Please fill in the witness ID or address.",
+      "createSuccessTitle": "Created",
+      "createSuccessDesc": "Your Flag has been created. Time to check in!",
+      "createFailedTitle": "Creation failed",
+      "createFailedDesc": "Please check your network connection and try again.",
+      "loadFailedTitle": "Failed to load Flags",
+      "noDataTitle": "No Flags yet",
+      "noDataDesc": "You have not created any Flags yet.",
+      "checkinFailedTitle": "Check-in failed",
+      "checkinFailedDesc": "Network error, please try again later.",
+      "reviewFailedTitle": "Review failed",
+      "reviewFailedDesc": "Please check your network connection and try again.",
+      "settleConfirmMessage": "Settle this Flag now? Refunds will depend on completion.",
+      "settleSuccessTitle": "Settlement complete",
+      "statusLabel": "Status",
+      "approvedDaysLabel": "Approved days",
+      "settleFailedTitle": "Settlement failed",
+      "retryLater": "Please try again later."
+    },
+    "modal": {
+      "header": {
+        "joinChallengeTitle": "Join Challenge",
+        "joinChallengeSubtitle": "Let's do this together!",
+        "newFlagTitle": "New Flag",
+        "newFlagSubtitle": "Start your journey today"
+      },
+      "form": {
+        "titleLabel": "Flag Title",
+        "titlePlaceholder": "e.g. Read 10 pages daily",
+        "descLabel": "Details & Rules",
+        "descPlaceholder": "Describe your plan...",
+        "verificationLabel": "Verification",
+        "selfCheck": "Self Check",
+        "friendCheck": "Friend Check",
+        "witnessLabel": "Witness ID / Address",
+        "witnessPlaceholder": "Enter friend's ID or Address",
+        "targetDateLabel": "Target Date (Optional)",
+        "targetDatePlaceholder": "Select Date"
+      },
+      "footer": {
+        "cancel": "Cancel",
+        "joinNow": "Join Now",
+        "createFlag": "Create Flag"
+      },
+      "templates": {
+        "early_morning": {
+          "title": "Early wake-up {hour}:00 check-in",
+          "desc": "Goal: Wake up and check in before {hour}:00\\nProof: Morning note or photo"
+        },
+        "drink_water_8": {
+          "title": "Drink {cups} cups of water",
+          "desc": "Goal: Drink {cups} cups of water today\\nProof: Simple log or photo"
+        },
+        "steps_10k": {
+          "title": "Steps ≥ {steps}",
+          "desc": "Goal: Reach at least {steps} steps today\\nProof: Screenshot from your device"
+        },
+        "read_20_pages": {
+          "title": "Read {pages} pages",
+          "desc": "Goal: Read {pages} pages today\\nProof: Book title and page numbers"
+        },
+        "meditate_10m": {
+          "title": "Meditate for {minutes} minutes",
+          "desc": "Goal: Meditate for {minutes} minutes\\nProof: Timer log or screenshot"
+        },
+        "sleep_before_11": {
+          "title": "Sleep before {hour}:00",
+          "desc": "Goal: Go to bed before {hour}:00 today\\nProof: Personal note or app screenshot"
+        },
+        "sunlight_20m": {
+          "title": "Sunlight for {minutes} minutes",
+          "desc": "Goal: Get {minutes} minutes of sunlight\\nProof: Place and time record"
+        },
+        "tidy_room_10m": {
+          "title": "Tidy your room for {minutes} minutes",
+          "desc": "Goal: Tidy up for at least {minutes} minutes\\nProof: Before-and-after photos"
+        }
+      }
+    }
   }
 }

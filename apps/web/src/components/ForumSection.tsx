@@ -4,6 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
 import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
+import { useTranslations } from "@/lib/i18n";
 
 interface ForumSectionProps {
   eventId: number;
@@ -44,6 +45,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     requestWalletPermissions,
     multisigSign,
   } = useWallet();
+  const tForum = useTranslations("forum");
   const [threads, setThreads] = useState<ThreadView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,32 +67,40 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     if (!name || !act || !target || !dl) return "";
     const when = new Date(dl);
     const iso = when.toISOString().replace(".000Z", "Z");
-    if (act === "价格达到") return `${name}价格在${iso}前达到${target}`;
-    if (act === "将会赢得") return `${name}将在${iso}前赢得${target}`;
-    if (act === "将会发生") return `${name}将在${iso}前发生${target}`;
-    return `${name}将在${iso}前${act}${target}`;
-  }, [subjectName, actionVerb, targetValue, deadline]);
+    let key = "preview.title.default";
+    if (act === "价格达到") key = "preview.title.priceReach";
+    else if (act === "将会赢得") key = "preview.title.willWin";
+    else if (act === "将会发生") key = "preview.title.willHappen";
+    const template = tForum(key);
+    return template
+      .replace("{subjectName}", name)
+      .replace("{deadline}", iso)
+      .replace("{target}", target)
+      .replace("{action}", act);
+  }, [subjectName, actionVerb, targetValue, deadline, tForum]);
   const criteriaPreview = useMemo(() => {
     const act = String(actionVerb || "").trim();
-    if (act === "价格达到") return "以权威价格数据源为准，在截止时间前达到或超过目标值视为达成";
-    if (act === "将会赢得") return "以赛事官方结果为准，在截止时间前确认夺冠视为达成";
-    if (act === "将会发生") return "以官方公告或权威媒体报道为准，事件在截止时间前发生视为达成";
-    return "以客观可验证来源为准，截止前满足条件视为达成";
-  }, [actionVerb]);
+    let key = "preview.criteria.default";
+    if (act === "价格达到") key = "preview.criteria.priceReach";
+    else if (act === "将会赢得") key = "preview.criteria.willWin";
+    else if (act === "将会发生") key = "preview.criteria.willHappen";
+    const template = tForum(key);
+    return template.replace("{action}", act);
+  }, [actionVerb, tForum]);
   const formError = useMemo(() => {
     const name = String(subjectName || "").trim();
     const target = String(targetValue || "").trim();
     const dl = String(deadline || "").trim();
     const cat = String(category || "").trim();
-    if (!name) return "请填写主体名称";
-    if (!target) return "请填写目标值/条件";
-    if (!dl) return "请填写截止时间";
+    if (!name) return tForum("form.errors.subjectRequired");
+    if (!target) return tForum("form.errors.targetRequired");
+    if (!dl) return tForum("form.errors.deadlineRequired");
     const d = new Date(dl);
-    if (Number.isNaN(d.getTime())) return "截止时间格式不正确";
-    if (d.getTime() <= Date.now()) return "截止时间需晚于当前时间";
-    if (!cat) return "请选择分类";
+    if (Number.isNaN(d.getTime())) return tForum("form.errors.deadlineInvalid");
+    if (d.getTime() <= Date.now()) return tForum("form.errors.deadlinePast");
+    if (!cat) return tForum("form.errors.categoryRequired");
     return "";
-  }, [subjectName, targetValue, deadline, category]);
+  }, [subjectName, targetValue, deadline, category, tForum]);
   const canSubmit = useMemo(() => {
     return !!titlePreview && !formError;
   }, [titlePreview, formError]);
@@ -116,11 +126,11 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       }
       setThreads(list);
     } catch (e: any) {
-      setError(e?.message || "加载失败");
+      setError(e?.message || tForum("errors.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [eventId, threadId]);
+  }, [eventId, threadId, tForum]);
 
   useEffect(() => {
     load();
@@ -171,7 +181,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
 
   const postThread = async () => {
     if (!account) {
-      setError("请先连接钱包");
+      setError(tForum("errors.walletRequired"));
       return;
     }
     const t = titlePreview;
@@ -200,7 +210,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       setTitle("");
       await load();
     } catch (e: any) {
-      setError(e?.message || "创建失败");
+      setError(e?.message || tForum("errors.createFailed"));
     } finally {
       setPosting(false);
     }
@@ -208,7 +218,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
 
   const postComment = async (threadId: number, text: string, parentId?: number | null) => {
     if (!account) {
-      setError("请先连接钱包");
+      setError(tForum("errors.walletRequired"));
       return;
     }
     if (!text.trim()) return;
@@ -227,19 +237,19 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (e: any) {
-      setError(e?.message || "评论失败");
+      setError(e?.message || tForum("errors.commentFailed"));
     }
   };
 
   const vote = async (type: "thread" | "comment", id: number, dir: "up" | "down") => {
     try {
       if (!account) {
-        setError("请先连接钱包再投票");
+        setError(tForum("errors.walletRequiredForVote"));
         return;
       }
       const key = `${type}:${id}`;
       if (userVotes.has(key)) {
-        setError("您已经投过票了");
+        setError(tForum("errors.alreadyVoted"));
         return;
       }
       const res = await fetch("/api/forum/vote", {
@@ -249,13 +259,13 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       });
       if (!res.ok) {
         const t = await res.text();
-        throw new Error(t || "投票失败");
+        throw new Error(t || tForum("errors.voteFailed"));
       }
       setUserVotes((prev) => new Set([...prev, key]));
       setUserVoteTypes((prev) => ({ ...prev, [key]: dir }));
       await load();
     } catch (e: any) {
-      setError(e?.message || "投票失败");
+      setError(e?.message || tForum("errors.voteFailed"));
     }
   };
 
@@ -300,7 +310,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     <div className="rounded-2xl border border-white/60 bg-white/40 backdrop-blur-md overflow-hidden shadow-sm">
       <div className="px-4 py-3 flex items-center justify-between border-b border-white/50">
         <div className="font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          社区讨论
+          {tForum("title")}
         </div>
       </div>
 
@@ -309,7 +319,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
           <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
             {!account ? (
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600 font-medium">发帖需连接钱包</div>
+                <div className="text-sm text-gray-600 font-medium">{tForum("loginRequired")}</div>
                 <Button
                   size="sm"
                   variant="cta"
@@ -320,7 +330,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                     await multisigSign();
                   }}
                 >
-                  连接并签名
+                  {tForum("connectAndSign")}
                 </Button>
               </div>
             ) : (
@@ -329,7 +339,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                   <input
                     value={subjectName}
                     onChange={(e) => setSubjectName(e.target.value)}
-                    placeholder="主体名称"
+                    placeholder={tForum("form.subjectPlaceholder")}
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   />
                   <select
@@ -337,23 +347,23 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                     onChange={(e) => setActionVerb(e.target.value)}
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   >
-                    <option value="价格达到">价格达到</option>
-                    <option value="将会赢得">将会赢得</option>
-                    <option value="将会发生">将会发生</option>
+                    <option value="价格达到">{tForum("form.action.priceReach")}</option>
+                    <option value="将会赢得">{tForum("form.action.willWin")}</option>
+                    <option value="将会发生">{tForum("form.action.willHappen")}</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <input
                     value={targetValue}
                     onChange={(e) => setTargetValue(e.target.value)}
-                    placeholder="目标值/条件"
+                    placeholder={tForum("form.targetPlaceholder")}
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   />
                   <DatePicker
                     value={deadline}
                     onChange={setDeadline}
                     includeTime={true}
-                    placeholder="截止时间"
+                    placeholder={tForum("form.deadlinePlaceholder")}
                     className="w-full"
                   />
                   <select
@@ -361,21 +371,25 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
                   >
-                    <option value="科技">科技</option>
-                    <option value="娱乐">娱乐</option>
-                    <option value="时政">时政</option>
-                    <option value="天气">天气</option>
-                    <option value="体育">体育</option>
-                    <option value="商业">商业</option>
-                    <option value="加密货币">加密货币</option>
-                    <option value="更多">更多</option>
+                    <option value="科技">{tForum("form.category.tech")}</option>
+                    <option value="娱乐">{tForum("form.category.entertainment")}</option>
+                    <option value="时政">{tForum("form.category.politics")}</option>
+                    <option value="天气">{tForum("form.category.weather")}</option>
+                    <option value="体育">{tForum("form.category.sports")}</option>
+                    <option value="商业">{tForum("form.category.business")}</option>
+                    <option value="加密货币">{tForum("form.category.crypto")}</option>
+                    <option value="更多">{tForum("form.category.more")}</option>
                   </select>
                 </div>
                 <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">
-                  <div className="font-medium text-indigo-700">标题预览</div>
-                  <div className="mt-1">{titlePreview || "请完善表单以生成标题"}</div>
-                  <div className="font-medium text-indigo-700 mt-3">结算标准</div>
-                  <div className="mt-1">{criteriaPreview || "请完善表单以生成结算标准"}</div>
+                  <div className="font-medium text-indigo-700">{tForum("form.previewTitle")}</div>
+                  <div className="mt-1">{titlePreview || tForum("form.previewTitleFallback")}</div>
+                  <div className="font-medium text-indigo-700 mt-3">
+                    {tForum("form.previewCriteria")}
+                  </div>
+                  <div className="mt-1">
+                    {criteriaPreview || tForum("form.previewCriteriaFallback")}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-600">{formError || ""}</div>
@@ -385,7 +399,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                     size="md"
                     variant="cta"
                   >
-                    {posting ? "发布中…" : "发布主题"}
+                    {posting ? tForum("form.submitPosting") : tForum("form.submit")}
                   </Button>
                 </div>
               </div>
@@ -395,9 +409,9 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
 
         {/* 主题列表 */}
         <div className="space-y-4">
-          {loading && <div className="text-sm text-gray-500">加载中…</div>}
+          {loading && <div className="text-sm text-gray-500">{tForum("list.loading")}</div>}
           {!loading && threads.length === 0 && (
-            <div className="text-sm text-gray-500">暂无主题</div>
+            <div className="text-sm text-gray-500">{tForum("list.empty")}</div>
           )}
           {threads.map((t) => (
             <div key={t.id} className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
@@ -410,8 +424,10 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                     <div className="text-sm text-gray-600 mt-1">{t.content}</div>
                   )}
                   <div className="text-xs text-gray-400 mt-1">
-                    由 <span className="text-indigo-700 font-medium">{displayName(t.user_id)}</span>{" "}
-                    在 {new Date(t.created_at).toLocaleString()} 发布
+                    {tForum("thread.meta.prefix")}{" "}
+                    <span className="text-indigo-700 font-medium">{displayName(t.user_id)}</span>{" "}
+                    {tForum("thread.meta.in")} {new Date(t.created_at).toLocaleString()}{" "}
+                    {tForum("thread.meta.suffix")}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -441,15 +457,18 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
                           : "bg-indigo-100 text-indigo-700"
                       }`}
                     >
-                      {userVoteTypes[`thread:${t.id}`] === "down" ? "已踩" : "已赞"}
+                      {userVoteTypes[`thread:${t.id}`] === "down"
+                        ? tForum("thread.vote.downvoted")
+                        : tForum("thread.vote.upvoted")}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* 评论区 */}
               <div className="mt-3">
-                <div className="text-sm font-medium text-indigo-700">评论</div>
+                <div className="text-sm font-medium text-indigo-700">
+                  {tForum("comments.title")}
+                </div>
                 <div className="mt-2">{buildTree(t.comments || [])}</div>
                 {account && (
                   <div className="mt-2">
@@ -468,6 +487,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
 }
 
 function ReplyBox({ onSubmit }: { onSubmit: (text: string) => void }) {
+  const tForum = useTranslations("forum");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const submit = async () => {
@@ -485,11 +505,11 @@ function ReplyBox({ onSubmit }: { onSubmit: (text: string) => void }) {
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="写下评论…"
+        placeholder={tForum("reply.placeholder")}
         className="flex-1 px-3 py-2 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white/50 focus:bg-white/90 transition-all text-gray-800"
       />
       <Button onClick={submit} disabled={sending} size="sm" variant="primary">
-        {sending ? "发送中…" : "评论"}
+        {sending ? tForum("reply.sending") : tForum("reply.submit")}
       </Button>
     </div>
   );

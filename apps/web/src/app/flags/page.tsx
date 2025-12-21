@@ -12,6 +12,7 @@ import StickerRevealModal, {
 } from "@/components/StickerRevealModal";
 import StickerGalleryModal from "@/components/StickerGalleryModal";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
 import {
   Loader2,
   Plus,
@@ -58,6 +59,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function FlagsPage() {
   const { account } = useWallet();
   const { user } = useAuth();
+  const tFlags = useTranslations("flags");
   const [flags, setFlags] = useState<FlagItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -112,8 +114,8 @@ export default function FlagsPage() {
   const officialTemplates = [
     {
       id: "early_bird",
-      title: "早起鸟挑战",
-      description: "连续7天，每天早上8点前打卡",
+      title: tFlags("official.templates.early_bird.title"),
+      description: tFlags("official.templates.early_bird.description"),
       icon: Sun,
       color: "text-amber-500",
       gradient: "from-amber-100 to-orange-50",
@@ -121,8 +123,8 @@ export default function FlagsPage() {
     },
     {
       id: "reading_marathon",
-      title: "阅读马拉松",
-      description: "坚持阅读30天，每天至少30分钟",
+      title: tFlags("official.templates.reading_marathon.title"),
+      description: tFlags("official.templates.reading_marathon.description"),
       icon: BookOpen,
       color: "text-blue-500",
       gradient: "from-blue-100 to-cyan-50",
@@ -130,8 +132,8 @@ export default function FlagsPage() {
     },
     {
       id: "fitness_pro",
-      title: "健身达人",
-      description: "每周运动3次，坚持4周",
+      title: tFlags("official.templates.fitness_pro.title"),
+      description: tFlags("official.templates.fitness_pro.description"),
       icon: Zap,
       color: "text-emerald-500",
       gradient: "from-emerald-100 to-green-50",
@@ -139,8 +141,8 @@ export default function FlagsPage() {
     },
     {
       id: "weather_prophet",
-      title: "气象预言家",
-      description: "预测明天是否下雨，做生活的观察者",
+      title: tFlags("official.templates.weather_prophet.title"),
+      description: tFlags("official.templates.weather_prophet.description"),
       icon: CloudRain,
       color: "text-sky-500",
       gradient: "from-sky-100 to-indigo-50",
@@ -148,8 +150,8 @@ export default function FlagsPage() {
     },
     {
       id: "no_takeout",
-      title: "今天不点外卖",
-      description: "亲自下厨或吃得健康，拒绝外卖诱惑",
+      title: tFlags("official.templates.no_takeout.title"),
+      description: tFlags("official.templates.no_takeout.description"),
       icon: Utensils,
       color: "text-orange-500",
       gradient: "from-orange-100 to-amber-50",
@@ -157,8 +159,8 @@ export default function FlagsPage() {
     },
     {
       id: "sleep_early",
-      title: "夜猫子克星",
-      description: "今晚11点前放下手机入睡",
+      title: tFlags("official.templates.sleep_early.title"),
+      description: tFlags("official.templates.sleep_early.description"),
       icon: Moon,
       color: "text-indigo-500",
       gradient: "from-indigo-100 to-violet-50",
@@ -166,8 +168,8 @@ export default function FlagsPage() {
     },
     {
       id: "walk_10k",
-      title: "步行一万步",
-      description: "用脚步丈量城市，保持活力",
+      title: tFlags("official.templates.walk_10k.title"),
+      description: tFlags("official.templates.walk_10k.description"),
       icon: Footprints,
       color: "text-teal-500",
       gradient: "from-teal-100 to-emerald-50",
@@ -175,8 +177,8 @@ export default function FlagsPage() {
     },
     {
       id: "digital_detox",
-      title: "在此刻",
-      description: "放下手机专注当下，享受1小时宁静",
+      title: tFlags("official.templates.digital_detox.title"),
+      description: tFlags("official.templates.digital_detox.description"),
       icon: Smartphone,
       color: "text-rose-500",
       gradient: "from-rose-100 to-pink-50",
@@ -184,8 +186,8 @@ export default function FlagsPage() {
     },
     {
       id: "declutter",
-      title: "断舍离",
-      description: "清理一件不再需要的物品，轻装前行",
+      title: tFlags("official.templates.declutter.title"),
+      description: tFlags("official.templates.declutter.description"),
       icon: Trash2,
       color: "text-slate-500",
       gradient: "from-slate-100 to-gray-50",
@@ -193,8 +195,8 @@ export default function FlagsPage() {
     },
     {
       id: "call_parents",
-      title: "爱的连线",
-      description: "给父母打个电话，分享最近的生活",
+      title: tFlags("official.templates.call_parents.title"),
+      description: tFlags("official.templates.call_parents.description"),
       icon: Phone,
       color: "text-pink-500",
       gradient: "from-pink-100 to-rose-50",
@@ -271,7 +273,7 @@ export default function FlagsPage() {
 
       if (!res.ok) {
         console.error("[Flag Debug] ❌ API 请求失败");
-        toast.error("数据加载失败", `HTTP ${res.status}: ${res.statusText}`);
+        toast.error(tFlags("toast.loadFailedTitle"), `HTTP ${res.status}: ${res.statusText}`);
         setFlags([]);
         return;
       }
@@ -285,11 +287,11 @@ export default function FlagsPage() {
       setFlags(list as FlagItem[]);
 
       if (list.length === 0) {
-        toast.info("暂无数据", "您还没有创建任何 Flag");
+        toast.info(tFlags("toast.noDataTitle"), tFlags("toast.noDataDesc"));
       }
     } catch (e) {
       console.error("[Flag Debug] 💥 加载出错:", e);
-      toast.error("加载失败", String(e));
+      toast.error(tFlags("toast.loadFailedTitle"), String(e));
     } finally {
       setLoading(false);
     }
@@ -419,7 +421,7 @@ export default function FlagsPage() {
         }
       }
     } catch (e) {
-      toast.error("打卡失败", "网络错误，请稍后重试");
+      toast.error(tFlags("toast.checkinFailedTitle"), tFlags("toast.checkinFailedDesc"));
     } finally {
       setCheckinSubmitting(false);
     }
@@ -465,14 +467,14 @@ export default function FlagsPage() {
       // refresh history
       if (historyFlag) openHistory(historyFlag);
     } catch (e) {
-      toast.error("审核失败", "请检查网络连接后重试");
+      toast.error(tFlags("toast.reviewFailedTitle"), tFlags("toast.reviewFailedDesc"));
     } finally {
       setReviewSubmittingId(null);
     }
   };
 
   const settleFlag = async (flag: FlagItem) => {
-    if (!confirm("确定要结算该 Flag 吗？结算后将根据完成情况退还押金。")) return;
+    if (!confirm(tFlags("toast.settleConfirmMessage"))) return;
     try {
       setSettlingId(flag.id);
       const me = account || user?.id || "";
@@ -497,15 +499,19 @@ export default function FlagsPage() {
           }
         }
       } else {
-        toast.success(
-          "结算完成",
-          `状态：${String(ret?.status || "")}，通过天数 ${
-            ret?.metrics?.approvedDays || 0
-          }/${ret?.metrics?.totalDays || 0}`
-        );
+        const statusText = String(ret?.status || "");
+        const approvedDays = ret?.metrics?.approvedDays || 0;
+        const totalDays = ret?.metrics?.totalDays || 0;
+        const desc = `${tFlags("toast.statusLabel")}: ${statusText}，${tFlags(
+          "toast.approvedDaysLabel"
+        )} ${approvedDays}/${totalDays}`;
+        toast.success(tFlags("toast.settleSuccessTitle"), desc);
       }
     } catch (e) {
-      toast.error("结算失败", String((e as any)?.message || "请稍后重试"));
+      toast.error(
+        tFlags("toast.settleFailedTitle"),
+        String((e as any)?.message || tFlags("toast.retryLater"))
+      );
     } finally {
       setSettlingId(null);
     }
@@ -583,21 +589,25 @@ export default function FlagsPage() {
         <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-6 px-8 pt-4">
           <div className="space-y-3">
             <h1 className="text-4xl font-black text-gray-800 tracking-tight mb-2 relative inline-block">
-              My Vision Board
+              {tFlags("header.title")}
               <div className="absolute -top-6 -right-8 transform rotate-12">
                 <div className="px-3 py-1 bg-yellow-300 text-yellow-800 text-xs font-black uppercase tracking-widest rounded-sm shadow-sm transform -rotate-3">
-                  Dream Big!
+                  {tFlags("header.badge")}
                 </div>
               </div>
             </h1>
             <div className="flex items-center gap-4 text-sm font-bold text-gray-500">
               <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-orange-400" />
-                <span>{activeFlags.length} Active</span>
+                <span>
+                  {activeFlags.length} {tFlags("header.activeLabel")}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 bg-white/60 px-3 py-1.5 rounded-lg border border-white shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>{completedFlags.length} Achieved</span>
+                <span>
+                  {completedFlags.length} {tFlags("header.achievedLabel")}
+                </span>
               </div>
             </div>
             {invitesCount > 0 && (
@@ -606,7 +616,9 @@ export default function FlagsPage() {
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div className="flex-1 text-xs font-bold text-amber-800">
-                  你有 {invitesCount} 个打卡等待审核
+                  {tFlags("invites.textPrefix")}
+                  {invitesCount}
+                  {tFlags("invites.textSuffix")}
                   {inviteNotice?.title ? ` · ${inviteNotice.title}` : ""}
                 </div>
                 <button
@@ -624,7 +636,7 @@ export default function FlagsPage() {
                   }}
                   className="text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1 rounded-xl hover:bg-amber-200 transition-colors"
                 >
-                  去审核
+                  {tFlags("invites.button")}
                 </button>
               </div>
             )}
@@ -640,7 +652,9 @@ export default function FlagsPage() {
                 <Smile className="w-5 h-5 text-brand group-hover:rotate-12 transition-transform duration-300" />
                 <div className="absolute inset-0 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <span className="text-sm font-black text-slate-800 tracking-tight">收藏画廊</span>
+              <span className="text-sm font-black text-slate-800 tracking-tight">
+                {tFlags("gallery.button")}
+              </span>
               {collectedStickers.length > 0 && (
                 <div className="flex items-center justify-center min-w-[20px] h-[20px] bg-brand/10 rounded-lg border border-brand/20">
                   <span className="text-[10px] font-black text-brand">
@@ -654,9 +668,9 @@ export default function FlagsPage() {
             <div className="flex items-center gap-2">
               <div className="flex bg-white/40 p-1 rounded-xl border border-white/50 backdrop-blur-sm">
                 {[
-                  { id: "all", label: "All" },
-                  { id: "active", label: "Active" },
-                  { id: "success", label: "Done" },
+                  { id: "all", label: tFlags("filters.all") },
+                  { id: "active", label: tFlags("filters.active") },
+                  { id: "success", label: tFlags("filters.success") },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -681,7 +695,7 @@ export default function FlagsPage() {
                   }}
                   className="px-3 py-1.5 rounded-xl bg-purple-50 text-[11px] font-black text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
                 >
-                  监督请求 {witnessFlags.length}
+                  {tFlags("filters.witnessRequests")} {witnessFlags.length}
                 </button>
               )}
             </div>
@@ -693,7 +707,7 @@ export default function FlagsPage() {
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center gap-4">
               <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-              <p className="text-sm font-bold text-gray-400">Loading your vision board...</p>
+              <p className="text-sm font-bold text-gray-400">{tFlags("state.loading")}</p>
             </div>
           ) : (
             <div className="columns-1 md:columns-2 xl:columns-3 2xl:columns-4 gap-8 space-y-8 pb-20 mx-auto">
@@ -711,9 +725,11 @@ export default function FlagsPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-gray-600 group-hover:text-purple-600 transition-colors">
-                      Pin New Goal
+                      {tFlags("createCard.title")}
                     </h3>
-                    <p className="text-xs font-bold text-gray-400 mt-1">Start a new journey</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">
+                      {tFlags("createCard.subtitle")}
+                    </p>
                   </div>
                   {/* Decorative Tape */}
                   <div
@@ -758,12 +774,13 @@ export default function FlagsPage() {
         {/* Official Challenges Widget */}
         <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-black text-gray-900">Trending</h3>
+            <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
+            <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
             <button
               onClick={() => setOfficialListOpen(true)}
               className="text-[10px] font-bold text-purple-600 hover:underline"
             >
-              View All
+              {tFlags("sidebar.viewAll")}
             </button>
           </div>
           <div className="space-y-3">
@@ -804,11 +821,11 @@ export default function FlagsPage() {
           <div className="relative z-10">
             <Sparkles className="w-5 h-5 text-yellow-300 mb-3" />
             <p className="text-sm font-bold leading-relaxed opacity-90 mb-4">
-              "The only bad workout is the one that didn't happen."
+              {tFlags("sidebar.quote.text")}
             </p>
             <div className="flex items-center gap-2 text-[10px] font-medium opacity-60">
               <div className="w-1 h-1 rounded-full bg-white" />
-              <span>Daily Motivation</span>
+              <span>{tFlags("sidebar.quote.label")}</span>
             </div>
           </div>
         </div>
@@ -838,8 +855,10 @@ export default function FlagsPage() {
                     <Trophy className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900">官方精选挑战</h3>
-                    <p className="text-sm font-bold text-gray-400">精选 10+ 款热门挑战模板</p>
+                    <h3 className="text-2xl font-black text-gray-900">
+                      {tFlags("official.title")}
+                    </h3>
+                    <p className="text-sm font-bold text-gray-400">{tFlags("official.subtitle")}</p>
                   </div>
                 </div>
                 <button
@@ -898,7 +917,7 @@ export default function FlagsPage() {
                         <div
                           className={`flex items-center gap-2 text-xs font-black ${tpl.color} bg-white/80 w-fit px-4 py-2 rounded-xl backdrop-blur-sm shadow-sm group-hover:bg-white group-hover:scale-105 transition-all duration-300`}
                         >
-                          <span className="tracking-wide">立即挑战</span>
+                          <span className="tracking-wide">{tFlags("official.cta")}</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                         </div>
                       </div>
@@ -967,28 +986,34 @@ export default function FlagsPage() {
                     <Camera className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900">打卡时刻</h3>
-                    <p className="text-sm text-gray-500 font-medium">记录你的每一次进步</p>
+                    <h3 className="text-2xl font-black text-gray-900">{tFlags("checkin.title")}</h3>
+                    <p className="text-sm text-gray-500 font-medium">
+                      {tFlags("checkin.subtitle")}
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">心得体会</label>
+                    <label className="text-sm font-bold text-gray-700 ml-1">
+                      {tFlags("checkin.noteLabel")}
+                    </label>
                     <textarea
                       value={checkinNote}
                       onChange={(e) => setCheckinNote(e.target.value)}
-                      placeholder="今天感觉如何？写点什么吧..."
+                      placeholder={tFlags("checkin.notePlaceholder")}
                       rows={4}
                       className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 resize-none font-medium"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 ml-1">图片链接 (可选)</label>
+                    <label className="text-sm font-bold text-gray-700 ml-1">
+                      {tFlags("checkin.imageLabel")}
+                    </label>
                     <input
                       value={checkinImage}
                       onChange={(e) => setCheckinImage(e.target.value)}
-                      placeholder="https://..."
+                      placeholder={tFlags("checkin.imagePlaceholder")}
                       className="w-full px-5 py-4 rounded-2xl bg-gray-50/80 border border-transparent focus:bg-white focus:border-emerald-500 outline-none transition-all text-gray-900 font-medium"
                     />
                   </div>
@@ -999,14 +1024,14 @@ export default function FlagsPage() {
                     onClick={() => setCheckinOpen(false)}
                     className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-600 font-bold hover:bg-gray-100 transition-colors"
                   >
-                    取消
+                    {tFlags("checkin.cancel")}
                   </button>
                   <button
                     onClick={submitCheckin}
                     disabled={checkinSubmitting}
                     className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:translate-y-0"
                   >
-                    {checkinSubmitting ? "提交中…" : "确认打卡"}
+                    {checkinSubmitting ? tFlags("checkin.submitLoading") : tFlags("checkin.submit")}
                   </button>
                 </div>
               </div>
@@ -1035,11 +1060,11 @@ export default function FlagsPage() {
             >
               <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-xl shrink-0">
                 <div>
-                  <h3 className="text-xl font-black text-gray-900">挑战记录</h3>
+                  <h3 className="text-2xl font-black text-gray-900">{tFlags("history.title")}</h3>
                   {historyFlag.verification_type === "witness" && historyFlag.witness_id && (
                     <div className="mt-1 text-xs font-bold text-gray-500 flex items-center gap-1">
                       <Users className="w-3 h-3" />
-                      <span>监督人</span>
+                      <span>{tFlags("history.witnessLabel")}</span>
                       <span className="text-gray-700">
                         {historyFlag.witness_id.length > 12
                           ? `${historyFlag.witness_id.slice(0, 6)}...${historyFlag.witness_id.slice(-4)}`
@@ -1062,7 +1087,9 @@ export default function FlagsPage() {
                     <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
                   </div>
                 ) : historyItems.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500 font-medium">暂无打卡记录</div>
+                  <div className="text-center py-10 text-gray-500 font-medium">
+                    {tFlags("history.empty")}
+                  </div>
                 ) : (
                   <div className="relative border-l-2 border-gray-100 ml-4 space-y-8">
                     {historyItems.map((item, idx) => (
@@ -1091,31 +1118,37 @@ export default function FlagsPage() {
                                       onClick={() => handleReview(item.id, "approve")}
                                       className="flex-1 py-1.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg hover:bg-emerald-200"
                                     >
-                                      {reviewSubmittingId === item.id ? "..." : "Approve"}
+                                      {reviewSubmittingId === item.id
+                                        ? "..."
+                                        : tFlags("history.actions.approve")}
                                     </button>
                                     <button
                                       disabled={!!reviewSubmittingId}
                                       onClick={() => handleReview(item.id, "reject")}
                                       className="flex-1 py-1.5 bg-rose-100 text-rose-700 text-xs font-bold rounded-lg hover:bg-rose-200"
                                     >
-                                      {reviewSubmittingId === item.id ? "..." : "Reject"}
+                                      {reviewSubmittingId === item.id
+                                        ? "..."
+                                        : tFlags("history.actions.reject")}
                                     </button>
                                   </>
                                 ) : (
                                   <span className="text-xs font-bold text-amber-500 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" /> Waiting for review
+                                    <Clock className="w-3 h-3" />{" "}
+                                    {tFlags("history.status.waitingReview")}
                                   </span>
                                 )}
                               </div>
                             )}
                           {item.review_status === "approved" && (
                             <div className="mt-2 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Verified
+                              <CheckCircle2 className="w-3 h-3" />{" "}
+                              {tFlags("history.status.approved")}
                             </div>
                           )}
                           {item.review_status === "rejected" && (
                             <div className="mt-2 text-xs font-bold text-rose-600 flex items-center gap-1">
-                              <X className="w-3 h-3" /> Rejected
+                              <X className="w-3 h-3" /> {tFlags("history.status.rejected")}
                             </div>
                           )}
                         </div>

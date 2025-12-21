@@ -1,45 +1,49 @@
-/**
- * 简化的国际化方案
- * 不使用 next-intl 的路由功能，避免影响现有路由
- */
-
 import { useState, useEffect } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
+import es from "../../messages/es.json";
 
-export type Locale = "zh-CN" | "en";
+export type Locale = "zh-CN" | "en" | "es";
 
 const messages = {
   "zh-CN": zhCN,
   en: en,
+  es: es,
 };
 
-/**
- * 获取当前语言
- */
 export function getCurrentLocale(): Locale {
   if (typeof window === "undefined") return "zh-CN";
 
   const saved = localStorage.getItem("preferred-language");
-  
-  // 验证是否为有效的 locale
-  if (saved === "zh-CN" || saved === "en") {
+  if (saved === "zh-CN" || saved === "en" || saved === "es") {
     return saved;
   }
-  
+
+  if (typeof navigator !== "undefined") {
+    const navLang =
+      (Array.isArray((navigator as any).languages) && (navigator as any).languages[0]) ||
+      navigator.language;
+    if (navLang) {
+      const lower = navLang.toLowerCase();
+      if (lower.startsWith("zh")) {
+        return "zh-CN";
+      }
+      if (lower.startsWith("en")) {
+        return "en";
+      }
+      if (lower.startsWith("es")) {
+        return "es";
+      }
+    }
+  }
+
   return "zh-CN";
 }
 
-/**
- * 获取翻译文本
- */
 export function getTranslation(locale: Locale = getCurrentLocale()) {
   return messages[locale] || messages["zh-CN"];
 }
 
-/**
- * 翻译函数
- */
 export function t(key: string, locale?: Locale): string {
   const translations = getTranslation(locale);
   const keys = key.split(".");
@@ -53,25 +57,35 @@ export function t(key: string, locale?: Locale): string {
   return value || key;
 }
 
-/**
- * React Hook 用于翻译（响应语言变化）
- */
 export function useTranslations(namespace?: string) {
   const [locale, setLocale] = useState<Locale>("zh-CN");
 
   useEffect(() => {
-    // 初始化语言
     setLocale(getCurrentLocale());
 
-    // 监听 storage 变化（跨标签页同步）
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "preferred-language" && e.newValue) {
-        setLocale(e.newValue as Locale);
+        if (e.newValue === "zh-CN" || e.newValue === "en" || e.newValue === "es") {
+          setLocale(e.newValue);
+        }
+      }
+    };
+
+    const handleLanguageChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ locale?: string }>;
+      const nextLocale = customEvent.detail?.locale;
+      if (nextLocale === "zh-CN" || nextLocale === "en" || nextLocale === "es") {
+        setLocale(nextLocale);
       }
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("languagechange", handleLanguageChange as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("languagechange", handleLanguageChange as EventListener);
+    };
   }, []);
 
   return (key: string) => {

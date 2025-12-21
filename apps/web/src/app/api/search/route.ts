@@ -3,14 +3,14 @@ import { getClient } from "@/lib/supabase";
 
 /**
  * 全局搜索 API
- * 
+ *
  * GET /api/search?q=关键词
- * 
+ *
  * 搜索范围：
  * - 预测标题和描述
  * - 用户名
  * - 分类标签
- * 
+ *
  * 返回格式：
  * {
  *   results: [
@@ -30,11 +30,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 
-    // 验证查询参数
     if (!query || query.trim().length < 2) {
       return NextResponse.json(
         {
-          error: "搜索关键词至少需要 2 个字符",
+          error: "Search keyword must be at least 2 characters",
           results: [],
           total: 0,
         },
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (!supabase) {
       return NextResponse.json(
         {
-          error: "数据库连接失败",
+          error: "Database connection failed",
           results: [],
           total: 0,
         },
@@ -54,7 +53,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 搜索预测
     const searchTerm = `%${query.trim()}%`;
     const { data: predictions, error: predictionsError } = await supabase
       .from("predictions")
@@ -68,12 +66,11 @@ export async function GET(request: NextRequest) {
       console.error("Search predictions error:", predictionsError);
     }
 
-    // 格式化预测结果
     const predictionResults = (predictions || []).map((p: any) => ({
       id: p.id,
-      title: p.title || "无标题",
-      description: p.description || "无描述",
-      category: p.category || "未分类",
+      title: p.title || "Untitled",
+      description: p.description || "No description",
+      category: p.category || "Uncategorized",
       type: "prediction" as const,
     }));
 
@@ -111,7 +108,7 @@ export async function GET(request: NextRequest) {
     console.error("Search API error:", error);
     return NextResponse.json(
       {
-        error: "搜索失败",
+        error: "Search failed",
         results: [],
         total: 0,
       },
@@ -122,9 +119,9 @@ export async function GET(request: NextRequest) {
 
 /**
  * 搜索建议 API
- * 
+ *
  * GET /api/search/suggestions?q=关键词
- * 
+ *
  * 返回快速自动完成建议（更快，数据更少）
  */
 export async function POST(request: NextRequest) {
@@ -157,4 +154,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ suggestions: [] });
   }
 }
-

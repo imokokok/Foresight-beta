@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
 import { Maximize2, Minimize2 } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 // 动态导入 KlineChart，禁用 SSR
 const KlineChart = dynamic(() => import("@/components/KlineChart"), {
@@ -32,6 +33,8 @@ export function MarketChart({
   setTradeOutcome,
 }: MarketChartProps) {
   const [expanded, setExpanded] = useState(false);
+  const tMarket = useTranslations("market");
+  const tCommon = useTranslations("common");
 
   // 如果没有市场合约信息，展示占位
   if (!market) {
@@ -41,7 +44,7 @@ export function MarketChart({
         <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center z-10">
           <Maximize2 className="w-5 h-5 opacity-50 text-purple-400" />
         </div>
-        <span className="z-10 font-medium text-gray-500">市场数据加载中...</span>
+        <span className="z-10 font-medium text-gray-500">{tMarket("chart.loading")}</span>
       </div>
     );
   }
@@ -75,7 +78,8 @@ export function MarketChart({
                         : outcome.color || (idx === 0 ? "#10b981" : "#ef4444"),
                   }}
                 />
-                {outcome.label || `Outcome ${idx + 1}`}
+                {outcome.label ||
+                  tMarket("chart.outcomeFallback").replace("{index}", String(idx + 1))}
               </button>
             ))
           ) : (
@@ -89,7 +93,7 @@ export function MarketChart({
                     : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-emerald-200 hover:text-emerald-600"
                 }`}
               >
-                Yes
+                {tCommon("yes")}
               </button>
               <button
                 onClick={() => setTradeOutcome(1)}
@@ -99,7 +103,7 @@ export function MarketChart({
                     : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-rose-200 hover:text-rose-600"
                 }`}
               >
-                No
+                {tCommon("no")}
               </button>
             </>
           )}

@@ -14,16 +14,144 @@
     "filter": "筛选",
     "more": "更多",
     "less": "收起",
-    "menu": "菜单"
+    "menu": "菜单",
+    "explore": "发现新预测",
+    "userLevelDreamer": "梦想家等级 {level}",
+    "mainNav": "主导航",
+    "yes": "是",
+    "no": "否"
   },
   "nav": {
+    "home": "首页",
     "trending": "热门趋势",
     "leaderboard": "排行榜",
     "forum": "论坛",
     "flags": "我的Flag",
     "proposals": "提案频道",
     "profile": "个人中心",
-    "admin": "管理员中心"
+    "admin": "管理员中心",
+    "myFollows": "我的关注"
+  },
+  "forum": {
+    "title": "社区讨论",
+    "loginRequired": "发帖需连接钱包",
+    "connectAndSign": "连接并签名",
+    "form": {
+      "subjectPlaceholder": "主体名称",
+      "action": {
+        "priceReach": "价格达到",
+        "willWin": "将会赢得",
+        "willHappen": "将会发生"
+      },
+      "targetPlaceholder": "目标值/条件",
+      "deadlinePlaceholder": "截止时间",
+      "categoryLabel": "分类",
+      "category": {
+        "tech": "科技",
+        "entertainment": "娱乐",
+        "politics": "时政",
+        "weather": "天气",
+        "sports": "体育",
+        "business": "商业",
+        "crypto": "加密货币",
+        "more": "更多"
+      },
+      "previewTitle": "标题预览",
+      "previewCriteria": "结算标准",
+      "previewTitleFallback": "请完善表单以生成标题",
+      "previewCriteriaFallback": "请完善表单以生成结算标准",
+      "submitPosting": "发布中…",
+      "submit": "发布主题",
+      "errors": {
+        "subjectRequired": "请填写主体名称",
+        "targetRequired": "请填写目标值/条件",
+        "deadlineRequired": "请填写截止时间",
+        "deadlineInvalid": "截止时间格式不正确",
+        "deadlinePast": "截止时间需晚于当前时间",
+        "categoryRequired": "请选择分类"
+      }
+    },
+    "preview": {
+      "title": {
+        "priceReach": "{subjectName}价格在{deadline}前达到{target}",
+        "willWin": "{subjectName}将在{deadline}前赢得{target}",
+        "willHappen": "{subjectName}将在{deadline}前发生{target}",
+        "default": "{subjectName}将在{deadline}前{action}{target}"
+      },
+      "criteria": {
+        "priceReach": "以权威价格数据源为准，在截止时间前达到或超过目标值视为达成",
+        "willWin": "以赛事官方结果为准，在截止时间前确认夺冠视为达成",
+        "willHappen": "以官方公告或权威媒体报道为准，事件在截止时间前发生视为达成",
+        "default": "以客观可验证来源为准，截止前满足条件视为达成"
+      }
+    },
+    "list": {
+      "loading": "加载中…",
+      "empty": "暂无主题"
+    },
+    "thread": {
+      "meta": {
+        "prefix": "由",
+        "in": "在",
+        "suffix": "发布"
+      },
+      "vote": {
+        "upvoted": "已赞",
+        "downvoted": "已踩"
+      }
+    },
+    "comments": {
+      "title": "评论"
+    },
+    "reply": {
+      "placeholder": "写下评论…",
+      "sending": "发送中…",
+      "submit": "评论"
+    },
+    "errors": {
+      "loadFailed": "加载失败",
+      "createFailed": "创建失败",
+      "commentFailed": "评论失败",
+      "voteFailed": "投票失败",
+      "walletRequired": "请先连接钱包",
+      "walletRequiredForVote": "请先连接钱包再投票",
+      "alreadyVoted": "您已经投过票了"
+    }
+  },
+  "chat": {
+    "quickPrompt": {
+      "reason": "这条预测的依据是什么？",
+      "update": "有没有最新进展？",
+      "opinion": "我认为概率更高的理由是…"
+    },
+    "header": {
+      "title": "聊天室",
+      "withTopic": "聊天室 · {title}",
+      "youLabel": "你：{name}",
+      "walletDisconnected": "未连接钱包"
+    },
+    "announcement": {
+      "badge": "公告",
+      "empty": "暂无公告"
+    },
+    "empty": {
+      "title": "暂无消息",
+      "description": "这里还没有讨论内容。快来发表你的第一条见解，开启精彩对话吧！",
+      "actionLabel": "发送第一条消息",
+      "defaultInput": "你好！👋 很高兴加入讨论"
+    },
+    "input": {
+      "walletRequired": "发送消息需连接钱包",
+      "connectAndSign": "连接并签名",
+      "placeholder": "输入消息，按 Enter 发送，Shift+Enter 换行",
+      "toggleEmojisAria": "选择表情",
+      "sending": "发送中…",
+      "send": "发送"
+    },
+    "errors": {
+      "walletRequired": "请先连接钱包后再发送消息",
+      "sendFailed": "发送失败"
+    }
   },
   "auth": {
     "login": "登录",
@@ -48,7 +176,10 @@
     "switchNetwork": "切换网络",
     "refreshBalance": "刷新余额",
     "noWallet": "未检测到钱包",
-    "installMetaMask": "安装 MetaMask"
+    "installMetaMask": "安装 MetaMask",
+    "connectFailedTitle": "连接钱包失败",
+    "installMetaMaskExtension": "安装 MetaMask 浏览器扩展",
+    "unknownNetwork": "未知网络"
   },
   "prediction": {
     "title": "预测",
@@ -80,7 +211,45 @@
     "bids": "买单",
     "asks": "卖单",
     "filled": "已成交",
-    "open": "未成交"
+    "open": "未成交",
+    "tabTrade": "交易",
+    "selectOutcome": "选择结果",
+    "orderType": "订单类型",
+    "autoMatchBest": "自动匹配最优价",
+    "sharesUnit": "份额",
+    "totalInvestment": "总投入",
+    "potentialReturn": "潜在回报",
+    "submitting": "处理中...",
+    "emptyBids": "暂无买单",
+    "emptyAsks": "暂无卖单",
+    "emptyOrders": "暂无挂单",
+    "bestBid": "买一: {price}",
+    "bestAsk": "卖一: {price}"
+  },
+  "market": {
+    "tabs": {
+      "desc": "市场详情",
+      "rules": "裁决规则",
+      "comments": "讨论"
+    },
+    "about": {
+      "title": "关于此市场",
+      "referenceSource": "参考来源"
+    },
+    "rules": {
+      "criteriaTitle": "裁决标准",
+      "arbitrator": "仲裁者",
+      "resolutionTime": "裁决时间",
+      "resolutionTimeValue": "{deadline} 后 24小时内",
+      "arbitratorName": "Foresight Oracle Committee"
+    },
+    "comments": {
+      "loading": "加载评论..."
+    },
+    "chart": {
+      "loading": "市场数据加载中...",
+      "outcomeFallback": "结果 {index}"
+    }
   },
   "errors": {
     "somethingWrong": "哎呀，出错了！",
@@ -89,6 +258,395 @@
     "networkError": "网络错误",
     "tryAgain": "重试",
     "goHome": "返回首页",
-    "contactSupport": "联系技术支持"
+    "contactSupport": "联系技术支持",
+    "followActionFailed": "关注操作失败，请稍后重试"
+  },
+  "login": {
+    "tabEmail": "邮箱登录",
+    "tabWallet": "钱包登录",
+    "close": "关闭",
+    "emailContinueTitle": "使用邮箱继续",
+    "emailContinueDescription": "我们会发送一封包含登录链接与 6 位验证码的邮件。",
+    "emailLabel": "邮箱地址",
+    "emailPlaceholder": "you@example.com",
+    "sendOtp": "发送验证码",
+    "sendMagicLink": "发送登录链接",
+    "agreePrefix": "继续即表示你同意我们的",
+    "terms": "服务条款",
+    "and": "与",
+    "privacy": "隐私政策",
+    "agreeSuffix": "。",
+    "switchToWallet": "也可以切换到「钱包登录」继续。",
+    "otpTitle": "输入邮箱中的 6 位验证码",
+    "otpDescriptionPrefix": "我们已向",
+    "otpDescriptionSuffix": "发送邮件。",
+    "verifyAndLogin": "验证并登录",
+    "resend": "重新发送",
+    "otpHint": "也可以在邮件中点击登录链接完成登录。",
+    "walletContinueTitle": "使用钱包继续",
+    "walletContinueDescription": "支持常见钱包（如 MetaMask、Coinbase、Binance、OKX 等）。",
+    "notInstalled": "未安装",
+    "clickToConnect": "点击连接",
+    "detectingWallets": "正在检测已安装的钱包扩展…",
+    "switchToEmail": "也可以切换到「邮箱登录」。"
+  },
+  "search": {
+    "placeholder": "搜索预测、话题、用户...",
+    "resultsTitle": "搜索结果",
+    "emptyTitle": "未找到相关结果",
+    "emptyDescription": "试试其他关键词或浏览热门搜索",
+    "recentTitle": "最近搜索",
+    "clear": "清空",
+    "hotTitle": "热门搜索",
+    "clearSearchAria": "清空搜索",
+    "hintConfirm": "确认",
+    "hintClose": "关闭",
+    "hintOpen": "打开搜索",
+    "hot": {
+      "usElection": "美国大选",
+      "btcPrice": "BTC价格",
+      "worldCup": "世界杯",
+      "ai": "AI发展",
+      "climate": "气候变化"
+    }
+  },
+  "trending": {
+    "hero": {
+      "globalClimateSummit": {
+        "title": "全球气候峰会",
+        "description": "讨论全球气候变化的应对策略"
+      },
+      "aiSafetySummit": {
+        "title": "AI安全大会",
+        "description": "聚焦AI监管与安全问题"
+      },
+      "globalFinanceForum": {
+        "title": "国际金融论坛",
+        "description": "探讨数字货币与未来经济"
+      },
+      "charitySportsMatch": {
+        "title": "体育公益赛",
+        "description": "全球运动员联合助力慈善"
+      },
+      "extremeWeatherAlert": {
+        "title": "极端天气预警",
+        "description": "全球多地发布极端天气预警"
+      },
+      "techProductLaunch": {
+        "title": "科技新品发布",
+        "description": "最新科技产品震撼发布"
+      },
+      "worldChampionshipFinal": {
+        "title": "世界锦标赛决赛",
+        "description": "顶级赛场迎来巅峰对决"
+      }
+    },
+    "category": {
+      "tech": "科技",
+      "entertainment": "娱乐",
+      "politics": "时政",
+      "weather": "天气",
+      "sports": "体育",
+      "business": "商业",
+      "crypto": "加密货币",
+      "more": "更多"
+    },
+    "metrics": {
+      "marketVol": "成交量",
+      "greed": "贪婪指数",
+      "poolSize": "奖池规模",
+      "participants": "参与人数",
+      "events": "个事件",
+      "successRate": "成功率"
+    },
+    "badges": {
+      "dailyPick": "今日精选",
+      "trending": "热门"
+    },
+    "sections": {
+      "popularCategories": "热门分类",
+      "hotEvents": "热门预测事件"
+    },
+    "actions": {
+      "viewAll": "查看全部",
+      "placePrediction": "立即预测",
+      "viewDetails": "查看详情",
+      "createPrediction": "创建预测"
+    },
+    "search": {
+      "placeholder": "搜索预测事件..."
+    },
+    "empty": {
+      "title": "暂无预测",
+      "description": "当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！"
+    },
+    "state": {
+      "loading": "正在加载数据...",
+      "errorTitle": "加载失败",
+      "reload": "重新加载",
+      "loadMore": "加载更多...",
+      "scrollHint": "向下滚动加载更多",
+      "allLoadedPrefix": "已显示全部 ",
+      "allLoadedSuffix": " 条预测"
+    },
+    "card": {
+      "volumePrefix": "成交 $",
+      "optionFallbackPrefix": "选项"
+    },
+    "login": {
+      "title": "请先登录",
+      "description": "关注预测事件需要先连接钱包登录。请点击右上角的“连接钱包”按钮进行登录。",
+      "benefitsTitle": "登录后您可以：",
+      "benefitFollow": "关注感兴趣的预测事件",
+      "benefitParticipate": "参与预测和押注",
+      "benefitRewards": "获得预测奖励",
+      "later": "稍后再说",
+      "now": "立即登录"
+    },
+    "admin": {
+      "editDialogTitle": "编辑事件",
+      "fieldTitle": "标题",
+      "fieldCategory": "分类",
+      "fieldStatus": "状态",
+      "fieldDeadline": "截止",
+      "fieldMinStake": "最小押注",
+      "confirmDelete": "确定删除该事件？",
+      "updateFailed": "更新失败",
+      "deleteFailed": "删除失败",
+      "updateSuccessTitle": "更新成功",
+      "updateSuccessDesc": "预测事件已成功更新",
+      "deleteSuccessTitle": "删除成功",
+      "deleteSuccessDesc": "预测事件已被删除",
+      "retryLater": "请稍后重试",
+      "cancel": "取消",
+      "saving": "保存中…",
+      "save": "保存",
+      "editAria": "编辑",
+      "deleteAria": "删除",
+      "deadlinePlaceholder": "选择截止时间"
+    }
+  },
+  "flags": {
+    "header": {
+      "title": "我的愿望看板",
+      "badge": "大胆做梦",
+      "activeLabel": "进行中",
+      "achievedLabel": "已完成"
+    },
+    "stats": {
+      "ongoingBadge": "进行中",
+      "flagsLabel": "Flags",
+      "activeDescription": "当前正在进行的挑战",
+      "achievedBadge": "已达成",
+      "goalsLabel": "目标",
+      "successDescription": "已成功达成的目标",
+      "focusLabel": "完成率",
+      "scoreBadge": "专注指数"
+    },
+    "card": {
+      "status": {
+        "active": "进行中",
+        "pending_review": "审核中",
+        "success": "挑战成功",
+        "failed": "挑战失败"
+      },
+      "time": {
+        "finished": "已结束",
+        "daysLeftSuffix": "天后结束",
+        "hoursLeftSuffix": "小时后结束",
+        "daysLabel": "天"
+      },
+      "verification": {
+        "self": "自我验证",
+        "friend": "好友监督"
+      },
+      "proofImageAlt": "打卡图片"
+    },
+    "invites": {
+      "textPrefix": "你有 ",
+      "textSuffix": " 个打卡等待审核",
+      "button": "去审核"
+    },
+    "gallery": {
+      "button": "收藏画廊"
+    },
+    "filters": {
+      "all": "全部",
+      "active": "进行中",
+      "success": "已完成",
+      "witnessRequests": "监督请求"
+    },
+    "state": {
+      "loading": "正在加载你的愿望看板..."
+    },
+    "createCard": {
+      "title": "添加新的目标",
+      "subtitle": "开启一段新的旅程"
+    },
+    "sidebar": {
+      "trendingTitle": "热门挑战",
+      "viewAll": "查看全部",
+      "quote": {
+        "text": "“唯一糟糕的锻炼，就是根本没有开始的那一次。”",
+        "label": "每日激励"
+      }
+    },
+    "official": {
+      "title": "官方精选挑战",
+      "subtitle": "精选 10+ 款热门挑战模板",
+      "cta": "立即挑战",
+      "templates": {
+        "early_bird": {
+          "title": "早起鸟挑战",
+          "description": "连续7天，每天早上8点前打卡"
+        },
+        "reading_marathon": {
+          "title": "阅读马拉松",
+          "description": "坚持阅读30天，每天至少30分钟"
+        },
+        "fitness_pro": {
+          "title": "健身达人",
+          "description": "每周运动3次，坚持4周"
+        },
+        "weather_prophet": {
+          "title": "气象预言家",
+          "description": "预测明天是否下雨，做生活的观察者"
+        },
+        "no_takeout": {
+          "title": "今天不点外卖",
+          "description": "亲自下厨或吃得健康，拒绝外卖诱惑"
+        },
+        "sleep_early": {
+          "title": "夜猫子克星",
+          "description": "今晚11点前放下手机入睡"
+        },
+        "walk_10k": {
+          "title": "步行一万步",
+          "description": "用脚步丈量城市，保持活力"
+        },
+        "digital_detox": {
+          "title": "在此刻",
+          "description": "放下手机专注当下，享受1小时宁静"
+        },
+        "declutter": {
+          "title": "断舍离",
+          "description": "清理一件不再需要的物品，轻装前行"
+        },
+        "call_parents": {
+          "title": "爱的连线",
+          "description": "给父母打个电话，分享最近的生活"
+        }
+      }
+    },
+    "checkin": {
+      "title": "打卡时刻",
+      "subtitle": "记录你的每一次进步",
+      "noteLabel": "心得体会",
+      "notePlaceholder": "今天感觉如何？写点什么吧...",
+      "imageLabel": "图片链接（可选）",
+      "imagePlaceholder": "https://...",
+      "cancel": "取消",
+      "submit": "确认打卡",
+      "submitLoading": "提交中…"
+    },
+    "history": {
+      "title": "挑战记录",
+      "witnessLabel": "监督人",
+      "empty": "暂无打卡记录",
+      "actions": {
+        "approve": "通过",
+        "reject": "拒绝"
+      },
+      "status": {
+        "waitingReview": "等待审核中",
+        "approved": "已通过",
+        "rejected": "已拒绝"
+      }
+    },
+    "toast": {
+      "walletRequiredTitle": "需要连接钱包",
+      "walletRequiredDesc": "请先连接钱包才能创建 Flag",
+      "titleRequiredTitle": "标题不能为空",
+      "titleRequiredDesc": "请输入 Flag 标题",
+      "witnessRequiredTitle": "见证人信息缺失",
+      "witnessRequiredDesc": "请填写见证人 ID 或地址",
+      "createSuccessTitle": "创建成功",
+      "createSuccessDesc": "Flag 已创建，快去打卡吧！",
+      "createFailedTitle": "创建失败",
+      "createFailedDesc": "请检查网络连接后重试",
+      "loadFailedTitle": "数据加载失败",
+      "noDataTitle": "暂无数据",
+      "noDataDesc": "你还没有创建任何 Flag",
+      "checkinFailedTitle": "打卡失败",
+      "checkinFailedDesc": "网络错误，请稍后重试",
+      "reviewFailedTitle": "审核失败",
+      "reviewFailedDesc": "请检查网络连接后重试",
+      "settleConfirmMessage": "确定要结算该 Flag 吗？结算后将根据完成情况退还押金。",
+      "settleSuccessTitle": "结算完成",
+      "statusLabel": "状态",
+      "approvedDaysLabel": "通过天数",
+      "settleFailedTitle": "结算失败",
+      "retryLater": "请稍后重试"
+    },
+    "modal": {
+      "header": {
+        "joinChallengeTitle": "加入挑战",
+        "joinChallengeSubtitle": "一起坚持完成目标吧！",
+        "newFlagTitle": "创建新的 Flag",
+        "newFlagSubtitle": "从今天开始改变自己"
+      },
+      "form": {
+        "titleLabel": "Flag 标题",
+        "titlePlaceholder": "例如：每天阅读 10 页书",
+        "descLabel": "详情与规则",
+        "descPlaceholder": "描述你的计划...",
+        "verificationLabel": "验证方式",
+        "selfCheck": "自我验证",
+        "friendCheck": "好友监督",
+        "witnessLabel": "监督人 ID / 地址",
+        "witnessPlaceholder": "请输入好友的 ID 或地址",
+        "targetDateLabel": "目标日期（可选）",
+        "targetDatePlaceholder": "选择日期"
+      },
+      "footer": {
+        "cancel": "取消",
+        "joinNow": "立即加入",
+        "createFlag": "创建 Flag"
+      },
+      "templates": {
+        "early_morning": {
+          "title": "早起 {hour}:00 打卡",
+          "desc": "目标：在 {hour}:00 前起床并打卡\\n证明：晨间记录或照片"
+        },
+        "drink_water_8": {
+          "title": "喝水 {cups} 杯",
+          "desc": "目标：今日饮水 {cups} 杯\\n证明：记录或照片"
+        },
+        "steps_10k": {
+          "title": "步数 ≥ {steps}",
+          "desc": "目标：当日步数不低于 {steps}\\n证明：设备截图"
+        },
+        "read_20_pages": {
+          "title": "阅读 {pages} 页",
+          "desc": "目标：今日阅读 {pages} 页\\n证明：书名与页码"
+        },
+        "meditate_10m": {
+          "title": "冥想 {minutes} 分钟",
+          "desc": "目标：冥想 {minutes} 分钟\\n证明：计时或截图"
+        },
+        "sleep_before_11": {
+          "title": "在 {hour}:00 前睡觉",
+          "desc": "目标：当日 {hour}:00 前就寝\\n证明：记录或应用截图"
+        },
+        "sunlight_20m": {
+          "title": "晒太阳 {minutes} 分钟",
+          "desc": "目标：日晒 {minutes} 分钟\\n证明：地点与时长"
+        },
+        "tidy_room_10m": {
+          "title": "整理房间 {minutes} 分钟",
+          "desc": "目标：整理至少 {minutes} 分钟\\n证明：前后对比图"
+        }
+      }
+    }
   }
 }

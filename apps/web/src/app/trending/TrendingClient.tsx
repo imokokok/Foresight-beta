@@ -42,59 +42,53 @@ import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useTranslations } from "@/lib/i18n";
 
 const HERO_EVENTS = [
   {
-    title: "全球气候峰会",
-    description: "讨论全球气候变化的应对策略",
+    id: "globalClimateSummit",
     image:
       "https://images.unsplash.com/photo-1569163139394-de44cb4e4c81?auto=format&fit=crop&w=1000&q=80",
     followers: 12842,
     category: "时政",
   },
   {
-    title: "AI安全大会",
-    description: "聚焦AI监管与安全问题",
+    id: "aiSafetySummit",
     image:
       "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1000&q=80",
     followers: 9340,
     category: "科技",
   },
   {
-    title: "国际金融论坛",
-    description: "探讨数字货币与未来经济",
+    id: "globalFinanceForum",
     image:
       "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1000&q=80",
     followers: 7561,
     category: "时政",
   },
   {
-    title: "体育公益赛",
-    description: "全球运动员联合助力慈善",
+    id: "charitySportsMatch",
     image:
       "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
     followers: 5043,
     category: "娱乐",
   },
   {
-    title: "极端天气预警",
-    description: "全球多地发布极端天气预警",
+    id: "extremeWeatherAlert",
     image:
       "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=1000&q=80",
     followers: 8921,
     category: "天气",
   },
   {
-    title: "科技新品发布",
-    description: "最新科技产品震撼发布",
+    id: "techProductLaunch",
     image:
       "https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=1000&q=80",
     followers: 7654,
     category: "科技",
   },
   {
-    title: "世界锦标赛决赛",
-    description: "顶级赛场迎来巅峰对决",
+    id: "worldChampionshipFinal",
     image:
       "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1000&q=80",
     followers: 6021,
@@ -162,8 +156,30 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     enabled: !initialPredictions,
   });
 
-  const heroEvents = HERO_EVENTS;
-  const categories = TRENDING_CATEGORIES;
+  const tErrors = useTranslations("errors");
+  const tTrending = useTranslations("trending");
+  const tTrendingAdmin = useTranslations("trending.admin");
+  const tNav = useTranslations("nav");
+  const tEvents = useTranslations();
+
+  const heroEvents = useMemo(
+    () =>
+      HERO_EVENTS.map((e) => ({
+        ...e,
+        title: tTrending(`hero.${e.id}.title`),
+        description: tTrending(`hero.${e.id}.description`),
+      })),
+    [tTrending]
+  );
+  const categories = useMemo(
+    () =>
+      TRENDING_CATEGORIES.map((cat) => {
+        const id = CATEGORY_MAPPING[cat.name];
+        const label = id ? tTrending(`category.${id}`) : cat.name;
+        return { ...cat, label };
+      }),
+    [tTrending]
+  );
 
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [displayCount, setDisplayCount] = useState(12);
@@ -332,7 +348,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     } catch (err) {
       console.error("关注/取消关注失败:", err);
       setFollowError(
-        (err as any)?.message ? String((err as any).message) : "关注操作失败，请稍后重试"
+        (err as any)?.message ? String((err as any).message) : tErrors("followActionFailed")
       );
       setTimeout(() => setFollowError(null), 3000);
       // 回滚本地状态（按事件ID回滚）
@@ -1391,7 +1407,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || "更新失败"));
+        throw new Error(String(j?.message || tTrendingAdmin("updateFailed")));
       }
       queryClient.setQueryData(["predictions"], (old: any[]) =>
         old?.map((p: any) =>
@@ -1407,17 +1423,20 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             : p
         )
       );
-      toast.success("更新成功", "预测事件已成功更新");
+      toast.success(tTrendingAdmin("updateSuccessTitle"), tTrendingAdmin("updateSuccessDesc"));
       setEditOpen(false);
     } catch (e: any) {
-      toast.error("更新失败", String(e?.message || e || "请稍后重试"));
+      toast.error(
+        tTrendingAdmin("updateFailed"),
+        String(e?.message || e || tTrendingAdmin("retryLater"))
+      );
     } finally {
       setSavingEdit(false);
     }
   };
   const deleteEvent = async (id: number) => {
     try {
-      if (!confirm("确定删除该事件？")) return;
+      if (!confirm(tTrendingAdmin("confirmDelete"))) return;
       setDeleteBusyId(id);
       if (!accountNorm) return;
       try {
@@ -1426,14 +1445,17 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       const res = await fetch(`/api/predictions/${id}`, { method: "DELETE" });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || "删除失败"));
+        throw new Error(String(j?.message || tTrendingAdmin("deleteFailed")));
       }
       queryClient.setQueryData(["predictions"], (old: any[]) =>
         old?.filter((p: any) => p?.id !== id)
       );
-      toast.success("删除成功", "预测事件已被删除");
+      toast.success(tTrendingAdmin("deleteSuccessTitle"), tTrendingAdmin("deleteSuccessDesc"));
     } catch (e: any) {
-      toast.error("删除失败", String(e?.message || e || "请稍后重试"));
+      toast.error(
+        tTrendingAdmin("deleteFailed"),
+        String(e?.message || e || tTrendingAdmin("retryLater"))
+      );
     } finally {
       setDeleteBusyId(null);
     }
@@ -1485,9 +1507,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
   const activeSlide =
     heroSlideEvents.length > 0 ? heroSlideEvents[currentHeroIndex % heroSlideEvents.length] : null;
   const fallbackIndex = heroEvents.length > 0 ? currentHeroIndex % heroEvents.length : 0;
-  const activeTitle = activeSlide
+  const rawActiveTitle = activeSlide
     ? String(activeSlide?.title || "")
     : String(heroEvents[fallbackIndex]?.title || "");
+  const activeTitle = activeSlide ? tEvents(rawActiveTitle) : rawActiveTitle;
   const activeDescription = activeSlide
     ? String(activeSlide?.description || "")
     : String(heroEvents[fallbackIndex]?.description || "");
@@ -1636,12 +1659,12 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
               <div className="flex items-center gap-4 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/40 shadow-sm">
                 <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-100/50 px-2 py-0.5 rounded-md cursor-default">
                   <TrendingUp className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Market Vol:</span> $2.4M
+                  <span className="hidden sm:inline">{tTrending("metrics.marketVol")}</span> $2.4M
                 </span>
                 <div className="w-px h-4 bg-gray-300" />
                 <span className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-100/50 px-2 py-0.5 rounded-md cursor-default">
                   <Activity className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Greed:</span> 76
+                  <span className="hidden sm:inline">{tTrending("metrics.greed")}</span> 76
                 </span>
               </div>
 
@@ -1651,7 +1674,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   <div className="bg-white rounded-full p-1 shadow-sm">
                     <Trophy className="w-3.5 h-3.5 text-amber-600" />
                   </div>
-                  <span className="text-xs font-bold text-amber-900">Leaderboard</span>
+                  <span className="text-xs font-bold text-amber-900">{tNav("leaderboard")}</span>
                 </button>
               </Link>
 
@@ -1660,7 +1683,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   <div className="bg-white rounded-full p-1 shadow-sm">
                     <Flag className="w-3.5 h-3.5 text-purple-600" />
                   </div>
-                  <span className="text-xs font-bold text-purple-900">My Flags</span>
+                  <span className="text-xs font-bold text-purple-900">{tNav("flags")}</span>
                 </button>
               </Link>
             </div>
@@ -1672,7 +1695,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
               </div>
               <input
                 type="text"
-                placeholder="Search events..."
+                placeholder={tTrending("search.placeholder")}
                 className="w-full md:w-64 pl-10 pr-4 py-2 bg-white/80 backdrop-blur-xl border border-white/60 rounded-full text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:bg-white transition-all hover:shadow-md"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1694,10 +1717,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                 <div className="flex flex-wrap gap-3">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold uppercase tracking-wider">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Daily Pick
+                    {tTrending("badges.dailyPick")}
                   </span>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-600 text-xs font-bold uppercase tracking-wider shadow-sm">
-                    {activeCategory || "Trending"}
+                    {activeCategory || tTrending("badges.trending")}
                   </span>
                 </div>
 
@@ -1715,7 +1738,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                 <div className="flex items-center gap-8 py-4 border-t border-b border-gray-200/60">
                   <div>
                     <div className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
-                      Pool Size
+                      {tTrending("metrics.poolSize")}
                     </div>
                     <div className="text-2xl font-black text-gray-900 font-mono tracking-tight">
                       ${(activeFollowers * 12.5).toLocaleString()}
@@ -1724,7 +1747,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   <div className="w-px h-10 bg-gray-200" />
                   <div>
                     <div className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
-                      Participants
+                      {tTrending("metrics.participants")}
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex -space-x-2">
@@ -1748,11 +1771,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     onClick={() => activeSlide?.id && router.push(`/prediction/${activeSlide.id}`)}
                     className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-lg shadow-gray-900/20 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2 group"
                   >
-                    Place Prediction
+                    {tTrending("actions.placePrediction")}
                     <ArrowRightCircle className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                   <button className="px-8 py-4 bg-white text-gray-900 border border-gray-200 rounded-2xl font-bold text-sm shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all">
-                    View Details
+                    {tTrending("actions.viewDetails")}
                   </button>
                 </div>
               </motion.div>
@@ -1820,7 +1843,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500 font-bold">Success Rate</div>
+                    <div className="text-xs text-gray-500 font-bold">
+                      {tTrending("metrics.successRate")}
+                    </div>
                     <div className="text-lg font-black text-gray-900">84.5%</div>
                   </div>
                 </motion.div>
@@ -1848,7 +1873,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <Flame className="w-5 h-5 text-orange-500" />
-                Popular Categories
+                {tTrending("sections.popularCategories")}
               </h3>
               <button
                 onClick={() => {
@@ -1857,7 +1882,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                 }}
                 className="text-sm font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1"
               >
-                View All <ChevronRight className="w-4 h-4" />
+                {tTrending("actions.viewAll")} <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
@@ -1903,12 +1928,12 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                       <div
                         className={`text-sm font-bold ${isActive ? "text-white" : "text-gray-900"}`}
                       >
-                        {category.name}
+                        {category.label}
                       </div>
                       <div
                         className={`text-[10px] font-medium ${isActive ? "text-gray-400" : "text-gray-400"}`}
                       >
-                        {categoryCounts[category.name] || 0} Events
+                        {categoryCounts[category.name] || 0} {tTrending("metrics.events")}
                       </div>
                     </div>
                   </button>
@@ -1925,7 +1950,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       >
         <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-3">
           <span className="w-2 h-2 rounded-full bg-purple-500" />
-          热门预测事件
+          {tTrending("sections.hotEvents")}
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
 
@@ -1940,20 +1965,20 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-            <p className="mt-4 text-gray-600">正在加载数据...</p>
+            <p className="mt-4 text-gray-600">{tTrending("state.loading")}</p>
           </div>
         )}
 
         {/* 错误状态 */}
         {error && (
           <div className="text-center py-12">
-            <div className="text-red-500 text-lg mb-2">加载失败</div>
+            <div className="text-red-500 text-lg mb-2">{tTrending("state.errorTitle")}</div>
             <p className="text-gray-600">{(error as any)?.message || String(error)}</p>
             <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors"
             >
-              重新加载
+              {tTrending("state.reload")}
             </button>
           </div>
         )}
@@ -1973,10 +1998,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             ) : sortedEvents.length === 0 ? (
               <EmptyState
                 icon={TrendingUp}
-                title="暂无预测"
-                description="当前没有可用的预测事件。试试切换分类或创建一个新的预测吧！"
+                title={tTrending("empty.title")}
+                description={tTrending("empty.description")}
                 action={{
-                  label: "创建预测",
+                  label: tTrending("actions.createPrediction"),
                   onClick: () => router.push("/prediction/new"),
                 }}
               />
@@ -2063,7 +2088,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                                 openEdit(sortedEvents[globalIndex]);
                               }}
                               className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
-                              aria-label="编辑"
+                              aria-label={tTrendingAdmin("editAria")}
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -2075,7 +2100,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                               }}
                               className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
                               disabled={deleteBusyId === Number(sortedEvents[globalIndex]?.id)}
-                              aria-label="删除"
+                              aria-label={tTrendingAdmin("deleteAria")}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -2129,12 +2154,12 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                         <div className="p-4 flex flex-col flex-1">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-bold text-gray-900 text-base line-clamp-2 group-hover:text-purple-700 transition-colors">
-                              {product.title}
+                              {tEvents(product.title)}
                             </h4>
                           </div>
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
-                              成交 $
+                              {tTrending("card.volumePrefix")}
                               {Number(sortedEvents[globalIndex]?.stats?.totalAmount || 0).toFixed(
                                 2
                               )}
@@ -2161,7 +2186,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                                       key={oi}
                                       className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-600 border border-gray-200/60"
                                     >
-                                      {String(o?.label || `选项${oi}`)}
+                                      {String(
+                                        o?.label || `${tTrending("card.optionFallbackPrefix")}${oi}`
+                                      )}
                                     </span>
                                   ))}
                                 {sortedEvents[globalIndex]?.outcomes.length > 4 && (
@@ -2183,10 +2210,12 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     {loadingMore ? (
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 border-3 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-gray-600 text-sm font-medium">加载更多...</span>
+                        <span className="text-gray-600 text-sm font-medium">
+                          {tTrending("state.loadMore")}
+                        </span>
                       </div>
                     ) : (
-                      <div className="text-gray-400 text-sm">向下滚动加载更多</div>
+                      <div className="text-gray-400 text-sm">{tTrending("state.scrollHint")}</div>
                     )}
                   </div>
                 )}
@@ -2196,7 +2225,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   <div className="text-center py-8">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm">
                       <CheckCircle className="w-4 h-4" />
-                      <span>已显示全部 {sortedEvents.length} 条预测</span>
+                      <span>
+                        {tTrending("state.allLoadedPrefix")}
+                        {sortedEvents.length}
+                        {tTrending("state.allLoadedSuffix")}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -2209,10 +2242,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="w-[92vw] max-w-md bg-white rounded-2xl shadow-xl p-6">
-            <div className="text-lg font-semibold mb-4">编辑事件</div>
+            <div className="text-lg font-semibold mb-4">{tTrendingAdmin("editDialogTitle")}</div>
             <div className="space-y-3">
               <div>
-                <div className="text-xs text-gray-600 mb-1">标题</div>
+                <div className="text-xs text-gray-600 mb-1">{tTrendingAdmin("fieldTitle")}</div>
                 <input
                   value={editForm.title}
                   onChange={(e) => setEditField("title", e.target.value)}
@@ -2220,7 +2253,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                 />
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">分类</div>
+                <div className="text-xs text-gray-600 mb-1">{tTrendingAdmin("fieldCategory")}</div>
                 <select
                   value={editForm.category}
                   onChange={(e) => setEditField("category", e.target.value)}
@@ -2235,7 +2268,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs text-gray-600 mb-1">状态</div>
+                  <div className="text-xs text-gray-600 mb-1">{tTrendingAdmin("fieldStatus")}</div>
                   <select
                     value={editForm.status}
                     onChange={(e) => setEditField("status", e.target.value)}
@@ -2247,18 +2280,20 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   </select>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-600 mb-1">截止</div>
+                  <div className="text-xs text-gray-600 mb-1">
+                    {tTrendingAdmin("fieldDeadline")}
+                  </div>
                   <DatePicker
                     value={editForm.deadline}
                     onChange={(val) => setEditField("deadline", val)}
                     includeTime={true}
                     className="w-full"
-                    placeholder="选择截止时间"
+                    placeholder={tTrendingAdmin("deadlinePlaceholder")}
                   />
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-600 mb-1">最小押注</div>
+                <div className="text-xs text-gray-600 mb-1">{tTrendingAdmin("fieldMinStake")}</div>
                 <input
                   type="number"
                   value={editForm.minStake}
@@ -2269,14 +2304,14 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             </div>
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={closeEdit} className="px-4 py-2 rounded-lg border">
-                取消
+                {tTrendingAdmin("cancel")}
               </button>
               <button
                 onClick={submitEdit}
                 disabled={savingEdit}
                 className="px-4 py-2 rounded-lg bg-purple-600 text-white disabled:opacity-50"
               >
-                {savingEdit ? "保存中…" : "保存"}
+                {savingEdit ? tTrendingAdmin("saving") : tTrendingAdmin("save")}
               </button>
             </div>
           </div>
@@ -2313,25 +2348,25 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                   <Wallet className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-                  请先登录
+                  {tTrending("login.title")}
                 </h3>
-                <p className="text-gray-600 mb-6">
-                  关注预测事件需要先连接钱包登录。请点击右上角的"连接钱包"按钮进行登录。
-                </p>
+                <p className="text-gray-600 mb-6">{tTrending("login.description")}</p>
                 <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3">登录后您可以：</h4>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">
+                    {tTrending("login.benefitsTitle")}
+                  </h4>
                   <ul className="text-gray-600 space-y-2 text-left">
                     <li className="flex items-center">
                       <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                      关注感兴趣的预测事件
+                      {tTrending("login.benefitFollow")}
                     </li>
                     <li className="flex items-center">
                       <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                      参与预测和押注
+                      {tTrending("login.benefitParticipate")}
                     </li>
                     <li className="flex items-center">
                       <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                      获得预测奖励
+                      {tTrending("login.benefitRewards")}
                     </li>
                   </ul>
                 </div>
@@ -2340,7 +2375,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     onClick={() => setShowLoginModal(false)}
                     className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-colors duration-200"
                   >
-                    稍后再说
+                    {tTrending("login.later")}
                   </button>
                   <button
                     onClick={() => {
@@ -2349,7 +2384,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                     }}
                     className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-md"
                   >
-                    立即登录
+                    {tTrending("login.now")}
                   </button>
                 </div>
               </div>

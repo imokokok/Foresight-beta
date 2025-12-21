@@ -28,6 +28,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DatePicker from "@/components/ui/DatePicker";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
 
 interface CreateFlagModalProps {
   isOpen: boolean;
@@ -75,6 +76,7 @@ export default function CreateFlagModal({
 }: CreateFlagModalProps) {
   const { account } = useWallet();
   const { user } = useAuth();
+  const tFlags = useTranslations("flags");
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(defaultTitle);
@@ -103,36 +105,52 @@ export default function CreateFlagModal({
 
     if (defaultTemplateId === "early_morning") {
       const h = cfg.targetHour || 7;
-      t = `早起 ${h}:00 打卡`;
-      d = `目标：在 ${h}:00 前起床并打卡\n证明：晨间记录或照片`;
+      const baseTitle = tFlags("modal.templates.early_morning.title");
+      const baseDesc = tFlags("modal.templates.early_morning.desc");
+      t = baseTitle.replace("{hour}", String(h));
+      d = baseDesc.replace("{hour}", String(h));
     } else if (defaultTemplateId === "drink_water_8") {
       const n = cfg.cups || 8;
-      t = `喝水 ${n} 杯`;
-      d = `目标：今日饮水 ${n} 杯\n证明：记录或照片`;
+      const baseTitle = tFlags("modal.templates.drink_water_8.title");
+      const baseDesc = tFlags("modal.templates.drink_water_8.desc");
+      t = baseTitle.replace("{cups}", String(n));
+      d = baseDesc.replace("{cups}", String(n));
     } else if (defaultTemplateId === "steps_10k") {
       const n = cfg.steps || 10000;
-      t = `步数 ≥ ${n}`;
-      d = `目标：当日步数不低于 ${n}\n证明：设备截图`;
+      const baseTitle = tFlags("modal.templates.steps_10k.title");
+      const baseDesc = tFlags("modal.templates.steps_10k.desc");
+      t = baseTitle.replace("{steps}", String(n));
+      d = baseDesc.replace("{steps}", String(n));
     } else if (defaultTemplateId === "read_20_pages") {
       const n = cfg.pages || 20;
-      t = `阅读 ${n} 页`;
-      d = `目标：今日阅读 ${n} 页\n证明：书名与页码`;
+      const baseTitle = tFlags("modal.templates.read_20_pages.title");
+      const baseDesc = tFlags("modal.templates.read_20_pages.desc");
+      t = baseTitle.replace("{pages}", String(n));
+      d = baseDesc.replace("{pages}", String(n));
     } else if (defaultTemplateId === "meditate_10m") {
       const m = cfg.minutes || 10;
-      t = `冥想 ${m} 分钟`;
-      d = `目标：冥想 ${m} 分钟\n证明：计时或截图`;
+      const baseTitle = tFlags("modal.templates.meditate_10m.title");
+      const baseDesc = tFlags("modal.templates.meditate_10m.desc");
+      t = baseTitle.replace("{minutes}", String(m));
+      d = baseDesc.replace("{minutes}", String(m));
     } else if (defaultTemplateId === "sleep_before_11") {
       const h = cfg.beforeHour || 23;
-      t = `在 ${h}:00 前睡觉`;
-      d = `目标：当日 ${h}:00 前就寝\n证明：记录或应用截图`;
+      const baseTitle = tFlags("modal.templates.sleep_before_11.title");
+      const baseDesc = tFlags("modal.templates.sleep_before_11.desc");
+      t = baseTitle.replace("{hour}", String(h));
+      d = baseDesc.replace("{hour}", String(h));
     } else if (defaultTemplateId === "sunlight_20m") {
       const m = cfg.minutes || 20;
-      t = `晒太阳 ${m} 分钟`;
-      d = `目标：日晒 ${m} 分钟\n证明：地点与时长`;
+      const baseTitle = tFlags("modal.templates.sunlight_20m.title");
+      const baseDesc = tFlags("modal.templates.sunlight_20m.desc");
+      t = baseTitle.replace("{minutes}", String(m));
+      d = baseDesc.replace("{minutes}", String(m));
     } else if (defaultTemplateId === "tidy_room_10m") {
       const m = cfg.minutes || 10;
-      t = `整理房间 ${m} 分钟`;
-      d = `目标：整理至少 ${m} 分钟\n证明：前后对比图`;
+      const baseTitle = tFlags("modal.templates.tidy_room_10m.title");
+      const baseDesc = tFlags("modal.templates.tidy_room_10m.desc");
+      t = baseTitle.replace("{minutes}", String(m));
+      d = baseDesc.replace("{minutes}", String(m));
     }
 
     setTitle(t);
@@ -141,18 +159,18 @@ export default function CreateFlagModal({
 
   const handleSubmit = async () => {
     if (!user && !account) {
-      toast.warning("需要连接钱包", "请先连接钱包才能创建 Flag");
+      toast.warning(tFlags("toast.walletRequiredTitle"), tFlags("toast.walletRequiredDesc"));
       return;
     }
 
     // 必填项校验
     if (!title.trim()) {
-      toast.warning("标题不能为空", "请输入 Flag 标题");
+      toast.warning(tFlags("toast.titleRequiredTitle"), tFlags("toast.titleRequiredDesc"));
       return;
     }
 
     if (verifType === "witness" && !witnessId.trim() && !isOfficial) {
-      toast.warning("见证人信息缺失", "请填写见证人 ID 或地址");
+      toast.warning(tFlags("toast.witnessRequiredTitle"), tFlags("toast.witnessRequiredDesc"));
       return;
     }
 
@@ -185,11 +203,11 @@ export default function CreateFlagModal({
       });
 
       if (!res.ok) throw new Error("Create failed");
-      toast.success("创建成功", "Flag 已创建，快去打卡吧！");
+      toast.success(tFlags("toast.createSuccessTitle"), tFlags("toast.createSuccessDesc"));
       onSuccess();
       onClose();
     } catch (e) {
-      toast.error("创建失败", "请检查网络连接后重试");
+      toast.error(tFlags("toast.createFailedTitle"), tFlags("toast.createFailedDesc"));
     } finally {
       setLoading(false);
     }
@@ -253,10 +271,14 @@ export default function CreateFlagModal({
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-gray-800 tracking-tight leading-none mb-1">
-                    {isOfficial ? "Join Challenge" : "New Flag"}
+                    {isOfficial
+                      ? tFlags("modal.header.joinChallengeTitle")
+                      : tFlags("modal.header.newFlagTitle")}
                   </h2>
                   <p className="text-sm font-bold text-gray-500 opacity-80">
-                    {isOfficial ? "Let's do this together!" : "Start your journey today"}
+                    {isOfficial
+                      ? tFlags("modal.header.joinChallengeSubtitle")
+                      : tFlags("modal.header.newFlagSubtitle")}
                   </p>
                 </div>
               </div>
@@ -268,7 +290,7 @@ export default function CreateFlagModal({
                 {/* Title Input */}
                 <div className="space-y-2">
                   <label className="text-xs font-black text-gray-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    Flag Title
+                    {tFlags("modal.form.titleLabel")}
                   </label>
                   <input
                     value={title}
@@ -277,14 +299,14 @@ export default function CreateFlagModal({
                     className={`w-full px-5 py-4 rounded-xl bg-white border-2 border-gray-100 outline-none transition-all font-bold text-lg text-gray-800 placeholder:text-gray-300 focus:border-purple-400 focus:ring-4 focus:ring-purple-50 shadow-sm ${
                       isOfficial ? "opacity-80 cursor-default bg-gray-50" : ""
                     }`}
-                    placeholder="e.g. Read 10 pages daily"
+                    placeholder={tFlags("modal.form.titlePlaceholder")}
                   />
                 </div>
 
                 {/* Description Input */}
                 <div className="space-y-2">
                   <label className="text-xs font-black text-gray-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                    Details & Rules
+                    {tFlags("modal.form.descLabel")}
                   </label>
                   <textarea
                     value={desc}
@@ -294,7 +316,7 @@ export default function CreateFlagModal({
                     className={`w-full px-5 py-4 rounded-xl bg-white border-2 border-gray-100 outline-none transition-all text-gray-600 resize-none font-medium placeholder:text-gray-300 focus:border-purple-400 focus:ring-4 focus:ring-purple-50 shadow-sm ${
                       isOfficial ? "opacity-80 cursor-default bg-gray-50" : ""
                     }`}
-                    placeholder="Describe your plan..."
+                    placeholder={tFlags("modal.form.descPlaceholder")}
                   />
                 </div>
 
@@ -302,7 +324,7 @@ export default function CreateFlagModal({
                 {!isOfficial && (
                   <div className="space-y-3">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                      Verification
+                      {tFlags("modal.form.verificationLabel")}
                     </label>
                     <div className="grid grid-cols-2 gap-4">
                       <button
@@ -319,7 +341,7 @@ export default function CreateFlagModal({
                           <UserCheck className="w-5 h-5" />
                         </div>
                         <div className="text-center">
-                          <div className="font-bold text-sm">Self Check</div>
+                          <div className="font-bold text-sm">{tFlags("modal.form.selfCheck")}</div>
                         </div>
                         {verifType === "self" && (
                           <div className="absolute top-2 right-2 text-purple-500">
@@ -342,7 +364,9 @@ export default function CreateFlagModal({
                           <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div className="text-center">
-                          <div className="font-bold text-sm">Friend Check</div>
+                          <div className="font-bold text-sm">
+                            {tFlags("modal.form.friendCheck")}
+                          </div>
                         </div>
                         {verifType === "witness" && (
                           <div className="absolute top-2 right-2 text-purple-500">
@@ -362,13 +386,13 @@ export default function CreateFlagModal({
                     className="space-y-2"
                   >
                     <label className="text-xs font-black text-gray-400 uppercase tracking-wider ml-1">
-                      Witness ID / Address
+                      {tFlags("modal.form.witnessLabel")}
                     </label>
                     <input
                       value={witnessId}
                       onChange={(e) => setWitnessId(e.target.value)}
                       className="w-full px-5 py-4 rounded-xl bg-white border-2 border-gray-100 outline-none transition-all font-mono text-sm text-gray-900 placeholder:text-gray-300 focus:border-purple-400 focus:ring-4 focus:ring-purple-50 shadow-sm"
-                      placeholder="Enter friend's ID or Address"
+                      placeholder={tFlags("modal.form.witnessPlaceholder")}
                     />
                   </motion.div>
                 )}
@@ -377,12 +401,12 @@ export default function CreateFlagModal({
                 {!isOfficial && (
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase tracking-wider ml-1 flex items-center gap-2">
-                      Target Date (Optional)
+                      {tFlags("modal.form.targetDateLabel")}
                     </label>
                     <DatePicker
                       value={deadline}
                       onChange={setDeadline}
-                      placeholder="Select Date"
+                      placeholder={tFlags("modal.form.targetDatePlaceholder")}
                       className="w-full"
                     />
                   </div>
@@ -395,7 +419,7 @@ export default function CreateFlagModal({
                   onClick={onClose}
                   className="flex-1 py-3.5 rounded-xl bg-white border-2 border-gray-100 text-gray-500 font-bold hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {tFlags("modal.footer.cancel")}
                 </button>
                 <button
                   onClick={handleSubmit}
@@ -403,7 +427,7 @@ export default function CreateFlagModal({
                   className="flex-1 py-3.5 rounded-xl bg-gray-900 text-white font-bold hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-gray-900/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                 >
                   {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isOfficial ? "Join Now" : "Create Flag"}
+                  {isOfficial ? tFlags("modal.footer.joinNow") : tFlags("modal.footer.createFlag")}
                   {!loading && <ArrowRight className="w-5 h-5" />}
                 </button>
               </div>

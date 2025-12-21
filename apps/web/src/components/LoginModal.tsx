@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { X, Mail, Wallet, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
+import { useTranslations } from "@/lib/i18n";
 import WalletModal from "./WalletModal";
 import InstallPromptModal from "./InstallPromptModal";
 
@@ -40,6 +41,8 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
   const [installPromptOpen, setInstallPromptOpen] = useState(false);
   const [installWalletName, setInstallWalletName] = useState<string>("");
   const [installUrl, setInstallUrl] = useState<string>("");
+
+  const tLogin = useTranslations("login");
 
   useEffect(() => {
     if (!open) return;
@@ -165,19 +168,19 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                 className={`px-3 py-1.5 rounded-md text-sm font-medium ${tab === "email" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}
                 onClick={() => setTab("email")}
               >
-                邮箱登录
+                {tLogin("tabEmail")}
               </button>
               <button
                 className={`px-3 py-1.5 rounded-md text-sm font-medium ${tab === "wallet" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}
                 onClick={() => setTab("wallet")}
               >
-                钱包登录
+                {tLogin("tabWallet")}
               </button>
             </div>
             <button
               onClick={onClose}
               className="p-2 rounded-md hover:bg-gray-100"
-              aria-label="关闭"
+              aria-label={tLogin("close")}
             >
               <X className="w-5 h-5" />
             </button>
@@ -187,17 +190,17 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
             <div className="px-6 py-6">
               {!otpRequested ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">使用邮箱继续</h3>
-                  <p className="text-sm text-gray-600">
-                    我们会发送一封包含登录链接与 6 位验证码的邮件。
-                  </p>
+                  <h3 className="text-lg font-semibold">{tLogin("emailContinueTitle")}</h3>
+                  <p className="text-sm text-gray-600">{tLogin("emailContinueDescription")}</p>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">邮箱地址</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {tLogin("emailLabel")}
+                    </label>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={tLogin("emailPlaceholder")}
                       className="w-full rounded-md border px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-gray-900"
                     />
                   </div>
@@ -213,34 +216,35 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                       ) : (
                         <Mail className="w-4 h-4" />
                       )}
-                      发送验证码
+                      {tLogin("sendOtp")}
                     </button>
                     <button
                       onClick={handleSendMagicLink}
                       disabled={!canRequest || loading}
                       className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900 disabled:opacity-60"
                     >
-                      发送登录链接
+                      {tLogin("sendMagicLink")}
                     </button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    继续即表示你同意我们的
+                    {tLogin("agreePrefix")}
                     <a href="/terms" target="_blank" className="underline ml-1">
-                      服务条款
+                      {tLogin("terms")}
                     </a>
-                    与
+                    {tLogin("and")}
                     <a href="/privacy" target="_blank" className="underline ml-1">
-                      隐私政策
+                      {tLogin("privacy")}
                     </a>
-                    。
+                    {tLogin("agreeSuffix")}
                   </p>
-                  <div className="text-xs text-gray-500">也可以切换到「钱包登录」继续。</div>
+                  <div className="text-xs text-gray-500">{tLogin("switchToWallet")}</div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">输入邮箱中的 6 位验证码</h3>
+                  <h3 className="text-lg font-semibold">{tLogin("otpTitle")}</h3>
                   <p className="text-sm text-gray-600">
-                    我们已向 <span className="font-medium">{email}</span> 发送邮件。
+                    {tLogin("otpDescriptionPrefix")} <span className="font-medium">{email}</span>
+                    {tLogin("otpDescriptionSuffix")}
                   </p>
                   <input
                     type="text"
@@ -264,26 +268,24 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                       ) : (
                         <Mail className="w-4 h-4" />
                       )}
-                      验证并登录
+                      {tLogin("verifyAndLogin")}
                     </button>
                     <button
                       onClick={handleRequestOtp}
                       disabled={loading}
                       className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
                     >
-                      重新发送
+                      {tLogin("resend")}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">也可以在邮件中点击登录链接完成登录。</p>
+                  <p className="text-xs text-gray-500">{tLogin("otpHint")}</p>
                 </div>
               )}
             </div>
           ) : (
             <div className="px-6 py-6 space-y-4">
-              <h3 className="text-lg font-semibold">使用钱包继续</h3>
-              <p className="text-sm text-gray-600">
-                支持常见钱包（如 MetaMask、Coinbase、Binance、OKX 等）。
-              </p>
+              <h3 className="text-lg font-semibold">{tLogin("walletContinueTitle")}</h3>
+              <p className="text-sm text-gray-600">{tLogin("walletContinueDescription")}</p>
 
               <div className="relative">
                 <div
@@ -314,9 +316,13 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                           <div className="text-left">
                             <div className="font-semibold text-gray-900">{wallet.name}</div>
                             {!wallet.isAvailable ? (
-                              <div className="text-sm text-red-500 font-medium">未安装</div>
+                              <div className="text-sm text-red-500 font-medium">
+                                {tLogin("notInstalled")}
+                              </div>
                             ) : (
-                              <div className="text-sm text-gray-500">点击连接</div>
+                              <div className="text-sm text-gray-500">
+                                {tLogin("clickToConnect")}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -347,7 +353,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                       </button>
                     ))
                   ) : (
-                    <div className="text-sm text-gray-500">正在检测已安装的钱包扩展…</div>
+                    <div className="text-sm text-gray-500">{tLogin("detectingWallets")}</div>
                   )}
                 </div>
 
@@ -364,7 +370,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                 )}
               </div>
 
-              <p className="text-xs text-gray-500">也可以切换到「邮箱登录」。</p>
+              <p className="text-xs text-gray-500">{tLogin("switchToEmail")}</p>
             </div>
           )}
         </div>

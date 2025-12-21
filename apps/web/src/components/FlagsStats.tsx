@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Flag, Zap, Trophy, TrendingUp, Target, Star } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 interface FlagsStatsProps {
   flags: any[];
@@ -7,6 +8,7 @@ interface FlagsStatsProps {
 }
 
 export function FlagsStats({ flags, username }: FlagsStatsProps) {
+  const tFlags = useTranslations("flags");
   const activeCount = flags.filter((f) => f.status === "active").length;
   const successCount = flags.filter((f) => f.status === "success").length;
   const total = flags.length;
@@ -31,7 +33,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               <Flag className="w-6 h-6" />
             </div>
             <span className="px-3 py-1 rounded-full bg-purple-100/50 text-purple-700 text-xs font-bold uppercase tracking-wider border border-purple-100">
-              Ongoing
+              {tFlags("stats.ongoingBadge")}
             </span>
           </div>
 
@@ -40,9 +42,11 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               <div className="text-5xl font-black text-gray-900 tracking-tighter">
                 {activeCount}
               </div>
-              <span className="text-lg text-gray-400 font-bold">Flags</span>
+              <span className="text-lg text-gray-400 font-bold">{tFlags("stats.flagsLabel")}</span>
             </div>
-            <p className="text-sm text-gray-500 font-medium mt-1">当前正在进行的挑战</p>
+            <p className="text-sm text-gray-500 font-medium mt-1">
+              {tFlags("stats.activeDescription")}
+            </p>
           </div>
         </div>
       </motion.div>
@@ -62,7 +66,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               <Trophy className="w-6 h-6" />
             </div>
             <span className="px-3 py-1 rounded-full bg-blue-100/50 text-blue-700 text-xs font-bold uppercase tracking-wider border border-blue-100">
-              Achieved
+              {tFlags("stats.achievedBadge")}
             </span>
           </div>
 
@@ -71,9 +75,11 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               <div className="text-5xl font-black text-gray-900 tracking-tighter">
                 {successCount}
               </div>
-              <span className="text-lg text-gray-400 font-bold">Goals</span>
+              <span className="text-lg text-gray-400 font-bold">{tFlags("stats.goalsLabel")}</span>
             </div>
-            <p className="text-sm text-gray-500 font-medium mt-1">已成功达成的目标</p>
+            <p className="text-sm text-gray-500 font-medium mt-1">
+              {tFlags("stats.successDescription")}
+            </p>
           </div>
         </div>
       </motion.div>
@@ -94,7 +100,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               <Zap className="w-6 h-6 text-yellow-400" />
             </div>
             <span className="px-3 py-1 rounded-full bg-white/10 text-purple-200 text-xs font-bold uppercase tracking-wider border border-white/10">
-              Score
+              {tFlags("stats.scoreBadge")}
             </span>
           </div>
 
@@ -115,7 +121,7 @@ export function FlagsStats({ flags, username }: FlagsStatsProps) {
               />
             </div>
             <div className="mt-2 flex justify-between items-center text-xs font-medium text-gray-400">
-              <span>完成率</span>
+              <span>{tFlags("stats.focusLabel")}</span>
               <TrendingUp className="w-3 h-3 text-green-400" />
             </div>
           </div>

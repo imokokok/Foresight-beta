@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase client is not configured" },
+        { status: 500 }
+      );
     }
 
     // 构建Supabase查询
@@ -161,9 +164,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (error) {
-      console.error("获取预测事件列表失败:", error);
+      console.error("Failed to fetch predictions list:", error);
       return NextResponse.json(
-        { success: false, message: "获取预测事件列表失败" },
+        { success: false, message: "Failed to fetch prediction list" },
         { status: 500 }
       );
     }
@@ -198,8 +201,11 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("获取预测事件列表异常:", error);
-    return NextResponse.json({ success: false, message: "获取预测事件列表失败" }, { status: 500 });
+    console.error("Unexpected error while fetching prediction list:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to fetch prediction list" },
+      { status: 500 }
+    );
   }
 }
 
@@ -218,7 +224,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "无效的钱包地址格式",
+          message: "Invalid wallet address format",
         },
         { status: 400 }
       );
@@ -226,7 +232,7 @@ export async function POST(request: NextRequest) {
 
     if (sessAddr && normalizeAddress(sessAddr) !== walletAddress) {
       return NextResponse.json(
-        { success: false, message: "未认证或会话地址不匹配" },
+        { success: false, message: "Unauthorized or session address does not match" },
         { status: 401 }
       );
     }
@@ -239,7 +245,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "缺少必填字段",
+          message: "Missing required fields",
           missingFields,
         },
         { status: 400 }
@@ -249,7 +255,7 @@ export async function POST(request: NextRequest) {
     // 验证数据类型
     if (typeof body.minStake !== "number" || body.minStake <= 0) {
       return NextResponse.json(
-        { success: false, message: "最小押注必须是大于0的数字" },
+        { success: false, message: "minStake must be a positive number" },
         { status: 400 }
       );
     }
@@ -257,7 +263,10 @@ export async function POST(request: NextRequest) {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
     const client = getClient() || supabase;
     if (!client) {
-      return NextResponse.json({ success: false, message: "Supabase 未配置" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Supabase client is not configured" },
+        { status: 500 }
+      );
     }
 
     const { data: prof, error: profErr } = await (client as any)
@@ -267,7 +276,10 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     const isAdmin = !!prof?.is_admin || isAdminAddress(walletAddress);
     if (profErr || !isAdmin) {
-      return NextResponse.json({ success: false, message: "需要管理员权限" }, { status: 403 });
+      return NextResponse.json(
+        { success: false, message: "Admin permission is required" },
+        { status: 403 }
+      );
     }
     // 检查是否已存在相同标题的预测事件
     const { data: existingPredictions, error: checkError } = await (client as any)
@@ -276,8 +288,11 @@ export async function POST(request: NextRequest) {
       .eq("title", body.title);
 
     if (checkError) {
-      console.error("检查重复标题失败:", checkError);
-      return NextResponse.json({ success: false, message: "检查预测事件失败" }, { status: 500 });
+      console.error("Failed to check duplicate prediction title:", checkError);
+      return NextResponse.json(
+        { success: false, message: "Failed to check prediction" },
+        { status: 500 }
+      );
     }
 
     // 如果存在相同标题的预测事件，返回错误并列出所有重复事件
@@ -285,7 +300,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "已存在相同标题的预测事件，请修改标题或删除现有事件",
+          message:
+            "A prediction with the same title already exists. Please change the title or delete existing events.",
           duplicateEvents: existingPredictions.map((event: any) => ({
             id: event.id,
             title: event.title,
@@ -300,7 +316,10 @@ export async function POST(request: NextRequest) {
 
     // 验证图片URL（如果提供了）
     if (body.imageUrl && typeof body.imageUrl !== "string") {
-      return NextResponse.json({ success: false, message: "图片URL格式无效" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid imageUrl format" },
+        { status: 400 }
+      );
     }
 
     // 优先使用上传的图片URL，如果没有上传则使用生成的图片
@@ -335,8 +354,11 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (maxIdError) {
-      console.error("获取最大ID失败:", maxIdError);
-      return NextResponse.json({ success: false, message: "创建预测事件失败" }, { status: 500 });
+      console.error("Failed to fetch max prediction id:", maxIdError);
+      return NextResponse.json(
+        { success: false, message: "Failed to create prediction" },
+        { status: 500 }
+      );
     }
 
     const nextId = maxIdData && maxIdData.length > 0 ? maxIdData[0].id + 1 : 1;
@@ -347,13 +369,16 @@ export async function POST(request: NextRequest) {
     if (type === "multi") {
       if (outcomes.length < 3 || outcomes.length > 8) {
         return NextResponse.json(
-          { success: false, message: "多元事件的选项数量需在 3 到 8 之间" },
+          {
+            success: false,
+            message: "Multi-outcome events must have between 3 and 8 options",
+          },
           { status: 400 }
         );
       }
       if (outcomes.some((o: any) => !String(o?.label || "").trim())) {
         return NextResponse.json(
-          { success: false, message: "每个选项都需要非空的 label" },
+          { success: false, message: "Each option must have a non-empty label" },
           { status: 400 }
         );
       }
@@ -379,8 +404,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error("创建预测事件失败:", error);
-      return NextResponse.json({ success: false, message: "创建预测事件失败" }, { status: 500 });
+      console.error("Failed to create prediction:", error);
+      return NextResponse.json(
+        { success: false, message: "Failed to create prediction" },
+        { status: 500 }
+      );
     }
 
     // 根据类型插入选项（binary 默认 Yes/No；multi 按用户输入）
@@ -411,28 +439,26 @@ export async function POST(request: NextRequest) {
         .from("prediction_outcomes")
         .insert(items);
       if (outcomesErr) {
-        console.warn("插入选项失败：", outcomesErr);
+        console.warn("Failed to insert prediction outcomes:", outcomesErr);
       }
     } catch (e) {
-      console.warn("插入选项异常：", e);
+      console.warn("Unexpected error while inserting prediction outcomes:", e);
     }
 
-    // 返回成功响应
     return NextResponse.json(
       {
         success: true,
         data: newPrediction,
-        message: "预测事件创建成功",
+        message: "Prediction created successfully",
       },
       { status: 201 }
-    ); // 201表示资源创建成功
+    );
   } catch (error) {
-    // 错误处理
-    console.error("创建预测事件异常:", error);
+    console.error("Unexpected error while creating prediction:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "创建预测事件失败",
+        message: "Failed to create prediction",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

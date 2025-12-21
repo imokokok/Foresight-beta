@@ -11,12 +11,20 @@ import {
 } from "lucide-react";
 import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
 import dynamic from "next/dynamic";
+import { useTranslations } from "@/lib/i18n";
+
+function ChatPanelLoading() {
+  const tMarket = useTranslations("market");
+  return (
+    <div className="h-[300px] flex items-center justify-center text-gray-500">
+      {tMarket("comments.loading")}
+    </div>
+  );
+}
 
 const ChatPanel = dynamic(() => import("@/components/ChatPanel"), {
   ssr: false,
-  loading: () => (
-    <div className="h-[300px] flex items-center justify-center text-gray-500">加载评论...</div>
-  ),
+  loading: ChatPanelLoading,
 });
 
 interface MarketInfoProps {
@@ -24,6 +32,9 @@ interface MarketInfoProps {
 }
 
 export function MarketInfo({ prediction }: MarketInfoProps) {
+  const tMarket = useTranslations("market");
+  const tCommon = useTranslations("common");
+  const tEvents = useTranslations();
   const [activeTab, setActiveTab] = useState<"desc" | "rules" | "comments">("desc");
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
 
@@ -42,7 +53,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
           }`}
         >
           <AlignLeft className="w-4 h-4" />
-          市场详情
+          {tMarket("tabs.desc")}
         </button>
         <button
           onClick={() => setActiveTab("rules")}
@@ -53,7 +64,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
           }`}
         >
           <Scale className="w-4 h-4" />
-          裁决规则
+          {tMarket("tabs.rules")}
         </button>
         <button
           onClick={() => setActiveTab("comments")}
@@ -64,7 +75,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          讨论
+          {tMarket("tabs.comments")}
         </button>
       </div>
 
@@ -77,7 +88,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 <span className="p-1.5 rounded-lg bg-purple-100 text-purple-600">
                   <Info className="w-5 h-5" />
                 </span>
-                关于此市场
+                {tMarket("about.title")}
               </h3>
               <p className="text-gray-600 leading-relaxed whitespace-pre-line text-base">
                 {prediction.description}
@@ -86,7 +97,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
             {prediction.referenceUrl && (
               <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 hover:bg-purple-50 transition-colors">
                 <div className="text-xs font-semibold text-purple-400 mb-1.5 uppercase tracking-wider flex items-center gap-1">
-                  <FileText className="w-3 h-3" /> 参考来源
+                  <FileText className="w-3 h-3" /> {tMarket("about.referenceSource")}
                 </div>
                 <a
                   href={prediction.referenceUrl}
@@ -108,7 +119,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 <div className="p-1.5 rounded-lg bg-blue-100 text-blue-600">
                   <Scale className="w-5 h-5" />
                 </div>
-                裁决标准
+                {tMarket("rules.criteriaTitle")}
               </h3>
               <div
                 className={`text-gray-600 text-sm leading-relaxed transition-all duration-300 overflow-hidden ${
@@ -126,11 +137,11 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
               >
                 {isRulesExpanded ? (
                   <>
-                    收起 <ChevronUp className="w-4 h-4" />
+                    {tCommon("less")} <ChevronUp className="w-4 h-4" />
                   </>
                 ) : (
                   <>
-                    展开全部 <ChevronDown className="w-4 h-4" />
+                    {tCommon("more")} <ChevronDown className="w-4 h-4" />
                   </>
                 )}
               </button>
@@ -139,20 +150,23 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                 <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
-                  仲裁者
+                  {tMarket("rules.arbitrator")}
                 </div>
                 <div className="text-base font-medium text-gray-900 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                  Foresight Oracle Committee
+                  {tMarket("rules.arbitratorName")}
                 </div>
               </div>
               <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                 <div className="text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
-                  裁决时间
+                  {tMarket("rules.resolutionTime")}
                 </div>
                 <div className="text-base font-medium text-gray-900 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-400" />
-                  {new Date(prediction.deadline).toLocaleString()} 后 24小时内
+                  {tMarket("rules.resolutionTimeValue").replace(
+                    "{deadline}",
+                    new Date(prediction.deadline).toLocaleString()
+                  )}
                 </div>
               </div>
             </div>
@@ -161,7 +175,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
 
         {activeTab === "comments" && (
           <div className="min-h-[400px]">
-            <ChatPanel eventId={prediction.id} roomTitle={prediction.title} />
+            <ChatPanel eventId={prediction.id} roomTitle={tEvents(prediction.title)} />
           </div>
         )}
       </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { motion } from "framer-motion";
 import {
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 import { PredictionDetail } from "@/app/prediction/[id]/PredictionDetailClient";
 import Link from "next/link";
+import { useTranslations } from "@/lib/i18n";
 
 interface MarketHeaderProps {
   prediction: PredictionDetail;
@@ -31,6 +34,8 @@ export function MarketHeader({
   onFollow,
   followLoading,
 }: MarketHeaderProps) {
+  const tEvents = useTranslations();
+  const displayTitle = tEvents(prediction.title);
   const isExpired = prediction.timeInfo?.isExpired;
   const statusColor =
     prediction.status === "active" && !isExpired
@@ -57,7 +62,7 @@ export function MarketHeader({
           {prediction.category}
         </Link>
         <span className="text-gray-300">/</span>
-        <span className="text-gray-900 font-medium truncate max-w-[200px]">{prediction.title}</span>
+        <span className="text-gray-900 font-medium truncate max-w-[200px]">{displayTitle}</span>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
@@ -75,7 +80,7 @@ export function MarketHeader({
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-                {prediction.title}
+                {displayTitle}
               </h1>
               <div className="flex flex-wrap gap-3 mt-3">
                 <div

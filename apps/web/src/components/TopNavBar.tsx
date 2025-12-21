@@ -32,6 +32,7 @@ export default function TopNavBar() {
   const userProfile = useUserProfileOptional();
   const tWallet = useTranslations("wallet");
   const tAuth = useTranslations("auth");
+  const tCommon = useTranslations("common");
 
   const [mounted, setMounted] = useState(false);
   // 新增：头像菜单状态与复制状态
@@ -75,10 +76,13 @@ export default function TopNavBar() {
   }, [connectError, mounted]);
 
   // 头像菜单：复制与断开 - 使用 useCallback 优化
-  const handleConnectWallet = useCallback(async (walletType?: "metamask" | "coinbase" | "binance") => {
-    await connectWallet(walletType);
-    setWalletSelectorOpen(false);
-  }, [connectWallet]);
+  const handleConnectWallet = useCallback(
+    async (walletType?: "metamask" | "coinbase" | "binance") => {
+      await connectWallet(walletType);
+      setWalletSelectorOpen(false);
+    },
+    [connectWallet]
+  );
 
   const handleWalletSelectorToggle = useCallback(() => {
     setWalletSelectorOpen(!walletSelectorOpen);
@@ -103,7 +107,7 @@ export default function TopNavBar() {
 
   // 新增：网络名称、区块浏览器、余额刷新、网络切换
   const networkName = (id: string | null) => {
-    if (!id) return "未知网络";
+    if (!id) return tWallet("unknownNetwork");
     switch (id.toLowerCase()) {
       case "0x1":
         return "Ethereum";
@@ -260,7 +264,7 @@ export default function TopNavBar() {
         className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-[90%]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-black mb-2">连接钱包失败</h3>
+        <h3 className="text-lg font-semibold text-black mb-2">{tWallet("connectFailedTitle")}</h3>
         <p className="text-sm text-black mb-4">{connectError}</p>
         {!hasProvider && (
           <a
@@ -269,7 +273,7 @@ export default function TopNavBar() {
             rel="noopener noreferrer"
             className="text-sm text-black underline"
           >
-            安装 MetaMask 浏览器扩展
+            {tWallet("installMetaMaskExtension")}
           </a>
         )}
         <div className="mt-4 flex justify-end gap-2">
@@ -280,16 +284,16 @@ export default function TopNavBar() {
               // 这里改为调用 connectWallet 重试或简单关闭弹窗即可
               // 如需重置错误，需在 WalletContext 中提供 resetConnectError 方法
               // 目前仅关闭弹窗，由上下文在下次连接前自动清除错误
-              location.reload(); // 简单刷新以清除错误状态
+              location.reload();
             }}
           >
-            关闭
+            {tCommon("close")}
           </button>
           <button
             className="px-3 py-2 rounded-md bg-blue-500 text-black"
             onClick={() => connectWallet()}
           >
-            重试连接
+            {tCommon("retry")}
           </button>
         </div>
       </div>
@@ -308,152 +312,154 @@ export default function TopNavBar() {
         <div className="flex items-center space-x-3">
           {/* 语言切换器 */}
           <LanguageSwitcher />
-        {account ? (
-          <div className="relative group" ref={menuRef}>
-            <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
-              <div
-                ref={avatarRef}
-                role="button"
-                aria-label="打开用户菜单"
-                aria-expanded={menuOpen}
-                tabIndex={0}
-                className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md overflow-hidden"
-                onClick={() => setMenuOpen((v) => !v)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setMenuOpen((v) => !v);
-                }}
-              >
-                <LazyImage
-                  src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
-                  alt="用户头像"
-                  className="w-10 h-10 rounded-full object-cover"
-                  placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
-                  rootMargin={0}
-                />
+          {account ? (
+            <div className="relative group" ref={menuRef}>
+              <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
+                <div
+                  ref={avatarRef}
+                  role="button"
+                  aria-label="打开用户菜单"
+                  aria-expanded={menuOpen}
+                  tabIndex={0}
+                  className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md overflow-hidden"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setMenuOpen((v) => !v);
+                  }}
+                >
+                  <LazyImage
+                    src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
+                    alt="用户头像"
+                    className="w-10 h-10 rounded-full object-cover"
+                    placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
+                    rootMargin={0}
+                  />
+                </div>
               </div>
-            </div>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full ring-2 ring-white dark:ring-[#0a0a0a]" />
-            {/* 显示当前连接的钱包类型 */}
-            {/* 钱包类型标识移动至下拉菜单 */}
-            {/* 菜单通过 Portal 渲染为最高优先级 */}
-            {menuOpen &&
-              mounted &&
-              createPortal(
-                <>
-                  {/* 点击遮罩关闭，避免被父级样式影响 */}
-                  <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)} />
-                  <div
-                    ref={menuContentRef}
-                    className="fixed z-[9999] w-64 glass-card p-2 rounded-2xl"
-                    role="menu"
-                    aria-label="用户菜单"
-                    style={{ top: menuPos.top, left: menuPos.left }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="px-3 py-3 mb-2 rounded-xl bg-white/40 flex items-center justify-between border border-white/40">
-                      <div>
-                        <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                          {userProfile?.profile?.username || formatAddress(account)}
-                        </div>
-                        <div className="mt-1 text-[11px] text-gray-600 flex items-center gap-2">
-                          {userProfile?.profile?.username ? (
-                            <span>{formatAddress(account)}</span>
-                          ) : null}
-                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-gray-800">
-                            {networkName(chainId)}
-                          </span>
-                          {currentWalletType && (
-                            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-gray-800">
-                              {currentWalletType === "metamask"
-                                ? "MetaMask"
-                                : currentWalletType === "coinbase"
-                                  ? "Coinbase"
-                                  : currentWalletType === "okx"
-                                    ? "OKX"
-                                    : "Binance"}
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full ring-2 ring-white dark:ring-[#0a0a0a]" />
+              {/* 显示当前连接的钱包类型 */}
+              {/* 钱包类型标识移动至下拉菜单 */}
+              {/* 菜单通过 Portal 渲染为最高优先级 */}
+              {menuOpen &&
+                mounted &&
+                createPortal(
+                  <>
+                    {/* 点击遮罩关闭，避免被父级样式影响 */}
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)} />
+                    <div
+                      ref={menuContentRef}
+                      className="fixed z-[9999] w-64 glass-card p-2 rounded-2xl"
+                      role="menu"
+                      aria-label="用户菜单"
+                      style={{ top: menuPos.top, left: menuPos.left }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-3 py-3 mb-2 rounded-xl bg-white/40 flex items-center justify-between border border-white/40">
+                        <div>
+                          <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            {userProfile?.profile?.username || formatAddress(account)}
+                          </div>
+                          <div className="mt-1 text-[11px] text-gray-600 flex items-center gap-2">
+                            {userProfile?.profile?.username ? (
+                              <span>{formatAddress(account)}</span>
+                            ) : null}
+                            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-gray-800">
+                              {networkName(chainId)}
                             </span>
-                          )}
+                            {currentWalletType && (
+                              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-gray-800">
+                                {currentWalletType === "metamask"
+                                  ? "MetaMask"
+                                  : currentWalletType === "coinbase"
+                                    ? "Coinbase"
+                                    : currentWalletType === "okx"
+                                      ? "OKX"
+                                      : "Binance"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-xs font-semibold text-black">
+                          {balanceLoading ? "..." : balanceEth ? `${balanceEth} ETH` : "--"}
                         </div>
                       </div>
-                      <div className="text-xs font-semibold text-black">
-                        {balanceLoading ? "..." : balanceEth ? `${balanceEth} ETH` : "--"}
-                      </div>
+                      <button
+                        onClick={updateNetworkInfo}
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                      >
+                        <Wallet className="w-4 h-4 text-purple-600" />
+                        <span>{tWallet("refreshBalance")}</span>
+                      </button>
+                      <button
+                        onClick={copyAddress}
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                      >
+                        <Copy className="w-4 h-4 text-purple-600" />
+                        <span>{copied ? tWallet("addressCopied") : tWallet("copyAddress")}</span>
+                      </button>
+                      <button
+                        onClick={openOnExplorer}
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                      >
+                        <ExternalLink className="w-4 h-4 text-purple-600" />
+                        <span>{tWallet("viewOnExplorer")}</span>
+                      </button>
+                      <div className="my-1 border-t border-purple-100/60" />
+                      <button
+                        onClick={switchToSepolia}
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                      >
+                        <Wallet className="w-4 h-4 text-purple-600" />
+                        <span>{tWallet("switchNetwork")} - Sepolia</span>
+                      </button>
+                      <button
+                        onClick={handleDisconnectWallet}
+                        className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                      >
+                        <LogOut className="w-4 h-4 text-purple-600" />
+                        <span>{tAuth("disconnectWallet")}</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={updateNetworkInfo}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>{tWallet("refreshBalance")}</span>
-                    </button>
-                    <button
-                      onClick={copyAddress}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <Copy className="w-4 h-4 text-purple-600" />
-                      <span>{copied ? tWallet("addressCopied") : tWallet("copyAddress")}</span>
-                    </button>
-                    <button
-                      onClick={openOnExplorer}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <ExternalLink className="w-4 h-4 text-purple-600" />
-                      <span>{tWallet("viewOnExplorer")}</span>
-                    </button>
-                    <div className="my-1 border-t border-purple-100/60" />
-                    <button
-                      onClick={switchToSepolia}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <Wallet className="w-4 h-4 text-purple-600" />
-                      <span>{tWallet("switchNetwork")} - Sepolia</span>
-                    </button>
-                    <button
-                      onClick={handleDisconnectWallet}
-                      className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                    >
-                      <LogOut className="w-4 h-4 text-purple-600" />
-                      <span>{tAuth("disconnectWallet")}</span>
-                    </button>
-                  </div>
-                </>,
-                document.body
-              )}
-          </div>
-        ) : user ? (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700">已登录：{user.email || "未绑定邮箱"}</span>
-            <button
-              onClick={async () => {
-                await signOut();
-                await disconnectWallet();
-                try {
-                  await fetch("/api/siwe/logout", { method: "GET" });
-                } catch {}
-              }}
-              className="px-3 py-1.5 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200"
-            >
-              退出
-            </button>
-          </div>
-        ) : (
-          <div className="relative">
-            <button
-              onClick={() => setWalletModalOpen(true)}
-              className="btn-base btn-md btn-cta"
-              title={tAuth("login")}
-            >
-              {tAuth("login")}
-            </button>
-          </div>
+                  </>,
+                  document.body
+                )}
+            </div>
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-700">
+                {tAuth("loggedIn")}：{user.email || tAuth("noEmail")}
+              </span>
+              <button
+                onClick={async () => {
+                  await signOut();
+                  await disconnectWallet();
+                  try {
+                    await fetch("/api/siwe/logout", { method: "GET" });
+                  } catch {}
+                }}
+                className="px-3 py-1.5 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200"
+              >
+                {tAuth("logout")}
+              </button>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => setWalletModalOpen(true)}
+                className="btn-base btn-md btn-cta"
+                title={tAuth("login")}
+              >
+                {tAuth("login")}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {mounted && modal && createPortal(modal, document.body)}
+
+        {mounted && (
+          <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
         )}
-      </div>
-
-      {mounted && modal && createPortal(modal, document.body)}
-
-      {mounted && (
-        <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
-      )}
       </div>
     </>
   );

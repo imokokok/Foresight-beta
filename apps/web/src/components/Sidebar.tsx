@@ -54,7 +54,7 @@ export default function Sidebar() {
   const menu: MenuItem[] = useMemo(
     () => [
       {
-        label: "导航",
+        label: tCommon("menu"),
         children: [
           {
             label: t("trending"),
@@ -160,7 +160,7 @@ export default function Sidebar() {
       <motion.aside
         id="mobile-sidebar"
         role="navigation"
-        aria-label="主导航"
+        aria-label={tCommon("mainNav")}
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -196,7 +196,7 @@ export default function Sidebar() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") submitSearch();
                   }}
-                  placeholder="探索新预测..."
+                  placeholder={tCommon("explore")}
                   aria-label={tCommon("search")}
                   className="w-full pl-11 pr-4 py-3 bg-white border-2 border-transparent rounded-xl text-sm font-bold text-slate-800 placeholder:text-slate-400 shadow-xl shadow-brand/5 focus:outline-none focus:border-brand/30 focus:ring-4 focus:ring-brand/5 transition-all"
                 />
@@ -210,7 +210,7 @@ export default function Sidebar() {
               <div className="px-2 mb-2 flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                 <span className="text-xs font-black text-gray-400 uppercase tracking-wider">
-                  Explore
+                  {tCommon("explore")}
                 </span>
               </div>
 
@@ -278,7 +278,7 @@ export default function Sidebar() {
                         : user?.email?.split("@")[0]}
                     </div>
                     <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
-                      Level 3 Dreamer
+                      {tCommon("userLevelDreamer").replace("{level}", "3")}
                     </div>
                   </div>
                 </div>

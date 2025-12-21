@@ -6,10 +6,11 @@ import { Home, TrendingUp, PlusCircle, MessageSquare, User } from "lucide-react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
+import { useTranslations } from "@/lib/i18n";
 
 /**
  * 移动端底部导航栏组件
- * 
+ *
  * 特性：
  * - 固定在屏幕底部
  * - 5个主要导航项
@@ -22,35 +23,38 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const { account } = useWallet();
 
+  const tNav = useTranslations("nav");
+  const tPrediction = useTranslations("prediction");
+
   const navItems = [
     {
       icon: Home,
-      label: "首页",
+      label: tNav("home"),
       href: "/",
       color: "blue",
     },
     {
       icon: TrendingUp,
-      label: "热门",
+      label: tNav("trending"),
       href: "/trending",
       color: "purple",
     },
     {
       icon: PlusCircle,
-      label: "创建",
+      label: tPrediction("createPrediction"),
       href: "/prediction/new",
       color: "pink",
       special: true, // 特殊样式
     },
     {
       icon: MessageSquare,
-      label: "讨论",
+      label: tNav("forum"),
       href: "/forum",
       color: "green",
     },
     {
       icon: User,
-      label: "我的",
+      label: tNav("profile"),
       href: account ? `/user/${account}` : "/login",
       color: "orange",
     },
@@ -61,7 +65,8 @@ export default function MobileBottomNav() {
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const isActive =
+            pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
 
           // 特殊样式（创建按钮）
           if (item.special) {
@@ -77,9 +82,7 @@ export default function MobileBottomNav() {
                 >
                   <Icon className="w-7 h-7 text-white" />
                 </motion.div>
-                <span className="text-[10px] font-medium text-gray-600 mt-1">
-                  {item.label}
-                </span>
+                <span className="text-[10px] font-medium text-gray-600 mt-1">{item.label}</span>
               </Link>
             );
           }
@@ -93,16 +96,12 @@ export default function MobileBottomNav() {
               <motion.div
                 whileTap={{ scale: 0.9 }}
                 className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-colors ${
-                  isActive
-                    ? `bg-${item.color}-50`
-                    : "hover:bg-gray-50"
+                  isActive ? `bg-${item.color}-50` : "hover:bg-gray-50"
                 }`}
               >
                 <Icon
                   className={`w-6 h-6 transition-colors ${
-                    isActive
-                      ? `text-${item.color}-600`
-                      : "text-gray-500 group-hover:text-gray-700"
+                    isActive ? `text-${item.color}-600` : "text-gray-500 group-hover:text-gray-700"
                   }`}
                 />
               </motion.div>
@@ -118,9 +117,7 @@ export default function MobileBottomNav() {
 
               <span
                 className={`text-[10px] font-medium mt-0.5 transition-colors ${
-                  isActive
-                    ? `text-${item.color}-600`
-                    : "text-gray-500 group-hover:text-gray-700"
+                  isActive ? `text-${item.color}-600` : "text-gray-500 group-hover:text-gray-700"
                 }`}
               >
                 {item.label}
@@ -135,4 +132,3 @@ export default function MobileBottomNav() {
     </nav>
   );
 }
-

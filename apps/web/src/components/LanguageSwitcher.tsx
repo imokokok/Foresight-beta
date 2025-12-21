@@ -6,6 +6,7 @@ import { Globe } from "lucide-react";
 const languages = [
   { code: "zh-CN", name: "简体中文", flag: "🇨🇳" },
   { code: "en", name: "English", flag: "🇺🇸" },
+  { code: "es", name: "Español", flag: "🇪🇸" },
 ] as const;
 
 export default function LanguageSwitcher() {
@@ -35,14 +36,9 @@ export default function LanguageSwitcher() {
     setCurrentLang(langCode);
     setIsOpen(false);
 
-    // 保存语言偏好到 localStorage
     localStorage.setItem("preferred-language", langCode);
 
-    // 触发自定义事件通知其他组件语言已切换
     window.dispatchEvent(new CustomEvent("languagechange", { detail: { locale: langCode } }));
-
-    // 刷新页面以应用语言变化
-    window.location.reload();
   };
 
   const currentLanguage = languages.find((l) => l.code === currentLang) || languages[0];

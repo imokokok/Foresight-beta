@@ -7,6 +7,7 @@ import { fetchUsernamesByAddresses } from "@/lib/userProfiles";
 import { MessageSquare, Sparkles, Loader2, Smile, Pin } from "lucide-react";
 import ForumSection from "@/components/ForumSection";
 import EmptyState from "@/components/EmptyState";
+import { useTranslations } from "@/lib/i18n";
 
 interface ChatPanelProps {
   eventId: number;
@@ -42,6 +43,7 @@ export default function ChatPanel({
     requestWalletPermissions,
     multisigSign,
   } = useWallet();
+  const tChat = useTranslations("chat");
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
   const [forumThreads, setForumThreads] = useState<any[]>([]);
   const [forumMessages, setForumMessages] = useState<ChatMessageView[]>([]);
@@ -57,7 +59,11 @@ export default function ChatPanel({
     return nameMap[key] || formatAddress(addr);
   };
 
-  const quickPrompts = ["这条预测的依据是什么？", "有没有最新进展？", "我认为概率更高的理由是…"];
+  const quickPrompts = [
+    tChat("quickPrompt.reason"),
+    tChat("quickPrompt.update"),
+    tChat("quickPrompt.opinion"),
+  ];
 
   useEffect(() => {
     let channel: any = null;
@@ -258,14 +264,14 @@ export default function ChatPanel({
 
   const roomLabel = React.useMemo(() => {
     const t = String(roomTitle || "").trim();
-    if (!t) return "聊天室";
-    return `聊天室 · ${t}`;
-  }, [roomTitle]);
+    if (!t) return tChat("header.title");
+    return tChat("header.withTopic").replace("{title}", t);
+  }, [roomTitle, tChat]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
     if (!account) {
-      setError("请先连接钱包后再发送消息");
+      setError(tChat("errors.walletRequired"));
       return;
     }
     setSending(true);
@@ -286,7 +292,7 @@ export default function ChatPanel({
       }
       setInput("");
     } catch (e: any) {
-      setError(e?.message || "发送失败");
+      setError(e?.message || tChat("errors.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -361,20 +367,26 @@ export default function ChatPanel({
             <Sparkles className="w-4 h-4 text-white/90" />
           </div>
           <div className="text-xs font-medium bg-white/20 text-white px-2 py-1 rounded-lg border border-white/20 relative z-10">
-            {account ? `你：${displayName(account)}` : "未连接钱包"}
+            {account
+              ? tChat("header.youLabel").replace("{name}", displayName(account))
+              : tChat("header.walletDisconnected")}
           </div>
         </div>
       )}
 
       <div className="px-4 py-2 bg-white/10 border-b border-white/20 flex items-center gap-2 text-xs text-white">
-        <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">公告</span>
+        <span className="px-2 py-0.5 rounded-full bg-white/20 text-white">
+          {tChat("announcement.badge")}
+        </span>
         <div className="flex-1 truncate">
           {forumThreads.slice(0, 2).map((t) => (
             <span key={t.id} className="mr-3 opacity-90">
               {String(t.title || "").slice(0, 40)}
             </span>
           ))}
-          {forumThreads.length === 0 && <span className="opacity-75">暂无公告</span>}
+          {forumThreads.length === 0 && (
+            <span className="opacity-75">{tChat("announcement.empty")}</span>
+          )}
         </div>
       </div>
 
@@ -393,17 +405,17 @@ export default function ChatPanel({
         {mergedMessages.length === 0 && (
           <EmptyState
             icon={MessageSquare}
-            title="暂无消息"
-            description="这里还没有讨论内容。快来发表你的第一条见解，开启精彩对话吧！"
+            title={tChat("empty.title")}
+            description={tChat("empty.description")}
             action={
               account
                 ? {
-                    label: "发送第一条消息",
+                    label: tChat("empty.actionLabel"),
                     onClick: () => {
                       const inputEl = document.querySelector("textarea") as HTMLTextAreaElement;
                       if (inputEl) {
                         inputEl.focus();
-                        setInput("你好！👋 很高兴加入讨论");
+                        setInput(tChat("empty.defaultInput"));
                       }
                     },
                   }
@@ -461,7 +473,9 @@ export default function ChatPanel({
       <div className="p-3 border-t border-white/30 bg-white/40 backdrop-blur-md relative pb-[env(safe-area-inset-bottom)] text-slate-800">
         {!account ? (
           <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-700 font-medium">发送消息需连接钱包</div>
+            <div className="text-sm text-slate-700 font-medium">
+              {tChat("input.walletRequired")}
+            </div>
             <Button
               size="sm"
               variant="cta"
@@ -472,7 +486,7 @@ export default function ChatPanel({
                 await multisigSign();
               }}
             >
-              连接并签名
+              {tChat("input.connectAndSign")}
             </Button>
           </div>
         ) : (
@@ -502,7 +516,7 @@ export default function ChatPanel({
                       sendMessage();
                     }
                   }}
-                  placeholder="输入消息，按 Enter 发送，Shift+Enter 换行"
+                  placeholder={tChat("input.placeholder")}
                   rows={2}
                   className="input-base w-full resize-none px-3 py-2 bg-white/90 text-slate-900 placeholder:text-slate-400"
                 />
@@ -512,7 +526,7 @@ export default function ChatPanel({
                     type="button"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100/50 text-gray-400 hover:text-indigo-600 transition-colors"
                     onClick={() => setShowEmojis((v) => !v)}
-                    aria-label="选择表情"
+                    aria-label={tChat("input.toggleEmojisAria")}
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
@@ -542,10 +556,10 @@ export default function ChatPanel({
                 {sending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    发送中…
+                    {tChat("input.sending")}
                   </span>
                 ) : (
-                  "发送"
+                  tChat("input.send")
                 )}
               </Button>
             </div>
