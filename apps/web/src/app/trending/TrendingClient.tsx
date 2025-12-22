@@ -1638,7 +1638,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
   }, [visibleEvents, accountNorm, queryClient]);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 overflow-hidden text-gray-900">
+    <div className="relative min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 overflow-x-hidden text-gray-900">
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ease-out ${
@@ -1888,7 +1888,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
               </button>
             </div>
 
-            <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4">
               {categories.map((category) => {
                 const isActive = String(activeCategory || "") === category.name;
                 return (
