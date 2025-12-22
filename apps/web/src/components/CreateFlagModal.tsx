@@ -155,7 +155,7 @@ export default function CreateFlagModal({
 
     setTitle(t);
     setDesc(d);
-  }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc]);
+  }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc, tFlags]);
 
   const handleSubmit = async () => {
     if (!user && !account) {

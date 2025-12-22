@@ -15,59 +15,57 @@ describe.skip("Rate Limiting", () => {
   });
 
   describe("checkRateLimit", () => {
-    it("should allow requests within limit", () => {
+    it("should allow requests within limit", async () => {
       const identifier = "test-user-1";
-      const config = { limit: 5, windowMs: 60000 };
+      const config = { limit: 5, interval: 60000 };
 
       // 前5次请求应该都成功
       for (let i = 0; i < 5; i++) {
-        const result = checkRateLimit(identifier, config);
+        const result = await checkRateLimit(identifier, config);
         expect(result.success).toBe(true);
-        expect(result.limited).toBe(false);
         expect(result.remaining).toBe(5 - i - 1);
       }
     });
 
-    it("should block requests exceeding limit", () => {
+    it("should block requests exceeding limit", async () => {
       const identifier = "test-user-2";
-      const config = { limit: 3, windowMs: 60000 };
+      const config = { limit: 3, interval: 60000 };
 
       // 前3次成功
       for (let i = 0; i < 3; i++) {
-        checkRateLimit(identifier, config);
+        await checkRateLimit(identifier, config);
       }
 
       // 第4次应该被限流
-      const result = checkRateLimit(identifier, config);
+      const result = await checkRateLimit(identifier, config);
       expect(result.success).toBe(false);
-      expect(result.limited).toBe(true);
       expect(result.remaining).toBe(0);
     });
 
     it("should reset after window expires", async () => {
       const identifier = "test-user-3";
-      const config = { limit: 2, windowMs: 100 }; // 100ms 窗口
+      const config = { limit: 2, interval: 100 }; // 100ms 窗口
 
       // 用完限额
-      checkRateLimit(identifier, config);
-      checkRateLimit(identifier, config);
+      await checkRateLimit(identifier, config);
+      await checkRateLimit(identifier, config);
 
-      const blocked = checkRateLimit(identifier, config);
+      const blocked = await checkRateLimit(identifier, config);
       expect(blocked.success).toBe(false);
 
       // 等待窗口过期
       await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const result = checkRateLimit(identifier, config);
+      const result = await checkRateLimit(identifier, config);
       expect(result.success).toBe(true);
       expect(result.remaining).toBe(1);
     });
 
-    it("should track different identifiers separately", () => {
-      const config = { limit: 2, windowMs: 60000 };
+    it("should track different identifiers separately", async () => {
+      const config = { limit: 2, interval: 60000 };
 
-      const user1 = checkRateLimit("user-1", config);
-      const user2 = checkRateLimit("user-2", config);
+      const user1 = await checkRateLimit("user-1", config);
+      const user2 = await checkRateLimit("user-2", config);
 
       expect(user1.success).toBe(true);
       expect(user2.success).toBe(true);
@@ -111,21 +109,21 @@ describe.skip("Rate Limiting", () => {
     it("should have correct strict config", () => {
       expect(RateLimits.strict).toEqual({
         limit: 5,
-        windowMs: 60000,
+        interval: 60000,
       });
     });
 
     it("should have correct moderate config", () => {
       expect(RateLimits.moderate).toEqual({
         limit: 20,
-        windowMs: 60000,
+        interval: 60000,
       });
     });
 
     it("should have correct relaxed config", () => {
       expect(RateLimits.relaxed).toEqual({
-        limit: 100,
-        windowMs: 60000,
+        limit: 60,
+        interval: 60000,
       });
     });
   });

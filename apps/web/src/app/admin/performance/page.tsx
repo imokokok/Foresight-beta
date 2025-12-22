@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Clock, Zap, BarChart3, RefreshCw } from "lucide-react";
 
@@ -39,7 +39,7 @@ function PerformanceDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/analytics/vitals?days=${days}`);
@@ -52,11 +52,11 @@ function PerformanceDashboardContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days]);
 
   useEffect(() => {
     fetchStats();
-  }, [days]);
+  }, [fetchStats]);
 
   const metrics = [
     {

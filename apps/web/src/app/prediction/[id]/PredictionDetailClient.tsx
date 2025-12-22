@@ -250,7 +250,7 @@ export default function PredictionDetailClient() {
     const timer = setInterval(fetchDepth, 2000);
     fetchDepth();
     return () => clearInterval(timer);
-  }, [market, tradeOutcome]);
+  }, [market, tradeOutcome, params.id]);
 
   // Effects: Poll User Orders
   useEffect(() => {
@@ -275,7 +275,7 @@ export default function PredictionDetailClient() {
     fetchOrders();
     const timer = setInterval(fetchOrders, 5000);
     return () => clearInterval(timer);
-  }, [market, account]);
+  }, [market, account, params.id]);
 
   // Actions
   const handleFollow = async () => {

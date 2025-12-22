@@ -124,7 +124,7 @@ export default function AdminCreatePredictionPage() {
         console.error("Failed to load draft", e);
       }
     }
-  }, []);
+  }, [tTrendingAdmin]);
 
   // 1. 无感知自动保存
   useEffect(() => {

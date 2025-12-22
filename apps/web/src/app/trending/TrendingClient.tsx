@@ -293,18 +293,17 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     fetchCategoryCounts();
   }, []);
 
-  // 关注/取消关注事件（持久化到后端）
-  const toggleFollow = async (eventIndex: number, event: React.MouseEvent) => {
+  const toggleFollow = async (predictionId: number, event: React.MouseEvent) => {
     if (!accountNorm) {
       // 如果用户未连接钱包，显示登录提示弹窗
       setShowLoginModal(true);
       return;
     }
 
-    const predictionId = sortedEvents[eventIndex]?.id;
-    if (!predictionId) return;
+    if (!Number.isFinite(Number(predictionId))) return;
 
-    const wasFollowing = followedEvents.has(Number(predictionId));
+    const normalizedId = Number(predictionId);
+    const wasFollowing = followedEvents.has(normalizedId);
 
     createSmartClickEffect(event);
     createHeartParticles(event.currentTarget as HTMLElement, wasFollowing);
@@ -312,11 +311,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     // 乐观更新本地状态（按事件ID而非索引）
     setFollowedEvents((prev) => {
       const next = new Set(prev);
-      const pid = Number(predictionId);
-      if (next.has(pid)) {
-        next.delete(pid);
+      if (next.has(normalizedId)) {
+        next.delete(normalizedId);
       } else {
-        next.add(pid);
+        next.add(normalizedId);
       }
       return next;
     });
@@ -341,9 +339,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
     try {
       if (wasFollowing) {
-        await unfollowPrediction(Number(predictionId), accountNorm);
+        await unfollowPrediction(normalizedId, accountNorm);
       } else {
-        await followPrediction(Number(predictionId), accountNorm);
+        await followPrediction(normalizedId, accountNorm);
       }
     } catch (err) {
       console.error("关注/取消关注失败:", err);
@@ -354,11 +352,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       // 回滚本地状态（按事件ID回滚）
       setFollowedEvents((prev) => {
         const rollback = new Set(prev);
-        const pid = Number(predictionId);
         if (wasFollowing) {
-          rollback.add(pid);
+          rollback.add(normalizedId);
         } else {
-          rollback.delete(pid);
+          rollback.delete(normalizedId);
         }
         return rollback;
       });
@@ -1355,6 +1352,11 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     return events;
   }, [displayEvents, filters]);
 
+  const visibleEvents = useMemo(
+    () => sortedEvents.slice(0, Math.max(0, displayCount)),
+    [sortedEvents, displayCount]
+  );
+
   const bestEvent = useMemo(() => {
     if (sortedEvents.length > 0) return sortedEvents[0];
     return null;
@@ -1532,10 +1534,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
 
   useEffect(() => {
     let windowIds: number[] = [];
-    windowIds = sortedEvents
-      .slice(0, Math.max(0, displayCount))
-      .map((e) => Number(e?.id))
-      .filter(Number.isFinite) as number[];
+    windowIds = visibleEvents.map((e) => Number(e?.id)).filter(Number.isFinite) as number[];
     const ids = Array.from(new Set(windowIds));
     if (ids.length === 0) return;
     if (!supabase || typeof (supabase as any).channel !== "function") {
@@ -1621,7 +1620,6 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       )
       .subscribe();
 
-    // 清理函数
     return () => {
       isSubscribed = false;
 
@@ -1637,7 +1635,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
         }
       }
     };
-  }, [sortedEvents, displayCount, accountNorm, queryClient]);
+  }, [visibleEvents, accountNorm, queryClient]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 overflow-hidden text-gray-900">
@@ -2012,11 +2010,13 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {sortedEvents.slice(0, displayCount).map((product, i) => {
-                    const globalIndex = i;
+                  {visibleEvents.map((product) => {
+                    const eventId = Number(product.id);
+                    const isValidId = Number.isFinite(eventId);
+                    const isFollowed = isValidId && followedEvents.has(eventId);
                     return (
                       <motion.div
-                        key={sortedEvents[globalIndex]?.id || globalIndex}
+                        key={isValidId ? eventId : product.title}
                         className="glass-card glass-card-hover rounded-2xl overflow-hidden relative transform-gpu flex flex-col h-full min-h-[250px] group"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
@@ -2024,23 +2024,18 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                           createCategoryParticlesAtCardClick(e, product.tag);
                         }}
                       >
-                        {/* 关注按钮 */}
-                        {Number.isFinite(Number(sortedEvents[globalIndex]?.id)) && (
+                        {isValidId && (
                           <motion.button
-                            data-event-index={globalIndex}
+                            data-event-index={eventId}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              toggleFollow(globalIndex, e);
+                              toggleFollow(eventId, e);
                             }}
                             className="absolute top-3 left-3 z-10 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            animate={
-                              followedEvents.has(Number(sortedEvents[globalIndex]?.id))
-                                ? "liked"
-                                : "unliked"
-                            }
+                            animate={isFollowed ? "liked" : "unliked"}
                             variants={{
                               liked: {
                                 backgroundColor: "rgba(239, 68, 68, 0.1)",
@@ -2053,11 +2048,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                             }}
                           >
                             <motion.div
-                              animate={
-                                followedEvents.has(Number(sortedEvents[globalIndex]?.id))
-                                  ? "liked"
-                                  : "unliked"
-                              }
+                              animate={isFollowed ? "liked" : "unliked"}
                               variants={{
                                 liked: {
                                   scale: [1, 1.2, 1],
@@ -2074,22 +2065,20 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                             >
                               <Heart
                                 className={`w-5 h-5 ${
-                                  followedEvents.has(Number(sortedEvents[globalIndex]?.id))
-                                    ? "fill-red-500 text-red-500"
-                                    : "text-gray-500"
+                                  isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"
                                 }`}
                               />
                             </motion.div>
                           </motion.button>
                         )}
 
-                        {isAdmin && Number.isFinite(Number(sortedEvents[globalIndex]?.id)) && (
+                        {isAdmin && isValidId && (
                           <div className="absolute top-3 right-3 z-10 flex gap-2">
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                openEdit(sortedEvents[globalIndex]);
+                                openEdit(product);
                               }}
                               className="px-2 py-1 rounded-full bg-white/90 border border-gray-300 text-gray-800 shadow"
                               aria-label={tTrendingAdmin("editAria")}
@@ -2100,10 +2089,10 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                deleteEvent(Number(sortedEvents[globalIndex]?.id));
+                                deleteEvent(eventId);
                               }}
                               className="px-2 py-1 rounded-full bg-red-600 text-white shadow disabled:opacity-50"
-                              disabled={deleteBusyId === Number(sortedEvents[globalIndex]?.id)}
+                              disabled={deleteBusyId === eventId}
                               aria-label={tTrendingAdmin("deleteAria")}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -2111,9 +2100,8 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                           </div>
                         )}
 
-                        {/* 产品图片：仅在存在有效 id 时可点击跳转 */}
-                        {Number.isFinite(Number(sortedEvents[globalIndex]?.id)) ? (
-                          <Link href={`/prediction/${sortedEvents[globalIndex]?.id}`}>
+                        {isValidId ? (
+                          <Link href={`/prediction/${eventId}`}>
                             <div className="relative h-40 overflow-hidden bg-gray-100">
                               <img
                                 src={product.image}
@@ -2164,44 +2152,36 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
                               {tTrending("card.volumePrefix")}
-                              {Number(sortedEvents[globalIndex]?.stats?.totalAmount || 0).toFixed(
-                                2
-                              )}
+                              {Number(product?.stats?.totalAmount || 0).toFixed(2)}
                             </span>
                             <div className="flex items-center text-gray-500 text-[10px] font-medium">
                               <Users className="w-3 h-3 mr-1" />
-                              <span>
-                                {Number(sortedEvents[globalIndex]?.stats?.participantCount || 0)}
-                              </span>
+                              <span>{Number(product?.stats?.participantCount || 0)}</span>
                             </div>
                             <div className="flex items-center text-gray-500 text-[10px] font-medium">
                               <Heart className="w-3 h-3 mr-1" />
-                              <span>{sortedEvents[globalIndex]?.followers_count || 0}</span>
+                              <span>{product.followers_count || 0}</span>
                             </div>
                           </div>
-                          {/* 多元选项 chip 展示（最多 6 个） */}
-                          {Array.isArray(sortedEvents[globalIndex]?.outcomes) &&
-                            sortedEvents[globalIndex]?.outcomes.length > 0 && (
-                              <div className="mt-auto pt-2 border-t border-gray-100 flex flex-wrap gap-1">
-                                {sortedEvents[globalIndex]?.outcomes
-                                  .slice(0, 4)
-                                  .map((o: any, oi: number) => (
-                                    <span
-                                      key={oi}
-                                      className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-600 border border-gray-200/60"
-                                    >
-                                      {String(
-                                        o?.label || `${tTrending("card.optionFallbackPrefix")}${oi}`
-                                      )}
-                                    </span>
-                                  ))}
-                                {sortedEvents[globalIndex]?.outcomes.length > 4 && (
-                                  <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-400 border border-gray-200/60">
-                                    +{sortedEvents[globalIndex]?.outcomes.length - 4}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                          {Array.isArray(product.outcomes) && product.outcomes.length > 0 && (
+                            <div className="mt-auto pt-2 border-t border-gray-100 flex flex-wrap gap-1">
+                              {product.outcomes.slice(0, 4).map((o: any, oi: number) => (
+                                <span
+                                  key={oi}
+                                  className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-600 border border-gray-200/60"
+                                >
+                                  {String(
+                                    o?.label || `${tTrending("card.optionFallbackPrefix")}${oi}`
+                                  )}
+                                </span>
+                              ))}
+                              {product.outcomes.length > 4 && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-400 border border-gray-200/60">
+                                  +{product.outcomes.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     );
