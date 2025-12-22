@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       .toLowerCase();
     const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
 
-    const sessAddr = getSessionAddress(req);
+    const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
       return NextResponse.json(
         { success: false, message: "未认证或会话地址不匹配" },

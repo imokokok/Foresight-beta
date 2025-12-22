@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { verifyToken, decodeToken } from "./jwt";
 
 export type OtpRecord = {
   email: string;
@@ -26,14 +27,27 @@ export function normalizeAddress(addr: string) {
   return a.startsWith("0x") ? a.toLowerCase() : a;
 }
 
-export function getSessionAddress(req: NextRequest) {
+export async function getSessionAddress(req: NextRequest) {
   const raw = req.cookies.get("fs_session")?.value || "";
+  if (!raw) return "";
+
   try {
     const obj = JSON.parse(raw);
-    return normalizeAddress(String(obj?.address || ""));
-  } catch {
-    return "";
+    const addr = String((obj as any)?.address || "");
+    if (addr) return normalizeAddress(addr);
+  } catch {}
+
+  const payload = await verifyToken(raw);
+  if (payload?.address) {
+    return normalizeAddress(String(payload.address));
   }
+
+  const decoded = decodeToken(raw);
+  if (decoded?.address) {
+    return normalizeAddress(String(decoded.address));
+  }
+
+  return "";
 }
 
 export function getEmailOtpShared() {

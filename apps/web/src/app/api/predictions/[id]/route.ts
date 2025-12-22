@@ -204,7 +204,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
     const body = await request.json().catch(() => ({}));
-    const sessAddr = getSessionAddress(request);
+    const sessAddr = await getSessionAddress(request);
     const addr = normalizeAddress(String(sessAddr || body.walletAddress || ""));
     if (!/^0x[a-f0-9]{40}$/.test(addr)) {
       return NextResponse.json(
@@ -278,7 +278,7 @@ export async function DELETE(
         { status: 400 }
       );
     }
-    const sessAddr = getSessionAddress(request);
+    const sessAddr = await getSessionAddress(request);
     const addr = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(addr)) {
       return NextResponse.json(

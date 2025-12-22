@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     // 解析请求体中的JSON数据
     const body = await request.json();
 
-    const sessAddr = getSessionAddress(request);
+    const sessAddr = await getSessionAddress(request);
     let walletAddress: string = normalizeAddress(String(body.walletAddress || ""));
     if (!walletAddress && sessAddr) walletAddress = normalizeAddress(sessAddr);
 

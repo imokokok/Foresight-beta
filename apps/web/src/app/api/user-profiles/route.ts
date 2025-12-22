@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!address) {
-      const sess = getSessionAddress(req);
+      const sess = await getSessionAddress(req);
       address = normalizeAddress(String(sess || ""));
     }
     if (!address)
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     const email = String(payload?.email || "").trim();
     const remember = !!payload?.rememberMe;
 
-    const sessAddr = getSessionAddress(req);
+    const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
       return NextResponse.json(
         { success: false, message: "未认证或会话地址不匹配" },
