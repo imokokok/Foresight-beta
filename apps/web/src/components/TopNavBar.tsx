@@ -11,7 +11,7 @@ import { useTranslations } from "@/lib/i18n";
 import LazyImage from "@/components/ui/LazyImage";
 import MobileMenu from "./MobileMenu";
 
-export default function TopNavBar() {
+function useTopNavBarLogic() {
   const {
     account,
     isConnecting,
@@ -312,6 +312,98 @@ export default function TopNavBar() {
       </div>
     </div>
   ) : null;
+
+  return {
+    account,
+    isConnecting,
+    connectError,
+    hasProvider,
+    chainId,
+    balanceEth,
+    balanceLoading,
+    refreshBalance,
+    connectWallet,
+    disconnectWallet,
+    formatAddress,
+    availableWallets,
+    currentWalletType,
+    switchNetwork,
+    user,
+    authLoading,
+    signOut,
+    userProfile,
+    tWallet,
+    tAuth,
+    tCommon,
+    mounted,
+    menuOpen,
+    setMenuOpen,
+    copied,
+    showBalance,
+    setShowBalance,
+    walletSelectorOpen,
+    setWalletSelectorOpen,
+    walletModalOpen,
+    setWalletModalOpen,
+    menuRef,
+    walletSelectorRef,
+    avatarRef,
+    menuContentRef,
+    walletButtonRef,
+    menuPos,
+    walletSelectorPos,
+    handleConnectWallet,
+    handleWalletSelectorToggle,
+    handleDisconnectWallet,
+    copyAddress,
+    networkName,
+    walletTypeLabel,
+    isSepolia,
+    explorerBase,
+    updateNetworkInfo,
+    openOnExplorer,
+    switchToSepolia,
+    modal,
+  };
+}
+
+export default function TopNavBar() {
+  const {
+    account,
+    user,
+    userProfile,
+    tAuth,
+    tWallet,
+    tCommon,
+    formatAddress,
+    currentWalletType,
+    chainId,
+    balanceEth,
+    balanceLoading,
+    menuRef,
+    avatarRef,
+    menuContentRef,
+    menuOpen,
+    setMenuOpen,
+    mounted,
+    menuPos,
+    showBalance,
+    setShowBalance,
+    updateNetworkInfo,
+    copyAddress,
+    copied,
+    openOnExplorer,
+    isSepolia,
+    switchToSepolia,
+    handleDisconnectWallet,
+    signOut,
+    disconnectWallet,
+    walletModalOpen,
+    setWalletModalOpen,
+    modal,
+    networkName,
+    walletTypeLabel,
+  } = useTopNavBarLogic();
 
   return (
     <>
