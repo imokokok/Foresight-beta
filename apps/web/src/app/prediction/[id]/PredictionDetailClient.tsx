@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
@@ -162,6 +162,24 @@ export default function PredictionDetailClient() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
 
+  const refreshUserOrders = useCallback(async () => {
+    if (!market || !account) return;
+    try {
+      const base = "/api";
+      const mk = `${market.chain_id}:${params.id}`;
+      const q = `contract=${market.market}&chainId=${
+        market.chain_id
+      }&marketKey=${encodeURIComponent(mk)}&maker=${account}&status=open`;
+      const res = await fetch(`${base}/orderbook/orders?${q}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setOpenOrders(json.data);
+      }
+    } catch (e) {
+      console.error("Refresh orders failed", e);
+    }
+  }, [market, account, params.id]);
+
   useEffect(() => {
     if (!params.id) return;
     let cancelled = false;
@@ -255,27 +273,10 @@ export default function PredictionDetailClient() {
   // Effects: Poll User Orders
   useEffect(() => {
     if (!market || !account) return;
-    const fetchOrders = async () => {
-      try {
-        const base = "/api";
-        const mk = `${market.chain_id}:${params.id}`;
-        const q = `contract=${market.market}&chainId=${
-          market.chain_id
-        }&marketKey=${encodeURIComponent(mk)}&maker=${account}&status=open`;
-        const res = await fetch(`${base}/orderbook/orders?${q}`);
-        const json = await res.json();
-        if (json.success && json.data) {
-          setOpenOrders(json.data);
-        }
-      } catch (e) {
-        console.error("Fetch orders failed", e);
-      }
-    };
-
-    fetchOrders();
-    const timer = setInterval(fetchOrders, 5000);
+    refreshUserOrders();
+    const timer = setInterval(refreshUserOrders, 5000);
     return () => clearInterval(timer);
-  }, [market, account, params.id]);
+  }, [market, account, params.id, refreshUserOrders]);
 
   // Actions
   const handleFollow = async () => {
@@ -569,7 +570,7 @@ export default function PredictionDetailClient() {
       if (json.success) {
         setOrderMsg("下单成功！");
         setAmountInput("");
-        // Refresh orders
+        await refreshUserOrders();
       } else {
         throw new Error(json.message || "下单失败");
       }

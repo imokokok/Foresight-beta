@@ -15,8 +15,13 @@ export const QueryKeys = {
   userPortfolio: (address: string) => ["userPortfolio", address] as const,
   userFollows: (address: string) => ["userFollows", address] as const,
 
-  orders: (params: { chainId?: number; contract?: string; maker?: string; status?: string }) =>
-    ["orders", params] as const,
+  orders: (params: {
+    chainId?: number;
+    contract?: string;
+    maker?: string;
+    status?: string;
+    marketKey?: string;
+  }) => ["orders", params] as const,
   orderDepth: (contract: string, chainId: number, outcomeIndex: number) =>
     ["orderDepth", contract, chainId, outcomeIndex] as const,
 
@@ -116,12 +121,14 @@ export function useOrders(params: {
   contract?: string;
   maker?: string;
   status?: string;
+  marketKey?: string;
 }) {
   const query = new URLSearchParams();
   if (params.chainId) query.set("chainId", params.chainId.toString());
   if (params.contract) query.set("contract", params.contract);
   if (params.maker) query.set("maker", params.maker);
   if (params.status) query.set("status", params.status);
+  if (params.marketKey) query.set("marketKey", params.marketKey);
 
   return useQuery({
     queryKey: QueryKeys.orders(params),
