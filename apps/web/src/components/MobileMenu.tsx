@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
+import { useTranslations } from "@/lib/i18n";
 
 interface MobileMenuProps {
   className?: string;
@@ -36,6 +37,8 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { account, disconnectWallet } = useWallet();
+  const tNav = useTranslations("nav");
+  const tMobileNav = useTranslations("mobileNav");
 
   // 路由变化时自动关闭菜单
   useEffect(() => {
@@ -56,12 +59,12 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
   }, [isOpen]);
 
   const menuItems = [
-    { icon: Home, label: "首页", href: "/" },
-    { icon: TrendingUp, label: "热门预测", href: "/trending" },
-    { icon: Search, label: "搜索", href: "/search" },
-    { icon: MessageSquare, label: "讨论", href: "/forum" },
-    { icon: User, label: "我的", href: account ? `/user/${account}` : "/login" },
-    { icon: Settings, label: "设置", href: "/settings" },
+    { icon: Home, label: tNav("home"), href: "/" },
+    { icon: TrendingUp, label: tNav("trending"), href: "/trending" },
+    { icon: Search, label: tMobileNav("items.search"), href: "/search" },
+    { icon: MessageSquare, label: tMobileNav("items.forum"), href: "/forum" },
+    { icon: User, label: tMobileNav("items.me"), href: account ? `/user/${account}` : "/login" },
+    { icon: Settings, label: tMobileNav("items.settings"), href: "/settings" },
   ];
 
   return (
@@ -70,7 +73,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
       <button
         onClick={() => setIsOpen(true)}
         className={`lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors ${className}`}
-        aria-label="打开菜单"
+        aria-label={tMobileNav("menuOpen")}
       >
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
@@ -105,13 +108,13 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                   </div>
                   <div>
                     <h2 className="font-bold text-gray-900">Foresight</h2>
-                    <p className="text-xs text-gray-500">预测市场</p>
+                    <p className="text-xs text-gray-500">{tMobileNav("marketSubtitle")}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  aria-label="关闭菜单"
+                  aria-label={tMobileNav("menuClose")}
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
@@ -132,7 +135,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                       <p className="text-sm font-semibold text-gray-900 truncate">
                         {account.slice(0, 6)}...{account.slice(-4)}
                       </p>
-                      <p className="text-xs text-gray-500">已连接钱包</p>
+                      <p className="text-xs text-gray-500">{tMobileNav("wallet.connected")}</p>
                     </div>
                   </div>
                 </div>
@@ -180,7 +183,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
                   >
                     <LogOut className="w-5 h-5" />
-                    <span>断开连接</span>
+                    <span>{tMobileNav("wallet.disconnect")}</span>
                   </button>
                 ) : (
                   <Link
@@ -188,7 +191,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors font-medium"
                   >
                     <User className="w-5 h-5" />
-                    <span>连接钱包</span>
+                    <span>{tMobileNav("wallet.connect")}</span>
                   </Link>
                 )}
                 <p className="text-xs text-gray-400 text-center mt-3">Version 1.0.0 Beta</p>

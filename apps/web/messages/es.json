@@ -19,7 +19,13 @@
     "userLevelDreamer": "Soñador nivel {level}",
     "mainNav": "Navegación principal",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "switchLanguage": "Cambiar idioma",
+    "openUserMenu": "Abrir menú de usuario",
+    "userMenu": "Menú de usuario",
+    "userAvatar": "Avatar de usuario"
   },
   "nav": {
     "home": "Inicio",
@@ -181,6 +187,24 @@
     "installMetaMaskExtension": "Instalar la extensión de MetaMask",
     "unknownNetwork": "Red desconocida"
   },
+  "mobileNav": {
+    "menuOpen": "Abrir menú",
+    "menuClose": "Cerrar menú",
+    "marketSubtitle": "Mercado de predicciones",
+    "items": {
+      "home": "Inicio",
+      "trending": "Predicciones en tendencia",
+      "search": "Buscar",
+      "forum": "Debate",
+      "me": "Yo",
+      "settings": "Ajustes"
+    },
+    "wallet": {
+      "connected": "Billetera conectada",
+      "disconnect": "Desconectar",
+      "connect": "Conectar billetera"
+    }
+  },
   "prediction": {
     "title": "Predicción",
     "createPrediction": "Crear predicción",
@@ -227,6 +251,19 @@
     "bestAsk": "Mejor demanda: {price}"
   },
   "market": {
+    "breadcrumbs": {
+      "home": "Inicio"
+    },
+    "header": {
+      "statusActive": "Activa",
+      "statusEnded": "Finalizada",
+      "totalVolume": "Volumen total",
+      "liquidity": "Liquidez (est.)",
+      "participants": "Participantes",
+      "deadline": "Fecha límite",
+      "follow": "Seguir",
+      "following": "Siguiendo"
+    },
     "tabs": {
       "desc": "Detalles del mercado",
       "rules": "Reglas de resolución",
@@ -249,6 +286,49 @@
     "chart": {
       "loading": "Cargando datos de mercado...",
       "outcomeFallback": "Resultado {index}"
+    }
+  },
+  "filters": {
+    "categories": {
+      "all": "Todo",
+      "crypto": "Cripto",
+      "sports": "Deportes",
+      "politics": "Política",
+      "tech": "Tecnología",
+      "entertainment": "Entretenimiento",
+      "weather": "Clima",
+      "business": "Negocios",
+      "more": "Más"
+    },
+    "sort": {
+      "trending": {
+        "label": "Tendencias primero",
+        "description": "Ordenar por atención y actividad"
+      },
+      "newest": {
+        "label": "Más recientes",
+        "description": "Ordenar por fecha de creación (más recientes primero)"
+      },
+      "ending": {
+        "label": "Por finalizar",
+        "description": "Ordenar por fecha límite (más cercana primero)"
+      },
+      "popular": {
+        "label": "Más seguidos",
+        "description": "Ordenar por número de seguidores"
+      }
+    },
+    "status": {
+      "all": "Todos los estados",
+      "active": "En curso",
+      "pending": "Pendiente",
+      "ended": "Finalizado"
+    },
+    "actions": {
+      "filter": "Filtrar",
+      "clear": "Limpiar",
+      "statusFilter": "Filtrar por estado",
+      "currentFilter": "Filtro actual:"
     }
   },
   "errors": {
@@ -289,6 +369,50 @@
     "clickToConnect": "Haz clic para conectar",
     "detectingWallets": "Detectando extensiones de billetera instaladas…",
     "switchToEmail": "También puedes cambiar a \"Inicio con correo\"."
+  },
+  "walletModal": {
+    "title": "Iniciar sesión en Foresight",
+    "subtitle": "Continúa con correo electrónico o billetera",
+    "steps": {
+      "connectWallet": "Conectar billetera",
+      "signIn": "Firmar para iniciar sesión",
+      "completeProfile": "Completar perfil"
+    },
+    "hints": {
+      "selectLoginMethod": "Elige inicio con correo o conecta una billetera",
+      "connectingWallet": "Conectando la billetera, confirma en tu aplicación",
+      "requestingPermissions": "Solicitando permisos de la billetera",
+      "signToLogin": "Firma en tu billetera para completar el inicio de sesión",
+      "completingMultisig": "Completando la confirmación de multifirma",
+      "completeProfileAndVerifyEmail": "Completa tu perfil y verifica tu correo electrónico",
+      "emailVerifiedSaveProfile": "Correo verificado, ahora puedes guardar tu perfil",
+      "walletBoundComplete": "Billetera vinculada, ya puedes usar Foresight"
+    },
+    "profile": {
+      "title": "Completar información de usuario",
+      "usernameLabel": "Nombre de usuario",
+      "usernamePlaceholder": "p. ej. alice_01",
+      "sendOtpWithValidity": "Enviar código (válido 15 minutos)",
+      "verifiedTag": "Verificado",
+      "verifyEmail": "Verificar correo",
+      "otpTip": "El código es válido por 15 minutos. Tras 3 fallos se bloqueará 1 hora.",
+      "rememberMe": "Recordarme",
+      "submit": "Guardar y continuar",
+      "later": "Más tarde",
+      "emailInvalid": "Formato de correo no válido, revisa e inténtalo de nuevo.",
+      "or": "o"
+    },
+    "devCodePreviewPrefix": "Código de verificación (dev): ",
+    "errors": {
+      "invalidWalletAddress": "Dirección de billetera no válida: debe empezar por 0x y tener 40 caracteres hexadecimales",
+      "usernameEmailRequired": "El nombre de usuario y el correo son obligatorios",
+      "usernameInvalid": "Nombre de usuario no válido: 3–20 caracteres, solo letras, números y guion bajo",
+      "emailFormatInvalid": "Formato de correo no válido: usa un correo estándar, por ejemplo name@example.com",
+      "emailNotVerified": "Primero verifica el código enviado a tu correo",
+      "submitFailed": "Error al enviar",
+      "otpSendFailed": "Error al enviar el código de verificación",
+      "otpVerifyFailed": "Error al verificar"
+    }
   },
   "search": {
     "placeholder": "Buscar predicciones, temas, usuarios...",

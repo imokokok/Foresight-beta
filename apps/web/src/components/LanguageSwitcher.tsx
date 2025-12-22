@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Globe } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 const languages = [
   { code: "zh-CN", name: "简体中文", flag: "🇨🇳" },
@@ -13,15 +14,14 @@ export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState<string>("zh-CN");
   const menuRef = useRef<HTMLDivElement>(null);
+  const tCommon = useTranslations("common");
 
   useEffect(() => {
-    // 从 localStorage 读取语言偏好
     const savedLang = localStorage.getItem("preferred-language");
     if (savedLang && languages.some((l) => l.code === savedLang)) {
       setCurrentLang(savedLang);
     }
 
-    // 点击外部关闭菜单
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -48,7 +48,7 @@ export default function LanguageSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl hover:bg-white transition-colors text-sm font-medium text-gray-700"
-        aria-label="切换语言"
+        aria-label={tCommon("switchLanguage")}
       >
         <Globe className="w-4 h-4" />
         <span>{currentLanguage.flag}</span>

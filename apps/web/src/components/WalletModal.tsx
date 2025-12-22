@@ -6,6 +6,7 @@ import { useAuthOptional } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Loader2 } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import InstallPromptModal from "./InstallPromptModal";
 
 type WalletStep =
@@ -34,6 +35,8 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
   } = useWallet();
   const auth = useAuthOptional();
   const userProfile = useUserProfileOptional();
+  const tWalletModal = useTranslations("walletModal");
+  const tLogin = useTranslations("login");
   const user = auth?.user ?? null;
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -192,7 +195,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       const res = await siweLogin();
       setSiweLoading(false);
       if (!res.success) {
-        console.error("签名登录失败:", res.error);
+        console.error("Sign-in with wallet failed:", res.error);
       } else {
         // 登录成功后刷新会话状态，确保 UI 及时响应
         if (auth?.refreshSession) {
@@ -221,7 +224,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       await multisigSign();
       setMultiLoading(false);
     } catch (error) {
-      console.error("连接钱包失败:", error);
+      console.error("Wallet connection failed:", error);
     } finally {
       setSelectedWallet(null);
     }
@@ -358,22 +361,22 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
       const errors: string[] = [];
       if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-        errors.push("钱包地址无效：需 0x 开头且 40 位十六进制");
+        errors.push(tWalletModal("errors.invalidWalletAddress"));
       }
       if (!username || !email) {
-        errors.push("用户名和邮箱为必填项");
+        errors.push(tWalletModal("errors.usernameEmailRequired"));
       }
       if (!(username.length >= 3 && username.length <= 20 && /^\w+$/.test(username))) {
-        errors.push("用户名不合规：3–20 位，仅允许字母、数字与下划线");
+        errors.push(tWalletModal("errors.usernameInvalid"));
       }
       if (!/.+@.+\..+/.test(email)) {
-        errors.push("邮箱格式不正确：需标准邮箱格式，例如 name@example.com");
+        errors.push(tWalletModal("errors.emailFormatInvalid"));
       }
       if (!emailVerified) {
-        errors.push("请先完成邮箱验证码验证");
+        errors.push(tWalletModal("errors.emailNotVerified"));
       }
       if (errors.length > 0) {
-        setProfileError(errors.join("；"));
+        setProfileError(errors.join(" ; "));
         return;
       }
 
@@ -384,7 +387,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       });
       const json = await resp.json();
       if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || "提交失败"));
+        setProfileError(String(json?.message || tWalletModal("errors.submitFailed")));
       } else {
         if (auth?.refreshSession) {
           await auth.refreshSession();
@@ -414,7 +417,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       });
       const json = await resp.json();
       if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || "发送验证码失败"));
+        setProfileError(String(json?.message || tWalletModal("errors.otpSendFailed")));
       } else {
         setOtpRequested(true);
         setEmailVerified(false);
@@ -444,7 +447,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
       });
       const json = await resp.json();
       if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || "验证失败"));
+        setProfileError(String(json?.message || tWalletModal("errors.otpVerifyFailed")));
       } else {
         setEmailVerified(true);
       }
@@ -455,21 +458,21 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  let stepHint = "选择邮箱登录或连接钱包";
+  let stepHint = tWalletModal("hints.selectLoginMethod");
   if (walletStep === "connecting") {
-    stepHint = "正在连接钱包，请在钱包中确认";
+    stepHint = tWalletModal("hints.connectingWallet");
   } else if (walletStep === "permissions") {
-    stepHint = "正在请求钱包权限";
+    stepHint = tWalletModal("hints.requestingPermissions");
   } else if (walletStep === "sign") {
-    stepHint = "请在钱包中签名完成登录";
+    stepHint = tWalletModal("hints.signToLogin");
   } else if (walletStep === "multisig") {
-    stepHint = "正在完成多签确认";
+    stepHint = tWalletModal("hints.completingMultisig");
   } else if (showProfileForm && !emailVerified) {
-    stepHint = "请完善资料并完成邮箱验证码验证";
+    stepHint = tWalletModal("hints.completeProfileAndVerifyEmail");
   } else if (showProfileForm && emailVerified) {
-    stepHint = "邮箱已验证，可以保存资料完成绑定";
+    stepHint = tWalletModal("hints.emailVerifiedSaveProfile");
   } else if (walletStep === "completed" || user) {
-    stepHint = "钱包绑定完成，可以开始使用 Foresight";
+    stepHint = tWalletModal("hints.walletBoundComplete");
   }
 
   const step1Active = walletStep === "connecting";
@@ -546,9 +549,9 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                    登录 Foresight
+                    {tWalletModal("title")}
                   </h2>
-                  <p className="text-sm text-gray-500">使用邮箱或选择钱包继续</p>
+                  <p className="text-sm text-gray-500">{tWalletModal("subtitle")}</p>
                 </div>
               </div>
               <motion.button
@@ -603,7 +606,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                           : "text-gray-400"
                     }`}
                   >
-                    连接钱包
+                    {tWalletModal("steps.connectWallet")}
                   </div>
                   <div
                     className={`flex-1 h-px mx-2 ${
@@ -640,7 +643,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                           : "text-gray-400"
                     }`}
                   >
-                    签名登录
+                    {tWalletModal("steps.signIn")}
                   </div>
                   <div
                     className={`flex-1 h-px mx-2 ${
@@ -677,7 +680,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                           : "text-gray-400"
                     }`}
                   >
-                    完善资料
+                    {tWalletModal("steps.completeProfile")}
                   </div>
                 </div>
               </div>
@@ -686,17 +689,21 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
 
             {showProfileForm && (
               <div className="relative p-6 space-y-4">
-                <h3 className="text-lg font-semibold">完善用户信息</h3>
+                <h3 className="text-lg font-semibold">{tWalletModal("profile.title")}</h3>
                 <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-900">用户名</label>
+                  <label className="block text-sm font-semibold text-gray-900">
+                    {tWalletModal("profile.usernameLabel")}
+                  </label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="例如: alice_01"
+                    placeholder={tWalletModal("profile.usernamePlaceholder")}
                     className="w-full rounded-xl border-2 border-purple-200 bg-white/95 px-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
                   />
-                  <label className="block text-sm font-semibold text-gray-900">邮箱</label>
+                  <label className="block text-sm font-semibold text-gray-900">
+                    {tLogin("emailLabel")}
+                  </label>
                   <div className="relative">
                     <Mail
                       className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-purple-500"
@@ -718,9 +725,13 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
                     >
                       {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      发送验证码（15分钟有效）
+                      {tWalletModal("profile.sendOtpWithValidity")}
                     </button>
-                    {emailVerified && <span className="text-sm text-green-600">已验证</span>}
+                    {emailVerified && (
+                      <span className="text-sm text-green-600">
+                        {tWalletModal("profile.verifiedTag")}
+                      </span>
+                    )}
                   </div>
                   {otpRequested && (
                     <div className="space-y-2">
@@ -735,7 +746,10 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                         placeholder="••••••"
                       />
                       {codePreview && (
-                        <div className="text-xs text-green-600">开发环境验证码：{codePreview}</div>
+                        <div className="text-xs text-green-600">
+                          {tWalletModal("devCodePreviewPrefix")}
+                          {codePreview}
+                        </div>
                       )}
                       <div className="flex items-center gap-2">
                         <button
@@ -743,12 +757,10 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                           disabled={otp.length !== 6 || emailLoading}
                           className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-white disabled:opacity-60"
                         >
-                          验证邮箱
+                          {tWalletModal("profile.verifyEmail")}
                         </button>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        验证码有效期 15 分钟，失败 3 次将锁定 1 小时。
-                      </div>
+                      <div className="text-xs text-gray-500">{tWalletModal("profile.otpTip")}</div>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -759,7 +771,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       onChange={(e) => setRememberMe(e.target.checked)}
                     />
                     <label htmlFor="remember-me" className="text-sm text-gray-700">
-                      记住我
+                      {tWalletModal("profile.rememberMe")}
                     </label>
                   </div>
                   {profileError && <div className="text-sm text-red-600">{profileError}</div>}
@@ -770,13 +782,13 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-white disabled:opacity-60"
                     >
                       {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                      保存并继续
+                      {tWalletModal("profile.submit")}
                     </button>
                     <button
                       onClick={onClose}
                       className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
                     >
-                      稍后再说
+                      {tWalletModal("profile.later")}
                     </button>
                   </div>
                 </div>
@@ -790,7 +802,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                       htmlFor="wallet-email"
                       className="block text-sm font-semibold text-gray-900"
                     >
-                      邮箱地址
+                      {tLogin("emailLabel")}
                     </label>
                     <div className="relative">
                       <Mail
@@ -802,20 +814,22 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                         type="email"
                         inputMode="email"
                         autoFocus
-                        aria-label="邮箱地址"
+                        aria-label={tLogin("emailLabel")}
                         aria-describedby="wallet-email-help"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@example.com"
+                        placeholder={tLogin("emailPlaceholder")}
                         className="w-full rounded-xl border-2 border-purple-200 bg-white/95 pl-10 pr-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400 shadow-sm hover:border-purple-300"
                         spellCheck={false}
                       />
                     </div>
                     <div id="wallet-email-help" className="text-xs text-gray-500">
-                      请输入有效邮箱地址以接收验证码或登录链接。
+                      {tLogin("emailContinueDescription")}
                     </div>
                     {!canRequest && email.length > 0 && (
-                      <div className="text-xs text-red-600">邮箱格式不正确，请检查后重试。</div>
+                      <div className="text-xs text-red-600">
+                        {tWalletModal("profile.emailInvalid")}
+                      </div>
                     )}
                     {auth?.error && <div className="text-sm text-red-600">{auth.error}</div>}
                     <div className="flex items-center gap-2">
@@ -829,21 +843,22 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                         ) : (
                           <Mail className="w-4 h-4" />
                         )}
-                        发送验证码
+                        {tLogin("sendOtp")}
                       </button>
                       <button
                         onClick={handleSendMagicLink}
                         disabled={!canRequest || emailLoading}
                         className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900 disabled:opacity-60"
                       >
-                        发送登录链接
+                        {tLogin("sendMagicLink")}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-gray-600">
-                      我们已向 <span className="font-medium">{email}</span> 发送邮件。
+                      {tLogin("otpDescriptionPrefix")} <span className="font-medium">{email}</span>
+                      {tLogin("otpDescriptionSuffix")}
                     </p>
                     <input
                       type="text"
@@ -867,14 +882,14 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                         ) : (
                           <Mail className="w-4 h-4" />
                         )}
-                        验证并登录
+                        {tLogin("verifyAndLogin")}
                       </button>
                       <button
                         onClick={handleRequestOtp}
                         disabled={emailLoading}
                         className="inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-gray-900"
                       >
-                        重新发送
+                        {tLogin("resend")}
                       </button>
                     </div>
                   </div>
@@ -882,7 +897,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                 {/* 分隔符 */}
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1 bg-gradient-to-r from-purple-200 to-pink-200" />
-                  <span className="text-xs text-gray-500">或</span>
+                  <span className="text-xs text-gray-500">{tWalletModal("profile.or")}</span>
                   <div className="h-px flex-1 bg-gradient-to-r from-pink-200 to-purple-200" />
                 </div>
               </div>
@@ -923,10 +938,12 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
                             {walletNames[wallet.type as keyof typeof walletNames]}
                           </div>
                           {!wallet.isAvailable ? (
-                            <div className="text-sm text-red-500 font-medium">未安装</div>
+                            <div className="text-sm text-red-500 font-medium">
+                              {tLogin("notInstalled")}
+                            </div>
                           ) : (
                             <div className="text-sm text-gray-500 group-hover:text-purple-500 transition-colors duration-300">
-                              点击连接
+                              {tLogin("clickToConnect")}
                             </div>
                           )}
                         </div>
@@ -964,24 +981,25 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose }) => {
             {/* 底部说明 */}
             <div className="relative px-6 pb-6">
               <div className="text-sm text-gray-500 text-center leading-relaxed">
-                通过连接钱包，您同意我们的
+                {tLogin("agreePrefix")}
                 <a
                   href="/terms"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
                 >
-                  服务条款
+                  {tLogin("terms")}
                 </a>
-                和
+                <span className="mx-1">{tLogin("and")}</span>
                 <a
                   href="/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200 mx-1"
                 >
-                  隐私政策
+                  {tLogin("privacy")}
                 </a>
+                <span className="mx-1">{tLogin("agreeSuffix")}</span>
               </div>
             </div>
           </motion.div>

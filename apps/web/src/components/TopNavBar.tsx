@@ -318,7 +318,7 @@ export default function TopNavBar() {
                 <div
                   ref={avatarRef}
                   role="button"
-                  aria-label="打开用户菜单"
+                  aria-label={tCommon("openUserMenu")}
                   aria-expanded={menuOpen}
                   tabIndex={0}
                   className="rounded-full bg-white shadow-sm cursor-pointer transition-all duration-200 focus:outline-none focus-visible:shadow-md overflow-hidden"
@@ -329,7 +329,7 @@ export default function TopNavBar() {
                 >
                   <LazyImage
                     src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
-                    alt="用户头像"
+                    alt={tCommon("userAvatar")}
                     className="w-10 h-10 rounded-full object-cover"
                     placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
                     rootMargin={0}
@@ -350,7 +350,7 @@ export default function TopNavBar() {
                       ref={menuContentRef}
                       className="fixed z-[9999] w-64 glass-card p-2 rounded-2xl"
                       role="menu"
-                      aria-label="用户菜单"
+                      aria-label={tCommon("userMenu")}
                       style={{ top: menuPos.top, left: menuPos.left }}
                       onClick={(e) => e.stopPropagation()}
                     >

@@ -19,7 +19,13 @@
     "userLevelDreamer": "梦想家等级 {level}",
     "mainNav": "主导航",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "close": "关闭",
+    "retry": "重试",
+    "switchLanguage": "切换语言",
+    "openUserMenu": "打开用户菜单",
+    "userMenu": "用户菜单",
+    "userAvatar": "用户头像"
   },
   "nav": {
     "home": "首页",
@@ -181,6 +187,24 @@
     "installMetaMaskExtension": "安装 MetaMask 浏览器扩展",
     "unknownNetwork": "未知网络"
   },
+  "mobileNav": {
+    "menuOpen": "打开菜单",
+    "menuClose": "关闭菜单",
+    "marketSubtitle": "预测市场",
+    "items": {
+      "home": "首页",
+      "trending": "热门预测",
+      "search": "搜索",
+      "forum": "讨论",
+      "me": "我的",
+      "settings": "设置"
+    },
+    "wallet": {
+      "connected": "已连接钱包",
+      "disconnect": "断开连接",
+      "connect": "连接钱包"
+    }
+  },
   "prediction": {
     "title": "预测",
     "createPrediction": "创建预测",
@@ -227,6 +251,19 @@
     "bestAsk": "卖一: {price}"
   },
   "market": {
+    "breadcrumbs": {
+      "home": "首页"
+    },
+    "header": {
+      "statusActive": "进行中",
+      "statusEnded": "已结束",
+      "totalVolume": "总交易量",
+      "liquidity": "流动性 (Est.)",
+      "participants": "参与人数",
+      "deadline": "截止时间",
+      "follow": "关注",
+      "following": "已关注"
+    },
     "tabs": {
       "desc": "市场详情",
       "rules": "裁决规则",
@@ -249,6 +286,49 @@
     "chart": {
       "loading": "市场数据加载中...",
       "outcomeFallback": "结果 {index}"
+    }
+  },
+  "filters": {
+    "categories": {
+      "all": "全部",
+      "crypto": "加密货币",
+      "sports": "体育",
+      "politics": "政治",
+      "tech": "科技",
+      "entertainment": "娱乐",
+      "weather": "天气",
+      "business": "商业",
+      "more": "更多"
+    },
+    "sort": {
+      "trending": {
+        "label": "热门优先",
+        "description": "根据关注度和活跃度排序"
+      },
+      "newest": {
+        "label": "最新发布",
+        "description": "按创建时间倒序"
+      },
+      "ending": {
+        "label": "即将截止",
+        "description": "按截止时间正序"
+      },
+      "popular": {
+        "label": "最多关注",
+        "description": "按关注人数排序"
+      }
+    },
+    "status": {
+      "all": "全部状态",
+      "active": "进行中",
+      "pending": "等待中",
+      "ended": "已结束"
+    },
+    "actions": {
+      "filter": "筛选",
+      "clear": "清空",
+      "statusFilter": "状态筛选",
+      "currentFilter": "当前筛选:"
     }
   },
   "errors": {
@@ -289,6 +369,50 @@
     "clickToConnect": "点击连接",
     "detectingWallets": "正在检测已安装的钱包扩展…",
     "switchToEmail": "也可以切换到「邮箱登录」。"
+  },
+  "walletModal": {
+    "title": "登录 Foresight",
+    "subtitle": "使用邮箱或选择钱包继续",
+    "steps": {
+      "connectWallet": "连接钱包",
+      "signIn": "签名登录",
+      "completeProfile": "完善资料"
+    },
+    "hints": {
+      "selectLoginMethod": "选择邮箱登录或连接钱包",
+      "connectingWallet": "正在连接钱包，请在钱包中确认",
+      "requestingPermissions": "正在请求钱包权限",
+      "signToLogin": "请在钱包中签名完成登录",
+      "completingMultisig": "正在完成多签确认",
+      "completeProfileAndVerifyEmail": "请完善资料并完成邮箱验证码验证",
+      "emailVerifiedSaveProfile": "邮箱已验证，可以保存资料完成绑定",
+      "walletBoundComplete": "钱包绑定完成，可以开始使用 Foresight"
+    },
+    "profile": {
+      "title": "完善用户信息",
+      "usernameLabel": "用户名",
+      "usernamePlaceholder": "例如: alice_01",
+      "sendOtpWithValidity": "发送验证码（15分钟有效）",
+      "verifiedTag": "已验证",
+      "verifyEmail": "验证邮箱",
+      "otpTip": "验证码有效期 15 分钟，失败 3 次将锁定 1 小时。",
+      "rememberMe": "记住我",
+      "submit": "保存并继续",
+      "later": "稍后再说",
+      "emailInvalid": "邮箱格式不正确，请检查后重试。",
+      "or": "或"
+    },
+    "devCodePreviewPrefix": "开发环境验证码：",
+    "errors": {
+      "invalidWalletAddress": "钱包地址无效：需 0x 开头且 40 位十六进制",
+      "usernameEmailRequired": "用户名和邮箱为必填项",
+      "usernameInvalid": "用户名不合规：3–20 位，仅允许字母、数字与下划线",
+      "emailFormatInvalid": "邮箱格式不正确：需标准邮箱格式，例如 name@example.com",
+      "emailNotVerified": "请先完成邮箱验证码验证",
+      "submitFailed": "提交失败",
+      "otpSendFailed": "发送验证码失败",
+      "otpVerifyFailed": "验证失败"
+    }
   },
   "search": {
     "placeholder": "搜索预测、话题、用户...",

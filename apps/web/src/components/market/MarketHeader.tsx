@@ -34,14 +34,19 @@ export function MarketHeader({
   onFollow,
   followLoading,
 }: MarketHeaderProps) {
-  const tEvents = useTranslations();
-  const displayTitle = tEvents(prediction.title);
+  const t = useTranslations();
+  const tMarketHeader = useTranslations("market.header");
+  const tMarketBreadcrumbs = useTranslations("market.breadcrumbs");
+  const displayTitle = t(prediction.title);
   const isExpired = prediction.timeInfo?.isExpired;
   const statusColor =
     prediction.status === "active" && !isExpired
       ? "text-emerald-600 bg-emerald-50 border-emerald-200"
       : "text-gray-500 bg-gray-100 border-gray-200";
-  const statusText = prediction.status === "active" && !isExpired ? "进行中" : "已结束";
+  const statusText =
+    prediction.status === "active" && !isExpired
+      ? tMarketHeader("statusActive")
+      : tMarketHeader("statusEnded");
 
   // 计算总交易量或金额 (示例)
   const volume = prediction.stats?.totalAmount || 0;
@@ -52,7 +57,7 @@ export function MarketHeader({
       {/* Breadcrumbs / Category */}
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Link href="/" className="hover:text-purple-600 transition-colors">
-          首页
+          {tMarketBreadcrumbs("home")}
         </Link>
         <span className="text-gray-300">/</span>
         <Link
@@ -113,7 +118,7 @@ export function MarketHeader({
             }`}
           >
             <Star className={`w-4 h-4 ${following ? "fill-current" : ""}`} />
-            {following ? "已关注" : "关注"}
+            {following ? tMarketHeader("following") : tMarketHeader("follow")}
             <span className="ml-1 opacity-80 text-xs">{followersCount}</span>
           </button>
         </div>
@@ -126,7 +131,7 @@ export function MarketHeader({
             <div className="p-1 rounded-md bg-purple-200/50 text-purple-700">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
-            总交易量
+            {tMarketHeader("totalVolume")}
           </span>
           <span className="text-xl font-black text-gray-900 z-10">${volume.toLocaleString()}</span>
         </div>
@@ -136,7 +141,7 @@ export function MarketHeader({
             <div className="p-1 rounded-md bg-blue-200/50 text-blue-700">
               <ArrowLeftRight className="w-3.5 h-3.5" />
             </div>
-            流动性 (Est.)
+            {tMarketHeader("liquidity")}
           </span>
           <span className="text-xl font-black text-gray-900 z-10">
             ${liquidity.toLocaleString()}
@@ -148,7 +153,7 @@ export function MarketHeader({
             <div className="p-1 rounded-md bg-emerald-200/50 text-emerald-700">
               <Users className="w-3.5 h-3.5" />
             </div>
-            参与人数
+            {tMarketHeader("participants")}
           </span>
           <span className="text-xl font-black text-gray-900 z-10">
             {prediction.stats?.participantCount || 0}
@@ -160,7 +165,7 @@ export function MarketHeader({
             <div className="p-1 rounded-md bg-orange-200/50 text-orange-700">
               <Calendar className="w-3.5 h-3.5" />
             </div>
-            截止时间
+            {tMarketHeader("deadline")}
           </span>
           <span className="text-xl font-black text-gray-900 z-10 truncate">
             {new Date(prediction.deadline).toLocaleDateString()}

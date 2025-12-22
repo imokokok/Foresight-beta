@@ -19,7 +19,13 @@
     "userLevelDreamer": "Level {level} Dreamer",
     "mainNav": "Main navigation",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "close": "Close",
+    "retry": "Retry",
+    "switchLanguage": "Switch language",
+    "openUserMenu": "Open user menu",
+    "userMenu": "User menu",
+    "userAvatar": "User avatar"
   },
   "nav": {
     "home": "Home",
@@ -181,6 +187,24 @@
     "installMetaMaskExtension": "Install MetaMask browser extension",
     "unknownNetwork": "Unknown network"
   },
+  "mobileNav": {
+    "menuOpen": "Open menu",
+    "menuClose": "Close menu",
+    "marketSubtitle": "Prediction market",
+    "items": {
+      "home": "Home",
+      "trending": "Trending",
+      "search": "Search",
+      "forum": "Discussion",
+      "me": "Me",
+      "settings": "Settings"
+    },
+    "wallet": {
+      "connected": "Wallet connected",
+      "disconnect": "Disconnect",
+      "connect": "Connect wallet"
+    }
+  },
   "prediction": {
     "title": "Prediction",
     "createPrediction": "Create Prediction",
@@ -227,6 +251,19 @@
     "bestAsk": "Best ask: {price}"
   },
   "market": {
+    "breadcrumbs": {
+      "home": "Home"
+    },
+    "header": {
+      "statusActive": "Active",
+      "statusEnded": "Ended",
+      "totalVolume": "Total Volume",
+      "liquidity": "Liquidity (Est.)",
+      "participants": "Participants",
+      "deadline": "Deadline",
+      "follow": "Follow",
+      "following": "Following"
+    },
     "tabs": {
       "desc": "Market details",
       "rules": "Resolution rules",
@@ -249,6 +286,49 @@
     "chart": {
       "loading": "Market data loading...",
       "outcomeFallback": "Outcome {index}"
+    }
+  },
+  "filters": {
+    "categories": {
+      "all": "All",
+      "crypto": "Crypto",
+      "sports": "Sports",
+      "politics": "Politics",
+      "tech": "Technology",
+      "entertainment": "Entertainment",
+      "weather": "Weather",
+      "business": "Business",
+      "more": "More"
+    },
+    "sort": {
+      "trending": {
+        "label": "Trending first",
+        "description": "Sort by attention and activity"
+      },
+      "newest": {
+        "label": "Newest",
+        "description": "Sort by creation time (newest first)"
+      },
+      "ending": {
+        "label": "Ending soon",
+        "description": "Sort by deadline (earliest first)"
+      },
+      "popular": {
+        "label": "Most followed",
+        "description": "Sort by number of followers"
+      }
+    },
+    "status": {
+      "all": "All statuses",
+      "active": "Active",
+      "pending": "Pending",
+      "ended": "Ended"
+    },
+    "actions": {
+      "filter": "Filter",
+      "clear": "Clear",
+      "statusFilter": "Status filter",
+      "currentFilter": "Current filter:"
     }
   },
   "errors": {
@@ -289,6 +369,50 @@
     "clickToConnect": "Click to connect",
     "detectingWallets": "Detecting installed wallet extensions…",
     "switchToEmail": "You can also switch to “Email login”."
+  },
+  "walletModal": {
+    "title": "Log in to Foresight",
+    "subtitle": "Continue with email or wallet",
+    "steps": {
+      "connectWallet": "Connect wallet",
+      "signIn": "Sign to log in",
+      "completeProfile": "Complete profile"
+    },
+    "hints": {
+      "selectLoginMethod": "Choose email login or connect a wallet",
+      "connectingWallet": "Connecting wallet, please confirm in your wallet",
+      "requestingPermissions": "Requesting wallet permissions",
+      "signToLogin": "Please sign the message in your wallet to log in",
+      "completingMultisig": "Completing multisig confirmation",
+      "completeProfileAndVerifyEmail": "Please complete your profile and verify your email",
+      "emailVerifiedSaveProfile": "Email verified, you can now save your profile",
+      "walletBoundComplete": "Wallet successfully linked, you can start using Foresight"
+    },
+    "profile": {
+      "title": "Complete user information",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "e.g. alice_01",
+      "sendOtpWithValidity": "Send code (valid for 15 minutes)",
+      "verifiedTag": "Verified",
+      "verifyEmail": "Verify email",
+      "otpTip": "The code is valid for 15 minutes. 3 failed attempts will lock for 1 hour.",
+      "rememberMe": "Remember me",
+      "submit": "Save and continue",
+      "later": "Maybe later",
+      "emailInvalid": "Email format is invalid, please check and try again.",
+      "or": "or"
+    },
+    "devCodePreviewPrefix": "Dev verification code: ",
+    "errors": {
+      "invalidWalletAddress": "Invalid wallet address: must start with 0x and be 40 hex characters",
+      "usernameEmailRequired": "Username and email are required",
+      "usernameInvalid": "Invalid username: 3–20 characters, letters, numbers and underscore only",
+      "emailFormatInvalid": "Invalid email format: use a standard email such as name@example.com",
+      "emailNotVerified": "Please verify your email code first",
+      "submitFailed": "Submit failed",
+      "otpSendFailed": "Failed to send verification code",
+      "otpVerifyFailed": "Verification failed"
+    }
   },
   "search": {
     "placeholder": "Search predictions, topics, users...",

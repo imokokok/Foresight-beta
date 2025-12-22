@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, ArrowUpDown, Calendar, TrendingUp, Clock, X, ChevronDown } from "lucide-react";
 import { useCategories } from "@/hooks/useQueries";
+import { useTranslations } from "@/lib/i18n";
 
 export interface FilterSortState {
   category: string | null;
@@ -19,15 +20,50 @@ interface FilterSortProps {
 }
 
 const DEFAULT_CATEGORIES = [
-  { id: "all", label: "全部", icon: "🌐", color: "from-gray-500 to-gray-600" },
-  { id: "crypto", label: "加密货币", icon: "🪙", color: "from-amber-500 to-orange-600" },
-  { id: "sports", label: "体育", icon: "⚽", color: "from-green-500 to-emerald-600" },
-  { id: "politics", label: "政治", icon: "🗳️", color: "from-blue-500 to-indigo-600" },
-  { id: "tech", label: "科技", icon: "💻", color: "from-purple-500 to-violet-600" },
-  { id: "entertainment", label: "娱乐", icon: "🎬", color: "from-pink-500 to-rose-600" },
-  { id: "weather", label: "天气", icon: "🌤️", color: "from-cyan-500 to-sky-600" },
-  { id: "business", label: "商业", icon: "💼", color: "from-slate-500 to-gray-600" },
-  { id: "more", label: "更多", icon: "⋯", color: "from-gray-400 to-gray-500" },
+  { id: "all", label: "filters.categories.all", icon: "🌐", color: "from-gray-500 to-gray-600" },
+  {
+    id: "crypto",
+    label: "filters.categories.crypto",
+    icon: "🪙",
+    color: "from-amber-500 to-orange-600",
+  },
+  {
+    id: "sports",
+    label: "filters.categories.sports",
+    icon: "⚽",
+    color: "from-green-500 to-emerald-600",
+  },
+  {
+    id: "politics",
+    label: "filters.categories.politics",
+    icon: "🗳️",
+    color: "from-blue-500 to-indigo-600",
+  },
+  {
+    id: "tech",
+    label: "filters.categories.tech",
+    icon: "💻",
+    color: "from-purple-500 to-violet-600",
+  },
+  {
+    id: "entertainment",
+    label: "filters.categories.entertainment",
+    icon: "🎬",
+    color: "from-pink-500 to-rose-600",
+  },
+  {
+    id: "weather",
+    label: "filters.categories.weather",
+    icon: "🌤️",
+    color: "from-cyan-500 to-sky-600",
+  },
+  {
+    id: "business",
+    label: "filters.categories.business",
+    icon: "💼",
+    color: "from-slate-500 to-gray-600",
+  },
+  { id: "more", label: "filters.categories.more", icon: "⋯", color: "from-gray-400 to-gray-500" },
 ];
 
 export default function FilterSort({
@@ -36,6 +72,7 @@ export default function FilterSort({
   showStatus = false,
   className = "",
 }: FilterSortProps) {
+  const t = useTranslations();
   const [activeCategory, setActiveCategory] = useState<string | null>(
     initialFilters.category || null
   );
@@ -79,18 +116,38 @@ export default function FilterSort({
       : DEFAULT_CATEGORIES;
 
   const sortOptions = [
-    { id: "trending", label: "热门优先", icon: TrendingUp, description: "根据关注度和活跃度排序" },
-    { id: "newest", label: "最新发布", icon: Clock, description: "按创建时间倒序" },
-    { id: "ending", label: "即将截止", icon: Calendar, description: "按截止时间正序" },
-    { id: "popular", label: "最多关注", icon: TrendingUp, description: "按关注人数排序" },
+    {
+      id: "trending",
+      label: t("filters.sort.trending.label"),
+      icon: TrendingUp,
+      description: t("filters.sort.trending.description"),
+    },
+    {
+      id: "newest",
+      label: t("filters.sort.newest.label"),
+      icon: Clock,
+      description: t("filters.sort.newest.description"),
+    },
+    {
+      id: "ending",
+      label: t("filters.sort.ending.label"),
+      icon: Calendar,
+      description: t("filters.sort.ending.description"),
+    },
+    {
+      id: "popular",
+      label: t("filters.sort.popular.label"),
+      icon: TrendingUp,
+      description: t("filters.sort.popular.description"),
+    },
   ];
 
   // 状态选项
   const statusOptions = [
-    { id: "all", label: "全部状态", color: "bg-gray-100 text-gray-700" },
-    { id: "active", label: "进行中", color: "bg-green-100 text-green-700" },
-    { id: "pending", label: "等待中", color: "bg-yellow-100 text-yellow-700" },
-    { id: "ended", label: "已结束", color: "bg-gray-100 text-gray-500" },
+    { id: "all", label: t("filters.status.all"), color: "bg-gray-100 text-gray-700" },
+    { id: "active", label: t("filters.status.active"), color: "bg-green-100 text-green-700" },
+    { id: "pending", label: t("filters.status.pending"), color: "bg-yellow-100 text-yellow-700" },
+    { id: "ended", label: t("filters.status.ended"), color: "bg-gray-100 text-gray-500" },
   ];
 
   // 监听外部筛选条件变化
@@ -133,7 +190,7 @@ export default function FilterSort({
           }`}
         >
           <Filter className="w-4 h-4" />
-          <span>筛选</span>
+          <span>{t("filters.actions.filter")}</span>
           {activeFiltersCount > 0 && (
             <span className="px-1.5 py-0.5 bg-white/20 rounded-full text-xs font-bold">
               {activeFiltersCount}
@@ -173,7 +230,7 @@ export default function FilterSort({
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             <X className="w-4 h-4" />
-            <span>清空</span>
+            <span>{t("filters.actions.clear")}</span>
           </motion.button>
         )}
       </div>
@@ -193,7 +250,7 @@ export default function FilterSort({
               <div>
                 <div className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <Filter className="w-4 h-4" />
-                  分类筛选
+                  {t("filters.categoryLabel")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
@@ -225,7 +282,9 @@ export default function FilterSort({
               {/* 状态筛选（可选） */}
               {showStatus && (
                 <div>
-                  <div className="text-sm font-bold text-gray-700 mb-3">状态筛选</div>
+                  <div className="text-sm font-bold text-gray-700 mb-3">
+                    {t("filters.actions.statusFilter")}
+                  </div>
                   <div className="flex gap-2">
                     {statusOptions.map((opt) => (
                       <button
@@ -300,14 +359,18 @@ export default function FilterSort({
       {/* 当前筛选标签 */}
       {activeCategory && activeCategory !== "all" && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gray-500">当前筛选:</span>
+          <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium"
           >
             <span>{categories.find((c) => c.id === activeCategory)?.icon}</span>
-            <span>{categories.find((c) => c.id === activeCategory)?.label}</span>
+            <span>
+              {categories.find((c) => c.id === activeCategory)?.label
+                ? t(categories.find((c) => c.id === activeCategory)!.label)
+                : null}
+            </span>
             <button
               onClick={() => setActiveCategory("all")}
               className="hover:bg-purple-100 rounded p-0.5 transition-colors"
