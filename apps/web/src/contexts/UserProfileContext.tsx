@@ -19,7 +19,7 @@ interface UserProfileContextValue {
   isAdmin: boolean;
 }
 
-const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
+export const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const { account } = useWallet();

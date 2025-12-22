@@ -97,6 +97,43 @@ export function trapFocus(container: HTMLElement): () => void {
   };
 }
 
+export function manageFocusLoop(container: HTMLElement): () => void {
+  const focusableElements = getFocusableElements(container);
+  if (focusableElements.length === 0) {
+    return () => {};
+  }
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== KeyboardShortcuts.TAB) return;
+    if (focusableElements.length === 0) return;
+
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !container.contains(active)) {
+      return;
+    }
+
+    if (e.shiftKey) {
+      if (active === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      }
+    } else {
+      if (active === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  };
+
+  container.addEventListener("keydown", handleKeyDown);
+
+  return () => {
+    container.removeEventListener("keydown", handleKeyDown);
+  };
+}
+
 /**
  * 管理焦点历史（用于返回之前的焦点）
  */

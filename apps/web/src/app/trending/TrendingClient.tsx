@@ -1311,6 +1311,26 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
       });
     }
 
+    if (filters.status) {
+      events = events.filter((e: any) => {
+        const rawStatus = String(e?.status || "").toLowerCase();
+        if (rawStatus) {
+          return rawStatus === filters.status;
+        }
+        const deadlineTime = new Date(String(e?.deadline || "")).getTime();
+        if (!Number.isFinite(deadlineTime)) {
+          return true;
+        }
+        if (filters.status === "ended") {
+          return deadlineTime <= now;
+        }
+        if (filters.status === "active") {
+          return deadlineTime > now;
+        }
+        return true;
+      });
+    }
+
     // 2. 排序
     events.sort((a: any, b: any) => {
       if (filters.sortBy === "trending") {
@@ -1956,10 +1976,9 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
           <span className="w-2 h-2 rounded-full bg-purple-500" />
         </h3>
 
-        {/* 筛选排序 */}
         {!loading && !error && (
           <div className="mb-8">
-            <FilterSort onFilterChange={setFilters} initialFilters={filters} />
+            <FilterSort onFilterChange={setFilters} initialFilters={filters} showStatus />
           </div>
         )}
 

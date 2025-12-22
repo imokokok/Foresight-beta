@@ -20,7 +20,7 @@ describe("EnvValidator", () => {
   describe("validateEnv", () => {
     it("should return errors for missing required env vars", () => {
       // 清空所有环境变量
-      process.env = {};
+      process.env = { NODE_ENV: "test" } as any;
 
       const result = validateEnv();
 
@@ -31,6 +31,7 @@ describe("EnvValidator", () => {
 
     it("should pass validation with all required env vars", () => {
       process.env = {
+        NODE_ENV: "test",
         NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
         SUPABASE_SERVICE_ROLE_KEY: "test-service-key",
@@ -49,6 +50,7 @@ describe("EnvValidator", () => {
 
     it("should warn about short JWT_SECRET", () => {
       process.env = {
+        NODE_ENV: "test",
         NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
         SUPABASE_SERVICE_ROLE_KEY: "test-service-key",

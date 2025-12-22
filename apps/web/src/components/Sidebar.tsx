@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
-  Search,
   Users,
   BarChart3,
   MessageSquare,
@@ -45,7 +44,6 @@ export default function Sidebar() {
     profile: true,
   });
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
   const tCommon = useTranslations("common");
@@ -109,13 +107,6 @@ export default function Sidebar() {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const submitSearch = () => {
-    const q = searchText.trim();
-    if (!q) return;
-    router.push(`/trending?q=${encodeURIComponent(q)}`);
-    setMobileOpen(false);
-  };
-
   const onItemClick = (item: MenuItem) => {
     if (item.requireWallet && !account) {
       setWalletModalOpen(true);
@@ -175,33 +166,12 @@ export default function Sidebar() {
         <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-purple-100/40 to-transparent pointer-events-none" />
 
         <div className="relative flex flex-col h-full p-4 z-10">
-          <div className="flex items-center gap-3 mb-6 px-2">
+          <div className="flex items-center gap-3 mb-8 px-2">
             <div className="relative w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center rotate-[-3deg] hover:rotate-0 transition-transform duration-300">
               <Image src="/images/logo.png" alt="Foresight" width={24} height={24} priority />
               <div className="absolute -top-1.5 -right-1.5 text-yellow-400 text-xs">✨</div>
             </div>
             <span className="font-black text-xl text-gray-800 tracking-tight">Foresight</span>
-          </div>
-
-          <div className="relative mb-8 px-2">
-            <div className="relative group p-1 bg-slate-100/50 rounded-2xl border border-slate-200/60 shadow-inner">
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-brand transition-colors z-10"
-                  aria-hidden="true"
-                />
-                <input
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") submitSearch();
-                  }}
-                  placeholder={tCommon("explore")}
-                  aria-label={tCommon("search")}
-                  className="w-full pl-11 pr-4 py-3 bg-white border-2 border-transparent rounded-xl text-sm font-bold text-slate-800 placeholder:text-slate-400 shadow-xl shadow-brand/5 focus:outline-none focus:border-brand/30 focus:ring-4 focus:ring-brand/5 transition-all"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto pr-1 -mr-1 space-y-6">

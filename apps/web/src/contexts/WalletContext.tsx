@@ -94,7 +94,7 @@ interface WalletContextType extends WalletState {
   provider: any;
 }
 
-const WalletContext = createContext<WalletContextType | undefined>(undefined);
+export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 const LOGOUT_FLAG = "fs_wallet_logged_out";
 
