@@ -1,6 +1,6 @@
-# 🔮 Foresight - 去中心化预测市场
+# 🔮 Foresight - 去中心化预测市场平台
 
-> 基于区块链的去中心化预测市场平台，参与各种事件预测，赢取收益。安全、透明、公平。
+> 基于区块链与智能合约的预测市场基础设施，面向真实事件、链上资产和社区情绪，提供安全、透明、公平的预测与交易体验。
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.4-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue)](https://reactjs.org/)
@@ -10,16 +10,33 @@
 
 ---
 
-## ✨ 特性
+## ✨ 产品特性（站在用户视角）
 
-- 🎯 **去中心化预测** - 基于智能合约的公平预测市场
-- 💰 **多钱包支持** - MetaMask、Coinbase Wallet、WalletConnect
-- 💬 **实时聊天** - 预测事件讨论和交流
-- 🏆 **排行榜系统** - 展示顶级预测者
-- 🌍 **多语言** - 中文/英文支持
-- 📱 **移动端优化** - 完美适配手机和平板
-- ⚡ **高性能** - 首屏加载 < 2s，LCP < 2.5s
-- 📊 **性能监控** - 实时 Web Vitals 监控
+- 🎯 多类型预测市场：支持二元事件、多选事件等不同结构的预测市场
+- 💰 链上真实结算：预测以智能合约结算，可验证、可追溯
+- 👛 多钱包接入：支持 MetaMask、Coinbase Wallet、WalletConnect 等主流钱包
+- 💬 事件内讨论区：每个预测都有独立讨论区与实时聊天，促进观点碰撞
+- 🏆 预测者排行榜：按收益率和命中率展示顶级预测者，强化社区声誉体系
+- 🌍 中英文双语体验：全站支持中文/英文，URL 级国际化路由
+- 📱 移动端优先设计：专门的底部导航、汉堡菜单和下拉刷新体验
+- ⚡ 性能指标可量化：首屏加载 < 2s，LCP < 2.5s，滚动帧率接近 60fps
+- 📊 内建性能监控面板：内置 Web Vitals 与自建性能数据上报与查看能力
+
+更多关于三阶段优化与 ROI 的详细数据，请参见 [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) 与 [OPTIMIZATION_REPORTS.md](./OPTIMIZATION_REPORTS.md)。
+
+---
+
+## 🧩 架构总览
+
+Foresight 采用 Monorepo 结构，主要模块包括：
+
+- `apps/web`：Next.js Web 前端应用
+- `packages/contracts`：Solidity 智能合约与 Hardhat 工程
+- `services/relayer`：简化版 ERC-4337 Relayer/Bundler
+- `infra/supabase`：Supabase 数据库 schema 与管理脚本
+- `scripts`：合约部署与链上工具脚本
+
+目标是：**让用户体验接近 Web2 产品，但由 Web3 基础设施提供安全与结算。**
 
 ---
 
@@ -28,136 +45,141 @@
 ### 环境要求
 
 - Node.js 18+
-- npm 或 yarn
+- npm
 - Git
 
-### 安装
+### 克隆与安装
 
 ```bash
-# 克隆仓库
 git clone https://github.com/Foresight-builder/Foresight-beta.git
 cd Foresight-beta
-
-# 安装依赖
 npm install
+```
 
-# 配置环境变量
+### 配置环境变量
+
+```bash
 cp .env.example .env.local
-# 编辑 .env.local 填入你的配置
+```
 
-# 启动开发服务器
+关键变量示例：
+
+- `NEXT_PUBLIC_APP_URL`：前端站点 URL（例如 `http://localhost:3000`）
+- `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_KEY`
+- `NEXT_PUBLIC_RELAYER_URL`
+- 区块链接口与合约相关变量（如 `USDC_ADDRESS_AMOY`、`COLLATERAL_TOKEN_ADDRESS`）
+
+数据库与 Supabase 相关变量的完整说明，见 `infra/supabase/README.md`。
+
+### 启动开发环境
+
+仅启动 Web：
+
+```bash
+npm run ws:dev
+```
+
+或进入子目录：
+
+```bash
+cd apps/web
 npm run dev
 ```
 
-访问 http://localhost:3000 开始使用！
+同时启动 Web + Relayer：
+
+```bash
+cd /path/to/Foresight-beta
+npm run ws:dev:all
+```
+
+默认访问：<http://localhost:3000>
 
 ---
 
-## 📖 文档
+## 📚 文档导航
 
-### 核心文档
+核心入口：
 
-- [📋 项目总结](./PROJECT_SUMMARY.md) - 完整的项目优化总结
-- [🚀 快速开始](./QUICK_START.md) - 详细的安装和配置指南
-- [📚 开发文档](./DOCS.md) - API 和组件使用文档
-- [✅ 部署清单](./DEPLOYMENT_CHECKLIST.md) - 生产环境部署指南
+- [DOC_INDEX.md](./DOC_INDEX.md)：完整文档索引
+- [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)：项目优化与 ROI 总结
+- [QUICK_START.md](./QUICK_START.md)：新工具与常用能力快速上手
+- [DOCS.md](./DOCS.md)：组件、Hooks、API、数据库文档
+- [ADVANCED_FEATURES_GUIDE.md](./ADVANCED_FEATURES_GUIDE.md)：测试、国际化、Sentry 等高级能力
+- [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)：生产部署清单
 
-### 优化报告
+优化与规划相关：
 
-- [Phase 2 报告](./PHASE2_FINAL_REPORT.md) - 交互和性能优化
-- [Phase 3 报告](./PHASE3_TIER1_COMPLETE.md) - 移动端和监控
-- [Phase 3 规划](./PHASE3_PLAN.md) - 未来优化计划
+- [OPTIMIZATION_REPORTS.md](./OPTIMIZATION_REPORTS.md)
+- [PHASE2_FINAL_REPORT.md](./PHASE2_FINAL_REPORT.md)
+- [PHASE3_TIER1_COMPLETE.md](./PHASE3_TIER1_COMPLETE.md)
+- [NEXT_STEPS.md](./NEXT_STEPS.md)
+
+> 原 README 中指向的 `PHASE3_PLAN.md` 已被上述文档覆盖，此处不再引用该文件。
 
 ---
 
 ## 🏗️ 技术栈
 
-### 前端
+### 前端（apps/web）
 
-- **框架**: Next.js 15.5.4 (App Router)
-- **UI**: React 19 + TypeScript
-- **样式**: Tailwind CSS + Framer Motion
-- **状态**: React Query + Context API
-- **表单**: React Hook Form
+- Next.js 15.5.4（App Router）
+- React 19 + TypeScript
+- Tailwind CSS + Framer Motion
+- React Query + 自定义 Context（Auth、Wallet、UserProfile）
+- React Hook Form
+- next-intl 多语言
 
-### 区块链
+### 区块链与钱包
 
-- **钱包**: Ethers.js
-- **网络**: Polygon (Mumbai Testnet)
-- **标准**: EIP-4361 (SIWE)
+- Ethers.js
+- 支持多网络（Polygon 主网、Amoy 测试网、Sepolia 等）
+- EIP-4361 / Sign-In with Ethereum (SIWE)
+- 扩展型预测市场合约（`Foresight` + 模板市场）
 
-### 后端
+### 后端与数据
 
-- **数据库**: Supabase (PostgreSQL)
-- **认证**: Sign-In with Ethereum (SIWE)
-- **存储**: Supabase Storage
-- **实时**: Supabase Realtime
+- Supabase (PostgreSQL)
+- Supabase Realtime + Storage
+- 行级安全（RLS）、索引与物化视图
 
-### 工具
+### 工具链
 
-- **监控**: Web Vitals
-- **分析**: 自建性能监控
-- **部署**: Vercel
-- **CI/CD**: GitHub Actions
+- Web Vitals + 自建性能上报与可视化
+- Vercel 部署
+- GitHub Actions CI/CD（测试与构建）
 
 ---
 
-## 📂 项目结构
-
-```
+```bash
 Foresight-beta/
 ├── apps/
 │   └── web/                    # Next.js 主应用
 │       ├── src/
-│       │   ├── app/            # App Router 页面
-│       │   │   ├── admin/      # 管理页面
-│       │   │   │   └── performance/  # 性能监控
-│       │   │   ├── api/        # API 路由
-│       │   │   │   ├── analytics/    # 分析 API
-│       │   │   │   ├── predictions/  # 预测 API
-│       │   │   │   └── siwe/         # 认证 API
-│       │   │   ├── trending/   # 热门页面
-│       │   │   ├── forum/      # 论坛页面
-│       │   │   └── layout.tsx  # 根布局
-│       │   ├── components/     # React 组件
-│       │   │   ├── ui/         # UI 组件
-│       │   │   ├── skeletons/  # 骨架屏
-│       │   │   ├── MobileMenu.tsx
-│       │   │   ├── MobileBottomNav.tsx
-│       │   │   ├── PullToRefresh.tsx
-│       │   │   └── ...
-│       │   ├── contexts/       # Context 状态
-│       │   │   ├── AuthContext.tsx
-│       │   │   ├── WalletContext.tsx
-│       │   │   └── UserProfileContext.tsx
-│       │   ├── hooks/          # 自定义 Hooks
-│       │   │   ├── useInfiniteScroll.ts
-│       │   │   ├── usePersistedState.ts
-│       │   │   └── useDebounce.ts
-│       │   ├── lib/            # 工具函数
-│       │   │   ├── webVitals.ts
-│       │   │   ├── apiWithFeedback.ts
-│       │   │   ├── supabase.ts
-│       │   │   └── ...
-│       │   └── styles/
-│       │       └── globals.css
-│       ├── public/             # 静态资源
-│       └── package.json
+│       │   ├── app/            # App Router 页面 (trending, prediction, forum, admin 等)
+│       │   ├── components/     # UI、骨架屏、导航、弹窗等
+│       │   ├── contexts/       # Auth、Wallet、UserProfile 等上下文
+│       │   ├── hooks/          # useInfiniteScroll、usePersistedState 等
+│       │   ├── lib/            # apiWithFeedback、security、rateLimit、i18n 等工具
+│       │   └── test/           # 前端测试工具与 Mock
+│       └── public/             # 静态资源与 PWA 文件
+├── packages/
+│   └── contracts/              # 智能合约与 Hardhat
 ├── services/
-│   └── relayer/                # 中继服务
+│   └── relayer/                # 中继服务（ERC-4337 风格）
 ├── infra/
-│   └── supabase/               # 数据库配置
-│       ├── migrations/         # 数据库迁移
-│       └── sql/                # SQL 脚本
-├── docs/                       # 文档
-├── README.md                   # 项目主文档（本文件）
+│   └── supabase/               # 数据库脚本与管理工具
+├── scripts/                    # 部署与链上工具脚本
+├── DOC_INDEX.md                # 文档导航
 ├── PROJECT_SUMMARY.md          # 项目总结
-└── package.json                # 根 package.json
+├── QUICK_START.md              # 快速开始
+└── DOCS.md                     # 开发文档
 ```
 
 ---
 
-## 🎨 核心功能
+## 🎨 核心功能与场景
 
 ### 1. 预测市场
 
@@ -188,138 +210,73 @@ Foresight-beta/
 - 下拉刷新
 - 触摸优化
 
-### 5. 性能监控
+### 5. 性能监控与运营
 
-- Web Vitals 收集
-- 性能仪表板
-- 实时监控
-- 数据可视化
+- Web Vitals 收集与上报
+- 管理端性能仪表板
+- 实时查看关键指标与历史趋势
+- 结合优化报告评估改动效果
 
----
+更多使用与最佳实践，可结合：
 
-## 🛠️ 开发
-
-### 开发服务器
-
-```bash
-npm run dev
-```
-
-### 构建
-
-```bash
-npm run build
-```
-
-### 启动生产服务器
-
-```bash
-npm start
-```
-
-### 代码检查
-
-```bash
-npm run lint
-```
-
-### 测试
-
-```bash
-npm test
-```
+- `apps/web/src/app/admin/performance/page.tsx`
+- `lib/performance.ts`
+- `OPTIMIZATION_REPORTS.md`
 
 ---
 
-## 📊 性能指标
+## 🧪 测试与质量保障
 
-### 目标
+### 合约测试（Hardhat）
 
-- **LCP** < 2.5s
-- **INP** < 200ms
-- **CLS** < 0.1
-- **FCP** < 1.8s
-- **TTFB** < 800ms
+```bash
+npm run hardhat:test
+```
 
-### 实际表现
+### 前端测试（Vitest）
 
-- ✅ 首屏加载: ~1.8s
-- ✅ 移动端: 优秀
-- ✅ SEO: 良好
-- ✅ 可访问性: 良好
+```bash
+cd apps/web
+npm run test
+```
 
-查看实时性能监控：http://localhost:3000/admin/performance
+关于覆盖率目标和目录结构，请查看 [ADVANCED_FEATURES_GUIDE.md](./ADVANCED_FEATURES_GUIDE.md)。
 
 ---
 
 ## 🤝 贡献
 
-欢迎贡献！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解详情。
+欢迎通过 Issue 或 Pull Request 参与共建：
 
-### 开发流程
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+1. Fork 本仓库
+2. 创建特性分支
+3. 提交变更并描述设计思路
+4. 提交 PR 并关联相关 Issue（如有）
 
 ---
 
 ## 📝 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](./LICENSE) 文件了解详情。
+本项目采用 MIT 许可证，详情见 [LICENSE](./LICENSE)。
 
 ---
 
-## 👥 团队
+## 📡 联系我们
 
-- **开发**: Foresight Team
-- **设计**: UI/UX Team
-- **区块链**: Smart Contract Team
-
----
-
-## 📧 联系我们
-
-- **Website**: https://foresight.market
-- **Twitter**: @ForesightMarket
-- **Discord**: [加入我们](https://discord.gg/foresight)
-- **Email**: hello@foresight.market
+- Website: <https://foresight.market>
+- Twitter: `@ForesightMarket`
+- Discord: <https://discord.gg/foresight>
+- Email: `hello@foresight.market`
 
 ---
 
-## 🙏 致谢
+## ⭐ 支持项目
 
-感谢所有贡献者和支持者！
+如果这个项目对你有帮助，欢迎：
 
-特别感谢：
-
-- [Next.js](https://nextjs.org/)
-- [Supabase](https://supabase.com/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [Ethers.js](https://docs.ethers.org/)
-
----
-
-## 📈 路线图
-
-### ✅ 已完成
-
-- Phase 1: 基础 UX 优化
-- Phase 2: 交互和性能
-- Phase 3 Tier 1: 移动端 + 监控
-
-### 🔜 计划中
-
-- Phase 3 Tier 2: PWA + 推送通知 + SEO
-- Phase 3 Tier 3: 国际化 + 无障碍访问
-- 更多功能敬请期待...
-
----
-
-**⭐ 如果这个项目对你有帮助，请给我们一个 Star！**
+- 在 GitHub 上点一个 Star
+- 与团队或朋友分享
+- 在 Issue 中告诉我们你的使用场景与建议
 
 ---
 
