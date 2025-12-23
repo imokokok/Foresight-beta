@@ -37,6 +37,7 @@ export default function PredictionDetailClient() {
     bestBid,
     bestAsk,
     openOrders,
+    trades,
     balance,
     mintInput,
     setMintInput,
@@ -117,6 +118,7 @@ export default function PredictionDetailClient() {
                   depthBuy,
                   depthSell,
                   userOrders: openOrders,
+                  trades,
                   outcomes,
                 }}
                 state={{

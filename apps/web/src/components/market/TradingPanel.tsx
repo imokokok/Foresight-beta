@@ -23,6 +23,7 @@ interface TradingPanelData {
   depthBuy: Array<{ price: string; qty: string }>;
   depthSell: Array<{ price: string; qty: string }>;
   userOrders: any[];
+  trades?: any[];
   outcomes: any[];
 }
 
@@ -63,6 +64,7 @@ export function TradingPanel(props: TradingPanelProps) {
     depthBuy,
     depthSell,
     userOrders,
+    trades = [],
     outcomes,
   } = data;
   const { tradeSide, tradeOutcome, priceInput, amountInput, orderMode, isSubmitting, orderMsg } =
@@ -76,7 +78,7 @@ export function TradingPanel(props: TradingPanelProps) {
     submitOrder,
     cancelOrder,
   } = handlers;
-  const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders">("trade");
+  const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "history">("trade");
   const tTrading = useTranslations("trading");
   const tCommon = useTranslations("common");
 
@@ -158,6 +160,16 @@ export function TradingPanel(props: TradingPanelProps) {
           }`}
         >
           {tTrading("myOrders")} ({userOrders.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${
+            activeTab === "history"
+              ? "text-purple-600 bg-white shadow-sm ring-1 ring-purple-100"
+              : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
+          }`}
+        >
+          成交
         </button>
       </div>
 
@@ -449,6 +461,49 @@ export function TradingPanel(props: TradingPanelProps) {
                   >
                     {tTrading("cancelOrder")}
                   </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div className="space-y-3">
+            {trades.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <ListFilter className="w-10 h-10 mb-3 opacity-20" />
+                <span className="text-sm font-medium">暂无成交记录</span>
+              </div>
+            ) : (
+              trades.map((t, i) => (
+                <div
+                  key={i}
+                  className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded-md ${
+                        t.is_buy ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                      }`}
+                    >
+                      {t.is_buy ? tTrading("buy") : tTrading("sell")}
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-900">
+                        {outcomes[t.outcome_index]?.label ||
+                          (t.outcome_index === 0 ? tCommon("yes") : tCommon("no"))}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(t.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-gray-900">${formatPrice(t.price)}</div>
+                    <div className="text-xs font-medium text-gray-500">
+                      {formatAmount(t.amount)} {tTrading("sharesUnit")}
+                    </div>
+                  </div>
                 </div>
               ))
             )}

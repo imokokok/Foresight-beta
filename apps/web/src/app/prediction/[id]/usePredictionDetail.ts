@@ -159,6 +159,7 @@ export function usePredictionDetail() {
 
   const [balance] = useState<string>("0.00");
   const [mintInput, setMintInput] = useState<string>("");
+  const [trades, setTrades] = useState<any[]>([]);
 
   const predictionId = (params as any).id ? Number((params as any).id) : undefined;
 
@@ -270,6 +271,27 @@ export function usePredictionDetail() {
     const timer = setInterval(refreshUserOrders, 5000);
     return () => clearInterval(timer);
   }, [market, account, refreshUserOrders]);
+
+  useEffect(() => {
+    if (!market) return;
+    const fetchTrades = async () => {
+      try {
+        const base = "/api";
+        const q = `contract=${market.market}&chainId=${market.chain_id}&limit=50`;
+        const res = await fetch(`${base}/orderbook/trades?${q}`);
+        const json = await safeJson(res);
+        if (json.success && json.data) {
+          setTrades(json.data);
+        }
+      } catch (e) {
+        console.error("Fetch trades failed", e);
+      }
+    };
+
+    fetchTrades();
+    const timer = setInterval(fetchTrades, 5000);
+    return () => clearInterval(timer);
+  }, [market]);
 
   const cancelOrder = async (salt: string) => {
     if (!account || !market) return;
@@ -572,6 +594,7 @@ export function usePredictionDetail() {
     bestBid,
     bestAsk,
     openOrders,
+    trades,
     balance,
     mintInput,
     setMintInput,
