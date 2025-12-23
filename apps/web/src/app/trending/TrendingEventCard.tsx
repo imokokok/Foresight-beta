@@ -60,7 +60,7 @@ type TrendingEventCardProps = {
   tEvents: (key: string) => string;
 };
 
-export function TrendingEventCard({
+export const TrendingEventCard = React.memo(function TrendingEventCard({
   product,
   eventId,
   isFollowed,
@@ -190,4 +190,4 @@ export function TrendingEventCard({
       </div>
     </motion.div>
   );
-}
+});

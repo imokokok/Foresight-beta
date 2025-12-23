@@ -14,10 +14,13 @@ export function BackToTopButton({ show, onClick, label }: BackToTopButtonProps) 
     <AnimatePresence>
       {show && (
         <motion.button
+          type="button"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
           onClick={onClick}
+          aria-label={label}
+          title={label}
           className="fixed bottom-8 right-8 z-50 w-10 h-10 bg-gradient-to-br from-white/90 to-pink-100/90 rounded-full shadow-lg border border-pink-200/50 backdrop-blur-sm overflow-hidden group"
           whileHover={{
             scale: 1.1,

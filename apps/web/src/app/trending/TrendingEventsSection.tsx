@@ -71,7 +71,7 @@ type TrendingEventsGridProps = {
   tEvents: (key: string) => string;
 };
 
-function TrendingEventsGrid({
+const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   visibleEvents,
   followedEvents,
   isAdmin,
@@ -119,7 +119,7 @@ function TrendingEventsGrid({
       })}
     </div>
   );
-}
+});
 
 type TrendingEventsSkeletonGridProps = {
   count?: number;

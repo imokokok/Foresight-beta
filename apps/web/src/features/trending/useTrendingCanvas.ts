@@ -6,6 +6,7 @@ export const useTrendingCanvas = (
   offscreenActiveRef: React.MutableRefObject<boolean>
 ) => {
   const [canvasReady, setCanvasReady] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const isScrollingRef = useRef(false);
   const scrollStopTimerRef = useRef<number | null>(null);
 
@@ -27,6 +28,9 @@ export const useTrendingCanvas = (
         type: "scrolling",
         isScrolling: true,
       });
+
+      const shouldShow = window.scrollY > 480;
+      setShowBackToTop((prev) => (prev === shouldShow ? prev : shouldShow));
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -462,8 +466,6 @@ export const useTrendingCanvas = (
       cancelAnimationFrame(animId);
     };
   }, [canvasRef, canvasWorkerRef, offscreenActiveRef]);
-
-  const showBackToTop = true;
 
   const scrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });

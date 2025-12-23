@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import type { Prediction } from "@/features/trending/trendingModel";
@@ -22,6 +21,7 @@ export default function TrendingPage({ initialPredictions }: TrendingPageProps) 
   return (
     <GradientPage className="relative overflow-x-hidden text-gray-900">
       <canvas
+        aria-hidden="true"
         ref={canvas.canvasRef}
         className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ease-out ${
           canvas.canvasReady ? "opacity-40" : "opacity-0"
