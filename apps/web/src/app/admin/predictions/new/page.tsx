@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
+import GradientPage from "@/components/ui/GradientPage";
 import DatePicker from "@/components/ui/DatePicker";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -45,6 +46,26 @@ type Outcome = {
   color?: string;
   image_url?: string;
 };
+
+type SectionHeaderProps = {
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+};
+
+function SectionHeader({ icon, title, subtitle }: SectionHeaderProps) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-lg font-black text-slate-800">{title}</h3>
+        <p className="text-xs font-bold text-slate-400">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
 
 function usePredictionOutcomes(setOutcomes: React.Dispatch<React.SetStateAction<Outcome[]>>) {
   const onAddOutcome = useCallback(() => {
@@ -240,12 +261,10 @@ export default function AdminCreatePredictionPage() {
   }, [account, profileCtx?.isAdmin, router]);
 
   return (
-    <div className="min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
-      {/* Paper Texture Overlay */}
+    <GradientPage className="relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30">
       <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
 
       <div className="max-w-5xl mx-auto px-6 pt-24 pb-20 relative z-10">
-        {/* Header */}
         <div className="flex items-end justify-between mb-12">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -291,15 +310,11 @@ export default function AdminCreatePredictionPage() {
           <Card padding="lg" hover={false} className="space-y-12">
             {/* Section 1: Basic Info */}
             <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
-                  <Layout className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">基本信息</h3>
-                  <p className="text-xs font-bold text-slate-400">设置事件的核心识别参数</p>
-                </div>
-              </div>
+              <SectionHeader
+                icon={<Layout className="w-5 h-5" />}
+                title="基本信息"
+                subtitle="设置事件的核心识别参数"
+              />
 
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-2">
@@ -390,19 +405,11 @@ export default function AdminCreatePredictionPage() {
 
             {/* Section 2: Details */}
             <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
-                  <AlignLeft className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">
-                    {tTrendingAdmin("section.detailsTitle")}
-                  </h3>
-                  <p className="text-xs font-bold text-slate-400">
-                    {tTrendingAdmin("section.detailsSubtitle")}
-                  </p>
-                </div>
-              </div>
+              <SectionHeader
+                icon={<AlignLeft className="w-5 h-5" />}
+                title={tTrendingAdmin("section.detailsTitle")}
+                subtitle={tTrendingAdmin("section.detailsSubtitle")}
+              />
 
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -433,19 +440,11 @@ export default function AdminCreatePredictionPage() {
 
             {/* Section 3: Type & Outcomes */}
             <div className="space-y-8">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
-                  <Settings2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-800">
-                    {tTrendingAdmin("section.typeTitle")}
-                  </h3>
-                  <p className="text-xs font-bold text-slate-400">
-                    {tTrendingAdmin("section.typeSubtitle")}
-                  </p>
-                </div>
-              </div>
+              <SectionHeader
+                icon={<Settings2 className="w-5 h-5" />}
+                title={tTrendingAdmin("section.typeTitle")}
+                subtitle={tTrendingAdmin("section.typeSubtitle")}
+              />
 
               <div className="space-y-6">
                 <div className="flex gap-2 p-1.5 bg-slate-100/50 rounded-2xl w-fit border border-slate-200/60">
@@ -645,6 +644,6 @@ export default function AdminCreatePredictionPage() {
           </Card>
         </motion.div>
       </div>
-    </div>
+    </GradientPage>
   );
 }

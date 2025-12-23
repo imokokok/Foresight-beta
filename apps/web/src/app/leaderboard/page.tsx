@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
@@ -16,6 +16,7 @@ import {
   Search,
   BarChart2,
 } from "lucide-react";
+import GradientPage from "@/components/ui/GradientPage";
 
 import { buildDiceBearUrl } from "@/lib/dicebear";
 
@@ -459,7 +460,7 @@ export default function LeaderboardPage() {
   const restRank = leaderboardData.slice(3);
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 relative overflow-hidden font-sans selection:bg-purple-200">
+    <GradientPage className="w-full relative overflow-hidden font-sans selection:bg-purple-200">
       <FloatingShapes />
 
       {/* Background Gradients */}
@@ -717,6 +718,6 @@ export default function LeaderboardPage() {
           </div>
         </div>
       </div>
-    </div>
+    </GradientPage>
   );
 }

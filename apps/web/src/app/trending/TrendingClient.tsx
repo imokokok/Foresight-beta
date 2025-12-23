@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
+import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import { useTranslations } from "@/lib/i18n";
 import { type Prediction, buildTrendingCategories } from "./trendingModel";
@@ -216,7 +217,7 @@ export default function TrendingPage({
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 overflow-x-hidden text-gray-900">
+    <GradientPage className="relative overflow-x-hidden text-gray-900">
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ease-out ${
@@ -300,8 +301,7 @@ export default function TrendingPage({
         © 2025 Foresight. All rights reserved.
       </footer>
 
-      {/* 返回顶部按钮 */}
       <BackToTopButton show={showBackToTop} onClick={handleBackToTopClick} label="返回顶部" />
-    </div>
+    </GradientPage>
   );
 }

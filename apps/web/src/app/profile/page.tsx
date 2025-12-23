@@ -16,6 +16,8 @@ import {
   ArrowRight,
   Users,
 } from "lucide-react";
+import GradientPage from "@/components/ui/GradientPage";
+import EmptyState from "@/components/EmptyState";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
@@ -169,7 +171,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-fuchsia-50 to-rose-100 pb-24 pt-24">
+    <GradientPage className="pb-24 pt-24">
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
@@ -205,24 +207,27 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 w-full mb-2">
-                  <div className="text-center p-3 bg-violet-50/80 rounded-2xl border border-violet-100 hover:bg-violet-100/80 transition-colors">
-                    <div className="text-xl font-black text-violet-600">{positionsCount}</div>
-                    <div className="text-[10px] text-violet-400 font-bold uppercase tracking-wide">
-                      {tProfile("sidebar.stats.predictions")}
-                    </div>
-                  </div>
-                  <div className="text-center p-3 bg-fuchsia-50/80 rounded-2xl border border-fuchsia-100 hover:bg-fuchsia-100/80 transition-colors">
-                    <div className="text-xl font-black text-fuchsia-600">{followingCount}</div>
-                    <div className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wide">
-                      {tProfile("sidebar.stats.following")}
-                    </div>
-                  </div>
-                  <div className="text-center p-3 bg-cyan-50/80 rounded-2xl border border-cyan-100 hover:bg-cyan-100/80 transition-colors">
-                    <div className="text-xl font-black text-cyan-600">{history.length}</div>
-                    <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-wide">
-                      {tProfile("sidebar.stats.history")}
-                    </div>
-                  </div>
+                  <SidebarStatCard
+                    value={positionsCount}
+                    label={tProfile("sidebar.stats.predictions")}
+                    containerClass="bg-violet-50/80 border border-violet-100 hover:bg-violet-100/80"
+                    valueClass="text-violet-600"
+                    labelClass="text-violet-400"
+                  />
+                  <SidebarStatCard
+                    value={followingCount}
+                    label={tProfile("sidebar.stats.following")}
+                    containerClass="bg-fuchsia-50/80 border border-fuchsia-100 hover:bg-fuchsia-100/80"
+                    valueClass="text-fuchsia-600"
+                    labelClass="text-fuchsia-400"
+                  />
+                  <SidebarStatCard
+                    value={history.length}
+                    label={tProfile("sidebar.stats.history")}
+                    containerClass="bg-cyan-50/80 border border-cyan-100 hover:bg-cyan-100/80"
+                    valueClass="text-cyan-600"
+                    labelClass="text-cyan-400"
+                  />
                 </div>
               </div>
 
@@ -291,7 +296,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+    </GradientPage>
   );
 }
 
@@ -320,7 +325,6 @@ function OverviewTab({
 
   return (
     <div className="space-y-8">
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-500/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
@@ -340,7 +344,7 @@ function OverviewTab({
           </div>
         </div>
 
-        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+        <ProfileCard>
           <div className="text-gray-400 text-sm font-bold mb-1">
             {tProfile("overview.cards.totalPnl")}
           </div>
@@ -362,9 +366,9 @@ function OverviewTab({
               }}
             />
           </div>
-        </div>
+        </ProfileCard>
 
-        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+        <ProfileCard>
           <div className="text-gray-400 text-sm font-bold mb-1">
             {tProfile("overview.cards.winRate")}
           </div>
@@ -375,9 +379,9 @@ function OverviewTab({
               style={{ width: `${clampedWinRate}%` }}
             />
           </div>
-        </div>
+        </ProfileCard>
 
-        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+        <ProfileCard>
           <div className="text-gray-400 text-sm font-bold mb-1">
             {tProfile("overview.cards.eventsCount")}
           </div>
@@ -389,16 +393,15 @@ function OverviewTab({
               <div key={i} className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white" />
             ))}
           </div>
-        </div>
+        </ProfileCard>
       </div>
 
-      {/* Recent Activity */}
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-purple-500" />
           {tProfile("overview.activity.title")}
         </h3>
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+        <ProfileCard className="overflow-hidden">
           {[1, 2, 3].map((_, i) => (
             <div
               key={i}
@@ -426,8 +429,44 @@ function OverviewTab({
               <ArrowRight className="w-4 h-4 text-gray-300" />
             </div>
           ))}
-        </div>
+        </ProfileCard>
       </div>
+    </div>
+  );
+}
+
+type SidebarStatCardProps = {
+  value: React.ReactNode;
+  label: React.ReactNode;
+  containerClass: string;
+  valueClass: string;
+  labelClass: string;
+};
+
+function SidebarStatCard({
+  value,
+  label,
+  containerClass,
+  valueClass,
+  labelClass,
+}: SidebarStatCardProps) {
+  return (
+    <div className={`text-center p-3 rounded-2xl transition-colors ${containerClass}`}>
+      <div className={`text-xl font-black ${valueClass}`}>{value}</div>
+      <div className={`text-[10px] font-bold uppercase tracking-wide ${labelClass}`}>{label}</div>
+    </div>
+  );
+}
+
+type ProfileCardProps = {
+  children: React.ReactNode;
+  className?: string;
+};
+
+function ProfileCard({ children, className = "" }: ProfileCardProps) {
+  return (
+    <div className={`bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm ${className}`}>
+      {children}
     </div>
   );
 }
@@ -464,11 +503,7 @@ function PredictionsTab() {
   }, [account, tProfile]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
-      </div>
-    );
+    return <CenteredSpinner />;
   }
 
   if (error) {
@@ -477,13 +512,11 @@ function PredictionsTab() {
 
   if (predictions.length === 0) {
     return (
-      <div className="text-center py-20">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <TrendingUp className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-gray-900 font-bold text-lg">{tProfile("predictions.empty.title")}</h3>
-        <p className="text-gray-500 text-sm">{tProfile("predictions.empty.description")}</p>
-      </div>
+      <EmptyState
+        icon={TrendingUp}
+        title={tProfile("predictions.empty.title")}
+        description={tProfile("predictions.empty.description")}
+      />
     );
   }
 
@@ -595,22 +628,16 @@ function HistoryTab() {
   }, [account]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
-      </div>
-    );
+    return <CenteredSpinner />;
   }
 
   if (history.length === 0) {
     return (
-      <div className="text-center py-20">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <History className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-gray-900 font-bold text-lg">{tProfile("history.empty.title")}</h3>
-        <p className="text-gray-500 text-sm">{tProfile("history.empty.description")}</p>
-      </div>
+      <EmptyState
+        icon={History}
+        title={tProfile("history.empty.title")}
+        description={tProfile("history.empty.description")}
+      />
     );
   }
 
@@ -691,22 +718,16 @@ function FollowingTab() {
   }, [account]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
-      </div>
-    );
+    return <CenteredSpinner />;
   }
 
   if (following.length === 0) {
     return (
-      <div className="text-center py-20">
-        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Heart className="w-8 h-8 text-gray-400" />
-        </div>
-        <h3 className="text-gray-900 font-bold text-lg">{tProfile("following.empty.title")}</h3>
-        <p className="text-gray-500 text-sm">{tProfile("following.empty.description")}</p>
-      </div>
+      <EmptyState
+        icon={Heart}
+        title={tProfile("following.empty.title")}
+        description={tProfile("following.empty.description")}
+      />
     );
   }
 
@@ -751,6 +772,14 @@ function FollowingTab() {
           </Link>
         ))}
       </div>
+    </div>
+  );
+}
+
+function CenteredSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
     </div>
   );
 }
