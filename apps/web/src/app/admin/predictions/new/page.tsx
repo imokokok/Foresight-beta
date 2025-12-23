@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
@@ -60,30 +60,48 @@ const CATEGORY_NAME_MAP: Record<string, string> = {
 
 const DRAFT_KEY = "admin_prediction_new_draft_v1";
 
-export default function AdminCreatePredictionPage() {
-  const router = useRouter();
-  const { account, siweLogin } = useWallet();
-  const profileCtx = useUserProfileOptional();
-  const { data: categoriesData } = useCategories();
-  const tTrending = useTranslations("trending");
-  const tTrendingAdmin = useTranslations("trending.admin");
-  const tCommon = useTranslations("common");
-  const [form, setForm] = useState<any>({
-    title: "",
-    description: "",
-    category: "tech",
-    deadline: "",
-    minStake: 1,
-    criteria: "",
-    type: "binary",
-  });
-  const [outcomes, setOutcomes] = useState<
-    Array<{ label: string; description?: string; color?: string; image_url?: string }>
-  >([{ label: "Yes" }, { label: "No" }]);
-  const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+type Outcome = {
+  label: string;
+  description?: string;
+  color?: string;
+  image_url?: string;
+};
+
+function usePredictionOutcomes(setOutcomes: React.Dispatch<React.SetStateAction<Outcome[]>>) {
+  const onAddOutcome = useCallback(() => {
+    setOutcomes((p) => [...p, { label: `选项${p.length}` }]);
+  }, [setOutcomes]);
+
+  const onDelOutcome = useCallback(
+    (i: number) => {
+      setOutcomes((p) => p.filter((_, idx) => idx !== i));
+    },
+    [setOutcomes]
+  );
+
+  const onOutcomeChange = useCallback(
+    (i: number, k: keyof Outcome, v: any) => {
+      setOutcomes((p) => p.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
+    },
+    [setOutcomes]
+  );
+
+  return {
+    onAddOutcome,
+    onDelOutcome,
+    onOutcomeChange,
+  };
+}
+
+function usePredictionDraft(
+  form: any,
+  setForm: React.Dispatch<React.SetStateAction<any>>,
+  outcomes: Outcome[],
+  setOutcomes: React.Dispatch<React.SetStateAction<Outcome[]>>,
+  tTrendingAdmin: ReturnType<typeof useTranslations>
+) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [showDraftMenu, setShowDraftMenu] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const manualSaveDraft = () => {
     const payload = { form, outcomes, ts: Date.now() };
@@ -91,16 +109,13 @@ export default function AdminCreatePredictionPage() {
     setLastSaved(new Date());
     setMsg(tTrendingAdmin("draft.savedMsg"));
     toast.success(tTrendingAdmin("draft.savedToastTitle"), tTrendingAdmin("draft.savedToastDesc"));
-    setShowDraftMenu(false);
   };
 
-  // 2. 智能恢复：检测并提示恢复
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        // 使用 setTimeout 确保 UI 渲染后再弹出 confirm，避免 React 严格模式下的双重调用干扰
         setTimeout(() => {
           if (window.confirm(tTrendingAdmin("draft.restoreConfirm"))) {
             if (data.form)
@@ -124,11 +139,9 @@ export default function AdminCreatePredictionPage() {
         console.error("Failed to load draft", e);
       }
     }
-  }, [tTrendingAdmin]);
+  }, [setForm, setOutcomes, tTrendingAdmin]);
 
-  // 1. 无感知自动保存
   useEffect(() => {
-    // 只有当表单有内容时才保存，避免覆盖已有草稿为空
     if (!form.title && !form.description && outcomes.length === 2 && outcomes[0].label === "Yes") {
       return;
     }
@@ -137,11 +150,10 @@ export default function AdminCreatePredictionPage() {
       const payload = { form, outcomes, ts: Date.now() };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
       setLastSaved(new Date());
-    }, 1000); // 1秒防抖
+    }, 1000);
     return () => clearTimeout(timer);
   }, [form, outcomes]);
 
-  // 4. 一键重置
   const clearDraft = () => {
     if (!window.confirm(tTrendingAdmin("draft.clearConfirm"))) return;
     localStorage.removeItem(DRAFT_KEY);
@@ -159,11 +171,45 @@ export default function AdminCreatePredictionPage() {
     setMsg(tTrendingAdmin("draft.clearedMsg"));
   };
 
+  return {
+    lastSaved,
+    msg,
+    setMsg,
+    manualSaveDraft,
+    clearDraft,
+  };
+}
+
+export default function AdminCreatePredictionPage() {
+  const router = useRouter();
+  const { account, siweLogin } = useWallet();
+  const profileCtx = useUserProfileOptional();
+  const { data: categoriesData } = useCategories();
+  const tTrending = useTranslations("trending");
+  const tTrendingAdmin = useTranslations("trending.admin");
+  const tCommon = useTranslations("common");
+  const [form, setForm] = useState<any>({
+    title: "",
+    description: "",
+    category: "tech",
+    deadline: "",
+    minStake: 1,
+    criteria: "",
+    type: "binary",
+  });
+  const [outcomes, setOutcomes] = useState<Outcome[]>([{ label: "Yes" }, { label: "No" }]);
+  const [submitting, setSubmitting] = useState(false);
+  const [showDraftMenu, setShowDraftMenu] = useState(false);
+  const { lastSaved, msg, setMsg, manualSaveDraft, clearDraft } = usePredictionDraft(
+    form,
+    setForm,
+    outcomes,
+    setOutcomes,
+    tTrendingAdmin
+  );
+
   const setField = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-  const onAddOutcome = () => setOutcomes((p) => [...p, { label: `选项${p.length}` }]);
-  const onDelOutcome = (i: number) => setOutcomes((p) => p.filter((_, idx) => idx !== i));
-  const onOutcomeChange = (i: number, k: string, v: any) =>
-    setOutcomes((p) => p.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)));
+  const { onAddOutcome, onDelOutcome, onOutcomeChange } = usePredictionOutcomes(setOutcomes);
 
   const submit = async () => {
     try {
@@ -574,7 +620,10 @@ export default function AdminCreatePredictionPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={manualSaveDraft}
+                        onClick={() => {
+                          manualSaveDraft();
+                          setShowDraftMenu(false);
+                        }}
                         className="w-full flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-brand px-2 py-2 rounded-lg hover:bg-brand/5 transition-colors text-left"
                       >
                         <Save className="w-3.5 h-3.5" />

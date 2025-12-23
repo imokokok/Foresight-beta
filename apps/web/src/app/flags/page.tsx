@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import WalletModal from "@/components/WalletModal";
@@ -13,6 +13,7 @@ import StickerRevealModal, {
 import StickerGalleryModal from "@/components/StickerGalleryModal";
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
+import { useFlagsData } from "./useFlagsData";
 import {
   Loader2,
   Plus,
@@ -60,8 +61,6 @@ export default function FlagsPage() {
   const { account } = useWallet();
   const { user } = useAuth();
   const tFlags = useTranslations("flags");
-  const [flags, setFlags] = useState<FlagItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
@@ -69,8 +68,6 @@ export default function FlagsPage() {
   const [initTitle, setInitTitle] = useState("");
   const [initDesc, setInitDesc] = useState("");
 
-  const [filterMine, setFilterMine] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "success">("all");
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [checkinFlag, setCheckinFlag] = useState<FlagItem | null>(null);
   const [checkinNote, setCheckinNote] = useState("");
@@ -97,19 +94,30 @@ export default function FlagsPage() {
   const [stickerOpen, setStickerOpen] = useState(false);
   const [earnedSticker, setEarnedSticker] = useState<StickerItem | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
 
   // Official challenges
   const [officialCreate, setOfficialCreate] = useState(false);
   const [officialListOpen, setOfficialListOpen] = useState(false);
   const [selectedTplId, setSelectedTplId] = useState("");
   const [tplConfig, setTplConfig] = useState<any>({});
-  const [dbStickers, setDbStickers] = useState<StickerItem[]>([]);
-  const [inviteNotice, setInviteNotice] = useState<{
-    id: number;
-    title: string;
-  } | null>(null);
-  const [invitesCount, setInvitesCount] = useState(0);
+  const {
+    flags,
+    loading,
+    filterMine,
+    setFilterMine,
+    statusFilter,
+    setStatusFilter,
+    collectedStickers,
+    dbStickers,
+    inviteNotice,
+    invitesCount,
+    loadFlags,
+    activeFlags,
+    completedFlags,
+    filteredFlags,
+    viewerId,
+    witnessFlags,
+  } = useFlagsData(account, user?.id || null, tFlags);
 
   const officialTemplates = [
     {
@@ -221,7 +229,7 @@ export default function FlagsPage() {
       case "fitness_pro":
         return {
           days: 28,
-          timesPerDay: 1, // logic simplified
+          timesPerDay: 1,
           deposit: "100",
         };
       case "weather_prophet":
@@ -252,110 +260,6 @@ export default function FlagsPage() {
         return {};
     }
   };
-
-  const loadFlags = useCallback(async () => {
-    try {
-      setLoading(true);
-      const me = account || user?.id || "";
-
-      if (!me) {
-        setFlags([]);
-        return;
-      }
-
-      const url = `/api/flags?viewer_id=${encodeURIComponent(me)}`;
-
-      const res = await fetch(url, { cache: "no-store" });
-
-      if (!res.ok) {
-        toast.error(tFlags("toast.loadFailedTitle"), `HTTP ${res.status}: ${res.statusText}`);
-        setFlags([]);
-        return;
-      }
-
-      const payload = await res.json().catch(() => ({ flags: [] }));
-
-      const list = Array.isArray(payload?.flags) ? payload.flags : [];
-
-      setFlags(list as FlagItem[]);
-
-      if (list.length === 0) {
-        toast.info(tFlags("toast.noDataTitle"), tFlags("toast.noDataDesc"));
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error(tFlags("toast.loadFailedTitle"), String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [account, user?.id, tFlags]);
-
-  const loadCollectedStickers = useCallback(async () => {
-    try {
-      const me = account || user?.id || "";
-      if (!me) return;
-      const res = await fetch(`/api/stickers?user_id=${encodeURIComponent(me)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({ stickers: [] }));
-      const list = Array.isArray(data?.stickers) ? data.stickers : [];
-      setCollectedStickers(list.map((s: any) => s.sticker_id));
-    } catch (e) {
-      console.error(e);
-    }
-  }, [account, user?.id]);
-
-  useEffect(() => {
-    fetch("/api/emojis")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.data && Array.isArray(data.data)) {
-          setDbStickers(data.data);
-        }
-      })
-      .catch(console.error);
-  }, []);
-
-  const checkInvites = useCallback(async () => {
-    try {
-      const me = account || user?.id || "";
-      if (!me) return;
-      const res = await fetch(`/api/flags?viewer_id=${encodeURIComponent(me)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({ flags: [] }));
-      const list = (data.flags || []) as FlagItem[];
-      const lower = String(me).toLowerCase();
-      const pending = list.filter(
-        (f) =>
-          f.status === "pending_review" &&
-          f.verification_type === "witness" &&
-          String(f.witness_id || "").toLowerCase() === lower
-      );
-      setInvitesCount(pending.length);
-      if (pending.length > 0) {
-        setInviteNotice({
-          id: pending[0].id,
-          title: pending[0].title,
-        });
-      } else {
-        setInviteNotice(null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [account, user?.id]);
-
-  useEffect(() => {
-    if (account || user?.id) {
-      loadFlags();
-      checkInvites();
-      loadCollectedStickers();
-    } else {
-      setFlags([]);
-      setCollectedStickers([]);
-    }
-  }, [account, user?.id, loadFlags, checkInvites, loadCollectedStickers]);
 
   const handleCreateClick = () => {
     if (!account && !user) {
@@ -520,37 +424,6 @@ export default function FlagsPage() {
   };
 
   const allStickers = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
-
-  const activeFlags = useMemo(() => flags.filter((f) => f.status === "active"), [flags]);
-  const completedFlags = useMemo(() => flags.filter((f) => f.status === "success"), [flags]);
-
-  const filteredFlags = useMemo(
-    () =>
-      flags
-        .filter((f) => (statusFilter === "all" ? true : f.status === statusFilter))
-        .filter((f) => {
-          if (!filterMine) return true;
-          const me = account || user?.id || "";
-          return me && String(f.user_id || "").toLowerCase() === String(me).toLowerCase();
-        })
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    [flags, statusFilter, filterMine, account, user?.id]
-  );
-
-  const viewerId = String(account || user?.id || "").toLowerCase();
-
-  const witnessFlags = useMemo(
-    () =>
-      viewerId
-        ? flags.filter(
-            (f) =>
-              f.verification_type === "witness" &&
-              String(f.witness_id || "").toLowerCase() === viewerId &&
-              String(f.user_id || "").toLowerCase() !== viewerId
-          )
-        : [],
-    [flags, viewerId]
-  );
 
   return (
     <div className="h-[calc(100vh-64px)] w-full bg-[#FAFAFA] relative overflow-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
