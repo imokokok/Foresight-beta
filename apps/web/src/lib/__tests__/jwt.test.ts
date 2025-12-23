@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from "vitest";
 import { webcrypto } from "crypto";
 import { createToken, verifyToken, createRefreshToken, decodeToken } from "../jwt";
