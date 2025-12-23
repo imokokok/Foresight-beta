@@ -75,8 +75,9 @@ export function HeroSearchInput({ value, placeholder, onChange, onKeyDown }: Her
         <Search className="h-4 w-4 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
       </div>
       <input
-        type="text"
+        type="search"
         placeholder={placeholder}
+        aria-label={placeholder}
         className="w-full md:w-64 pl-10 pr-4 py-2 bg-white/80 backdrop-blur-xl border border-white/60 rounded-full text-sm text-gray-700 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:bg-white transition-all hover:shadow-md"
         value={value}
         onChange={onChange}
@@ -279,6 +280,17 @@ export function HeroPreviewCard({
         transition={{ duration: shouldReduceMotion ? 0.25 : 0.6, ease: "easeOut" }}
         className="relative z-10 w-full max-w-lg aspect-[4/3] rounded-[2rem] shadow-2xl shadow-purple-900/10 bg-white p-3 cursor-pointer group"
         whileHover={shouldReduceMotion ? undefined : { y: -5, rotate: -1 }}
+        role="button"
+        tabIndex={canOpenPrediction ? 0 : -1}
+        aria-disabled={!canOpenPrediction}
+        aria-label={activeTitle}
+        onKeyDown={(e) => {
+          if (!canOpenPrediction) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpenPrediction();
+          }
+        }}
         onClick={() => {
           if (!canOpenPrediction) return;
           onOpenPrediction();
@@ -400,11 +412,15 @@ export function HeroCategoryList({
       <div className="flex flex-wrap items-center gap-3 md:gap-4">
         {categories.map((category) => {
           const isActive = String(activeCategory || "") === category.name;
+          const count = categoryCounts[category.name] || 0;
           return (
             <motion.button
               key={category.name}
+              type="button"
               onClick={() => onCategoryClick(category.name)}
               whileTap={{ scale: 0.97 }}
+              aria-pressed={isActive}
+              aria-label={`${category.label}, ${count} ${eventsLabel}`}
               className={`group flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 shrink-0 ${
                 isActive
                   ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20 transform -translate-y-1"
@@ -423,7 +439,7 @@ export function HeroCategoryList({
                   {category.label}
                 </div>
                 <div className="text-[10px] font-medium text-gray-400">
-                  {categoryCounts[category.name] || 0} {eventsLabel}
+                  {count} {eventsLabel}
                 </div>
               </div>
             </motion.button>

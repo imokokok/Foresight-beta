@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { X, Mail, Wallet, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations } from "@/lib/i18n";
+import { Modal } from "@/components/ui/Modal";
 import WalletModal from "./WalletModal";
 import InstallPromptModal from "./InstallPromptModal";
 
@@ -155,13 +155,16 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
 
   if (!open) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[10000]">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div
-          className={`w-full max-w-md rounded-xl shadow-xl ${installPromptOpen ? "bg-gradient-to-r from-purple-600/62 to-pink-600/62" : "bg-white"}`}
-        >
+  return (
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        ariaLabelledby="login-modal-title"
+        ariaDescribedby="login-modal-description"
+        containerClassName={`w-full max-w-md rounded-xl shadow-xl ${installPromptOpen ? "bg-gradient-to-r from-purple-600/62 to-pink-600/62" : "bg-white"}`}
+      >
+        <div>
           <div className="flex items-center justify-between border-b px-4 py-3">
             <div className="flex gap-2">
               <button
@@ -190,8 +193,12 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
             <div className="px-6 py-6">
               {!otpRequested ? (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">{tLogin("emailContinueTitle")}</h3>
-                  <p className="text-sm text-gray-600">{tLogin("emailContinueDescription")}</p>
+                  <h3 id="login-modal-title" className="text-lg font-semibold">
+                    {tLogin("emailContinueTitle")}
+                  </h3>
+                  <p id="login-modal-description" className="text-sm text-gray-600">
+                    {tLogin("emailContinueDescription")}
+                  </p>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {tLogin("emailLabel")}
@@ -241,8 +248,10 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">{tLogin("otpTitle")}</h3>
-                  <p className="text-sm text-gray-600">
+                  <h3 id="login-modal-title" className="text-lg font-semibold">
+                    {tLogin("otpTitle")}
+                  </h3>
+                  <p id="login-modal-description" className="text-sm text-gray-600">
                     {tLogin("otpDescriptionPrefix")} <span className="font-medium">{email}</span>
                     {tLogin("otpDescriptionSuffix")}
                   </p>
@@ -284,8 +293,12 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
             </div>
           ) : (
             <div className="px-6 py-6 space-y-4">
-              <h3 className="text-lg font-semibold">{tLogin("walletContinueTitle")}</h3>
-              <p className="text-sm text-gray-600">{tLogin("walletContinueDescription")}</p>
+              <h3 id="login-modal-title" className="text-lg font-semibold">
+                {tLogin("walletContinueTitle")}
+              </h3>
+              <p id="login-modal-description" className="text-sm text-gray-600">
+                {tLogin("walletContinueDescription")}
+              </p>
 
               <div className="relative">
                 <div
@@ -357,7 +370,6 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
                   )}
                 </div>
 
-                {/* 竖直滑动指示器（可选） */}
                 {availableWallets && availableWallets.length > 1 && (
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 pr-1">
                     {availableWallets.map((_, i) => (
@@ -374,7 +386,7 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
             </div>
           )}
         </div>
-      </div>
+      </Modal>
 
       {walletModalOpen && (
         <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
@@ -385,7 +397,6 @@ export default function LoginModal({ open, onClose, defaultTab = "email" }: Logi
         walletName={installWalletName}
         installUrl={installUrl}
       />
-    </div>,
-    document.body
+    </>
   );
 }

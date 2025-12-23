@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, TrendingUp, Clock, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { createPortal } from "react-dom";
 import { useTranslations } from "@/lib/i18n";
+import { Modal } from "@/components/ui/Modal";
 
 interface SearchResult {
   id: number;
@@ -44,6 +44,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
   const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState(false);
 
   const hotKeys = ["hot.usElection", "hot.btcPrice", "hot.worldCup", "hot.ai", "hot.climate"];
   const hotSearches = hotKeys.map((key) => tSearch(key));
@@ -67,6 +68,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
     if (query.length < 2) {
       setResults([]);
       setLoading(false);
+      setError(false);
       return;
     }
 
@@ -76,9 +78,11 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         setResults(data.results || []);
+        setError(false);
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -143,6 +147,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
   const handleClear = () => {
     setQuery("");
     setResults([]);
+    setError(false);
     inputRef.current?.focus();
   };
 
@@ -162,27 +167,23 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
 
   const searchModal =
     isOpen && mounted ? (
-      <div className="fixed inset-0 z-[9999]">
-        {/* 背景遮罩 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={() => setIsOpen(false)}
-        />
-
-        {/* 搜索框 */}
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4">
+      <Modal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        ariaLabelledby="global-search-title"
+        role="dialog"
+        initialFocusRef={inputRef as React.RefObject<HTMLElement>}
+        containerClassName="flex items-start justify-center mt-20 w-full px-4"
+        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+      >
+        <AnimatePresence>
           <motion.div
             ref={containerRef}
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
           >
-            {/* 搜索输入 */}
             <div className="relative flex items-center px-4 py-3 border-b border-gray-100">
               <Search className="w-5 h-5 text-gray-400 mr-3" />
               <input
@@ -209,9 +210,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
               </div>
             </div>
 
-            {/* 搜索结果或推荐 */}
             <div className="max-h-[60vh] overflow-y-auto">
-              {/* 搜索结果 */}
               {results.length > 0 && (
                 <div className="p-2">
                   <div className="text-xs font-medium text-gray-500 px-3 py-2">
@@ -250,8 +249,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
                 </div>
               )}
 
-              {/* 无结果 */}
-              {query.length >= 2 && !loading && results.length === 0 && (
+              {query.length >= 2 && !loading && results.length === 0 && !error && (
                 <div className="p-12 text-center">
                   <div className="text-4xl mb-3">🔍</div>
                   <div className="text-gray-900 font-medium mb-2">{tSearch("emptyTitle")}</div>
@@ -259,10 +257,16 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
                 </div>
               )}
 
-              {/* 热门搜索 */}
+              {query.length >= 2 && !loading && error && (
+                <div className="p-12 text-center">
+                  <div className="text-4xl mb-3">⚠️</div>
+                  <div className="text-gray-900 font-medium mb-2">{tSearch("errorTitle")}</div>
+                  <div className="text-sm text-gray-500">{tSearch("errorDescription")}</div>
+                </div>
+              )}
+
               {results.length === 0 && query.length === 0 && (
                 <div className="p-4">
-                  {/* 搜索历史 */}
                   {searchHistory.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
@@ -294,7 +298,6 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
                     </div>
                   )}
 
-                  {/* 热门搜索 */}
                   <div>
                     <div className="text-xs font-medium text-gray-500 mb-3 flex items-center gap-2">
                       <TrendingUp className="w-4 h-4" />
@@ -316,7 +319,6 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
               )}
             </div>
 
-            {/* 底部提示 */}
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
@@ -340,13 +342,12 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
               </div>
             </div>
           </motion.div>
-        </div>
-      </div>
+        </AnimatePresence>
+      </Modal>
     ) : null;
 
   return (
     <>
-      {/* 搜索触发按钮 */}
       <button
         onClick={() => setIsOpen(true)}
         className={`flex items-center gap-2 px-4 py-2 bg-white/80 border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all ${className}`}
@@ -358,8 +359,7 @@ export default function GlobalSearch({ placeholder, className = "" }: GlobalSear
         </div>
       </button>
 
-      {/* 搜索模态框 */}
-      {mounted && searchModal && createPortal(searchModal, document.body)}
+      {mounted && searchModal}
     </>
   );
 }

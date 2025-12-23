@@ -64,7 +64,6 @@ function FlagsRightSidebar({
       <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
-          <h3 className="text-sm font-black text-gray-900">{tFlags("sidebar.trendingTitle")}</h3>
           <button
             onClick={onViewAll}
             className="text-[10px] font-bold text-purple-600 hover:underline"
@@ -74,10 +73,11 @@ function FlagsRightSidebar({
         </div>
         <div className="space-y-3">
           {officialTemplates.slice(0, 3).map((tpl) => (
-            <div
+            <button
               key={tpl.id}
+              type="button"
               onClick={() => onTemplateClick(tpl)}
-              className="group p-3 rounded-2xl bg-white border border-gray-100 hover:border-purple-200 hover:shadow-md transition-all cursor-pointer flex gap-3 items-center"
+              className="group w-full text-left p-3 rounded-2xl bg-white border border-gray-100 hover:border-purple-200 hover:shadow-md transition-all cursor-pointer flex gap-3 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
             >
               <div
                 className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tpl.gradient} flex items-center justify-center text-white shadow-sm shrink-0`}
@@ -92,7 +92,7 @@ function FlagsRightSidebar({
                   {tpl.description}
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -141,6 +141,9 @@ function OfficialTemplatesModal({
             onClick={onClose}
           />
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="official-templates-title"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -152,7 +155,9 @@ function OfficialTemplatesModal({
                   <Trophy className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-gray-900">{tFlags("official.title")}</h3>
+                  <h3 id="official-templates-title" className="text-2xl font-black text-gray-900">
+                    {tFlags("official.title")}
+                  </h3>
                   <p className="text-sm font-bold text-gray-400">{tFlags("official.subtitle")}</p>
                 </div>
               </div>
@@ -172,9 +177,18 @@ function OfficialTemplatesModal({
                     whileHover={{ y: -8, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className={`group relative overflow-hidden rounded-[2rem] p-6 cursor-pointer transition-all duration-300 border border-white/40 shadow-lg hover:shadow-2xl bg-gradient-to-br ${tpl.gradient} ${tpl.shadow}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       onTemplateClick(tpl);
                       onClose();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onTemplateClick(tpl);
+                        onClose();
+                      }
                     }}
                   >
                     <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />

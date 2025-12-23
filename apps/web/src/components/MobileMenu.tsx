@@ -39,6 +39,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const { account, disconnectWallet } = useWallet();
   const tNav = useTranslations("nav");
   const tMobileNav = useTranslations("mobileNav");
+  const firstItemRef = React.useRef<HTMLAnchorElement | null>(null);
 
   // 路由变化时自动关闭菜单
   useEffect(() => {
@@ -58,12 +59,30 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && firstItemRef.current) {
+      firstItemRef.current.focus();
+    }
+  }, [isOpen]);
+
   const menuItems = [
-    { icon: Home, label: tNav("home"), href: "/" },
+    { icon: Home, label: tNav("home"), href: "/trending" },
     { icon: TrendingUp, label: tNav("trending"), href: "/trending" },
     { icon: Search, label: tMobileNav("items.search"), href: "/search" },
     { icon: MessageSquare, label: tMobileNav("items.forum"), href: "/forum" },
-    { icon: User, label: tMobileNav("items.me"), href: account ? `/user/${account}` : "/login" },
+    { icon: User, label: tMobileNav("items.me"), href: "/profile" },
     { icon: Settings, label: tMobileNav("items.settings"), href: "/settings" },
   ];
 
@@ -74,6 +93,8 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
         onClick={() => setIsOpen(true)}
         className={`lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors ${className}`}
         aria-label={tMobileNav("menuOpen")}
+        aria-expanded={isOpen}
+        aria-controls="mobile-menu-drawer"
       >
         <Menu className="w-6 h-6 text-gray-700" />
       </button>
@@ -94,6 +115,9 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
 
             {/* 菜单抽屉 */}
             <motion.div
+              id="mobile-menu-drawer"
+              role="dialog"
+              aria-modal="true"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -143,7 +167,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
 
               {/* 菜单项 */}
               <nav className="p-2">
-                {menuItems.map((item) => {
+                {menuItems.map((item, index) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
 
@@ -151,6 +175,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      ref={index === 0 ? firstItemRef : undefined}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
                           ? "bg-purple-50 text-purple-600 font-semibold"
