@@ -34,7 +34,22 @@ const erc1155Abi = [
   "function setApprovalForAll(address operator, bool approved) external",
 ];
 
-// 地址解析（基于 chainId）
+async function safeJson<T = any>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    if (text && text.trim().startsWith("<!DOCTYPE html")) {
+      throw new Error("Server returned an HTML error page");
+    }
+    throw new Error("Unexpected response format");
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new Error("Invalid JSON response");
+  }
+}
+
 function resolveAddresses(chainId: number): {
   foresight: string;
   usdc: string;
@@ -173,7 +188,7 @@ export default function PredictionDetailClient() {
         market.chain_id
       }&marketKey=${encodeURIComponent(mk)}&maker=${account}&status=open`;
       const res = await fetch(`${base}/orderbook/orders?${q}`);
-      const json = await res.json();
+      const json = await safeJson(res);
       if (json.success && json.data) {
         setOpenOrders(json.data);
       }
@@ -189,7 +204,7 @@ export default function PredictionDetailClient() {
       try {
         setLoading(true);
         const res = await fetch(`/api/predictions/${params.id}?includeStats=1&includeOutcomes=1`);
-        const data = await res.json();
+        const data = await safeJson(res);
         if (!cancelled) {
           if (data.success) {
             setPrediction(data.data);
@@ -219,7 +234,7 @@ export default function PredictionDetailClient() {
     const loadMarket = async () => {
       try {
         const resp = await fetch(`/api/markets/map?id=${params.id}`);
-        const j = await resp.json();
+        const j = await safeJson(resp);
         if (j?.success && j?.data) {
           setMarket(j.data);
         }
@@ -246,7 +261,7 @@ export default function PredictionDetailClient() {
           fetch(`${base}/orderbook/depth?${qBuy}`),
           fetch(`${base}/orderbook/depth?${qSell}`),
         ]);
-        const [j1, j2] = await Promise.all([r1.json(), r2.json()]);
+        const [j1, j2] = await Promise.all([safeJson(r1), safeJson(r2)]);
 
         const buys = j1.data || [];
         const sells = j2.data || [];
@@ -307,7 +322,7 @@ export default function PredictionDetailClient() {
         }),
       });
 
-      const json = await res.json();
+      const json = await safeJson(res);
       if (json.success) {
         setOrderMsg("订单已取消");
         // Optimistic update
@@ -546,7 +561,7 @@ export default function PredictionDetailClient() {
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json();
+      const json = await safeJson(res);
       if (json.success) {
         setOrderMsg("下单成功！");
         setAmountInput("");

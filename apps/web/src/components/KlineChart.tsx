@@ -10,6 +10,24 @@ interface KlineChartProps {
   resolution?: string;
 }
 
+async function safeJson<T = any>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    console.warn("KlineChart: non-JSON response", {
+      contentType,
+      preview: text ? text.slice(0, 120) : "",
+    });
+    return { success: false, data: [] } as T;
+  }
+  try {
+    return (await res.json()) as T;
+  } catch {
+    console.warn("KlineChart: failed to parse JSON response");
+    return { success: false, data: [] } as T;
+  }
+}
+
 export default function KlineChart({
   market,
   chainId,
@@ -83,7 +101,7 @@ export default function KlineChart({
         const base = process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:3005";
         const url = `${base}/orderbook/candles?market=${market}&chainId=${chainId}&outcome=${outcomeIndex}&resolution=${resolution}&limit=200`;
         const res = await fetch(url);
-        const json = await res.json();
+        const json = await safeJson(res);
         if (json.success === false) return;
 
         const data = (json.data || [])
