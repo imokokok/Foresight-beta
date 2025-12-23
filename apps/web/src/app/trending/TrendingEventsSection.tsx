@@ -126,29 +126,30 @@ function TrendingEventsGrid({
   );
 }
 
-export function TrendingEventsSection({
-  loading,
-  error,
-  filters,
-  onFilterChange,
-  followError,
-  sortedEvents,
-  visibleEvents,
-  followedEvents,
-  isAdmin,
-  deleteBusyId,
-  hasMore,
-  loadingMore,
-  observerTargetRef,
-  toggleFollow,
-  createCategoryParticlesAtCardClick,
-  openEdit,
-  deleteEvent,
-  onCreatePrediction,
-  tTrending,
-  tTrendingAdmin,
-  tEvents,
-}: TrendingEventsSectionProps) {
+export function TrendingEventsSection(props: TrendingEventsSectionProps) {
+  const {
+    loading,
+    error,
+    filters,
+    onFilterChange,
+    followError,
+    sortedEvents,
+    visibleEvents,
+    followedEvents,
+    isAdmin,
+    deleteBusyId,
+    hasMore,
+    loadingMore,
+    observerTargetRef,
+    toggleFollow,
+    createCategoryParticlesAtCardClick,
+    openEdit,
+    deleteEvent,
+    onCreatePrediction,
+    tTrending,
+    tTrendingAdmin,
+    tEvents,
+  } = props;
   return (
     <>
       {!loading && !error && (

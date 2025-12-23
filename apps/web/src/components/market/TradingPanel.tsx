@@ -14,57 +14,68 @@ import { useTranslations } from "@/lib/i18n";
 const BIGINT_ZERO = BigInt(0);
 const BIGINT_THRESHOLD = BigInt("1000000000000");
 
-interface TradingPanelProps {
+interface TradingPanelData {
   market: any;
   prediction: any;
-  tradeSide: "buy" | "sell";
-  setTradeSide: (s: "buy" | "sell") => void;
-  tradeOutcome: number;
-  setTradeOutcome: (i: number) => void;
-  priceInput: string;
-  setPriceInput: (v: string) => void;
-  amountInput: string;
-  setAmountInput: (v: string) => void;
-  orderMode: "limit" | "best";
-  setOrderMode: (m: "limit" | "best") => void;
-  submitOrder: () => void;
-  isSubmitting: boolean;
-  orderMsg: string | null;
   bestBid: string;
   bestAsk: string;
-  balance: string; // User balance text
+  balance: string;
   depthBuy: Array<{ price: string; qty: string }>;
   depthSell: Array<{ price: string; qty: string }>;
   userOrders: any[];
-  cancelOrder: (id: string) => void;
   outcomes: any[];
 }
 
-export function TradingPanel({
-  market,
-  prediction,
-  tradeSide,
-  setTradeSide,
-  tradeOutcome,
-  setTradeOutcome,
-  priceInput,
-  setPriceInput,
-  amountInput,
-  setAmountInput,
-  orderMode,
-  setOrderMode,
-  submitOrder,
-  isSubmitting,
-  orderMsg,
-  bestBid,
-  bestAsk,
-  balance,
-  depthBuy,
-  depthSell,
-  userOrders,
-  cancelOrder,
-  outcomes,
-}: TradingPanelProps) {
+interface TradingPanelState {
+  tradeSide: "buy" | "sell";
+  tradeOutcome: number;
+  priceInput: string;
+  amountInput: string;
+  orderMode: "limit" | "best";
+  isSubmitting: boolean;
+  orderMsg: string | null;
+}
+
+interface TradingPanelHandlers {
+  setTradeSide: (s: "buy" | "sell") => void;
+  setTradeOutcome: (i: number) => void;
+  setPriceInput: (v: string) => void;
+  setAmountInput: (v: string) => void;
+  setOrderMode: (m: "limit" | "best") => void;
+  submitOrder: () => void;
+  cancelOrder: (id: string) => void;
+}
+
+interface TradingPanelProps {
+  data: TradingPanelData;
+  state: TradingPanelState;
+  handlers: TradingPanelHandlers;
+}
+
+export function TradingPanel(props: TradingPanelProps) {
+  const { data, state, handlers } = props;
+  const {
+    market,
+    prediction,
+    bestBid,
+    bestAsk,
+    balance,
+    depthBuy,
+    depthSell,
+    userOrders,
+    outcomes,
+  } = data;
+  const { tradeSide, tradeOutcome, priceInput, amountInput, orderMode, isSubmitting, orderMsg } =
+    state;
+  const {
+    setTradeSide,
+    setTradeOutcome,
+    setPriceInput,
+    setAmountInput,
+    setOrderMode,
+    submitOrder,
+    cancelOrder,
+  } = handlers;
   const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders">("trade");
   const tTrading = useTranslations("trading");
   const tCommon = useTranslations("common");

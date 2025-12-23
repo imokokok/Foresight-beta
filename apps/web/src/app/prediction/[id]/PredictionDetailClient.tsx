@@ -655,29 +655,35 @@ export default function PredictionDetailClient() {
           <div className="lg:col-span-4">
             <div className="sticky top-24">
               <TradingPanel
-                market={market}
-                prediction={prediction}
-                tradeSide={tradeSide}
-                setTradeSide={setTradeSide}
-                tradeOutcome={tradeOutcome}
-                setTradeOutcome={setTradeOutcome}
-                priceInput={priceInput}
-                setPriceInput={setPriceInput}
-                amountInput={amountInput}
-                setAmountInput={setAmountInput}
-                orderMode={orderMode}
-                setOrderMode={setOrderMode}
-                submitOrder={submitOrder}
-                isSubmitting={isSubmitting}
-                orderMsg={orderMsg}
-                bestBid={bestBid}
-                bestAsk={bestAsk}
-                balance={balance}
-                depthBuy={depthBuy}
-                depthSell={depthSell}
-                userOrders={openOrders}
-                cancelOrder={cancelOrder}
-                outcomes={outcomes}
+                data={{
+                  market,
+                  prediction,
+                  bestBid,
+                  bestAsk,
+                  balance,
+                  depthBuy,
+                  depthSell,
+                  userOrders: openOrders,
+                  outcomes,
+                }}
+                state={{
+                  tradeSide,
+                  tradeOutcome,
+                  priceInput,
+                  amountInput,
+                  orderMode,
+                  isSubmitting,
+                  orderMsg,
+                }}
+                handlers={{
+                  setTradeSide,
+                  setTradeOutcome,
+                  setPriceInput,
+                  setAmountInput,
+                  setOrderMode,
+                  submitOrder,
+                  cancelOrder,
+                }}
               />
               <div className="mt-4 bg-white border border-purple-100 rounded-3xl p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between text-sm font-medium text-gray-700">
