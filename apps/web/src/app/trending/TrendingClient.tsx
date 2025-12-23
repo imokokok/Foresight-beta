@@ -3,6 +3,7 @@
 import React from "react";
 import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
+import type { Prediction } from "./trendingModel";
 import { createCategoryParticlesAtCardClick } from "./trendingAnimations";
 import { TrendingHero } from "./TrendingHero";
 import { TrendingEditModal } from "./TrendingEditModal";
@@ -10,7 +11,11 @@ import { TrendingLoginModal } from "./TrendingLoginModal";
 import { TrendingEventsSection } from "./TrendingEventsSection";
 import { useTrendingPage } from "./hooks/useTrendingPage";
 
-export default function TrendingPage({ initialPredictions }: { initialPredictions?: any[] }) {
+type TrendingPageProps = {
+  initialPredictions?: Prediction[];
+};
+
+export default function TrendingPage({ initialPredictions }: TrendingPageProps) {
   const {
     canvasRef,
     canvasReady,
@@ -63,7 +68,7 @@ export default function TrendingPage({ initialPredictions }: { initialPrediction
     handleViewAllCategoriesWithScroll,
     handleCategoryClick,
     handleCreatePrediction,
-  } = useTrendingPage(initialPredictions as any[]);
+  } = useTrendingPage(initialPredictions);
 
   return (
     <GradientPage className="relative overflow-x-hidden text-gray-900">

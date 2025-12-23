@@ -98,7 +98,7 @@ export default function Sidebar() {
         ],
       },
     ],
-    [isAdmin, t, tAuth, tCommon]
+    [isAdmin, t, tCommon]
   );
 
   const isActive = (href?: string) => !!href && pathname === href;

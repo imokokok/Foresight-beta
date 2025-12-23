@@ -9,6 +9,18 @@ export const revalidate = 30; // 30秒缓存
 
 type PredictionRow = Database["public"]["Tables"]["predictions"]["Row"];
 type EventFollowRow = Database["public"]["Tables"]["event_follows"]["Row"];
+type PredictionListItem = PredictionRow & {
+  followers_count: number;
+  stats: {
+    yesAmount: number;
+    noAmount: number;
+    totalAmount: number;
+    participantCount: number;
+    yesProbability: number;
+    noProbability: number;
+    betCount: number;
+  };
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,11 +84,11 @@ export async function GET(request: NextRequest) {
     const { data: predictions, error, count } = await query;
     totalCount = count || 0;
 
-    let predictionsWithFollowersCount: any[] = [];
+    let predictionsWithFollowersCount: PredictionListItem[] = [];
     if (!error && predictions) {
-      const ids = ((predictions as any[]) || [])
-        .map((p) => Number(p.id))
-        .filter((n) => Number.isFinite(n));
+      const predictionRows = (predictions || []) as PredictionRow[];
+
+      const ids = predictionRows.map((p) => Number(p.id)).filter((n) => Number.isFinite(n));
 
       let followerCounts: Record<number, number> = {};
       if (ids.length > 0) {
@@ -86,7 +98,8 @@ export async function GET(request: NextRequest) {
           .in("event_id", ids);
 
         if (!rowsError && rows) {
-          for (const r of rows as any[]) {
+          const followRows = rows as EventFollowRow[];
+          for (const r of followRows) {
             const eid = Number(r.event_id);
             if (Number.isFinite(eid)) {
               followerCounts[eid] = (followerCounts[eid] || 0) + 1;
@@ -116,21 +129,21 @@ export async function GET(request: NextRequest) {
           .in("prediction_id", ids);
 
         if (!statsError && Array.isArray(statsRows)) {
-          for (const row of statsRows as any[]) {
-            const pid = Number(row.prediction_id);
+          for (const row of statsRows) {
+            const pid = Number((row as any).prediction_id);
             if (!Number.isFinite(pid)) continue;
             statsMap[pid] = {
-              yesAmount: Number(row.yes_amount || 0),
-              noAmount: Number(row.no_amount || 0),
-              totalAmount: Number(row.total_amount || 0),
-              participantCount: Number(row.participant_count || 0),
-              betCount: Number(row.bet_count || 0),
+              yesAmount: Number((row as any).yes_amount || 0),
+              noAmount: Number((row as any).no_amount || 0),
+              totalAmount: Number((row as any).total_amount || 0),
+              participantCount: Number((row as any).participant_count || 0),
+              betCount: Number((row as any).bet_count || 0),
             };
           }
         }
       }
 
-      predictionsWithFollowersCount = (predictions || []).map((p: any) => {
+      predictionsWithFollowersCount = predictionRows.map((p) => {
         const idNum = Number(p.id);
         const followersCount = followerCounts[idNum] || 0;
         const stat = statsMap[idNum];

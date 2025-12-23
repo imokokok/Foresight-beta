@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ApiResponse } from "@/types/api";
+import type { Prediction as TrendingPrediction } from "@/app/trending/trendingModel";
 
 /**
  * Query Keys 常量
@@ -90,7 +91,7 @@ export function useCategories() {
  */
 export function usePredictions(
   params?: { category?: string; status?: string; limit?: number },
-  options?: { initialData?: any[] }
+  options?: { initialData?: TrendingPrediction[] }
 ) {
   const query = new URLSearchParams();
   if (params?.category) query.set("category", params.category);
@@ -99,7 +100,7 @@ export function usePredictions(
 
   return useQuery({
     queryKey: [...QueryKeys.predictions, params],
-    queryFn: () => fetcher<any[]>(`/api/predictions?${query.toString()}`),
+    queryFn: () => fetcher<TrendingPrediction[]>(`/api/predictions?${query.toString()}`),
     staleTime: 3 * 60 * 1000, // 3分钟
     initialData: options?.initialData,
   });
