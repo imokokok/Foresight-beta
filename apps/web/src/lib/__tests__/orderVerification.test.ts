@@ -8,15 +8,15 @@ import {
 } from "../orderVerification";
 import type { EIP712Order } from "@/types/market";
 
-// 暂时跳过 - 需要 ethers 和完整的加密环境
-describe.skip("Order Verification", () => {
+describe("Order Verification - Params and Expiry", () => {
   let validOrder: EIP712Order;
   let testWallet: any;
   const chainId = 11155111; // Sepolia
   const verifyingContract = "0x1234567890123456789012345678901234567890";
+  const testPrivateKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
 
   beforeEach(() => {
-    testWallet = ethers.Wallet.createRandom();
+    testWallet = new ethers.Wallet(testPrivateKey);
     validOrder = {
       maker: testWallet.address,
       outcomeIndex: 0,
@@ -89,6 +89,28 @@ describe.skip("Order Verification", () => {
       expect(isOrderExpired(0)).toBe(false);
     });
   });
+});
+
+describe("Order Verification - Signature", () => {
+  let validOrder: EIP712Order;
+  let testWallet: any;
+  const chainId = 11155111;
+  const verifyingContract = "0x1234567890123456789012345678901234567890";
+  const testPrivateKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+  const otherPrivateKey = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+  beforeEach(() => {
+    testWallet = new ethers.Wallet(testPrivateKey);
+    validOrder = {
+      maker: testWallet.address,
+      outcomeIndex: 0,
+      isBuy: true,
+      price: "500000",
+      amount: "10",
+      salt: String(Date.now()),
+      expiry: Math.floor(Date.now() / 1000) + 3600,
+    };
+  });
 
   describe("verifyOrderSignature", () => {
     it("should verify valid signature", async () => {
@@ -135,7 +157,7 @@ describe.skip("Order Verification", () => {
     });
 
     it("should reject signature from wrong signer", async () => {
-      const wrongWallet = ethers.Wallet.createRandom();
+      const wrongWallet = new ethers.Wallet(otherPrivateKey);
 
       const domain = {
         name: "Foresight Market",

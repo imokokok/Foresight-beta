@@ -18,7 +18,8 @@ class Logger {
   private isDevelopment: boolean;
 
   constructor() {
-    this.isDevelopment = process.env.NODE_ENV === "development";
+    const env = process.env.NODE_ENV || "development";
+    this.isDevelopment = env === "development" || env === "test";
     this.level = this.isDevelopment ? LogLevel.DEBUG : LogLevel.WARN;
   }
 

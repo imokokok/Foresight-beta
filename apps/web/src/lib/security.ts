@@ -58,10 +58,8 @@ export function validateAndSanitize(
   // 类型验证
   switch (type) {
     case "text":
-      if (typeof input !== "string") {
-        return { valid: false, error: "输入必须为文本" };
-      }
-      const cleanText = sanitizeText(input);
+      const rawText = typeof input === "string" ? input : String(input);
+      const cleanText = sanitizeText(rawText);
       if (minLength && cleanText.length < minLength) {
         return { valid: false, error: `文本长度不能少于 ${minLength} 个字符` };
       }

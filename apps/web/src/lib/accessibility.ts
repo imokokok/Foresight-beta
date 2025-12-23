@@ -27,6 +27,11 @@ export function isFocusable(element: HTMLElement): boolean {
     return false;
   }
 
+  const style = (element as HTMLElement).style;
+  if (style && (style.display === "none" || style.visibility === "hidden")) {
+    return false;
+  }
+
   const tabindex = element.getAttribute("tabindex");
   if (tabindex && parseInt(tabindex) < 0) {
     return false;
@@ -57,7 +62,7 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
   ].join(",");
 
   const elements = Array.from(container.querySelectorAll<HTMLElement>(selector));
-  return elements.filter((el) => isFocusable(el) && el.offsetParent !== null);
+  return elements.filter((el) => isFocusable(el));
 }
 
 /**
@@ -174,22 +179,44 @@ export function generateAriaId(prefix = "aria"): string {
 /**
  * 屏幕阅读器公告（Screen Reader Announcement）
  */
+let politeLiveRegion: HTMLDivElement | null = null;
+let assertiveLiveRegion: HTMLDivElement | null = null;
+
+function getLiveRegion(priority: "polite" | "assertive"): HTMLDivElement {
+  if (priority === "polite") {
+    if (!politeLiveRegion || !document.body.contains(politeLiveRegion)) {
+      politeLiveRegion = document.createElement("div");
+      politeLiveRegion.setAttribute("role", "status");
+      politeLiveRegion.setAttribute("aria-live", "polite");
+      politeLiveRegion.setAttribute("aria-atomic", "true");
+      politeLiveRegion.className = "sr-only";
+      document.body.appendChild(politeLiveRegion);
+    }
+    return politeLiveRegion;
+  }
+
+  if (!assertiveLiveRegion || !document.body.contains(assertiveLiveRegion)) {
+    assertiveLiveRegion = document.createElement("div");
+    assertiveLiveRegion.setAttribute("role", "alert");
+    assertiveLiveRegion.setAttribute("aria-live", "assertive");
+    assertiveLiveRegion.setAttribute("aria-atomic", "true");
+    assertiveLiveRegion.className = "sr-only";
+    document.body.appendChild(assertiveLiveRegion);
+  }
+  return assertiveLiveRegion;
+}
+
 export function announceToScreenReader(
   message: string,
   priority: "polite" | "assertive" = "polite"
 ) {
-  const announcement = document.createElement("div");
-  announcement.setAttribute("role", "status");
-  announcement.setAttribute("aria-live", priority);
-  announcement.setAttribute("aria-atomic", "true");
-  announcement.className = "sr-only";
-  announcement.textContent = message;
+  const liveRegion = getLiveRegion(priority);
+  liveRegion.textContent = message;
 
-  document.body.appendChild(announcement);
-
-  // 短暂延迟后移除
   setTimeout(() => {
-    document.body.removeChild(announcement);
+    if (document.body.contains(liveRegion)) {
+      liveRegion.textContent = "";
+    }
   }, 1000);
 }
 

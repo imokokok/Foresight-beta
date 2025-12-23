@@ -11,8 +11,7 @@ import {
 } from "../accessibility";
 import { validateAndSanitize } from "../security";
 
-// 需要验证实际实现 - 暂时跳过
-describe.skip("Accessibility Utilities", () => {
+describe("Accessibility Utilities", () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {

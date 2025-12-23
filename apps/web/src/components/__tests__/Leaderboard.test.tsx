@@ -7,8 +7,7 @@ import { render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import Leaderboard from "../Leaderboard";
 
-// 需要进一步调试 - 暂时跳过
-describe.skip("Leaderboard Component", () => {
+describe("Leaderboard Component", () => {
   const AnyLeaderboard = Leaderboard as ComponentType<any>;
   const mockLeaderboardData = [
     {

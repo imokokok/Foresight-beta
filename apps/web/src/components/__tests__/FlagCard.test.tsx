@@ -6,8 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { FlagCard, type FlagItem } from "../FlagCard";
 
-// 需要进一步调试 - 暂时跳过
-describe.skip("FlagCard Component", () => {
+describe("FlagCard Component", () => {
   const mockActiveFlag: FlagItem = {
     id: 1,
     title: "每日运动打卡",

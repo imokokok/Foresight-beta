@@ -19,9 +19,7 @@ vi.mock("@/components/LanguageSwitcher", () => ({
   default: () => <div data-testid="language-switcher">LanguageSwitcher</div>,
 }));
 
-// 注意：TopNavBar 组件测试需要完整的 Context Providers
-// 暂时跳过复杂的交互测试，只测试基本渲染
-describe.skip("TopNavBar Component", () => {
+describe("TopNavBar Component", () => {
   // Mock Wallet Context
   const mockWalletContext = {
     account: null,

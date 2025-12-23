@@ -130,35 +130,17 @@ export function handleApiError(error: unknown, defaultMessage = "操作失败") 
     console.error("❌ [API Error]", error);
   }
 
-  if (error instanceof Error) {
-    // 网络错误
-    if (error.message.includes("fetch")) {
-      toast.error("网络连接失败", "请检查网络连接后重试", {
-        action: {
-          label: "重试",
-          onClick: () => window.location.reload(),
-        },
-      });
-      return;
-    }
-
-    // 其他错误
-    toast.error(defaultMessage, error.message);
-    return;
-  }
-
-  // HTTP 错误
   if (typeof error === "object" && error !== null && "status" in error) {
     const status = (error as { status: number }).status;
     const errorMessages: Record<number, { title: string; description: string }> = {
       400: { title: "请求错误", description: "提交的数据格式不正确" },
       401: { title: "未授权", description: "请先连接钱包并登录" },
       403: { title: "权限不足", description: "您没有权限执行此操作" },
-      404: { title: "资源不存在", description: "请求的内容未找到" },
+      404: { title: "未找到", description: "请求的内容未找到" },
       409: { title: "数据冲突", description: "操作与现有数据冲突" },
       429: { title: "请求过于频繁", description: "请稍后再试" },
       500: { title: "服务器错误", description: "服务器遇到问题，请稍后重试" },
-      503: { title: "服务暂时不可用", description: "服务器维护中，请稍后再试" },
+      503: { title: "服务不可用", description: "服务器维护中，请稍后再试" },
     };
 
     const errorInfo = errorMessages[status] || {
@@ -170,6 +152,26 @@ export function handleApiError(error: unknown, defaultMessage = "操作失败") 
     return;
   }
 
-  // 未知错误
-  toast.error(defaultMessage, "请稍后重试");
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as any).message)
+        : "";
+
+  if (message.toLowerCase().includes("network")) {
+    toast.error("网络错误", "请检查网络连接后重试", {
+      action: {
+        label: "重试",
+        onClick: () => window.location.reload(),
+      },
+    });
+    return;
+  }
+
+  if (message) {
+    toast.error(defaultMessage, message);
+  } else {
+    toast.error(defaultMessage, "请稍后重试");
+  }
 }

@@ -3,22 +3,57 @@
  * 测试 Sign-In with Ethereum 认证流程
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { Wallet } from "ethers";
+import { SiweMessage } from "siwe";
 import { POST as verifySignature } from "../verify/route";
 import { GET as getNonce } from "../nonce/route";
+import { middleware as rateLimitMiddleware } from "@/middleware";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 
-// 暂时跳过集成测试 - 需要真实 API 和数据库
-describe.skip("GET /api/siwe/nonce - 获取 Nonce", () => {
+vi.mock("@/lib/session", () => {
+  return {
+    createSession: vi.fn(async (response: any, address: string) => {
+      response.cookies.set("fs_session", JSON.stringify({ address }), {
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }),
+  };
+});
+
+const TEST_ADDRESS = "0x1234567890123456789012345678901234567890";
+const TEST_DOMAIN = "localhost:3000";
+const TEST_URI = "http://localhost:3000";
+
+function buildSiweMessage(options: {
+  nonce: string;
+  chainId?: number;
+  domain?: string;
+  issuedAt?: string;
+}) {
+  const msg = new SiweMessage({
+    domain: options.domain ?? TEST_DOMAIN,
+    address: TEST_ADDRESS,
+    statement: "Sign in with Ethereum to the app.",
+    uri: TEST_URI,
+    version: "1",
+    chainId: options.chainId ?? 1,
+    nonce: options.nonce,
+    issuedAt: options.issuedAt ?? new Date().toISOString(),
+  });
+  return msg.prepareMessage();
+}
+
+describe("GET /api/siwe/nonce - 获取 Nonce", () => {
   it("应该返回新的 nonce", async () => {
     const response = await getNonce();
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.data).toBeDefined();
-    expect(data.data.nonce).toBeDefined();
-    expect(typeof data.data.nonce).toBe("string");
-    expect(data.data.nonce.length).toBeGreaterThan(0);
+    expect(data.nonce).toBeDefined();
+    expect(typeof data.nonce).toBe("string");
+    expect(data.nonce.length).toBeGreaterThan(0);
   });
 
   it("每次请求应该返回不同的 nonce", async () => {
@@ -28,11 +63,11 @@ describe.skip("GET /api/siwe/nonce - 获取 Nonce", () => {
     const response2 = await getNonce();
     const data2 = await response2.json();
 
-    expect(data1.data.nonce).not.toBe(data2.data.nonce);
+    expect(data1.nonce).not.toBe(data2.nonce);
   });
 });
 
-describe.skip("POST /api/siwe/verify - 验证签名", () => {
+describe("POST /api/siwe/verify - 验证签名", () => {
   it("应该拒绝缺少必填字段的请求", async () => {
     const request = createMockNextRequest({
       method: "POST",
@@ -110,18 +145,11 @@ Sign in with Ethereum`;
   });
 
   it("应该拒绝过期的 nonce", async () => {
-    const expiredNonce = "expired-nonce-12345";
-
-    const siweMessage = `localhost:3000 wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
-
-Sign in with Ethereum to the app.
-
-URI: http://localhost:3000
-Version: 1
-Chain ID: 1
-Nonce: ${expiredNonce}
-Issued At: ${new Date(Date.now() - 3600000).toISOString()}`; // 1小时前
+    const expiredNonce = "expired12345";
+    const siweMessage = buildSiweMessage({
+      nonce: expiredNonce,
+      issuedAt: new Date(Date.now() - 3600000).toISOString(),
+    });
 
     const request = createMockNextRequest({
       method: "POST",
@@ -141,18 +169,11 @@ Issued At: ${new Date(Date.now() - 3600000).toISOString()}`; // 1小时前
   });
 
   it("应该拒绝不匹配的签名和地址", async () => {
-    const siweMessage = `localhost:3000 wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
+    const nonce = "testnonce12345";
+    const siweMessage = buildSiweMessage({
+      nonce,
+    });
 
-Sign in with Ethereum to the app.
-
-URI: http://localhost:3000
-Version: 1
-Chain ID: 1
-Nonce: test-nonce-12345
-Issued At: ${new Date().toISOString()}`;
-
-    // 使用错误的私钥签名（签名不匹配地址）
     const invalidSignature = "0x" + "2".repeat(130);
 
     const request = createMockNextRequest({
@@ -161,6 +182,9 @@ Issued At: ${new Date().toISOString()}`;
       body: {
         message: siweMessage,
         signature: invalidSignature,
+      },
+      cookies: {
+        siwe_nonce: nonce,
       },
     });
 
@@ -173,16 +197,10 @@ Issued At: ${new Date().toISOString()}`;
   });
 
   it("应该拒绝不支持的 chain ID", async () => {
-    const siweMessage = `localhost:3000 wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
-
-Sign in with Ethereum to the app.
-
-URI: http://localhost:3000
-Version: 1
-Chain ID: 99999
-Nonce: test-nonce-12345
-Issued At: ${new Date().toISOString()}`;
+    const siweMessage = buildSiweMessage({
+      nonce: "testnonce12345",
+      chainId: 99999,
+    });
 
     const request = createMockNextRequest({
       method: "POST",
@@ -202,29 +220,58 @@ Issued At: ${new Date().toISOString()}`;
   });
 
   it("成功验证后应该设置 session cookie", async () => {
-    // 注意：这个测试需要真实的签名
-    // 在实际环境中需要使用私钥签名 SIWE 消息
+    const nonceResponse = await getNonce();
+    const nonceData = await nonceResponse.json();
+    const nonce = nonceData.nonce;
 
-    // TODO: 实现完整的签名流程测试
-    // 1. 获取 nonce
-    // 2. 构建 SIWE 消息
-    // 3. 使用私钥签名
-    // 4. 验证签名
-    // 5. 检查返回的 cookie
+    const wallet = new Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+    const siwe = new SiweMessage({
+      domain: TEST_DOMAIN,
+      address: wallet.address,
+      statement: "Sign in with Ethereum to the app.",
+      uri: TEST_URI,
+      version: "1",
+      chainId: 1,
+      nonce,
+      issuedAt: new Date().toISOString(),
+    });
 
-    expect(true).toBe(true); // 占位测试
+    const messageToSign = siwe.prepareMessage();
+    const signature = await wallet.signMessage(messageToSign);
+
+    const request = createMockNextRequest({
+      method: "POST",
+      url: "http://localhost:3000/api/siwe/verify",
+      body: {
+        message: messageToSign,
+        signature,
+      },
+      cookies: {
+        siwe_nonce: nonce,
+      },
+    });
+
+    const response = await verifySignature(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.address.toLowerCase()).toBe(wallet.address.toLowerCase());
+
+    const sessionCookie = response.cookies.get("fs_session");
+    expect(sessionCookie).toBeDefined();
+    expect(sessionCookie?.value).toBeDefined();
   });
 
   it("应该限制登录尝试次数（Rate Limiting）", async () => {
-    const requests = [];
+    const requests: Promise<Response | undefined>[] = [];
 
-    // 快速发送多个请求
     for (let i = 0; i < 10; i++) {
       const request = createMockNextRequest({
         method: "POST",
         url: "http://localhost:3000/api/siwe/verify",
         headers: {
-          "X-Forwarded-For": "1.2.3.4", // 模拟同一个 IP
+          "X-Forwarded-For": "1.2.3.4",
         },
         body: {
           message: "test",
@@ -232,31 +279,21 @@ Issued At: ${new Date().toISOString()}`;
         },
       });
 
-      requests.push(verifySignature(request));
+      requests.push(rateLimitMiddleware(request as any) as any);
     }
 
     const responses = await Promise.all(requests);
-
-    // 至少有一个请求应该被限流（返回 429）
-    const rateLimited = responses.some((r) => r.status === 429);
+    const rateLimited = responses.some((r) => r && r.status === 429);
     expect(rateLimited).toBe(true);
   });
 });
 
-describe.skip("SIWE 安全性测试", () => {
+describe("SIWE 安全性测试", () => {
   it("应该拒绝重放攻击（相同的 nonce）", async () => {
-    const nonce = "test-nonce-" + Date.now();
-
-    const siweMessage = `localhost:3000 wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
-
-Sign in with Ethereum to the app.
-
-URI: http://localhost:3000
-Version: 1
-Chain ID: 1
-Nonce: ${nonce}
-Issued At: ${new Date().toISOString()}`;
+    const nonce = String(Date.now());
+    const siweMessage = buildSiweMessage({
+      nonce,
+    });
 
     const request1 = createMockNextRequest({
       method: "POST",
@@ -289,16 +326,10 @@ Issued At: ${new Date().toISOString()}`;
   });
 
   it("应该验证域名匹配", async () => {
-    const siweMessage = `malicious-site.com wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
-
-Sign in with Ethereum to the app.
-
-URI: http://malicious-site.com
-Version: 1
-Chain ID: 1
-Nonce: test-nonce-12345
-Issued At: ${new Date().toISOString()}`;
+    const siweMessage = buildSiweMessage({
+      nonce: "testnonce12345",
+      domain: "malicious-site.com",
+    });
 
     const request = createMockNextRequest({
       method: "POST",
@@ -319,17 +350,10 @@ Issued At: ${new Date().toISOString()}`;
 
   it("应该验证时间戳有效性", async () => {
     const futureTime = new Date(Date.now() + 3600000).toISOString(); // 1小时后
-
-    const siweMessage = `localhost:3000 wants you to sign in with your Ethereum account:
-0x1234567890123456789012345678901234567890
-
-Sign in with Ethereum to the app.
-
-URI: http://localhost:3000
-Version: 1
-Chain ID: 1
-Nonce: test-nonce-12345
-Issued At: ${futureTime}`;
+    const siweMessage = buildSiweMessage({
+      nonce: "testnonce12345",
+      issuedAt: futureTime,
+    });
 
     const request = createMockNextRequest({
       method: "POST",

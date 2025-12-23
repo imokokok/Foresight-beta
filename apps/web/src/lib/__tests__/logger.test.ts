@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { log, measurePerformance } from "../logger";
 
-describe.skip("Logger", () => {
+describe("Logger", () => {
   let consoleLogSpy: any;
   let consoleWarnSpy: any;
   let consoleErrorSpy: any;
@@ -23,10 +23,7 @@ describe.skip("Logger", () => {
   describe("debug", () => {
     it("should log debug messages in development", () => {
       log.debug("Test debug message");
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[DEBUG]"),
-        expect.anything()
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("[DEBUG]"));
     });
   });
 
@@ -40,10 +37,7 @@ describe.skip("Logger", () => {
   describe("warn", () => {
     it("should log warning messages", () => {
       log.warn("Test warning");
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[WARN]"),
-        expect.anything()
-      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining("[WARN]"));
     });
   });
 
@@ -58,20 +52,14 @@ describe.skip("Logger", () => {
   describe("api", () => {
     it("should log API requests", () => {
       log.api("GET", "/api/test", 200, 150);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[API]"),
-        expect.anything()
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("[API]"));
     });
   });
 
   describe("perf", () => {
     it("should log performance metrics", () => {
       log.perf("Test operation", 150);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[PERF]"),
-        expect.anything()
-      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("[PERF]"));
     });
   });
 });
