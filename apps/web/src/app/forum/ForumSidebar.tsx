@@ -1,6 +1,6 @@
 import React from "react";
 import { MessageSquare, Search, Users, TrendingUp } from "lucide-react";
-import { normalizeCategory } from "../trending/trendingModel";
+import { normalizeCategory } from "@/features/trending/trendingModel";
 import { getCategoryStyle } from "./forumConfig";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 

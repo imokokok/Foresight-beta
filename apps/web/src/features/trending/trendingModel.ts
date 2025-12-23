@@ -190,6 +190,41 @@ export const fetchPredictions = async () => {
   return data.data as Prediction[];
 };
 
+export type UpdatePredictionPayload = {
+  title: string;
+  category: string;
+  status: string;
+  deadline: string;
+  minStake: number;
+  walletAddress: string;
+};
+
+export const updatePrediction = async (id: number, payload: UpdatePredictionPayload) => {
+  const res = await fetch(`/api/predictions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.success) {
+    throw new Error(String(data?.message || "Failed to update prediction"));
+  }
+  return data;
+};
+
+export const deletePrediction = async (id: number, walletAddress: string) => {
+  const res = await fetch(`/api/predictions/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ walletAddress }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.success) {
+    throw new Error(String(data?.message || "Failed to delete prediction"));
+  }
+  return data;
+};
+
 export const mapPredictionToEvent = (prediction: Prediction): TrendingEvent => {
   const minStake = Number(prediction.min_stake || 0);
   const insured = `${minStake} USDC`;

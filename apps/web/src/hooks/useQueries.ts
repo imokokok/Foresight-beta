@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ApiResponse } from "@/types/api";
-import type { Prediction as TrendingPrediction } from "@/app/trending/trendingModel";
+import type { Prediction as TrendingPrediction } from "@/features/trending/trendingModel";
 
 /**
  * Query Keys 常量

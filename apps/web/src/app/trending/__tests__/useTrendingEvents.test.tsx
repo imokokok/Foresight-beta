@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { FilterSortState } from "@/components/FilterSort";
-import type { Prediction } from "../trendingModel";
+import type { Prediction } from "@/features/trending/trendingModel";
 import { useTrendingEvents } from "../hooks/useTrendingEvents";
 
 type WrapperProps = {

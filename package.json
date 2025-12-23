@@ -28,6 +28,9 @@
     "ws:relayer:build": "npm run build -w services/relayer",
     "ws:test": "npm run hardhat:test",
     "ws:dev:all": "concurrently -n web,relayer -c green,cyan \"npm run dev -w apps/web\" \"dotenv -e ./.env -e ./.env.local -- npm run start -w services/relayer\"",
+    "lint": "npm run lint -w apps/web",
+    "typecheck": "npm run typecheck -w apps/web",
+    "test": "npm run test:run -w apps/web",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "prepare": "husky"

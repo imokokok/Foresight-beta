@@ -3,8 +3,8 @@ import { TrendingUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import FilterSort, { type FilterSortState } from "@/components/FilterSort";
 import { AllLoadedNotice, InfiniteScrollSentinel, ListError } from "@/components/ui/ListStates";
-import type { TrendingEvent } from "./trendingModel";
-import { normalizeEventId, isValidEventId } from "./trendingModel";
+import type { TrendingEvent } from "@/features/trending/trendingModel";
+import { normalizeEventId, isValidEventId } from "@/features/trending/trendingModel";
 import { TrendingEventCard } from "./TrendingEventCard";
 
 type TrendingEventsSectionProps = {

@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
-import { getFallbackEventImage, isValidEventId } from "./trendingModel";
-import type { TrendingEvent } from "./trendingModel";
+import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
+import type { TrendingEvent } from "@/features/trending/trendingModel";
 
 type AdminActionsProps = {
   eventId: number | null;

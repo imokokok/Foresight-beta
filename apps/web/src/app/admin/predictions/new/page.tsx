@@ -36,7 +36,7 @@ import {
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
 import { useCategories } from "@/hooks/useQueries";
-import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "../../../trending/trendingModel";
+import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "@/features/trending/trendingModel";
 
 const DRAFT_KEY = "admin_prediction_new_draft_v1";
 

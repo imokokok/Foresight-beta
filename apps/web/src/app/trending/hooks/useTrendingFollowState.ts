@@ -5,8 +5,11 @@ import type { MouseEvent } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toggleFollowPrediction } from "@/lib/follows";
 import { supabase } from "@/lib/supabase";
-import { createSmartClickEffect, createHeartParticles } from "../trendingAnimations";
-import type { TrendingEvent } from "../trendingModel";
+import {
+  createSmartClickEffect,
+  createHeartParticles,
+} from "@/features/trending/trendingAnimations";
+import type { TrendingEvent } from "@/features/trending/trendingModel";
 
 export function useTrendingFollowState(
   accountNorm: string | undefined,

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { FilterSortState } from "@/components/FilterSort";
-import type { TrendingCategory, TrendingEvent } from "../trendingModel";
+import type { TrendingCategory, TrendingEvent } from "@/features/trending/trendingModel";
 import { useTrendingHero } from "../hooks/useTrendingHero";
 
 type HeroTestProps = {

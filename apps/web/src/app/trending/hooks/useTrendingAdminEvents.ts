@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "@/lib/toast";
-import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME, type TrendingEvent } from "../trendingModel";
+import {
+  CATEGORY_MAPPING,
+  ID_TO_CATEGORY_NAME,
+  type TrendingEvent,
+  updatePrediction,
+  deletePrediction,
+} from "@/features/trending/trendingModel";
 
 interface UseTrendingAdminEventsParams {
   accountNorm: string | undefined;
@@ -96,15 +102,7 @@ export function useTrendingAdminEvents({
         minStake: Number(editForm.minStake),
         walletAddress: accountNorm,
       };
-      const res = await fetch(`/api/predictions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || tTrendingAdmin("updateFailed")));
-      }
+      await updatePrediction(id, payload);
       queryClient.setQueryData(
         ["predictions"],
         (old: TrendingEvent[] | undefined): TrendingEvent[] | undefined =>
@@ -141,11 +139,7 @@ export function useTrendingAdminEvents({
       try {
         await siweLogin();
       } catch {}
-      const res = await fetch(`/api/predictions/${id}`, { method: "DELETE" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.success) {
-        throw new Error(String(j?.message || tTrendingAdmin("deleteFailed")));
-      }
+      await deletePrediction(id, accountNorm);
       queryClient.setQueryData(
         ["predictions"],
         (old: TrendingEvent[] | undefined): TrendingEvent[] | undefined =>

@@ -196,7 +196,7 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     particle.style.top = `${y}px`;
     particle.style.transform = "translate(-50%, -50%)";
     particle.style.clipPath =
-      "polygon(50% 15%, 61% 0, 75% 0, 85% 15%, 100% 35%, 100% 50%, 85% 65%, 75% 100%, 50% 85%, 25% 100%, 15% 65%, 0 50%, 0 35%, 15% 15%, 25% 0, 39% 0)";
+      "polygon(50% 15%, 61% 0, 75% 0, 85% 15%, 100% 35%, 100% 50%, 85% 65%, 75% 100%, 50% 85%, 25% 100%, 15% 65%, 0 50%, 0 35%, 15 15%, 25 0, 39 0)";
     particlesContainer.appendChild(particle);
     particles.push(particle);
   }

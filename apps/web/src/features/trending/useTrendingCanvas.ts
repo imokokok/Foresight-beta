@@ -258,7 +258,9 @@ export const useTrendingCanvas = (
           }
           case "square": {
             const s = this.size * 1.6;
-            ctx.fillRect(-s / 2, -s / 2, s, s);
+            ctx.beginPath();
+            ctx.rect(-s / 2, -s / 2, s, s);
+            ctx.fill();
             break;
           }
           case "triangle": {
@@ -283,49 +285,26 @@ export const useTrendingCanvas = (
             break;
           }
           case "ring": {
-            ctx.lineWidth = 1.5;
+            const outer = this.size * 1.4;
+            const inner = this.size * 0.9;
             ctx.beginPath();
-            ctx.arc(0, 0, this.size * 1.4, 0, Math.PI * 2);
-            ctx.stroke();
-            break;
-          }
-          case "pentagon": {
-            const r = this.size * 1.8;
-            ctx.beginPath();
-            for (let k = 0; k < 5; k++) {
-              const ang = (Math.PI * 2 * k) / 5 - Math.PI / 2;
-              const px = Math.cos(ang) * r;
-              const py = Math.sin(ang) * r;
-              if (k === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
+            ctx.arc(0, 0, outer, 0, Math.PI * 2);
+            ctx.arc(0, 0, inner, 0, Math.PI * 2, true);
             ctx.fill();
             break;
           }
-          case "hexagon": {
-            const r = this.size * 1.8;
-            ctx.beginPath();
-            for (let k = 0; k < 6; k++) {
-              const ang = (Math.PI * 2 * k) / 6 - Math.PI / 2;
-              const px = Math.cos(ang) * r;
-              const py = Math.sin(ang) * r;
-              if (k === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            }
-            ctx.closePath();
-            ctx.fill();
-            break;
-          }
+          case "pentagon":
+          case "hexagon":
           case "octagon": {
-            const r = this.size * 1.8;
+            const sides = this.shape === "pentagon" ? 5 : this.shape === "hexagon" ? 6 : 8;
+            const radius = this.size * 1.8;
             ctx.beginPath();
-            for (let k = 0; k < 8; k++) {
-              const ang = (Math.PI * 2 * k) / 8 - Math.PI / 2;
-              const px = Math.cos(ang) * r;
-              const py = Math.sin(ang) * r;
-              if (k === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
+            for (let i = 0; i < sides; i++) {
+              const angle = (i / sides) * Math.PI * 2;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
             }
             ctx.closePath();
             ctx.fill();
@@ -336,194 +315,163 @@ export const useTrendingCanvas = (
       }
     }
 
-    let particles: Particle[] = [];
+    const particles: Particle[] = [];
+    const grid: Map<string, number[]> = new Map();
 
-    const resize = () => {
-      canvasEl.width = window.innerWidth;
-      canvasEl.height = window.innerHeight;
+    const updateGrid = () => {
+      grid.clear();
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const cellX = Math.floor(p.x / CELL_SIZE);
+        const cellY = Math.floor(p.y / CELL_SIZE);
+        const key = `${cellX},${cellY}`;
+        if (!grid.has(key)) grid.set(key, []);
+        grid.get(key)!.push(i);
+      }
     };
-    window.addEventListener("resize", resize);
-    resize();
 
-    const baseCount = 60;
-    const scaleFactor = Math.min(2, (canvasEl.width * canvasEl.height) / (1280 * 720));
-    const particleCount = Math.floor(baseCount * scaleFactor);
-    for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
-    }
-
-    let mouseX = 0;
-    let mouseY = 0;
-    let mouseActive = false;
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = canvasEl.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
-      mouseActive = true;
+    const getNearbyParticleIndices = (p: Particle) => {
+      const cellX = Math.floor(p.x / CELL_SIZE);
+      const cellY = Math.floor(p.y / CELL_SIZE);
+      const result: number[] = [];
+      for (let dx = -1; dx <= 1; dx += 1) {
+        for (let dy = -1; dy <= 1; dy += 1) {
+          const key = `${cellX + dx},${cellY + dy}`;
+          const arr = grid.get(key);
+          if (arr) result.push(...arr);
+        }
+      }
+      return result;
     };
-    const onMouseLeave = () => {
-      mouseActive = false;
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseleave", onMouseLeave);
 
-    let firstFrameDone = false;
-    const animate = () => {
+    const drawBackgroundGrid = () => {
+      ctx.save();
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.14)";
+      ctx.lineWidth = 1;
+      const step = CELL_SIZE * 1.2;
+      const offsetX = -((window.scrollY * 0.12) % step);
+      const offsetY = -((window.scrollY * 0.08) % step);
+      for (let x = offsetX; x < canvasEl.width; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvasEl.height);
+        ctx.stroke();
+      }
+      for (let y = offsetY; y < canvasEl.height; y += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvasEl.width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const drawConnections = () => {
+      ctx.save();
+      ctx.lineWidth = 0.6;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const neighbors = getNearbyParticleIndices(p);
+        for (const j of neighbors) {
+          if (j <= i) continue;
+          const q = particles[j];
+          const dx = p.x - q.x;
+          const dy = p.y - q.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= LINK_DISTANCE) {
+            const alpha = 0.35 * (1 - dist / LINK_DISTANCE);
+            ctx.strokeStyle = `rgba(129, 140, 248, ${alpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    };
+
+    const initParticles = () => {
+      particles.length = 0;
+      const area = (canvasEl.width * canvasEl.height) / 5000;
+      const count = Math.min(160, Math.max(40, Math.floor(area)));
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle());
+      }
+      updateGrid();
+    };
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvasEl.width = window.innerWidth * dpr;
+      canvasEl.height = window.innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      initParticles();
+    };
+
+    resizeCanvas();
+
+    let lastTime = performance.now();
+    const draw = () => {
+      const now = performance.now();
+      const delta = Math.min(32, now - lastTime);
+      lastTime = now;
+
       ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
 
-      particles.forEach((p) => p.update());
+      drawBackgroundGrid();
 
-      if (!isScrollingRef.current) {
-        const grid = new Map<string, number[]>();
-        const keyOf = (x: number, y: number) =>
-          `${Math.floor(x / CELL_SIZE)},${Math.floor(y / CELL_SIZE)}`;
-        particles.forEach((p, i) => {
-          const key = keyOf(p.x, p.y);
-          const cell = grid.get(key);
-          if (cell) cell.push(i);
-          else grid.set(key, [i]);
-        });
+      const speedFactor = isScrollingRef.current ? 1.5 : 1;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.speedX * speedFactor * (delta / 16);
+        p.y += p.speedY * speedFactor * (delta / 16);
+        p.rotation += p.rotationSpeed * (delta / 16);
+        p.size = p.baseSize * (1 + 0.03 * Math.sin(p.pulsePhase));
+        p.pulsePhase += 0.015 * (delta / 16);
 
-        const neighborsOffsets = [-1, 0, 1];
-        for (let i = 0; i < particles.length; i++) {
-          const p = particles[i];
-          const cx = Math.floor(p.x / CELL_SIZE);
-          const cy = Math.floor(p.y / CELL_SIZE);
-          for (const ox of neighborsOffsets) {
-            for (const oy of neighborsOffsets) {
-              const key = `${cx + ox},${cy + oy}`;
-              const bucket = grid.get(key);
-              if (!bucket) continue;
-              for (const j of bucket) {
-                if (j <= i) continue;
-                const q = particles[j];
-                const dx = q.x - p.x;
-                const dy = q.y - p.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist < LINK_DISTANCE) {
-                  const alpha = Math.max(0.05, ((LINK_DISTANCE - dist) / LINK_DISTANCE) * 0.4);
-                  ctx.save();
-                  ctx.globalAlpha = alpha;
-                  ctx.strokeStyle = "#c4b5fd";
-                  ctx.lineWidth = 0.7;
-                  ctx.beginPath();
-                  ctx.moveTo(p.x, p.y);
-                  ctx.lineTo(q.x, q.y);
-                  ctx.stroke();
-                  ctx.restore();
-                }
-                const rSum = p.radius + q.radius;
-                if (dist > 0 && dist < rSum) {
-                  const overlap = rSum - dist;
-                  const nx = dx / dist;
-                  const ny = dy / dist;
-                  const sep = overlap * 0.5;
-                  p.x -= nx * sep;
-                  p.y -= ny * sep;
-                  q.x += nx * sep;
-                  q.y += ny * sep;
-
-                  const pNorm = p.speedX * nx + p.speedY * ny;
-                  const qNorm = q.speedX * nx + q.speedY * ny;
-                  const diff = qNorm - pNorm;
-                  p.speedX += diff * nx;
-                  p.speedY += diff * ny;
-                  q.speedX -= diff * nx;
-                  q.speedY -= diff * ny;
-
-                  p.speedX *= 0.98;
-                  p.speedY *= 0.98;
-                  q.speedX *= 0.98;
-                  q.speedY *= 0.98;
-                }
-              }
-            }
-          }
-        }
+        if (p.x < -p.radius) p.x = canvasEl.width + p.radius;
+        if (p.x > canvasEl.width + p.radius) p.x = -p.radius;
+        if (p.y < -p.radius) p.y = canvasEl.height + p.radius;
+        if (p.y > canvasEl.height + p.radius) p.y = -p.radius;
       }
 
-      if (mouseActive) {
-        const influenceR = 150;
-        const forceBase = 0.12;
-        const maxSpeed = 1.4;
-        for (const p of particles) {
-          const dx = p.x - mouseX;
-          const dy = p.y - mouseY;
-          const dist = Math.hypot(dx, dy);
-          if (dist > 0 && dist < influenceR) {
-            const strength = 1 - dist / influenceR;
-            const accel = forceBase * strength;
-            const nx = dx / dist;
-            const ny = dy / dist;
-            p.speedX += nx * accel;
-            p.speedY += ny * accel;
-            const v = Math.hypot(p.speedX, p.speedY);
-            if (v > maxSpeed) {
-              p.speedX = (p.speedX / v) * maxSpeed;
-              p.speedY = (p.speedY / v) * maxSpeed;
-            }
-          }
-        }
+      updateGrid();
+
+      drawConnections();
+
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].draw();
       }
 
-      particles.forEach((p) => p.draw());
-      if (!firstFrameDone) {
-        firstFrameDone = true;
-        try {
-          setCanvasReady(true);
-        } catch {}
-      }
-
-      animId = requestAnimationFrame(animate);
+      animId = requestAnimationFrame(draw);
     };
 
-    animate();
+    const handleResize = () => {
+      resizeCanvas();
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    animId = requestAnimationFrame(draw);
+
+    setCanvasReady(true);
 
     return () => {
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseleave", onMouseLeave);
-      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener("resize", handleResize);
+      cancelAnimationFrame(animId);
     };
   }, [canvasRef, canvasWorkerRef, offscreenActiveRef]);
 
-  return { canvasReady };
-};
-
-export const useBackToTop = () => {
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  useEffect(() => {
-    let rafId = 0;
-    const updateVisibility = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      setShowBackToTop(scrollTop > 300);
-      rafId = 0;
-    };
-
-    const handleScroll = () => {
-      if (!rafId) {
-        rafId = window.requestAnimationFrame(updateVisibility);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    updateVisibility();
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (rafId) {
-        window.cancelAnimationFrame(rafId);
-      }
-    };
-  }, []);
+  const showBackToTop = true;
 
   const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  return { showBackToTop, scrollToTop };
+  return {
+    canvasReady,
+    showBackToTop,
+    scrollToTop,
+  };
 };

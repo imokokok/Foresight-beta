@@ -9,7 +9,7 @@ import {
   getActiveHeroSlideData,
   type TrendingEvent,
   type TrendingCategory,
-} from "../trendingModel";
+} from "@/features/trending/trendingModel";
 
 type HeroCategories = TrendingCategory[];
 

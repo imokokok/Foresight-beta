@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getClient } from "@/lib/supabase";
 import { CardListSkeleton } from "@/components/skeletons";
 import TrendingClient from "./TrendingClient";
-import type { Prediction } from "./trendingModel";
+import type { Prediction } from "@/features/trending/trendingModel";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCategories } from "@/hooks/useQueries";
-import { normalizeCategory } from "../trending/trendingModel";
+import { normalizeCategory } from "@/features/trending/trendingModel";
 import { CATEGORIES } from "./forumConfig";
 
 export type PredictionItem = {

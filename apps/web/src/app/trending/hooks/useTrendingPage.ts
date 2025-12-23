@@ -7,9 +7,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
-import { type Prediction, buildTrendingCategories } from "../trendingModel";
-import { createSmartClickEffect } from "../trendingAnimations";
-import { useTrendingCanvas, useBackToTop } from "../useTrendingCanvas";
+import { type Prediction, buildTrendingCategories } from "@/features/trending/trendingModel";
+import { createSmartClickEffect } from "@/features/trending/trendingAnimations";
+import { useTrendingCanvas } from "@/features/trending/useTrendingCanvas";
 import { useTrendingList } from "./useTrendingList";
 import { useTrendingFollowState } from "./useTrendingFollowState";
 import { useTrendingAdminEvents } from "./useTrendingAdminEvents";
@@ -35,8 +35,11 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasWorkerRef = useRef<Worker | null>(null);
   const offscreenActiveRef = useRef<boolean>(false);
-  const { canvasReady } = useTrendingCanvas(canvasRef, canvasWorkerRef, offscreenActiveRef);
-  const { showBackToTop, scrollToTop } = useBackToTop();
+  const { canvasReady, showBackToTop, scrollToTop } = useTrendingCanvas(
+    canvasRef,
+    canvasWorkerRef,
+    offscreenActiveRef
+  );
 
   const tErrors = useTranslations("errors");
   const tTrending = useTranslations("trending");

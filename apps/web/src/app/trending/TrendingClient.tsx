@@ -3,8 +3,8 @@
 import React from "react";
 import GradientPage from "@/components/ui/GradientPage";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
-import type { Prediction } from "./trendingModel";
-import { createCategoryParticlesAtCardClick } from "./trendingAnimations";
+import type { Prediction } from "@/features/trending/trendingModel";
+import { createCategoryParticlesAtCardClick } from "@/features/trending/trendingAnimations";
 import { TrendingHero } from "./TrendingHero";
 import { TrendingEditModal } from "./TrendingEditModal";
 import { TrendingLoginModal } from "./TrendingLoginModal";

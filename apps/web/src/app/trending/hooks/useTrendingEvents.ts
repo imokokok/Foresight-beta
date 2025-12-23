@@ -10,7 +10,7 @@ import {
   filterEventsByCategory,
   filterEventsByStatus,
   sortEvents,
-} from "../trendingModel";
+} from "@/features/trending/trendingModel";
 
 export function useTrendingEvents(predictions: Prediction[], filters: FilterSortState) {
   const [displayCount, setDisplayCount] = useState(12);

@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { FilterSortState } from "@/components/FilterSort";
 import { usePersistedState } from "@/hooks/usePersistedState";
 import { usePredictions } from "@/hooks/useQueries";
-import type { Prediction, TrendingEvent } from "../trendingModel";
+import type { Prediction, TrendingEvent } from "@/features/trending/trendingModel";
 import { useTrendingEvents } from "./useTrendingEvents";
 
 export function useTrendingList(initialPredictions: Prediction[] | undefined): {
