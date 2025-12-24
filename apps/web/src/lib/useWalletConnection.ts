@@ -1,0 +1,468 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import type { WalletInfo } from "./walletDetection";
+import {
+  detectWallets,
+  handleEIP6963Announce,
+  identifyWalletType,
+  getActiveRawProvider,
+} from "./walletDetection";
+import { ethers } from "ethers";
+
+export type WalletType = "metamask" | "coinbase" | "binance" | "okx";
+
+export type WalletState = {
+  account: string | null;
+  isConnecting: boolean;
+  connectError: string | null;
+  hasProvider: boolean;
+  chainId: string | null;
+  currentWalletType: WalletType | null;
+  availableWallets: WalletInfo[];
+};
+
+type Params = {
+  onAccountsChanged?: (account: string | null) => void;
+};
+
+const LOGOUT_FLAG = "fs_wallet_logged_out";
+
+export function useWalletConnection(params: Params = {}) {
+  const [walletState, setWalletState] = useState<WalletState>({
+    account: null,
+    isConnecting: false,
+    connectError: null,
+    hasProvider: false,
+    chainId: null,
+    currentWalletType: null,
+    availableWallets: [],
+  });
+
+  const currentProviderRef = useRef<any>(null);
+
+  useEffect(() => {
+    let onAnnounce: any;
+    if (typeof window !== "undefined") {
+      onAnnounce = (ev: any) => {
+        handleEIP6963Announce(ev);
+        const updated = detectWallets();
+        const hasProvider =
+          !!(window as any).ethereum ||
+          !!(window as any).BinanceChain ||
+          (Array.isArray((window as any).ethereum?.providers) &&
+            (window as any).ethereum.providers.length > 0) ||
+          updated.length > 0;
+        setWalletState((prev) => ({ ...prev, hasProvider, availableWallets: updated }));
+      };
+      window.addEventListener("eip6963:announceProvider", onAnnounce);
+      window.dispatchEvent(new Event("eip6963:scan"));
+      setTimeout(() => {
+        const updated = detectWallets();
+        const hasProvider =
+          !!(window as any).ethereum ||
+          !!(window as any).BinanceChain ||
+          (Array.isArray((window as any).ethereum?.providers) &&
+            (window as any).ethereum.providers.length > 0) ||
+          updated.length > 0;
+        setWalletState((prev) => ({ ...prev, hasProvider, availableWallets: updated }));
+      }, 200);
+    }
+
+    const availableWallets = detectWallets();
+    const hasProvider =
+      typeof window !== "undefined" &&
+      (!!(window as any).ethereum ||
+        !!(window as any).BinanceChain ||
+        (Array.isArray((window as any).ethereum?.providers) &&
+          (window as any).ethereum.providers.length > 0) ||
+        availableWallets.length > 0);
+
+    setWalletState((prev) => ({
+      ...prev,
+      hasProvider,
+      availableWallets,
+    }));
+
+    const checkConnection = async () => {
+      try {
+        if (typeof window !== "undefined" && sessionStorage.getItem(LOGOUT_FLAG)) {
+          return;
+        }
+
+        const lastWalletType =
+          typeof window !== "undefined"
+            ? (localStorage.getItem("lastWalletType") as WalletType | null) || null
+            : null;
+        const ethereum = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+
+        let targetProvider: any = null;
+
+        if (lastWalletType) {
+          const discovered = detectWallets();
+          const found = discovered.find((d) => d.type === lastWalletType);
+          if (found && found.provider) {
+            targetProvider = found.provider;
+          } else if (ethereum?.providers) {
+            for (const provider of ethereum.providers) {
+              const t = identifyWalletType(provider);
+              if (lastWalletType === "metamask" && t === "metamask") {
+                targetProvider = provider;
+                break;
+              }
+              if (lastWalletType === "coinbase" && t === "coinbase") {
+                targetProvider = provider;
+                break;
+              }
+              if (lastWalletType === "okx" && t === "okx") {
+                targetProvider = provider;
+                break;
+              }
+              if (lastWalletType === "binance" && (t === "binance" || provider.isBinanceWallet)) {
+                targetProvider = provider;
+                break;
+              }
+            }
+          } else if (
+            lastWalletType === "binance" &&
+            typeof window !== "undefined" &&
+            (window as any).BinanceChain
+          ) {
+            targetProvider = (window as any).BinanceChain;
+          } else if (
+            lastWalletType === "coinbase" &&
+            typeof window !== "undefined" &&
+            (window as any).coinbaseWalletExtension
+          ) {
+            targetProvider = (window as any).coinbaseWalletExtension;
+          } else if (
+            lastWalletType === "okx" &&
+            typeof window !== "undefined" &&
+            ((window as any).okxwallet || (window as any).okex || (window as any).OKXWallet)
+          ) {
+            targetProvider =
+              (window as any).okxwallet || (window as any).okex || (window as any).OKXWallet;
+          } else if (ethereum && identifyWalletType(ethereum) === lastWalletType) {
+            targetProvider = ethereum;
+          }
+        }
+
+        const providerToUse =
+          targetProvider ||
+          (typeof window !== "undefined" ? ethereum || (window as any).BinanceChain || null : null);
+
+        if (providerToUse) {
+          let accounts: string[] = [];
+          try {
+            accounts = await providerToUse.request({ method: "eth_accounts" });
+          } catch {}
+
+          if (accounts && accounts.length > 0) {
+            const currentWalletType = identifyWalletType(providerToUse);
+            setWalletState((prev) => ({
+              ...prev,
+              account: accounts[0],
+              currentWalletType: currentWalletType || lastWalletType,
+            }));
+            currentProviderRef.current = providerToUse;
+            setupEventListeners(providerToUse);
+            if (
+              currentWalletType &&
+              currentWalletType !== lastWalletType &&
+              typeof window !== "undefined"
+            ) {
+              localStorage.setItem("lastWalletType", currentWalletType);
+            }
+            if (params.onAccountsChanged) {
+              params.onAccountsChanged(accounts[0]);
+            }
+          }
+        }
+      } catch {}
+    };
+
+    checkConnection();
+
+    return () => {
+      if (typeof window !== "undefined" && onAnnounce) {
+        window.removeEventListener("eip6963:announceProvider", onAnnounce);
+      }
+    };
+  }, [params.onAccountsChanged]);
+
+  const handleAccountsChanged = (accounts: string[]) => {
+    if (accounts.length > 0) {
+      setWalletState((prev) => ({
+        ...prev,
+        account: accounts[0],
+      }));
+      if (params.onAccountsChanged) {
+        params.onAccountsChanged(accounts[0]);
+      }
+    } else {
+      setWalletState((prev) => ({
+        ...prev,
+        account: null,
+        chainId: null,
+        balanceEth: null,
+        currentWalletType: null,
+      }));
+      if (params.onAccountsChanged) {
+        params.onAccountsChanged(null);
+      }
+    }
+  };
+
+  const handleChainChanged = (chainId: string | number) => {
+    const raw = String(chainId);
+    const hex = raw.startsWith("0x") ? raw : "0x" + Number(raw || 0).toString(16);
+    setWalletState((prev) => ({
+      ...prev,
+      chainId: hex,
+    }));
+  };
+
+  const setupEventListeners = (provider?: any) => {
+    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+    const p = provider || ethereum;
+    if (p && p.on) {
+      p.on("accountsChanged", handleAccountsChanged);
+      p.on("chainChanged", handleChainChanged);
+    }
+  };
+
+  const connectWallet = async (walletType?: WalletType) => {
+    setWalletState((prev) => ({
+      ...prev,
+      isConnecting: true,
+      connectError: null,
+    }));
+
+    try {
+      if (typeof window === "undefined") {
+        throw new Error("请在浏览器中使用钱包");
+      }
+      const ethereum: any = (window as any).ethereum;
+      if (!ethereum && !(window as any).BinanceChain) {
+        throw new Error("请安装钱包扩展");
+      }
+
+      window.dispatchEvent(new Event("eip6963:scan"));
+
+      let targetProvider: any = null;
+
+      const allDetected = detectWallets();
+
+      if (walletType) {
+        const discovered = allDetected.find((d) => d.type === walletType && d.provider);
+        if (discovered && discovered.provider) {
+          targetProvider = discovered.provider;
+        } else if (ethereum?.providers) {
+          for (const provider of ethereum.providers) {
+            const t = identifyWalletType(provider);
+            if (walletType === "metamask" && t === "metamask") {
+              targetProvider = provider;
+              break;
+            }
+            if (walletType === "coinbase" && t === "coinbase") {
+              targetProvider = provider;
+              break;
+            }
+            if (walletType === "okx" && t === "okx") {
+              targetProvider = provider;
+              break;
+            }
+            if (walletType === "binance" && (t === "binance" || provider.isBinanceWallet)) {
+              targetProvider = provider;
+              break;
+            }
+          }
+        } else if (walletType === "binance" && (window as any).BinanceChain) {
+          targetProvider = (window as any).BinanceChain;
+        } else if (walletType === "coinbase" && (window as any).coinbaseWalletExtension) {
+          targetProvider = (window as any).coinbaseWalletExtension;
+        } else if (walletType === "okx") {
+          if ((window as any).okxwallet) {
+            targetProvider = (window as any).okxwallet;
+          } else if ((window as any).okex) {
+            targetProvider = (window as any).okex;
+          } else if ((window as any).OKXWallet) {
+            targetProvider = (window as any).OKXWallet;
+          } else if ((window as any).okxWallet) {
+            targetProvider = (window as any).okxWallet;
+          }
+        }
+      }
+
+      if (!targetProvider) {
+        if (walletType === "okx") {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          if ((window as any).okxwallet) {
+            targetProvider = (window as any).okxwallet;
+          } else if ((window as any).okex) {
+            targetProvider = (window as any).okex;
+          } else if ((window as any).OKXWallet) {
+            targetProvider = (window as any).OKXWallet;
+          } else if ((window as any).okxWallet) {
+            targetProvider = (window as any).okxWallet;
+          } else {
+            throw new Error("OKX钱包未安装或未正确注入。请确保已安装OKX钱包扩展程序并刷新页面。");
+          }
+        } else {
+          targetProvider = ethereum || (window as any).BinanceChain;
+        }
+      }
+
+      if (!targetProvider || typeof targetProvider.request !== "function") {
+        throw new Error(
+          `${walletType === "okx" ? "OKX钱包" : "钱包"}未正确初始化，请刷新页面重试。`
+        );
+      }
+
+      const accounts = await targetProvider.request({ method: "eth_requestAccounts" });
+
+      if (accounts && accounts.length > 0) {
+        const provider = new ethers.BrowserProvider(targetProvider);
+        const network = await provider.getNetwork();
+        const hexChainId =
+          typeof network.chainId === "bigint"
+            ? "0x" + network.chainId.toString(16)
+            : ((ethers.toBeHex as any)?.(network.chainId) ??
+              "0x" + Number(network.chainId).toString(16));
+
+        const actualWalletType = identifyWalletType(targetProvider);
+        const finalWalletType = (actualWalletType || walletType || null) as WalletType | null;
+
+        setWalletState((prev) => ({
+          ...prev,
+          account: accounts[0],
+          chainId: hexChainId,
+          isConnecting: false,
+          currentWalletType: finalWalletType,
+        }));
+
+        if (finalWalletType && typeof window !== "undefined") {
+          localStorage.setItem("lastWalletType", finalWalletType);
+        }
+
+        currentProviderRef.current = targetProvider;
+        setupEventListeners(targetProvider);
+
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(LOGOUT_FLAG);
+        }
+
+        if (params.onAccountsChanged) {
+          params.onAccountsChanged(accounts[0]);
+        }
+      }
+    } catch (error: any) {
+      setWalletState((prev) => ({
+        ...prev,
+        isConnecting: false,
+        connectError: error?.message || "连接钱包失败",
+      }));
+    }
+  };
+
+  const disconnectWallet = async () => {
+    try {
+      const currentProvider = currentProviderRef.current;
+
+      if (currentProvider) {
+        try {
+          if (typeof currentProvider.disconnect === "function") {
+            await currentProvider.disconnect();
+          } else if (typeof currentProvider.request === "function") {
+            try {
+              await currentProvider.request({
+                method: "wallet_revokePermissions",
+                params: [{ eth_accounts: {} }],
+              });
+            } catch {
+              try {
+                await currentProvider.request({
+                  method: "wallet_requestPermissions",
+                  params: [{ eth_accounts: {} }],
+                });
+              } catch {}
+            }
+          }
+        } catch {}
+
+        try {
+          const ethereum: any = typeof window !== "undefined" ? (window as any).ethereum : null;
+          if (ethereum?.providers && Array.isArray(ethereum.providers)) {
+            for (const pr of ethereum.providers) {
+              if (typeof pr?.request === "function") {
+                try {
+                  await pr.request({
+                    method: "wallet_revokePermissions",
+                    params: [{ eth_accounts: {} }],
+                  });
+                } catch {}
+              }
+              if (typeof pr?.disconnect === "function") {
+                try {
+                  await pr.disconnect();
+                } catch {}
+              }
+            }
+          } else if (ethereum && typeof ethereum.request === "function") {
+            try {
+              await ethereum.request({
+                method: "wallet_revokePermissions",
+                params: [{ eth_accounts: {} }],
+              });
+            } catch {}
+          }
+        } catch {}
+
+        if (currentProvider.removeListener) {
+          currentProvider.removeListener("accountsChanged", handleAccountsChanged);
+          currentProvider.removeListener("chainChanged", handleChainChanged);
+        } else if (currentProvider.off) {
+          currentProvider.off("accountsChanged", handleAccountsChanged);
+          currentProvider.off("chainChanged", handleChainChanged);
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("lastWalletType");
+          localStorage.removeItem("walletconnect");
+          localStorage.removeItem("WALLETCONNECT_DEEPLINK_CHOICE");
+          localStorage.removeItem("-walletlink:https://www.walletlink.org:version");
+          localStorage.removeItem("-walletlink:https://www.walletlink.org:session:id");
+          localStorage.removeItem("-walletlink:https://www.walletlink.org:session:secret");
+          localStorage.removeItem("-walletlink:https://www.walletlink.org:session:linked");
+          localStorage.removeItem("coinbaseWallet.version");
+          sessionStorage.removeItem("metamask.selectedAddress");
+          sessionStorage.removeItem("binance.selectedAddress");
+          sessionStorage.removeItem("okx.selectedAddress");
+        } catch {}
+      }
+
+      setWalletState((prev) => ({
+        ...prev,
+        account: null,
+        chainId: null,
+        balanceEth: null,
+        currentWalletType: null,
+      }));
+
+      currentProviderRef.current = null;
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(LOGOUT_FLAG, "true");
+      }
+    } catch {}
+  };
+
+  return {
+    walletState,
+    connectWallet,
+    disconnectWallet,
+    currentProviderRef,
+    handleChainChanged,
+  };
+}

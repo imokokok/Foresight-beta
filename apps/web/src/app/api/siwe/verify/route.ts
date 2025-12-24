@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const allowedChainIds = new Set([1, 11155111]);
+    const allowedChainIds = new Set([1, 11155111, 137, 80002, 56]);
     const msgChainId = Number(msg.chainId);
     if (!allowedChainIds.has(msgChainId)) {
       return ApiResponses.badRequest("不支持的 chainId");

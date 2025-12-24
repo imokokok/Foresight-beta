@@ -219,6 +219,51 @@ Sign in with Ethereum`;
     expect(data.error.message).toContain("chain");
   });
 
+  it("应该允许受支持的多链 chain ID", async () => {
+    const nonceResponse = await getNonce();
+    const nonceData = await nonceResponse.json();
+    const nonce = nonceData.nonce;
+
+    const wallet = new Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
+
+    const supportedChainIds = [1, 11155111, 137, 80002, 56];
+
+    for (const chainId of supportedChainIds) {
+      const siwe = new SiweMessage({
+        domain: TEST_DOMAIN,
+        address: wallet.address,
+        statement: "Sign in with Ethereum to the app.",
+        uri: TEST_URI,
+        version: "1",
+        chainId,
+        nonce,
+        issuedAt: new Date().toISOString(),
+      });
+
+      const messageToSign = siwe.prepareMessage();
+      const signature = await wallet.signMessage(messageToSign);
+
+      const request = createMockNextRequest({
+        method: "POST",
+        url: "http://localhost:3000/api/siwe/verify",
+        body: {
+          message: messageToSign,
+          signature,
+        },
+        cookies: {
+          siwe_nonce: nonce,
+        },
+      });
+
+      const response = await verifySignature(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.address.toLowerCase()).toBe(wallet.address.toLowerCase());
+    }
+  });
+
   it("成功验证后应该设置 session cookie", async () => {
     const nonceResponse = await getNonce();
     const nonceData = await nonceResponse.json();
