@@ -1,17 +1,193 @@
 # 📚 Foresight 开发文档
 
-> 完整的 API 文档、组件使用指南和最佳实践
+> 唯一的开发者手册：面向日常开发与维护，覆盖组件与 Hooks、API、数据库、测试、国际化与 Sentry 等全部能力。
 
 ---
 
 ## 📑 目录
 
+- [🚀 快速上手](#-快速上手)
 - [核心组件](#核心组件)
 - [自定义 Hooks](#自定义-hooks)
 - [工具函数](#工具函数)
 - [API 路由](#api-路由)
 - [数据库](#数据库)
 - [最佳实践](#最佳实践)
+- [🧠 高级能力](#-高级能力)
+
+---
+
+## 使用方式
+
+- 新同学：优先阅读「🚀 快速上手」和「核心组件」了解常用能力。
+- 编写或重构页面：查阅对应的组件、自定义 Hooks 和工具函数章节。
+- 建立或增强质量体系：查阅「🧠 高级能力」中的测试、国际化与 Sentry 相关部分。
+
+---
+
+## 🚀 快速上手
+
+> 面向日常开发场景，帮助快速了解项目中可复用的基础能力。
+
+### 1. Toast 通知系统
+
+替代所有 `alert()` 使用：
+
+```typescript
+import { toast } from "@/lib/toast";
+
+// 成功提示
+toast.success("操作成功");
+
+// 错误提示
+toast.error("操作失败", "网络连接不稳定");
+
+// 警告提示
+toast.warning("注意", "此操作无法撤销");
+
+// 信息提示
+toast.info("提示", "数据已同步");
+
+// 异步操作
+toast.promise(fetchData(), {
+  loading: "加载中...",
+  success: "加载成功！",
+  error: "加载失败",
+});
+```
+
+建议用法：
+
+- 所有用户可见错误都用 `toast.error`，不要再出现浏览器 `alert`
+- 异步操作优先用 `toast.promise` 包裹，统一 loading / 成功 / 失败提示
+
+---
+
+### 2. 骨架屏组件
+
+在数据加载时使用骨架屏替代「Loading...」：
+
+```typescript
+import { EventCardSkeleton } from "@/components/ui/Skeleton";
+
+{loading ? (
+  <EventCardSkeleton />
+) : (
+  <EventCard data={data} />
+)}
+```
+
+建议用法：
+
+- 列表、卡片、详情页等都优先使用对应的 Skeleton 组件
+- 骨架屏应与真实内容结构相似，避免跳闪
+
+---
+
+### 3. 输入验证与 XSS 防护
+
+统一使用安全工具函数处理用户输入：
+
+```typescript
+import { validateAndSanitize, sanitizeText } from "@/lib/security";
+
+// 验证用户输入
+const result = validateAndSanitize(userInput, {
+  type: "text",
+  required: true,
+  maxLength: 200,
+});
+
+if (!result.valid) {
+  toast.error("输入错误", result.error);
+  return;
+}
+
+// 清理用户输入
+const cleanText = sanitizeText(dirtyInput);
+```
+
+建议用法：
+
+- 所有进入数据库或展示在页面上的富文本，都先走 `validateAndSanitize`
+- 对外展示前永远不要直接渲染用户原始输入
+
+---
+
+### 4. Rate Limiting（API Route 防刷）
+
+API Route 统一使用限流包装器：
+
+```typescript
+import { withRateLimit, rateLimitPresets } from "@/lib/rateLimit";
+
+export const POST = withRateLimit(
+  async (req) => {
+    // 处理请求...
+  },
+  rateLimitPresets.normal // 1 分钟 60 次
+);
+```
+
+建议用法：
+
+- 任何会产生写操作或对第三方接口发起请求的 API，都要加限流
+- 根据业务敏感度选择 `light` / `normal` / `strict` 预设
+
+---
+
+### 5. 可访问性 Hooks
+
+使用内置可访问性 Hook 提升无障碍体验：
+
+```typescript
+import { useFocusTrap, useEscapeKey } from "@/hooks/useAccessibility";
+
+function Modal({ onClose }) {
+  const containerRef = useFocusTrap(true); // 焦点陷阱
+  useEscapeKey(onClose); // ESC 键关闭
+
+  return <div ref={containerRef}>...</div>;
+}
+```
+
+---
+
+### 6. 推荐代码风格
+
+推荐写法：
+
+```typescript
+// 1. 使用 Toast 而不是 alert
+toast.error("创建失败", "请检查网络连接");
+
+// 2. 加载状态使用骨架屏
+{loading ? <Skeleton /> : <Content />}
+
+// 3. 验证用户输入
+const { valid, value, error } = validateAndSanitize(input, { type: "text" });
+
+// 4. 移动端适配
+<div className="mobile-safe-padding">...</div>
+
+// 5. 可访问性
+<button aria-label="关闭对话框" onClick={onClose}>
+  <X />
+</button>
+```
+
+避免写法：
+
+```typescript
+// 不要使用 alert
+alert("操作失败");
+
+// 不要只显示简单 Loading 文本
+{loading && <div>Loading...</div>}
+
+// 不要直接使用未验证的用户输入
+await db.insert(userInput); // 危险！
+```
 
 ---
 
@@ -729,6 +905,192 @@ export const revalidate = 60; // 60秒重新验证
 ---
 
 ### 4. 移动端优化
+
+---
+
+## 🧠 高级能力
+
+> 涵盖测试框架、国际化和 Sentry 监控等高级能力，支持构建稳定、可观测的生产环境。
+
+### 1. 测试与覆盖率（Vitest）
+
+文件结构（apps/web）：
+
+```bash
+apps/web/
+├── vitest.config.ts           # Vitest 配置
+├── src/
+│   ├── test/
+│   │   ├── setup.ts           # 测试环境设置
+│   │   └── mockData.ts        # Mock 数据
+│   ├── lib/__tests__/
+│   └── components/__tests__/  # 组件测试
+```
+
+常用命令：
+
+```bash
+# 开发模式（监听文件变化）
+npm run test
+
+# 单次运行（CI）
+npm run test:run
+
+# UI 模式
+npm run test:ui
+
+# 覆盖率
+npm run test:coverage
+```
+
+示例：组件测试
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+import MyComponent from "../MyComponent";
+
+describe("MyComponent", () => {
+  it("should render correctly", () => {
+    render(<MyComponent />);
+    expect(screen.getByText("Hello")).toBeInTheDocument();
+  });
+});
+```
+
+覆盖率目标（推荐）：
+
+- `lib/`：80%+
+- `components/`：60%+
+- `hooks/`：70%+
+- API routes：50%+
+- 整体：60%+ 以上
+
+---
+
+### 2. 国际化（next-intl）
+
+文件结构：
+
+```bash
+apps/web/
+├── messages/
+│   ├── zh-CN.json       # 中文简体翻译
+│   └── en.json          # 英文翻译
+├── src/
+│   ├── i18n.ts          # 国际化配置
+│   ├── middleware.ts    # 路由中间件
+│   └── components/
+│       └── LanguageSwitcher.tsx  # 语言切换器
+```
+
+在组件中使用翻译：
+
+```typescript
+import { useTranslations } from "next-intl";
+
+export function MyComponent() {
+  const t = useTranslations("common");
+
+  return (
+    <div>
+      <h1>{t("welcome")}</h1>
+      <p>{t("loading")}</p>
+    </div>
+  );
+}
+```
+
+在服务器组件中使用：
+
+```typescript
+import { getTranslations } from "next-intl/server";
+
+export default async function Page() {
+  const t = await getTranslations("common");
+
+  return <h1>{t("welcome")}</h1>;
+}
+```
+
+添加新文案：
+
+```json
+{
+  "myFeature": {
+    "title": "My Feature Title",
+    "description": "My Feature Description"
+  }
+}
+```
+
+URL 路由模式：
+
+```text
+默认语言（中文）:
+https://foresight.market/trending
+
+英文:
+https://foresight.market/en/trending
+```
+
+---
+
+### 3. Sentry 错误监控与性能
+
+相关文件：
+
+```bash
+apps/web/
+├── sentry.client.config.ts
+├── sentry.server.config.ts
+├── sentry.edge.config.ts
+└── src/
+    └── lib/sentry.ts
+```
+
+环境变量（`.env.local`）：
+
+```env
+NEXT_PUBLIC_SENTRY_DSN=...
+SENTRY_ORG=your-org-name
+SENTRY_PROJECT=foresight-web
+SENTRY_AUTH_TOKEN=your-auth-token
+```
+
+手动上报错误：
+
+```typescript
+import * as Sentry from "@sentry/nextjs";
+
+try {
+  await riskyOperation();
+} catch (error) {
+  Sentry.captureException(error, {
+    tags: { feature: "order-creation" },
+    extra: { orderId: "123" },
+  });
+}
+```
+
+使用辅助函数：
+
+```typescript
+import { SentryHelpers } from "@/lib/sentry";
+
+SentryHelpers.walletError(error, "metamask");
+SentryHelpers.orderError(error, orderId, chainId);
+SentryHelpers.apiError(error, "/api/orders", "POST");
+SentryHelpers.contractError(error, contractAddress, "mint");
+```
+
+典型看板：
+
+- Issues：错误列表与详情
+- Performance：接口和页面性能
+- Replays：Session 回放
+
+---
 
 ```tsx
 // ✅ 确保触摸目标足够大（44x44px）

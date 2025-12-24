@@ -1,6 +1,6 @@
 # 🔮 Foresight - 去中心化预测市场平台
 
-> 基于区块链与智能合约的预测市场基础设施，面向真实事件、链上资产和社区情绪，提供安全、透明、公平的预测与交易体验。
+> Foresight 是一个基于区块链与智能合约的预测市场基础设施，面向真实事件、链上资产和社区情绪，提供安全、透明、公平的预测与交易体验。
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.4-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue)](https://reactjs.org/)
@@ -10,7 +10,7 @@
 
 ---
 
-## ✨ 产品特性（站在用户视角）
+## ✨ 产品特性概览
 
 - 🎯 多类型预测市场：支持二元事件、多选事件等不同结构的预测市场
 - 💰 链上真实结算：预测以智能合约结算，可验证、可追溯
@@ -21,8 +21,6 @@
 - 📱 移动端优先设计：专门的底部导航、汉堡菜单和下拉刷新体验
 - ⚡ 性能指标可量化：首屏加载 < 2s，LCP < 2.5s，滚动帧率接近 60fps
 - 📊 内建性能监控面板：内置 Web Vitals 与自建性能数据上报与查看能力
-
-更多关于三阶段优化与 ROI 的详细数据，请参见 [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) 与 [OPTIMIZATION_REPORTS.md](./OPTIMIZATION_REPORTS.md)。
 
 ---
 
@@ -100,23 +98,15 @@ npm run ws:dev:all
 
 ## 📚 文档导航
 
-核心入口：
+当前仓库仅保留 1 个项目概括文档和 1 个统一的开发者文档：
 
-- [DOC_INDEX.md](./DOC_INDEX.md)：完整文档索引
-- [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)：项目优化与 ROI 总结
-- [QUICK_START.md](./QUICK_START.md)：新工具与常用能力快速上手
-- [DOCS.md](./DOCS.md)：组件、Hooks、API、数据库文档
-- [ADVANCED_FEATURES_GUIDE.md](./ADVANCED_FEATURES_GUIDE.md)：测试、国际化、Sentry 等高级能力
-- [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)：生产部署清单
+- `README.md`：项目概括与整体架构（你正在阅读的文档）
+- [DOCS.md](./DOCS.md)：唯一开发者手册（包含快速上手、组件与 Hooks、API、数据库、测试、国际化与 Sentry 等全部内容）
 
-优化与规划相关：
+推荐阅读路径：
 
-- [OPTIMIZATION_REPORTS.md](./OPTIMIZATION_REPORTS.md)
-- [PHASE2_FINAL_REPORT.md](./PHASE2_FINAL_REPORT.md)
-- [PHASE3_TIER1_COMPLETE.md](./PHASE3_TIER1_COMPLETE.md)
-- [NEXT_STEPS.md](./NEXT_STEPS.md)
-
-> 原 README 中指向的 `PHASE3_PLAN.md` 已被上述文档覆盖，此处不再引用该文件。
+- 新同学：`README.md` → `DOCS.md` 的「🚀 快速上手」与「核心组件」
+- 了解高级能力：`DOCS.md` 的「🧠 高级能力」
 
 ---
 
@@ -171,10 +161,6 @@ Foresight-beta/
 ├── infra/
 │   └── supabase/               # 数据库脚本与管理工具
 ├── scripts/                    # 部署与链上工具脚本
-├── DOC_INDEX.md                # 文档导航
-├── PROJECT_SUMMARY.md          # 项目总结
-├── QUICK_START.md              # 快速开始
-└── DOCS.md                     # 开发文档
 ```
 
 ---
@@ -215,13 +201,7 @@ Foresight-beta/
 - Web Vitals 收集与上报
 - 管理端性能仪表板
 - 实时查看关键指标与历史趋势
-- 结合优化报告评估改动效果
-
-更多使用与最佳实践，可结合：
-
-- `apps/web/src/app/admin/performance/page.tsx`
-- `lib/performance.ts`
-- `OPTIMIZATION_REPORTS.md`
+- 根据监控数据评估改动效果
 
 ---
 
@@ -240,7 +220,7 @@ cd apps/web
 npm run test
 ```
 
-关于覆盖率目标和目录结构，请查看 [ADVANCED_FEATURES_GUIDE.md](./ADVANCED_FEATURES_GUIDE.md)。
+关于覆盖率目标和目录结构，请查看 [DOCS.md](./DOCS.md) 中的「🧠 高级能力 - 测试与覆盖率」章节。
 
 ---
 
