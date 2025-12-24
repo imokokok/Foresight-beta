@@ -71,7 +71,7 @@ import {
   getCandles,
 } from "./orderbook.js";
 
-const app = express();
+export const app = express();
 app.use(cors());
 app.use(express.json());
 
@@ -247,6 +247,10 @@ app.get("/orderbook/types", (req, res) => {
   res.json({ success: true, types: getOrderTypes() });
 });
 
-app.listen(PORT, () => {
-  console.log(`Relayer server listening on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Relayer server listening on port ${PORT}`);
+  });
+}
+
+export default app;
