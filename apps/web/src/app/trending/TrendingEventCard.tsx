@@ -1,6 +1,5 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
@@ -76,8 +75,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
   tTrendingAdmin,
   tEvents,
 }: TrendingEventCardProps) {
-  const router = useRouter();
-
   const stopClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -85,9 +82,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
 
   const handleCardClick = (e: React.MouseEvent) => {
     onCardClick(e, product.tag);
-    if (isValidEventId(eventId)) {
-      router.push(`/prediction/${eventId}`);
-    }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -125,7 +119,7 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
       className="glass-card glass-card-hover rounded-2xl overflow-hidden relative transform-gpu flex flex-col h-full min-h-[250px] group"
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      role={isValidEventId(eventId) ? "link" : "group"}
+      role="button"
       tabIndex={0}
       onClick={handleCardClick}
       onKeyDown={(e) => {

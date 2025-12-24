@@ -68,16 +68,29 @@ export function formatTranslation(
   });
 }
 
+export function setLocale(nextLocale: Locale) {
+  if (typeof window === "undefined") return;
+  if (nextLocale !== "zh-CN" && nextLocale !== "en" && nextLocale !== "es") return;
+
+  localStorage.setItem("preferred-language", nextLocale);
+
+  window.dispatchEvent(
+    new CustomEvent("languagechange", {
+      detail: { locale: nextLocale },
+    })
+  );
+}
+
 export function useTranslations(namespace?: string) {
-  const [locale, setLocale] = useState<Locale>("zh-CN");
+  const [locale, setLocaleState] = useState<Locale>("zh-CN");
 
   useEffect(() => {
-    setLocale(getCurrentLocale());
+    setLocaleState(getCurrentLocale());
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "preferred-language" && e.newValue) {
         if (e.newValue === "zh-CN" || e.newValue === "en" || e.newValue === "es") {
-          setLocale(e.newValue);
+          setLocaleState(e.newValue);
         }
       }
     };
@@ -86,7 +99,7 @@ export function useTranslations(namespace?: string) {
       const customEvent = event as CustomEvent<{ locale?: string }>;
       const nextLocale = customEvent.detail?.locale;
       if (nextLocale === "zh-CN" || nextLocale === "en" || nextLocale === "es") {
-        setLocale(nextLocale);
+        setLocaleState(nextLocale);
       }
     };
 

@@ -2,26 +2,22 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Globe } from "lucide-react";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, getCurrentLocale, setLocale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
-const languages = [
+const languages: { code: Locale; name: string; flag: string }[] = [
   { code: "zh-CN", name: "简体中文", flag: "🇨🇳" },
   { code: "en", name: "English", flag: "🇺🇸" },
   { code: "es", name: "Español", flag: "🇪🇸" },
-] as const;
+];
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentLang, setCurrentLang] = useState<string>("zh-CN");
+  const [currentLang, setCurrentLang] = useState<Locale>(() => getCurrentLocale());
   const menuRef = useRef<HTMLDivElement>(null);
   const tCommon = useTranslations("common");
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("preferred-language");
-    if (savedLang && languages.some((l) => l.code === savedLang)) {
-      setCurrentLang(savedLang);
-    }
-
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -32,13 +28,10 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const changeLanguage = (langCode: string) => {
+  const changeLanguage = (langCode: Locale) => {
     setCurrentLang(langCode);
     setIsOpen(false);
-
-    localStorage.setItem("preferred-language", langCode);
-
-    window.dispatchEvent(new CustomEvent("languagechange", { detail: { locale: langCode } }));
+    setLocale(langCode);
   };
 
   const currentLanguage = languages.find((l) => l.code === currentLang) || languages[0];
@@ -47,6 +40,12 @@ export default function LanguageSwitcher() {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setIsOpen((prev) => !prev);
+          }
+        }}
         className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl hover:bg-white transition-colors text-sm font-medium text-gray-700"
         aria-label={tCommon("switchLanguage")}
       >
@@ -56,13 +55,20 @@ export default function LanguageSwitcher() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
+        <div
+          className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50"
+          role="menu"
+          aria-label={tCommon("switchLanguage")}
+        >
           {languages.map((lang) => (
             <button
               key={lang.code}
               onClick={() => changeLanguage(lang.code)}
+              role="menuitem"
               className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-sm ${
-                currentLang === lang.code ? "bg-purple-50 text-purple-700" : "text-gray-700"
+                currentLang === lang.code
+                  ? "bg-purple-50 text-purple-700 selected"
+                  : "text-gray-700"
               }`}
             >
               <span className="text-lg">{lang.flag}</span>
