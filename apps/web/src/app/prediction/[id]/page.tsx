@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 async function getPrediction(id: string) {
@@ -178,18 +178,18 @@ export async function generateMetadata(
   };
 }
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const prediction = await getPrediction(params.id);
+export default async function Page({ params }: Props) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
+  const prediction = await getPrediction(id);
   let relatedProposalId: number | null = null;
 
-  const idNum = Number(params.id);
+  const idNum = Number(id);
   if (Number.isFinite(idNum) && idNum > 0) {
     relatedProposalId = await getRelatedProposalId(idNum);
   }
 
-  const jsonLd = prediction
-    ? buildPredictionJsonLd(params.id, prediction, relatedProposalId)
-    : null;
+  const jsonLd = prediction ? buildPredictionJsonLd(id, prediction, relatedProposalId) : null;
 
   return (
     <>
