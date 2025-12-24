@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { POST as postOrders } from "@/app/api/orderbook/orders/route";
 import { POST as postCancelSalt } from "@/app/api/orderbook/cancel-salt/route";
+import { ApiErrorCode } from "@/types/api";
 
 function makePostRequest(url: string, body: unknown): Request {
   return new Request(url, {
@@ -94,6 +95,6 @@ describe("orderbook api relayer proxy", () => {
     const json = await res.json();
 
     expect(json.success).toBe(false);
-    expect(json.error?.message).toBe("数据库未配置");
+    expect(json.error?.code).toBe(ApiErrorCode.INTERNAL_ERROR);
   });
 });

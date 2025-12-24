@@ -21,10 +21,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@/contexts/WalletContext";
 import { useProposalDetail, CommentView } from "./useProposalDetail";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
 
 export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const resolvedParams = React.use(params);
+  const tProposals = useTranslations("proposals");
   const {
     thread,
     loading,
@@ -45,7 +47,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
   const handleCopyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
-      toast.success("Link copied to clipboard");
+      toast.success(tProposals("share.copyLinkSuccessTitle"));
     });
   };
 

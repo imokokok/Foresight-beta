@@ -54,7 +54,24 @@ export function t(key: string, locale?: Locale): string {
     if (value === undefined) break;
   }
 
-  return value || key;
+  if (value === undefined) {
+    if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
+      try {
+        console.warn("[i18n] Missing translation key:", key);
+      } catch {}
+    }
+    return key;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return String(value);
+  } catch {
+    return key;
+  }
 }
 
 export function formatTranslation(

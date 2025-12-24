@@ -24,9 +24,13 @@ vi.mock("@sentry/nextjs", () => ({
   browserTracingIntegration: vi.fn(),
 }));
 
-vi.mock("@/lib/i18n", () => ({
-  useTranslations: vi.fn(() => (key: string) => key),
-}));
+vi.mock("@/lib/i18n", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/i18n")>("@/lib/i18n");
+  return {
+    ...actual,
+    useTranslations: vi.fn(() => (key: string) => key),
+  };
+});
 
 vi.mock("lucide-react", () => {
   const overrideTestIds: Record<string, string> = {
@@ -117,6 +121,41 @@ if (typeof window !== "undefined") {
       dispatchEvent: vi.fn(),
     })),
   });
+
+  const localStorageStore: Record<string, string> = {};
+
+  const localStorageMock = {
+    getItem(key: string) {
+      return Object.prototype.hasOwnProperty.call(localStorageStore, key)
+        ? localStorageStore[key]
+        : null;
+    },
+    setItem(key: string, value: string) {
+      localStorageStore[key] = String(value);
+    },
+    removeItem(key: string) {
+      delete localStorageStore[key];
+    },
+    clear() {
+      for (const key of Object.keys(localStorageStore)) {
+        delete localStorageStore[key];
+      }
+    },
+    key(index: number) {
+      const keys = Object.keys(localStorageStore);
+      return index >= 0 && index < keys.length ? keys[index] : null;
+    },
+    get length() {
+      return Object.keys(localStorageStore).length;
+    },
+  };
+
+  Object.defineProperty(window, "localStorage", {
+    value: localStorageMock,
+    writable: true,
+  });
+
+  (globalThis as any).localStorage = localStorageMock;
 }
 
 global.IntersectionObserver = class IntersectionObserver {

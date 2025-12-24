@@ -3,6 +3,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 import { toast } from "@/lib/toast";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
+import { t } from "@/lib/i18n";
 
 export interface CommentView {
   id: number;
@@ -123,12 +124,12 @@ export function useProposalDetail(id: string) {
 
   const vote = async (type: "thread" | "comment", contentId: number, dir: "up" | "down") => {
     if (!account) {
-      toast.error("Please connect wallet to vote");
+      toast.error(t("forum.errors.walletRequiredForVote"));
       return;
     }
     const key = `${type}:${contentId}`;
     if (userVotes.has(key)) {
-      toast.error("You have already voted");
+      toast.error(t("forum.errors.alreadyVoted"));
       return;
     }
 
@@ -177,7 +178,7 @@ export function useProposalDetail(id: string) {
         throw new Error(data.message || "Vote failed");
       }
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(t("forum.errors.voteFailed"), e.message);
       // Revert optimistic update
       fetchThread();
       fetchUserVotes();
@@ -200,12 +201,12 @@ export function useProposalDetail(id: string) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Failed to post comment");
+        throw new Error(data.message || t("forum.errors.commentFailed"));
       }
-      toast.success("Comment posted");
+      toast.success(t("forum.reply.commentPosted"));
       fetchThread(); // Refresh thread to get new comment
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(t("forum.errors.commentFailed"), e.message);
     }
   };
 

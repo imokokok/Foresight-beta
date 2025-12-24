@@ -8,6 +8,7 @@ import {
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr);
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
   try {
     const client = supabaseAdmin as any;
     if (!client) {
-      return NextResponse.json({ success: false, message: "缺少服务端密钥" }, { status: 500 });
+      return ApiResponses.internalError("Missing service key");
     }
     const payload = await parseRequestBody(req);
     const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
@@ -109,26 +110,20 @@ export async function POST(req: NextRequest) {
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
-      return NextResponse.json(
-        { success: false, message: "未认证或会话地址不匹配" },
-        { status: 401 }
-      );
+      return ApiResponses.unauthorized("Not authenticated or wallet address mismatch");
     }
 
     if (!isEthAddress(walletAddress)) {
-      return NextResponse.json({ success: false, message: "无效的钱包地址" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid wallet address");
     }
     if (!username || !email) {
-      return NextResponse.json(
-        { success: false, message: "用户名和邮箱为必填项" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Username and email are required");
     }
     if (!isValidEmail(email)) {
-      return NextResponse.json({ success: false, message: "邮箱格式不正确" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid email format");
     }
     if (!isValidUsername(username)) {
-      return NextResponse.json({ success: false, message: "用户名不合规" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid username");
     }
 
     const { data: existing, error: existError } = await client
@@ -138,7 +133,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existError) {
-      return NextResponse.json({ success: false, message: "查询旧档案失败" }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch existing profile", existError.message);
     }
     if (existing) {
       const { error: updError } = await client
@@ -146,10 +141,7 @@ export async function POST(req: NextRequest) {
         .update({ username, email } as Database["public"]["Tables"]["user_profiles"]["Update"])
         .eq("wallet_address", walletAddress);
       if (updError) {
-        return NextResponse.json(
-          { success: false, message: "更新档案失败: " + updError.message },
-          { status: 500 }
-        );
+        return ApiResponses.databaseError("Failed to update profile", updError.message);
       }
     } else {
       const { error: insError } = await client.from("user_profiles").insert({
@@ -158,10 +150,7 @@ export async function POST(req: NextRequest) {
         email,
       } as Database["public"]["Tables"]["user_profiles"]["Insert"]);
       if (insError) {
-        return NextResponse.json(
-          { success: false, message: "创建档案失败: " + insError.message },
-          { status: 500 }
-        );
+        return ApiResponses.databaseError("Failed to create profile", insError.message);
       }
     }
 
@@ -177,6 +166,7 @@ export async function POST(req: NextRequest) {
     }
     return res;
   } catch (e: any) {
-    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
+    logApiError("POST /api/user-profiles unhandled error", e);
+    return ApiResponses.internalError("Failed to save profile", String(e?.message || e));
   }
 }

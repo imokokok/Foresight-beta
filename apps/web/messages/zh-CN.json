@@ -25,7 +25,39 @@
     "switchLanguage": "切换语言",
     "openUserMenu": "打开用户菜单",
     "userMenu": "用户菜单",
-    "userAvatar": "用户头像"
+    "userAvatar": "用户头像",
+    "hideBalance": "隐藏余额",
+    "showBalance": "显示余额",
+    "batch": {
+      "loading": "处理中 ({current}/{total})",
+      "success": "成功处理 {count} 项",
+      "error": "{count} 项处理失败",
+      "partialTitle": "部分完成",
+      "partialDescription": "成功 {successCount} 项，失败 {failureCount} 项"
+    },
+    "datePicker": {
+      "placeholder": "选择日期",
+      "monthNames": [
+        "一月",
+        "二月",
+        "三月",
+        "四月",
+        "五月",
+        "六月",
+        "七月",
+        "八月",
+        "九月",
+        "十月",
+        "十一月",
+        "十二月"
+      ],
+      "weekdayNames": ["日", "一", "二", "三", "四", "五", "六"],
+      "timeLabel": "时间",
+      "confirm": "确定",
+      "header": "{year}年 {month}",
+      "displayDate": "{year}年{month}月{day}日",
+      "displayWithTime": "{year}年{month}月{day}日 {hour}:{minute}"
+    }
   },
   "nav": {
     "home": "首页",
@@ -113,7 +145,8 @@
     "reply": {
       "placeholder": "写下评论…",
       "sending": "发送中…",
-      "submit": "评论"
+      "submit": "评论",
+      "commentPosted": "评论已发布"
     },
     "errors": {
       "loadFailed": "加载失败",
@@ -123,6 +156,15 @@
       "walletRequired": "请先连接钱包",
       "walletRequiredForVote": "请先连接钱包再投票",
       "alreadyVoted": "您已经投过票了"
+    }
+  },
+  "proposals": {
+    "share": {
+      "copyLinkSuccessTitle": "链接已复制",
+      "copyLinkSuccessDesc": "已复制提案链接到剪贴板",
+      "copyLinkUnsupportedTitle": "无法自动复制",
+      "copyLinkFailedTitle": "复制失败",
+      "copyLinkFailedDesc": "请手动复制地址栏链接"
     }
   },
   "chat": {
@@ -249,7 +291,13 @@
     "emptyAsks": "暂无卖单",
     "emptyOrders": "暂无挂单",
     "bestBid": "买一: {price}",
-    "bestAsk": "卖一: {price}"
+    "bestAsk": "卖一: {price}",
+    "toast": {
+      "cancelOrderSuccessTitle": "订单已取消",
+      "cancelOrderSuccessDesc": "您的订单已成功取消",
+      "cancelOrderFailedTitle": "取消订单失败",
+      "retryLater": "请稍后重试"
+    }
   },
   "market": {
     "breadcrumbs": {
@@ -340,7 +388,70 @@
     "tryAgain": "重试",
     "goHome": "返回首页",
     "contactSupport": "联系技术支持",
-    "followActionFailed": "关注操作失败，请稍后重试"
+    "followActionFailed": "关注操作失败，请稍后重试",
+    "network": {
+      "title": "网络错误",
+      "description": "请检查网络连接后重试"
+    },
+    "api": {
+      "400": {
+        "title": "请求错误",
+        "description": "提交的数据格式不正确"
+      },
+      "401": {
+        "title": "未授权",
+        "description": "请先连接钱包并登录"
+      },
+      "403": {
+        "title": "权限不足",
+        "description": "您没有权限执行此操作"
+      },
+      "404": {
+        "title": "未找到",
+        "description": "请求的内容未找到"
+      },
+      "409": {
+        "title": "数据冲突",
+        "description": "操作与现有数据冲突"
+      },
+      "429": {
+        "title": "请求过于频繁",
+        "description": "请稍后再试"
+      },
+      "500": {
+        "title": "服务器错误",
+        "description": "服务器遇到问题，请稍后重试"
+      },
+      "503": {
+        "title": "服务不可用",
+        "description": "服务器维护中，请稍后再试"
+      }
+    },
+    "business": {
+      "ORDER_EXPIRED": {
+        "title": "订单已过期",
+        "description": "当前订单已超过有效时间，请刷新订单簿后重试"
+      },
+      "INSUFFICIENT_BALANCE": {
+        "title": "余额不足",
+        "description": "账户余额不足，无法完成本次操作"
+      },
+      "MARKET_CLOSED": {
+        "title": "市场已关闭",
+        "description": "当前市场已停止交易，无法提交新订单"
+      }
+    }
+  },
+  "accessibility": {
+    "number": {
+      "million": "{value} 百万",
+      "thousand": "{value} 千"
+    },
+    "date": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "daysAgo": "{count} 天前"
+    }
   },
   "login": {
     "tabEmail": "邮箱登录",

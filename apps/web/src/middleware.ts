@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
         {
           success: false,
           error: {
-            message: "请求过于频繁，请稍后重试",
+            message: "Too many requests, please try again later",
             code: "RATE_LIMIT_EXCEEDED",
             resetAt: result.resetAt,
           },

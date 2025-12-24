@@ -3,7 +3,7 @@
  * 测试订单创建、查询、取消等功能
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { POST as createOrder, GET as getOrders } from "../orders/route";
 import {
   createMockNextRequest,
@@ -12,7 +12,7 @@ import {
   TestDataCleaner,
   assertions,
 } from "@/test/apiTestHelpers";
-import { vi } from "vitest";
+import { ApiErrorCode } from "@/types/api";
 
 vi.mock("@/lib/supabase", () => {
   const fakeQuery = {
@@ -62,7 +62,7 @@ describe("POST /api/orderbook/orders - 创建订单", () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toBeDefined();
-    expect(data.error.message).toContain("必填字段");
+    expect(data.error.code).toBe(ApiErrorCode.INVALID_PARAMETERS);
   });
 
   it("应该拒绝无效的价格范围", async () => {

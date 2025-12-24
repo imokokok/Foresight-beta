@@ -25,7 +25,39 @@
     "switchLanguage": "Switch language",
     "openUserMenu": "Open user menu",
     "userMenu": "User menu",
-    "userAvatar": "User avatar"
+    "userAvatar": "User avatar",
+    "hideBalance": "Hide balance",
+    "showBalance": "Show balance",
+    "batch": {
+      "loading": "Processing ({current}/{total})",
+      "success": "Successfully processed {count} items",
+      "error": "{count} items failed",
+      "partialTitle": "Partially completed",
+      "partialDescription": "{successCount} succeeded, {failureCount} failed"
+    },
+    "datePicker": {
+      "placeholder": "Select date",
+      "monthNames": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ],
+      "weekdayNames": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "timeLabel": "Time",
+      "confirm": "OK",
+      "header": "{month} {year}",
+      "displayDate": "{year}-{month}-{day}",
+      "displayWithTime": "{year}-{month}-{day} {hour}:{minute}"
+    }
   },
   "nav": {
     "home": "Home",
@@ -113,7 +145,8 @@
     "reply": {
       "placeholder": "Write a comment…",
       "sending": "Sending…",
-      "submit": "Comment"
+      "submit": "Comment",
+      "commentPosted": "Comment posted"
     },
     "errors": {
       "loadFailed": "Failed to load",
@@ -123,6 +156,15 @@
       "walletRequired": "Please connect your wallet first",
       "walletRequiredForVote": "Connect your wallet before voting",
       "alreadyVoted": "You have already voted"
+    }
+  },
+  "proposals": {
+    "share": {
+      "copyLinkSuccessTitle": "Link copied",
+      "copyLinkSuccessDesc": "Proposal link copied to clipboard.",
+      "copyLinkUnsupportedTitle": "Automatic copy not available",
+      "copyLinkFailedTitle": "Copy failed",
+      "copyLinkFailedDesc": "Please copy the link from the address bar manually."
     }
   },
   "chat": {
@@ -249,7 +291,13 @@
     "emptyAsks": "No asks yet",
     "emptyOrders": "No open orders",
     "bestBid": "Best bid: {price}",
-    "bestAsk": "Best ask: {price}"
+    "bestAsk": "Best ask: {price}",
+    "toast": {
+      "cancelOrderSuccessTitle": "Order canceled",
+      "cancelOrderSuccessDesc": "Your order has been canceled successfully.",
+      "cancelOrderFailedTitle": "Failed to cancel order",
+      "retryLater": "Please try again later"
+    }
   },
   "market": {
     "breadcrumbs": {
@@ -334,13 +382,76 @@
   },
   "errors": {
     "somethingWrong": "Oops! Something went wrong!",
-    "pageNotFound": "Page Not Found",
-    "serverError": "Server Error",
-    "networkError": "Network Error",
-    "tryAgain": "Try Again",
-    "goHome": "Go Home",
-    "contactSupport": "Contact Support",
-    "followActionFailed": "Follow action failed, please try again later"
+    "pageNotFound": "Page not found",
+    "serverError": "Server error",
+    "networkError": "Network error",
+    "tryAgain": "Try again",
+    "goHome": "Back to home",
+    "contactSupport": "Contact support",
+    "followActionFailed": "Follow action failed, please try again later",
+    "network": {
+      "title": "Network error",
+      "description": "Please check your connection and try again"
+    },
+    "api": {
+      "400": {
+        "title": "Bad request",
+        "description": "The submitted data format is invalid"
+      },
+      "401": {
+        "title": "Unauthorized",
+        "description": "Please connect your wallet and log in first"
+      },
+      "403": {
+        "title": "Forbidden",
+        "description": "You do not have permission to perform this action"
+      },
+      "404": {
+        "title": "Not found",
+        "description": "The requested content could not be found"
+      },
+      "409": {
+        "title": "Conflict",
+        "description": "The operation conflicts with existing data"
+      },
+      "429": {
+        "title": "Too many requests",
+        "description": "Please try again later"
+      },
+      "500": {
+        "title": "Server error",
+        "description": "The server encountered an issue, please try again later"
+      },
+      "503": {
+        "title": "Service unavailable",
+        "description": "The service is under maintenance, please try again later"
+      }
+    },
+    "business": {
+      "ORDER_EXPIRED": {
+        "title": "Order expired",
+        "description": "This order is no longer valid. Please refresh the order book and try again"
+      },
+      "INSUFFICIENT_BALANCE": {
+        "title": "Insufficient balance",
+        "description": "Your available balance is not enough to complete this action"
+      },
+      "MARKET_CLOSED": {
+        "title": "Market closed",
+        "description": "This market is closed and no longer accepts new orders"
+      }
+    }
+  },
+  "accessibility": {
+    "number": {
+      "million": "{value} million",
+      "thousand": "{value} thousand"
+    },
+    "date": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daysAgo": "{count} days ago"
+    }
   },
   "login": {
     "tabEmail": "Email login",

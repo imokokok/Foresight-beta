@@ -1,3 +1,5 @@
+import { t, getCurrentLocale, formatTranslation } from "./i18n";
+
 /**
  * 可访问性工具集
  * 提供键盘导航、焦点管理、屏幕阅读器支持等功能
@@ -239,13 +241,24 @@ export const srOnlyStyles = {
  * 格式化数字为易读格式（供屏幕阅读器使用）
  */
 export function formatNumberForScreenReader(num: number): string {
+  const locale = getCurrentLocale();
+  const formatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  });
+
   if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)} 百万`;
+    const value = formatter.format(num / 1000000);
+    const template = t("accessibility.number.million");
+    return formatTranslation(template, { value });
   }
+
   if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)} 千`;
+    const value = formatter.format(num / 1000);
+    const template = t("accessibility.number.thousand");
+    return formatTranslation(template, { value });
   }
-  return num.toString();
+
+  return formatter.format(num);
 }
 
 /**
@@ -258,13 +271,15 @@ export function formatDateForScreenReader(date: Date | string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) {
-    return "今天";
+    return t("accessibility.date.today");
   } else if (diffDays === 1) {
-    return "昨天";
+    return t("accessibility.date.yesterday");
   } else if (diffDays < 7) {
-    return `${diffDays} 天前`;
+    const template = t("accessibility.date.daysAgo");
+    return formatTranslation(template, { count: diffDays });
   } else {
-    return d.toLocaleDateString("zh-CN", {
+    const locale = getCurrentLocale();
+    return d.toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",

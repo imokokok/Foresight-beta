@@ -23,6 +23,9 @@ import { toast as sonnerToast } from "sonner";
 describe("Toast Utilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (typeof window !== "undefined" && "localStorage" in window) {
+      window.localStorage.setItem("preferred-language", "zh-CN");
+    }
   });
 
   describe("toast.success", () => {
@@ -195,6 +198,25 @@ describe("Toast Utilities", () => {
       handleApiError(error);
 
       expect(sonnerToast.error).toHaveBeenCalled();
+    });
+
+    it("应该处理嵌套 error 对象中的状态码", () => {
+      const error = { error: { status: 400, message: "参数错误" } };
+
+      handleApiError(error);
+
+      expect(sonnerToast.error).toHaveBeenCalled();
+    });
+
+    it("应该根据业务错误码显示对应文案", () => {
+      const error = { error: { code: "ORDER_EXPIRED", message: "Order expired" } };
+
+      handleApiError(error);
+
+      expect(sonnerToast.error).toHaveBeenCalledWith(
+        expect.stringContaining("订单已过期"),
+        expect.any(Object)
+      );
     });
   });
 

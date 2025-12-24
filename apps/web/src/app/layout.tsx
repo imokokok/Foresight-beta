@@ -16,10 +16,11 @@ import WebVitalsReporter from "@/components/WebVitalsReporter";
 
 export const metadata: Metadata = {
   title: {
-    default: "Foresight - 去中心化预测市场",
+    default: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
     template: "%s | Foresight",
   },
-  description: "基于区块链的去中心化预测市场平台，参与各种事件预测，赢取收益。安全、透明、公平。",
+  description:
+    "基于区块链的去中心化预测市场平台，参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market to trade on real-world events in a secure, transparent and fair way.",
   keywords: [
     "预测市场",
     "区块链",
@@ -42,8 +43,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "zh_CN",
     url: "/",
-    title: "Foresight - 去中心化预测市场",
-    description: "参与各种事件预测，赢取收益。安全、透明、公平。",
+    title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
+    description:
+      "参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market.",
     siteName: "Foresight",
     images: [
       {
@@ -57,8 +59,8 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Foresight - 去中心化预测市场",
-    description: "参与各种事件预测，赢取收益",
+    title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
+    description: "参与各种事件预测，赢取收益。Trade on real-world events and earn rewards.",
     images: ["/twitter-image.png"],
     creator: "@ForesightMarket",
   },

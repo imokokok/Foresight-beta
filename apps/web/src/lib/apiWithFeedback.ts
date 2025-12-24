@@ -1,4 +1,5 @@
 import { toast } from "./toast";
+import { t, formatTranslation } from "./i18n";
 import { progress } from "@/components/ProgressBar";
 
 /**
@@ -33,9 +34,9 @@ export async function apiWithFeedback<T>(
   }
 ): Promise<T> {
   const {
-    loadingMessage = "加载中...",
+    loadingMessage = t("common.loading"),
     successMessage,
-    errorMessage = "操作失败",
+    errorMessage = t("errors.somethingWrong"),
     showProgress = true,
     showToast = true,
   } = options || {};
@@ -68,7 +69,11 @@ export async function apiWithFeedback<T>(
     if (showToast && toastId) {
       toast.dismiss(toastId);
       const message =
-        typeof errorMessage === "function" ? errorMessage(error as Error) : errorMessage;
+        typeof errorMessage === "function"
+          ? errorMessage(error as Error)
+          : typeof errorMessage === "string"
+            ? errorMessage
+            : t("errors.somethingWrong");
       toast.error(message, error instanceof Error ? error.message : undefined);
     }
 
@@ -100,7 +105,9 @@ export async function apiWithErrorToast<T>(
     return result;
   } catch (error) {
     progress.done();
-    toast.error(errorMessage || "操作失败", error instanceof Error ? error.message : undefined);
+    const message =
+      errorMessage && errorMessage.length > 0 ? errorMessage : t("errors.somethingWrong");
+    toast.error(message, error instanceof Error ? error.message : undefined);
     throw error;
   }
 }
@@ -129,9 +136,9 @@ export function reactQueryFeedback(options: {
   errorMessage?: string;
 }) {
   const {
-    loadingMessage = "处理中...",
-    successMessage = "操作成功",
-    errorMessage = "操作失败",
+    loadingMessage = t("common.loading"),
+    successMessage = t("common.success"),
+    errorMessage = t("errors.somethingWrong"),
   } = options;
 
   let toastId: string | number | undefined;
@@ -178,9 +185,11 @@ export async function batchApiWithFeedback<T>(
   }
 ): Promise<{ successes: T[]; failures: Error[] }> {
   const {
-    loadingMessage = (current: number, total: number) => `处理中 (${current}/${total})`,
-    successMessage = (count: number) => `成功处理 ${count} 项`,
-    errorMessage = (failedCount: number) => `${failedCount} 项处理失败`,
+    loadingMessage = (current: number, total: number) =>
+      formatTranslation(t("common.batch.loading"), { current, total }),
+    successMessage = (count: number) => formatTranslation(t("common.batch.success"), { count }),
+    errorMessage = (failedCount: number) =>
+      formatTranslation(t("common.batch.error"), { count: failedCount }),
   } = options || {};
 
   const total = apiFns.length;
@@ -213,7 +222,12 @@ export async function batchApiWithFeedback<T>(
   } else if (successes.length === 0) {
     toast.error(errorMessage(failures.length));
   } else {
-    toast.warning(`部分完成`, `成功 ${successes.length} 项，失败 ${failures.length} 项`);
+    const title = t("common.batch.partialTitle");
+    const description = formatTranslation(t("common.batch.partialDescription"), {
+      successCount: successes.length,
+      failureCount: failures.length,
+    });
+    toast.warning(title, description);
   }
 
   return { successes, failures };

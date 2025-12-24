@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import { successResponse, ApiResponses } from "@/lib/apiResponse";
-import { validateOrder } from "@/lib/orderVerification";
+import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
 
 function getRelayerBaseUrl(): string | undefined {
@@ -88,7 +88,9 @@ export async function POST(req: NextRequest) {
     }
 
     const client = supabaseAdmin || getClient();
-    if (!client) return ApiResponses.internalError("数据库未配置");
+    if (!client) {
+      return ApiResponses.internalError("Supabase not configured");
+    }
 
     const {
       chainId,
@@ -105,23 +107,19 @@ export async function POST(req: NextRequest) {
     const vcRaw = (verifyingContract || contract || "").toString();
     const vc = vcRaw.trim();
 
-    // 验证必填字段
     if (!chainId || !vc || !order || !signature) {
-      return ApiResponses.invalidParameters("缺少必填字段");
+      return ApiResponses.invalidParameters("Missing required fields");
     }
 
-    // 验证链 ID
     const chainIdNum = Number(chainId);
     if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
-      return ApiResponses.badRequest("无效的链 ID");
+      return ApiResponses.badRequest("Invalid chainId");
     }
 
-    // 验证合约地址格式
     if (!ethers.isAddress(vc)) {
-      return ApiResponses.badRequest("无效的合约地址");
+      return ApiResponses.badRequest("Invalid contract address");
     }
 
-    // 构造订单对象
     const orderData: EIP712Order = {
       maker: order.maker,
       outcomeIndex: Number(order.outcomeIndex),
@@ -137,12 +135,20 @@ export async function POST(req: NextRequest) {
     const derivedMk = Number.isFinite(eid) && eid > 0 ? `${chainIdNum}:${eid}` : "";
     const mk = (mkRaw || derivedMk).trim() || undefined;
 
-    // 🔥 关键：验证订单签名和参数
-    const validation = await validateOrder(orderData, signature, chainIdNum, vc);
+    const paramsValidation = validateOrderParams(orderData);
+    if (!paramsValidation.valid) {
+      if (isOrderExpired(orderData.expiry)) {
+        console.warn("Order validation failed: expired", paramsValidation.error);
+        return ApiResponses.orderExpired(paramsValidation.error || "Order expired");
+      }
+      console.warn("Order validation failed: params", paramsValidation.error);
+      return ApiResponses.badRequest(paramsValidation.error || "Invalid order parameters");
+    }
 
-    if (!validation.valid) {
-      console.warn("Order validation failed:", validation.error);
-      return ApiResponses.invalidSignature(validation.error || "订单验证失败");
+    const signatureValidation = await verifyOrderSignature(orderData, signature, chainIdNum, vc);
+    if (!signatureValidation.valid) {
+      console.warn("Order validation failed: signature", signatureValidation.error);
+      return ApiResponses.invalidSignature(signatureValidation.error || "Invalid order signature");
     }
 
     // 检查订单是否已存在（防止重复提交）
@@ -162,9 +168,11 @@ export async function POST(req: NextRequest) {
         ? String((existingOrder as any).market_key)
         : "";
       if (mk && existingMk && existingMk !== mk) {
-        return ApiResponses.conflict("salt 冲突：已有订单使用相同 salt（不同 marketKey）");
+        return ApiResponses.conflict(
+          "Salt conflict: existing order uses same salt with different marketKey"
+        );
       }
-      return ApiResponses.conflict("订单已存在（相同的 salt）");
+      return ApiResponses.conflict("Order already exists with the same salt");
     }
 
     // 转换过期时间
@@ -194,7 +202,7 @@ export async function POST(req: NextRequest) {
       const msg = String((insertError as any).message || "");
       const code = String((insertError as any).code || "");
       const isDup = code === "23505" || /duplicate key/i.test(msg);
-      if (isDup) return ApiResponses.conflict("订单已存在（相同的 salt）");
+      if (isDup) return ApiResponses.conflict("Order already exists with the same salt");
       if (mk && /market_key/i.test(msg)) {
         delete insertRow.market_key;
         ({ error: insertError } = await tryInsert(insertRow));
@@ -203,14 +211,14 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error("Error creating order:", insertError);
-      return ApiResponses.databaseError("创建订单失败", insertError.message);
+      return ApiResponses.databaseError("Failed to create order", insertError.message);
     }
 
-    return successResponse({ orderId: orderData.salt }, "订单创建成功");
+    return successResponse({ orderId: orderData.salt }, "Order created successfully");
   } catch (e: any) {
     console.error("Create Order API error:", e);
     return ApiResponses.internalError(
-      "创建订单失败",
+      "Failed to create order",
       process.env.NODE_ENV === "development" ? e.message : undefined
     );
   }

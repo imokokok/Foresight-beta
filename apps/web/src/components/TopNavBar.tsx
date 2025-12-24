@@ -488,7 +488,9 @@ export default function TopNavBar() {
                               <span>ETH</span>
                               <button
                                 type="button"
-                                aria-label={showBalance ? "隐藏余额" : "显示余额"}
+                                aria-label={
+                                  showBalance ? tCommon("hideBalance") : tCommon("showBalance")
+                                }
                                 className="p-0.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
                                 onClick={() => setShowBalance((v) => !v)}
                               >

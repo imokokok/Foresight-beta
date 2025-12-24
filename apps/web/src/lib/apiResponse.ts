@@ -48,51 +48,52 @@ export const ApiResponses = {
   badRequest: (message: string, details?: any) =>
     errorResponse(message, ApiErrorCode.VALIDATION_ERROR, 400, details),
 
-  invalidParameters: (message: string = "参数无效") =>
+  invalidParameters: (message: string = "Invalid parameters") =>
     errorResponse(message, ApiErrorCode.INVALID_PARAMETERS, 400),
 
   // 401 错误
-  unauthorized: (message: string = "未授权访问") =>
+  unauthorized: (message: string = "Unauthorized") =>
     errorResponse(message, ApiErrorCode.UNAUTHORIZED, 401),
 
-  invalidSignature: (message: string = "签名验证失败") =>
+  invalidSignature: (message: string = "Invalid signature") =>
     errorResponse(message, ApiErrorCode.INVALID_SIGNATURE, 401),
 
-  sessionExpired: (message: string = "会话已过期") =>
+  sessionExpired: (message: string = "Session expired") =>
     errorResponse(message, ApiErrorCode.SESSION_EXPIRED, 401),
 
   // 403 错误
-  forbidden: (message: string = "禁止访问") => errorResponse(message, ApiErrorCode.FORBIDDEN, 403),
+  forbidden: (message: string = "Forbidden") => errorResponse(message, ApiErrorCode.FORBIDDEN, 403),
 
-  insufficientPermissions: (message: string = "权限不足") =>
+  insufficientPermissions: (message: string = "Insufficient permissions") =>
     errorResponse(message, ApiErrorCode.INSUFFICIENT_PERMISSIONS, 403),
 
   // 404 错误
-  notFound: (message: string = "资源不存在") => errorResponse(message, ApiErrorCode.NOT_FOUND, 404),
+  notFound: (message: string = "Resource not found") =>
+    errorResponse(message, ApiErrorCode.NOT_FOUND, 404),
 
   // 409 错误
-  conflict: (message: string = "资源已存在") =>
+  conflict: (message: string = "Resource already exists") =>
     errorResponse(message, ApiErrorCode.ALREADY_EXISTS, 409),
 
   // 429 错误
-  rateLimit: (message: string = "请求过于频繁，请稍后重试") =>
+  rateLimit: (message: string = "Too many requests, please try again later") =>
     errorResponse(message, ApiErrorCode.RATE_LIMIT, 429),
 
   // 500 错误
-  internalError: (message: string = "服务器内部错误", details?: any) =>
+  internalError: (message: string = "Internal server error", details?: any) =>
     errorResponse(message, ApiErrorCode.INTERNAL_ERROR, 500, details),
 
-  databaseError: (message: string = "数据库错误", details?: any) =>
+  databaseError: (message: string = "Database error", details?: any) =>
     errorResponse(message, ApiErrorCode.DATABASE_ERROR, 500, details),
 
   // 业务逻辑错误
-  orderExpired: (message: string = "订单已过期") =>
+  orderExpired: (message: string = "Order expired") =>
     errorResponse(message, ApiErrorCode.ORDER_EXPIRED, 400),
 
-  insufficientBalance: (message: string = "余额不足") =>
+  insufficientBalance: (message: string = "Insufficient balance") =>
     errorResponse(message, ApiErrorCode.INSUFFICIENT_BALANCE, 400),
 
-  marketClosed: (message: string = "市场已关闭") =>
+  marketClosed: (message: string = "Market closed") =>
     errorResponse(message, ApiErrorCode.MARKET_CLOSED, 400),
 };
 
@@ -108,16 +109,16 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
 
       // 处理已知错误类型
       if (error.code === "PGRST116") {
-        return ApiResponses.notFound("资源不存在");
+        return ApiResponses.notFound();
       }
 
       if (error.code === "23505") {
-        return ApiResponses.conflict("资源已存在");
+        return ApiResponses.conflict();
       }
 
       // 处理其他错误
       return ApiResponses.internalError(
-        error.message || "未知错误",
+        error.message || "Unknown error",
         process.env.NODE_ENV === "development" ? error.stack : undefined
       );
     }

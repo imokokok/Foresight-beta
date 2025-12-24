@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 interface DatePickerProps {
   value: string;
@@ -18,13 +19,15 @@ export default function DatePicker({
   value,
   onChange,
   label,
-  placeholder = "选择日期",
+  placeholder,
   includeTime = false,
   minDate,
   className = "",
 }: DatePickerProps) {
+  const tCommon = useTranslations("common");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const placeholderText = placeholder ?? tCommon("datePicker.placeholder");
 
   // Parse initial value or default to today
   const parseDate = (val: string) => {
@@ -180,20 +183,9 @@ export default function DatePicker({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const blanks = Array.from({ length: firstDay }, (_, i) => i);
 
-  const monthNames = [
-    "一月",
-    "二月",
-    "三月",
-    "四月",
-    "五月",
-    "六月",
-    "七月",
-    "八月",
-    "九月",
-    "十月",
-    "十一月",
-    "十二月",
-  ];
+  const monthNames = Array.from({ length: 12 }, (_, index) =>
+    tCommon(`datePicker.monthNames.${index}`)
+  );
 
   const isSelected = (day: number) => {
     if (!selectedDate) return false;
@@ -230,13 +222,17 @@ export default function DatePicker({
   const formatDisplay = () => {
     if (!value) return "";
     const d = parseDate(value);
-    const dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+    const params = {
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+      hour: d.getHours().toString().padStart(2, "0"),
+      minute: d.getMinutes().toString().padStart(2, "0"),
+    };
     if (includeTime) {
-      const h = d.getHours().toString().padStart(2, "0");
-      const m = d.getMinutes().toString().padStart(2, "0");
-      return `${dateStr} ${h}:${m}`;
+      return formatTranslation(tCommon("datePicker.displayWithTime"), params);
     }
-    return dateStr;
+    return formatTranslation(tCommon("datePicker.displayDate"), params);
   };
 
   return (
@@ -252,10 +248,10 @@ export default function DatePicker({
           <div
             className={`p-1.5 rounded-lg ${value ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400"}`}
           >
-            <CalendarIcon className="w-4 h-4" />
+            <CalendarIcon className="w-4 h-4" data-testid="calendar-icon" />
           </div>
           <span className={`font-medium ${!value ? "text-gray-400" : "text-gray-900"}`}>
-            {value ? formatDisplay() : placeholder}
+            {value ? formatDisplay() : placeholderText}
           </span>
         </div>
       </div>
@@ -278,7 +274,10 @@ export default function DatePicker({
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <div className="font-bold text-gray-800">
-                {viewDate.getFullYear()}年 {monthNames[viewDate.getMonth()]}
+                {formatTranslation(tCommon("datePicker.header"), {
+                  year: viewDate.getFullYear(),
+                  month: monthNames[viewDate.getMonth()],
+                })}
               </div>
               <button
                 onClick={handleNextMonth}
@@ -290,9 +289,9 @@ export default function DatePicker({
 
             {/* Weekdays */}
             <div className="grid grid-cols-7 mb-2">
-              {["日", "一", "二", "三", "四", "五", "六"].map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-gray-400 py-1">
-                  {day}
+              {Array.from({ length: 7 }, (_, index) => (
+                <div key={index} className="text-center text-xs font-medium text-gray-400 py-1">
+                  {tCommon(`datePicker.weekdayNames.${index}`)}
                 </div>
               ))}
             </div>
@@ -332,7 +331,7 @@ export default function DatePicker({
               <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                   <Clock className="w-4 h-4 text-purple-500" />
-                  <span>时间</span>
+                  <span>{tCommon("datePicker.timeLabel")}</span>
                 </div>
                 <input
                   type="time"
@@ -349,7 +348,7 @@ export default function DatePicker({
                 onClick={() => setIsOpen(false)}
                 className="text-xs font-bold text-purple-600 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
               >
-                确定
+                {tCommon("datePicker.confirm")}
               </button>
             </div>
           </motion.div>

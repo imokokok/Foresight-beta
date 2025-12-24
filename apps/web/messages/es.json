@@ -25,7 +25,32 @@
     "switchLanguage": "Cambiar idioma",
     "openUserMenu": "Abrir menú de usuario",
     "userMenu": "Menú de usuario",
-    "userAvatar": "Avatar de usuario"
+    "userAvatar": "Avatar de usuario",
+    "hideBalance": "Ocultar saldo",
+    "showBalance": "Mostrar saldo",
+    "datePicker": {
+      "placeholder": "Seleccionar fecha",
+      "monthNames": [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre"
+      ],
+      "weekdayNames": ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"],
+      "timeLabel": "Hora",
+      "confirm": "Aceptar",
+      "header": "{month} de {year}",
+      "displayDate": "{day}/{month}/{year}",
+      "displayWithTime": "{day}/{month}/{year} {hour}:{minute}"
+    }
   },
   "nav": {
     "home": "Inicio",
@@ -113,7 +138,8 @@
     "reply": {
       "placeholder": "Escribe un comentario…",
       "sending": "Enviando…",
-      "submit": "Comentar"
+      "submit": "Comentar",
+      "commentPosted": "Comentario publicado"
     },
     "errors": {
       "loadFailed": "Error al cargar",
@@ -123,6 +149,15 @@
       "walletRequired": "Primero conecta tu billetera",
       "walletRequiredForVote": "Conecta tu billetera antes de votar",
       "alreadyVoted": "Ya has votado"
+    }
+  },
+  "proposals": {
+    "share": {
+      "copyLinkSuccessTitle": "Enlace copiado",
+      "copyLinkSuccessDesc": "Enlace de la propuesta copiado al portapapeles.",
+      "copyLinkUnsupportedTitle": "No se puede copiar automáticamente",
+      "copyLinkFailedTitle": "Error al copiar",
+      "copyLinkFailedDesc": "Copia el enlace manualmente desde la barra de direcciones."
     }
   },
   "chat": {
@@ -249,7 +284,13 @@
     "emptyAsks": "Aún no hay demandas",
     "emptyOrders": "Aún no hay órdenes abiertas",
     "bestBid": "Mejor oferta: {price}",
-    "bestAsk": "Mejor demanda: {price}"
+    "bestAsk": "Mejor demanda: {price}",
+    "toast": {
+      "cancelOrderSuccessTitle": "Orden cancelada",
+      "cancelOrderSuccessDesc": "Tu orden se canceló correctamente.",
+      "cancelOrderFailedTitle": "Error al cancelar la orden",
+      "retryLater": "Inténtalo de nuevo más tarde"
+    }
   },
   "market": {
     "breadcrumbs": {
@@ -340,7 +381,70 @@
     "tryAgain": "Intentar de nuevo",
     "goHome": "Ir al inicio",
     "contactSupport": "Contactar soporte",
-    "followActionFailed": "La acción de seguir falló, inténtalo más tarde"
+    "followActionFailed": "La acción de seguir falló, inténtalo más tarde",
+    "network": {
+      "title": "Error de red",
+      "description": "Comprueba tu conexión y vuelve a intentarlo"
+    },
+    "api": {
+      "400": {
+        "title": "Solicitud incorrecta",
+        "description": "El formato de los datos enviados no es válido"
+      },
+      "401": {
+        "title": "No autorizado",
+        "description": "Conecta tu billetera e inicia sesión primero"
+      },
+      "403": {
+        "title": "Prohibido",
+        "description": "No tienes permiso para realizar esta acción"
+      },
+      "404": {
+        "title": "No encontrado",
+        "description": "El contenido solicitado no se pudo encontrar"
+      },
+      "409": {
+        "title": "Conflicto de datos",
+        "description": "La operación entra en conflicto con los datos existentes"
+      },
+      "429": {
+        "title": "Demasiadas solicitudes",
+        "description": "Inténtalo de nuevo más tarde"
+      },
+      "500": {
+        "title": "Error del servidor",
+        "description": "El servidor encontró un problema, inténtalo de nuevo más tarde"
+      },
+      "503": {
+        "title": "Servicio no disponible",
+        "description": "El servicio está en mantenimiento, inténtalo de nuevo más tarde"
+      }
+    },
+    "business": {
+      "ORDER_EXPIRED": {
+        "title": "Orden expirada",
+        "description": "Esta orden ya no es válida. Actualiza el libro de órdenes e inténtalo de nuevo"
+      },
+      "INSUFFICIENT_BALANCE": {
+        "title": "Saldo insuficiente",
+        "description": "Tu saldo disponible no es suficiente para completar esta acción"
+      },
+      "MARKET_CLOSED": {
+        "title": "Mercado cerrado",
+        "description": "Este mercado está cerrado y ya no acepta nuevas órdenes"
+      }
+    }
+  },
+  "accessibility": {
+    "number": {
+      "million": "{value} millones",
+      "thousand": "{value} mil"
+    },
+    "date": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "daysAgo": "Hace {count} días"
+    }
   },
   "login": {
     "tabEmail": "Inicio con correo",

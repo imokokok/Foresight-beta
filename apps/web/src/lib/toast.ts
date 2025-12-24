@@ -1,4 +1,5 @@
 import { toast as sonnerToast } from "sonner";
+import { t } from "./i18n";
 
 /**
  * 安全的日志记录函数
@@ -120,49 +121,133 @@ export const toast = {
   },
 };
 
-/**
- * API 错误处理器
- * 根据 HTTP 状态码返回友好的中文错误信息
- */
-export function handleApiError(error: unknown, defaultMessage = "操作失败") {
+type ApiErrorPayload = {
+  status?: number;
+  code?: string;
+  message?: string;
+  error?: {
+    status?: number;
+    code?: string;
+    message?: string;
+  };
+};
+
+function extractApiErrorPayload(error: unknown): ApiErrorPayload | null {
+  if (typeof error !== "object" || error === null) return null;
+
+  const anyError = error as any;
+  const payload: ApiErrorPayload = {};
+
+  if (typeof anyError.status === "number") {
+    payload.status = anyError.status;
+  }
+
+  if (typeof anyError.code === "string") {
+    payload.code = anyError.code;
+  }
+
+  if (typeof anyError.message === "string") {
+    payload.message = anyError.message;
+  }
+
+  if (typeof anyError.error === "object" && anyError.error !== null) {
+    const inner = anyError.error as any;
+    if (typeof inner.status === "number" && payload.status === undefined) {
+      payload.status = inner.status;
+    }
+    if (typeof inner.code === "string" && !payload.code) {
+      payload.code = inner.code;
+    }
+    if (typeof inner.message === "string" && !payload.message) {
+      payload.message = inner.message;
+    }
+  }
+
+  if (
+    payload.status === undefined &&
+    !payload.code &&
+    (payload.message === undefined || payload.message === null)
+  ) {
+    return null;
+  }
+
+  return payload;
+}
+
+function getStatusErrorText(status: number, defaultMessageKey: string) {
+  const statusKey = String(status);
+  const titleKey = `errors.api.${statusKey}.title`;
+  const descriptionKey = `errors.api.${statusKey}.description`;
+
+  let title = t(titleKey);
+  let description = t(descriptionKey);
+
+  if (title === titleKey) {
+    title = t(defaultMessageKey);
+  }
+
+  if (description === descriptionKey) {
+    description = t("errors.tryAgain");
+  }
+
+  return { title, description };
+}
+
+function getCodeErrorText(code: string, defaultMessageKey: string) {
+  const normalized = code.toUpperCase();
+  const titleKey = `errors.business.${normalized}.title`;
+  const descriptionKey = `errors.business.${normalized}.description`;
+
+  let title = t(titleKey);
+  let description = t(descriptionKey);
+
+  if (title === titleKey) {
+    title = t(defaultMessageKey);
+  }
+
+  if (description === descriptionKey) {
+    description = t("errors.tryAgain");
+  }
+
+  return { title, description };
+}
+
+export function handleApiError(error: unknown, defaultMessage = "errors.somethingWrong") {
   // 直接使用 console 记录，避免与 logger 的循环依赖
   if (process.env.NODE_ENV === "development") {
     console.error("❌ [API Error]", error);
   }
 
-  if (typeof error === "object" && error !== null && "status" in error) {
-    const status = (error as { status: number }).status;
-    const errorMessages: Record<number, { title: string; description: string }> = {
-      400: { title: "请求错误", description: "提交的数据格式不正确" },
-      401: { title: "未授权", description: "请先连接钱包并登录" },
-      403: { title: "权限不足", description: "您没有权限执行此操作" },
-      404: { title: "未找到", description: "请求的内容未找到" },
-      409: { title: "数据冲突", description: "操作与现有数据冲突" },
-      429: { title: "请求过于频繁", description: "请稍后再试" },
-      500: { title: "服务器错误", description: "服务器遇到问题，请稍后重试" },
-      503: { title: "服务不可用", description: "服务器维护中，请稍后再试" },
-    };
+  const payload = extractApiErrorPayload(error);
 
-    const errorInfo = errorMessages[status] || {
-      title: defaultMessage,
-      description: "请检查后重试",
-    };
+  if (payload && typeof payload.status === "number" && Number.isFinite(payload.status)) {
+    const { title, description } = getStatusErrorText(payload.status, defaultMessage);
+    toast.error(title, description);
+    return;
+  }
 
-    toast.error(errorInfo.title, errorInfo.description);
+  if (payload && payload.code) {
+    const { title, description } = getCodeErrorText(payload.code, defaultMessage);
+    toast.error(title, description);
     return;
   }
 
   const message =
     error instanceof Error
       ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as any).message)
-        : "";
+      : payload && typeof payload.message === "string"
+        ? payload.message
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as any).message)
+          : "";
 
   if (message.toLowerCase().includes("network")) {
-    toast.error("网络错误", "请检查网络连接后重试", {
+    const title = t("errors.network.title");
+    const description = t("errors.network.description");
+
+    toast.error(title, description, {
       action: {
-        label: "重试",
+        label: t("common.retry"),
         onClick: () => window.location.reload(),
       },
     });
@@ -170,8 +255,8 @@ export function handleApiError(error: unknown, defaultMessage = "操作失败") 
   }
 
   if (message) {
-    toast.error(defaultMessage, message);
+    toast.error(t(defaultMessage), message);
   } else {
-    toast.error(defaultMessage, "请稍后重试");
+    toast.error(t(defaultMessage), t("errors.tryAgain"));
   }
 }

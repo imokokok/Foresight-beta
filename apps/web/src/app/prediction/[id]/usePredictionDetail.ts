@@ -8,6 +8,7 @@ import { useFollowPrediction } from "@/hooks/useFollowPrediction";
 import { toast } from "@/lib/toast";
 import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
+import { useTranslations } from "@/lib/i18n";
 
 const erc20Abi = [
   "function decimals() view returns (uint8)",
@@ -216,6 +217,7 @@ export interface PredictionDetail {
 export function usePredictionDetail() {
   const params = useParams();
   const { account, provider: walletProvider, switchNetwork } = useWallet();
+  const tTrading = useTranslations("trading");
 
   const [prediction, setPrediction] = useState<PredictionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -405,9 +407,13 @@ export function usePredictionDetail() {
       } else {
         throw new Error(json.message || "取消失败");
       }
-      toast.success("订单已取消", "您的订单已成功取消");
-    } catch (e: any) {
-      toast.error("取消订单失败", e.message || "请稍后重试");
+      toast.success(
+        tTrading("toast.cancelOrderSuccessTitle"),
+        tTrading("toast.cancelOrderSuccessDesc")
+      );
+    } catch (error: any) {
+      const description = error?.message || tTrading("toast.retryLater");
+      toast.error(tTrading("toast.cancelOrderFailedTitle"), description);
     }
   };
 

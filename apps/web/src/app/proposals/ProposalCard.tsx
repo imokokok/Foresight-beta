@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, Share2, MoreHorizontal, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useTranslations } from "@/lib/i18n";
 
 interface ProposalCardProps {
   proposal: any;
@@ -15,6 +16,7 @@ export default function ProposalCard({
   onClick,
   isVoting,
 }: ProposalCardProps & { isVoting?: boolean }) {
+  const tProposals = useTranslations("proposals");
   const upvotes = proposal.upvotes || 0;
   const downvotes = proposal.downvotes || 0;
   const score = upvotes - downvotes;
@@ -57,12 +59,15 @@ export default function ProposalCard({
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        toast.success("链接已复制", "已复制提案链接到剪贴板");
+        toast.success(
+          tProposals("share.copyLinkSuccessTitle"),
+          tProposals("share.copyLinkSuccessDesc")
+        );
       } else {
-        toast.info("无法自动复制", url);
+        toast.info(tProposals("share.copyLinkUnsupportedTitle"), url);
       }
-    } catch {
-      toast.error("复制失败", "请手动复制地址栏链接");
+    } catch (error) {
+      toast.error(tProposals("share.copyLinkFailedTitle"), tProposals("share.copyLinkFailedDesc"));
     }
   };
 
