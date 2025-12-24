@@ -7,6 +7,7 @@ import { MarketHeader } from "@/components/market/MarketHeader";
 import { MarketChart } from "@/components/market/MarketChart";
 import { TradingPanel } from "@/components/market/TradingPanel";
 import { MarketInfo } from "@/components/market/MarketInfo";
+import { OutcomeList } from "@/components/market/OutcomeList";
 import { Loader2 } from "lucide-react";
 export default function PredictionDetailClient() {
   const {
@@ -99,6 +100,17 @@ export default function PredictionDetailClient() {
               tradeOutcome={tradeOutcome}
               setTradeOutcome={setTradeOutcome}
               outcomes={outcomes}
+            />
+
+            {/* Outcomes List */}
+            <OutcomeList
+              prediction={prediction}
+              selectedOutcome={tradeOutcome}
+              onSelectOutcome={setTradeOutcome}
+              onTrade={(side, idx) => {
+                setTradeSide(side);
+                setTradeOutcome(idx);
+              }}
             />
 
             {/* Info Tabs & Content */}
