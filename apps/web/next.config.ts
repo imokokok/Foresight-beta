@@ -9,10 +9,6 @@ const __dirname = path.dirname(__filename);
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
-  // 生成静态报告与 stats 文件（仅在 ANALYZE=true 时启用，不影响正常运行时）
-  openAnalyzer: false,
-  analyzerMode: "static",
-  generateStatsFile: true,
 });
 
 const nextConfig: NextConfig = {
