@@ -91,7 +91,7 @@ export default function CreateProposalModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/30 backdrop-blur-md z-50 transition-all duration-300"
+            className="fixed inset-0 bg-purple-500/15 backdrop-blur-md z-50 transition-all duration-300"
           />
 
           {/* Modal */}
@@ -114,7 +114,9 @@ export default function CreateProposalModal({
                   <Sparkles className="w-6 h-6 fill-current" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Proposal</h2>
+                  <h2 className="text-2xl font-black text-purple-700 tracking-tight">
+                    New Proposal
+                  </h2>
                   <p className="text-sm font-medium text-gray-400">
                     Share your ideas with the community
                   </p>
@@ -211,7 +213,7 @@ export default function CreateProposalModal({
               <button
                 onClick={handleSubmit}
                 disabled={loading || !form.title}
-                className="px-8 py-3 rounded-xl bg-gradient-to-r from-gray-900 to-gray-800 text-white text-sm font-bold hover:shadow-lg hover:shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 text-white text-sm font-bold hover:shadow-lg hover:shadow-purple-400/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

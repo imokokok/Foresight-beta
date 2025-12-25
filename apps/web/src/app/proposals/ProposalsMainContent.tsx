@@ -1,7 +1,6 @@
 import React from "react";
 import { Search, Activity, Plus } from "lucide-react";
 import ProposalsList from "./ProposalsList";
-import type { UseProposalsListReturn } from "./useProposalsList";
 import type { ProposalItem, CategoryOption } from "./proposalsListUtils";
 
 type ProposalsMainContentProps = {
@@ -15,8 +14,6 @@ type ProposalsMainContentProps = {
   setCategory: (value: string) => void;
   sortedProposals: ProposalItem[];
   isLoading: boolean;
-  pendingVoteId: number | null;
-  voteMutation: UseProposalsListReturn["voteMutation"];
   router: { push: (href: string) => void };
 };
 
@@ -31,20 +28,18 @@ export default function ProposalsMainContent({
   setCategory,
   sortedProposals,
   isLoading,
-  pendingVoteId,
-  voteMutation,
   router,
 }: ProposalsMainContentProps) {
   return (
     <div className="flex-1 flex flex-col min-w-0 z-10">
       <div className="lg:hidden flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-black text-slate-900">Proposals</h1>
+        <h1 className="text-2xl font-black text-purple-700">Proposals</h1>
         <button
           onClick={() => {
             if (!account) connectWallet();
             else setCreateModalOpen(true);
           }}
-          className="p-3 rounded-full bg-slate-900 text-white shadow-lg"
+          className="p-3 rounded-full bg-purple-600 text-white shadow-lg shadow-purple-500/30 hover:bg-purple-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -61,7 +56,7 @@ export default function ProposalsMainContent({
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search proposals..."
                   aria-label="Search proposals"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/5 focus:border-slate-400"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/10 focus:border-purple-400/80"
                 />
               </div>
               <div className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-slate-400">
@@ -78,8 +73,8 @@ export default function ProposalsMainContent({
                   aria-pressed={category === cat.id}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
                     category === cat.id
-                      ? "bg-slate-900 text-white shadow-slate-900/10 scale-105"
-                      : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-slate-200 hover:bg-slate-900/5"
+                      ? "bg-purple-600 text-white shadow-purple-500/30 scale-105"
+                      : "bg-transparent text-slate-500 border border-slate-300/60 hover:border-slate-200 hover:bg-purple-50/80"
                   }`}
                 >
                   <cat.icon
@@ -100,8 +95,6 @@ export default function ProposalsMainContent({
           setCreateModalOpen={setCreateModalOpen}
           sortedProposals={sortedProposals}
           isLoading={isLoading}
-          pendingVoteId={pendingVoteId}
-          voteMutation={voteMutation}
           router={router}
         />
       </div>

@@ -42,9 +42,9 @@ export default function ProposalsRightSidebar({
 }: ProposalsRightSidebarProps) {
   return (
     <div className="hidden 2xl:flex flex-col w-72 shrink-0 gap-6 z-10 pb-20">
-      <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
+      <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-5 border border-white/60 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black text-slate-900">Featured</h3>
+          <h3 className="text-sm font-black text-purple-700">Featured</h3>
           <button className="text-[10px] font-bold text-blue-600 hover:underline">View All</button>
         </div>
         <div className="space-y-3">
@@ -71,9 +71,9 @@ export default function ProposalsRightSidebar({
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-xl shadow-slate-900/20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -ml-10 -mb-10" />
+      <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-700/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-purple-300/25 rounded-full blur-3xl -mr-10 -mt-10" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -ml-10 -mb-10" />
 
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-4">
@@ -106,25 +106,25 @@ export default function ProposalsRightSidebar({
         </div>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-5 border border-white/50 shadow-sm">
+      <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-5 border border-white/60 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <div className="p-1.5 bg-emerald-100 rounded-lg text-emerald-600">
             <Vote className="w-4 h-4" />
           </div>
-          <h3 className="text-sm font-black text-slate-900">Governance</h3>
+          <h3 className="text-sm font-black text-purple-700">Governance</h3>
         </div>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
             <span>Proposal Threshold</span>
-            <span className="font-bold text-slate-900">100 VP</span>
+            <span className="font-bold text-purple-700">100 VP</span>
           </div>
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
             <span>Voting Period</span>
-            <span className="font-bold text-slate-900">3 Days</span>
+            <span className="font-bold text-purple-700">3 Days</span>
           </div>
           <div className="flex items-center justify-between text-xs font-medium text-slate-500">
             <span>Quorum</span>
-            <span className="font-bold text-slate-900">10%</span>
+            <span className="font-bold text-purple-700">10%</span>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-slate-200/50">

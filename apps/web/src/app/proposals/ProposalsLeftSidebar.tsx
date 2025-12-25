@@ -79,15 +79,15 @@ export default function ProposalsLeftSidebar({
             if (!account) connectWallet();
             else setCreateModalOpen(true);
           }}
-          className="w-full py-3 rounded-xl bg-gray-900 text-white text-xs font-bold shadow-lg shadow-gray-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-3 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-lg shadow-purple-500/30 hover:bg-purple-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
         >
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
           New Proposal
         </button>
       </div>
 
-      <div className="bg-white/60 backdrop-blur-xl rounded-[1.5rem] p-4 border border-white/60 shadow-sm text-xs text-slate-700 leading-relaxed">
-        <p className="mb-2 font-semibold text-slate-900">
+      <div className="bg-white/70 backdrop-blur-xl rounded-[1.5rem] p-4 border border-white/60 shadow-sm text-xs text-slate-700 leading-relaxed">
+        <p className="mb-2 font-semibold text-purple-700">
           提案广场是 Foresight 的“产品经理面板”，用于发起新预测市场或协议治理提案。
         </p>
         <p className="mb-2">

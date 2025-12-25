@@ -167,7 +167,7 @@ function CommentNode({
                       }
                     }}
                     disabled={!replyText.trim()}
-                    className="p-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+                    className="p-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
                   </button>

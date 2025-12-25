@@ -35,7 +35,7 @@ export function ProposalDiscussionSection({
   return (
     <section className="space-y-6">
       <div className="flex items-center gap-2 px-2">
-        <h3 className="text-lg font-black text-slate-900">Discussion</h3>
+        <h3 className="text-lg font-black text-purple-700">Discussion</h3>
         <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
           {stats.commentsCount}
         </span>
@@ -70,7 +70,7 @@ export function ProposalDiscussionSection({
                 <button
                   onClick={onSubmitReply}
                   disabled={!replyText.trim()}
-                  className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                  className="px-5 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                 >
                   <Send className="w-3.5 h-3.5" />
                   Post Comment

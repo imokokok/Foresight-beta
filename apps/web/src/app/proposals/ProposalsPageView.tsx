@@ -41,8 +41,6 @@ export default function ProposalsPageView({
   sortedProposals,
   categories,
   isLoading,
-  voteMutation,
-  pendingVoteId,
 }: ProposalsPageViewProps) {
   return (
     <>
@@ -84,8 +82,6 @@ export default function ProposalsPageView({
           setCategory={setCategory}
           sortedProposals={sortedProposals}
           isLoading={isLoading}
-          pendingVoteId={pendingVoteId}
-          voteMutation={voteMutation}
           router={router}
         />
 
