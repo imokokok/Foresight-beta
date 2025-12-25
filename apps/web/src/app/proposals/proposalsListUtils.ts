@@ -7,27 +7,42 @@ import {
   Trophy,
   Shield,
   Hash,
+  type LucideIcon,
 } from "lucide-react";
 
 export type ProposalFilter = "hot" | "new" | "top";
 
+export type ProposalComment = {
+  id: number;
+  thread_id: number;
+  event_id: number;
+  user_id: string;
+  content: string;
+  created_at: string;
+  upvotes: number;
+  downvotes: number;
+  parent_id: number | null;
+};
+
 export type ProposalItem = {
   id: number;
-  title?: string;
-  content?: string;
-  category?: string;
-  upvotes?: number;
-  downvotes?: number;
-  comments?: any[] | null;
-  created_at: string | Date;
+  event_id: number;
+  title: string;
+  content: string;
+  user_id: string;
+  created_at: string;
+  upvotes: number;
+  downvotes: number;
+  created_prediction_id: number | null;
+  comments?: ProposalComment[] | null;
+  category?: string | null;
   userVote?: "up" | "down";
-  [key: string]: any;
 };
 
 export type CategoryOption = {
   id: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
 };
 
 export function buildProposalsWithUserVotes(

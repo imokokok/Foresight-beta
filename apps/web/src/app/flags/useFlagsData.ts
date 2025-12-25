@@ -177,3 +177,5 @@ export function useFlagsData(
     witnessFlags,
   };
 }
+
+export type FlagsData = ReturnType<typeof useFlagsData>;

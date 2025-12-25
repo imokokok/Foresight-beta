@@ -4,8 +4,10 @@ import { MessageCircle, Share2, MoreHorizontal, ArrowUp, ArrowDown, Loader2 } fr
 import { toast } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
 
+import type { ProposalItem } from "./proposalsListUtils";
+
 interface ProposalCardProps {
-  proposal: any;
+  proposal: ProposalItem;
   onVote: (id: number, type: "up" | "down") => void;
   onClick: (id: number) => void;
 }
@@ -32,7 +34,7 @@ export default function ProposalCard({
     Politics: { color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-100" },
   };
 
-  const cat = categoryConfig[proposal.category] || categoryConfig.General;
+  const cat = categoryConfig[proposal.category || "General"];
   const author = String(proposal.user_id || "").trim();
   const authorLabel = author ? `${author.slice(0, 6)}...${author.slice(-4)}` : "Anonymous";
   const createdAt = new Date(proposal.created_at);

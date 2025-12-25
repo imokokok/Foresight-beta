@@ -4,32 +4,12 @@ import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 import { toast } from "@/lib/toast";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { t } from "@/lib/i18n";
+import type { ProposalItem, ProposalComment } from "../proposalsListUtils";
 
-export interface CommentView {
-  id: number;
-  thread_id: number;
-  event_id: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  upvotes: number;
-  downvotes: number;
-  parent_id?: number | null;
-}
+export type CommentView = ProposalComment;
 
-export interface ThreadView {
-  id: number;
-  event_id: number;
-  title: string;
-  content: string;
-  user_id: string;
-  created_at: string;
-  upvotes: number;
-  downvotes: number;
-  comments?: CommentView[];
-  category?: string;
-  // Optional extra fields based on API
-  created_prediction_id?: number | null;
+export interface ThreadView extends ProposalItem {
+  comments?: CommentView[] | null;
   subject_name?: string;
   action_verb?: string;
   target_value?: string;
