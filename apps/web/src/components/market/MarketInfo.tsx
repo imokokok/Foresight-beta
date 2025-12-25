@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlignLeft,
   ChevronDown,
@@ -10,26 +11,19 @@ import {
   Scale,
 } from "lucide-react";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
-import dynamic from "next/dynamic";
 import { useTranslations } from "@/lib/i18n";
-
-function ChatPanelLoading() {
-  const tMarket = useTranslations("market");
-  return (
-    <div className="h-[300px] flex items-center justify-center text-gray-500">
-      {tMarket("comments.loading")}
-    </div>
-  );
-}
-
-const ChatPanel = dynamic(() => import("@/components/ChatPanel"), {
-  ssr: false,
-  loading: ChatPanelLoading,
-});
 
 interface MarketInfoProps {
   prediction: PredictionDetail;
 }
+
+type PreviewState = {
+  loading: boolean;
+  error: string | null;
+  lastMessage: string | null;
+  lastTime: string | null;
+  totalCount: number;
+};
 
 export function MarketInfo({ prediction }: MarketInfoProps) {
   const tMarket = useTranslations("market");
@@ -37,6 +31,64 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
   const tEvents = useTranslations();
   const [activeTab, setActiveTab] = useState<"desc" | "rules" | "comments">("desc");
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
+  const [preview, setPreview] = useState<PreviewState>({
+    loading: false,
+    error: null,
+    lastMessage: null,
+    lastTime: null,
+    totalCount: 0,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const eventId = prediction.id;
+    const loadPreview = async () => {
+      try {
+        setPreview((prev) => ({ ...prev, loading: true, error: null }));
+        const res = await fetch(`/api/forum?eventId=${eventId}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const threads = Array.isArray(data?.threads) ? data.threads : [];
+        let total = 0;
+        let lastMessage: string | null = null;
+        let lastTime: string | null = null;
+        threads.forEach((t: any) => {
+          total += 1;
+          const comments = Array.isArray(t.comments) ? t.comments : [];
+          total += comments.length;
+          const all = [t, ...comments].filter((x) => x && x.created_at);
+          all.forEach((x: any) => {
+            const ts = new Date(x.created_at).getTime();
+            if (!Number.isFinite(ts)) return;
+            if (!lastTime || ts > new Date(lastTime).getTime()) {
+              lastTime = new Date(ts).toISOString();
+              const content = String(x.content || x.title || "").trim();
+              const title = String(t.title || "").trim();
+              lastMessage = title ? `${title}\n${content}`.trim() : content || null;
+            }
+          });
+        });
+        setPreview({
+          loading: false,
+          error: null,
+          lastMessage,
+          lastTime,
+          totalCount: total,
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setPreview((prev) => ({
+          ...prev,
+          loading: false,
+          error: "加载讨论预览失败，请稍后重试",
+        }));
+      }
+    };
+    loadPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [prediction.id]);
 
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden shadow-sm relative">
@@ -174,8 +226,50 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
         )}
 
         {activeTab === "comments" && (
-          <div className="min-h-[400px]">
-            <ChatPanel eventId={prediction.id} roomTitle={tEvents(prediction.title)} />
+          <div className="min-h-[240px] flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <MessageSquare className="w-4 h-4 text-purple-500" />
+              讨论已迁移到预测论坛的专属聊天室
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              为了把同一事件下的观点、策略和复盘集中在一个地方，本页面不再提供内嵌讨论。 你可以前往
+              Foresight 讨论区中该事件的聊天室继续交流。
+            </p>
+
+            <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-4 py-3 text-sm text-gray-700 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-gray-900">聊天室预览</span>
+                {preview.loading && <span className="text-xs text-gray-400">加载中…</span>}
+                {!preview.loading && preview.totalCount > 0 && (
+                  <span className="text-xs text-gray-500">
+                    共 {preview.totalCount} 条帖子与回复
+                  </span>
+                )}
+              </div>
+              {preview.error && <div className="text-xs text-red-500">{preview.error}</div>}
+              {!preview.error && !preview.loading && preview.lastMessage && (
+                <div className="text-xs text-gray-700 whitespace-pre-line line-clamp-3">
+                  {preview.lastMessage}
+                </div>
+              )}
+              {!preview.error && !preview.loading && !preview.lastMessage && (
+                <div className="text-xs text-gray-500">
+                  还没有任何讨论，快去论坛里发起第一条话题吧。
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={`/forum?eventId=${prediction.id}`}
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-sm hover:bg-purple-700 transition-colors"
+              >
+                前往对应聊天室
+              </Link>
+              <span className="text-xs text-gray-500">
+                在讨论区中可以查看完整消息历史、话题列表和相关预测市场。
+              </span>
+            </div>
           </div>
         )}
       </div>

@@ -147,9 +147,16 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
 
   const outcomes = prediction.outcomes || [];
   const hasRelated = false;
+  const isMultiOutcome = (prediction.outcomes?.length ?? 0) > 2;
+  const yesProb = prediction.stats?.yesProbability ?? 0;
+  const noProb = prediction.stats?.noProbability ?? 0;
+  const descriptionText =
+    prediction.description ||
+    prediction.criteria ||
+    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
 
   return (
-    <div className="min-h-screen bg-gray-50/50 text-gray-900 font-sans pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(prediction)) }}
@@ -160,17 +167,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           __html: JSON.stringify(buildBreadcrumbJsonLd(prediction)),
         }}
       />
-      {/* Colorful Blobs Background */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/40 rounded-full blur-[120px] mix-blend-multiply animate-blob"></div>
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/40 rounded-full blur-[120px] mix-blend-multiply animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-[-20%] left-[20%] w-[40%] h-[40%] bg-pink-200/40 rounded-full blur-[120px] mix-blend-multiply animate-blob animation-delay-4000"></div>
-        <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] bg-emerald-100/40 rounded-full blur-[100px] mix-blend-multiply animate-blob animation-delay-6000"></div>
-      </div>
-
-      <div className="fixed inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] pointer-events-none opacity-30 z-0"></div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <MarketHeader
             prediction={prediction}
@@ -182,41 +179,37 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           />
         </div>
 
-        <div className="mb-4 text-xs text-gray-500 flex flex-wrap items-center gap-1">
-          <Link href="/" className="hover:text-purple-600 hover:underline">
-            首页
-          </Link>
-          <span>/</span>
-          <Link href="/trending" className="hover:text-purple-600 hover:underline">
-            热门预测
-          </Link>
-          <span>/</span>
-          <span className="text-gray-700 max-w-[260px] sm:max-w-[420px] truncate">
-            {prediction.title}
-          </span>
-        </div>
-
-        <div className="mb-4 bg-white/80 border border-purple-100 rounded-3xl p-5 shadow-sm max-w-3xl">
-          <p className="text-sm text-gray-700 leading-relaxed mb-2">
-            在这个预测市场中，你可以通过买入不同选项来交易自己对事件结果的看法，价格代表市场对事件发生概率的共识。
-          </p>
-          <p className="text-sm text-gray-700 leading-relaxed mb-2">
-            右侧交易面板用于下单和管理仓位，下面的图表和盘口数据可以帮助你观察市场情绪和价格变化。
-          </p>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            想浏览更多事件？前往{" "}
-            <Link
-              href="/trending"
-              className="text-purple-600 hover:text-purple-700 hover:underline"
-            >
-              热门预测
-            </Link>{" "}
-            页面，或在{" "}
-            <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-              讨论区
-            </Link>{" "}
-            分享你的观点和交易策略。
-          </p>
+        <div className="mb-6 max-w-5xl px-1 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-200">
+          <div className="flex-1">
+            <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{descriptionText}</p>
+            <p className="mt-2 text-xs text-gray-500">
+              价格代表事件发生的隐含概率，你可以随时买入或卖出持仓，观点变化时也能快速调整。
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 sm:ml-6">
+            <div className="flex flex-col px-3 py-2 rounded-2xl bg-emerald-50 border border-emerald-100 min-w-[96px]">
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
+                Yes
+              </span>
+              <span className="text-lg font-black text-gray-900">
+                {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}%` : "-"}
+              </span>
+              <span className="mt-0.5 text-[11px] text-emerald-600/80">
+                {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}¢` : ""}
+              </span>
+            </div>
+            <div className="flex flex-col px-3 py-2 rounded-2xl bg-rose-50 border border-rose-100 min-w-[96px]">
+              <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
+                No
+              </span>
+              <span className="text-lg font-black text-gray-900">
+                {Number.isFinite(noProb) ? `${noProb.toFixed(0)}%` : "-"}
+              </span>
+              <span className="mt-0.5 text-[11px] text-rose-600/80">
+                {Number.isFinite(noProb) ? `${noProb.toFixed(0)}¢` : ""}
+              </span>
+            </div>
+          </div>
         </div>
 
         {relatedProposalId && (
@@ -246,15 +239,17 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
             />
 
             {/* Outcomes List */}
-            <OutcomeList
-              prediction={prediction}
-              selectedOutcome={tradeOutcome}
-              onSelectOutcome={setTradeOutcome}
-              onTrade={(side, idx) => {
-                setTradeSide(side);
-                setTradeOutcome(idx);
-              }}
-            />
+            {isMultiOutcome && (
+              <OutcomeList
+                prediction={prediction}
+                selectedOutcome={tradeOutcome}
+                onSelectOutcome={setTradeOutcome}
+                onTrade={(side, idx) => {
+                  setTradeSide(side);
+                  setTradeOutcome(idx);
+                }}
+              />
+            )}
 
             {/* Info Tabs & Content */}
             <MarketInfo prediction={prediction} />

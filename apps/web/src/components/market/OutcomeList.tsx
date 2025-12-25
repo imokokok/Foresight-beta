@@ -59,7 +59,7 @@ export function OutcomeList({
         ];
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-white border-y border-gray-100 overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
         <h3 className="font-bold text-gray-900">Outcomes</h3>
         <span className="text-xs text-gray-500 font-medium tracking-wider uppercase">% Chance</span>

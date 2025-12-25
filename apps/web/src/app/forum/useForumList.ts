@@ -18,7 +18,7 @@ export type ForumCategory = {
   icon: typeof import("lucide-react").Activity;
 };
 
-export function useForumList() {
+export function useForumList(initialEventId?: number | null) {
   const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -44,7 +44,14 @@ export function useForumList() {
         }));
         if (!cancelled) {
           setPredictions(list);
-          setSelectedTopicId((prev) => prev ?? list[0]?.id ?? null);
+          setSelectedTopicId((prev) => {
+            if (prev != null) return prev;
+            if (initialEventId != null) {
+              const target = list.find((p) => p.id === initialEventId);
+              if (target) return target.id;
+            }
+            return list[0]?.id ?? null;
+          });
         }
       } catch (e) {
         if (!cancelled) {
@@ -59,7 +66,7 @@ export function useForumList() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialEventId]);
 
   const categories: ForumCategory[] = useMemo(() => {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {

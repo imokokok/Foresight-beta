@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useSearchParams } from "next/navigation";
 import { getCategoryStyle } from "./forumConfig";
 import { ForumSidebar } from "./ForumSidebar";
 import { ForumChatFrame } from "./ForumChatFrame";
@@ -43,6 +44,11 @@ function buildForumJsonLd() {
 }
 
 export default function ForumPage() {
+  const searchParams = useSearchParams();
+  const eventIdParam = searchParams.get("eventId");
+  const initialEventId =
+    eventIdParam && !Number.isNaN(Number(eventIdParam)) ? Number(eventIdParam) : null;
+
   const {
     account,
     categories,
@@ -58,7 +64,7 @@ export default function ForumPage() {
     currentTopic,
     activeCat,
     displayName,
-  } = useForumData();
+  } = useForumData(initialEventId);
 
   const jsonLd = buildForumJsonLd();
 
