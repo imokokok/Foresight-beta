@@ -114,6 +114,35 @@ type ProposalDetailClientViewProps = {
   jsonLdBreadcrumb: any | null;
 };
 
+type ProposalHeaderNavProps = {
+  onBack: () => void;
+  onCopyLink: () => void;
+};
+
+type ProposalIntroCardProps = {};
+
+type ProposalMainArticleProps = {
+  thread: ThreadView;
+  stats: ProposalDetailState["stats"];
+  userVoteTypes: ProposalDetailState["userVoteTypes"];
+  displayName: ProposalDetailState["displayName"];
+  vote: ProposalDetailState["vote"];
+};
+
+type ProposalDiscussionSectionProps = {
+  thread: ThreadView;
+  stats: ProposalDetailState["stats"];
+  userVoteTypes: ProposalDetailState["userVoteTypes"];
+  displayName: ProposalDetailState["displayName"];
+  vote: ProposalDetailState["vote"];
+  postComment: ProposalDetailState["postComment"];
+  account: string | null | undefined;
+  connectWallet: () => void;
+  replyText: string;
+  onReplyTextChange: (value: string) => void;
+  onSubmitReply: () => void;
+};
+
 function ProposalDetailClientView({
   isValidId,
   thread,
@@ -135,16 +164,7 @@ function ProposalDetailClientView({
   jsonLdBreadcrumb,
 }: ProposalDetailClientViewProps) {
   if (!isValidId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-slate-900">Invalid Proposal ID</h2>
-          <button onClick={onBack} className="mt-4 text-purple-600 hover:underline">
-            Back to Proposals
-          </button>
-        </div>
-      </div>
-    );
+    return <InvalidProposalFallback onBack={onBack} />;
   }
 
   return (
@@ -165,225 +185,40 @@ function ProposalDetailClientView({
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-200/30 rounded-full blur-[100px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/30 rounded-full blur-[100px]" />
       </div>
-
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <nav className="flex items-center justify-between mb-8">
-          <button
-            onClick={onBack}
-            className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm transition-all text-sm font-bold text-slate-600 hover:text-slate-900"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Back
-          </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onCopyLink}
-              className="p-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:text-slate-900 transition-all"
-              title="Share"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
-        </nav>
-
-        <div className="mb-6 bg-white/70 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-sm">
-          <p className="text-sm text-slate-700 leading-relaxed mb-2">
-            提案详情页用于集中展示某个预测市场或治理议题的完整说明、上下文和社区讨论，方便参与者在链上投票或发起后续预测市场前充分了解背景。
-          </p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            想浏览其他提案？返回{" "}
-            <Link
-              href="/proposals"
-              className="text-purple-600 hover:text-purple-700 hover:underline"
-            >
-              提案广场
-            </Link>{" "}
-            查看全部议题；如果你更关注最终会变成实际交易市场的事件，可以前往{" "}
-            <Link
-              href="/trending"
-              className="text-purple-600 hover:text-purple-700 hover:underline"
-            >
-              热门预测
-            </Link>{" "}
-            页面，或在{" "}
-            <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-              讨论区
-            </Link>{" "}
-            继续延伸讨论。
-          </p>
-        </div>
+        <ProposalHeaderNav onBack={onBack} onCopyLink={onCopyLink} />
+        <ProposalIntroCard />
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
-            <p className="text-slate-400 font-medium">Loading proposal...</p>
-          </div>
+          <LoadingState />
         ) : error ? (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
-            <h3 className="text-lg font-bold text-red-800 mb-2">Error Loading Proposal</h3>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-bold transition-colors"
-            >
-              Retry
-            </button>
-          </div>
+          <ErrorState error={error} />
         ) : thread ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <article className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
-              <div className="p-6 sm:p-8 border-b border-slate-100/50">
-                <div className="flex itemscenter gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-sm font-bold text-slate-600 border border-white shadow-sm">
-                    {displayName(thread.user_id).slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">
-                        {displayName(thread.user_id)}
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
-                        AUTHOR
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                      <span>{new Date(thread.created_at).toLocaleString()}</span>
-                      <span>•</span>
-                      <span>#{thread.id}</span>
-                    </div>
-                  </div>
-                  {thread.category && (
-                    <div className="ml-auto px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-bold border border-purple-100">
-                      {thread.category}
-                    </div>
-                  )}
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight mb-4">
-                  {thread.title}
-                </h1>
-
-                <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed">
-                  <p className="whitespace-pre-wrap">{thread.content}</p>
-                </div>
-                {thread.created_prediction_id && (
-                  <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justifybetween gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
-                    <p className="text-xs sm:text-sm text-emerald-800">
-                      该提案已生成对应的链上预测市场，你可以前往市场页面观察价格信号或直接参与交易。
-                    </p>
-                    <Link
-                      href={`/prediction/${thread.created_prediction_id}`}
-                      className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-colors whitespace-nowrap"
-                    >
-                      前往预测市场
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-slate-50/50 px-6 sm:px-8 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
-                    <button
-                      onClick={() => vote("thread", thread.id, "up")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
-                        userVoteTypes[`thread:${thread.id}`] === "up"
-                          ? "bg-purple-100 text-purple-700"
-                          : "text-slate-500 hover:bg-slate-50"
-                      }`}
-                    >
-                      <ThumbsUp className="w-4 h-4" />
-                      {stats.upvotes}
-                    </button>
-                    <div className="w-px h-4 bg-slate-200 mx-1" />
-                    <button
-                      onClick={() => vote("thread", thread.id, "down")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
-                        userVoteTypes[`thread:${thread.id}`] === "down"
-                          ? "bg-slate-200 text-slate-700"
-                          : "text-slate-500 hover:bg-slate-50"
-                      }`}
-                    >
-                      <ThumbsDown className="w-4 h-4" />
-                      {stats.downvotes}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                    <MessageCircle className="w-4 h-4" />
-                    {stats.commentsCount} Comments
-                  </div>
-                </div>
-
-                <button className="text-slate-400 hover:text-slate-600 transition-colors">
-                  <Flag className="w-4 h-4" />
-                </button>
-              </div>
-            </article>
-
-            <section className="space-y-6">
-              <div className="flex items-center gap-2 px-2">
-                <h3 className="text-lg font-black text-slate-900">Discussion</h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
-                  {stats.commentsCount}
-                </span>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <User className="w-5 h-5 text-slate-400" />
-                </div>
-                <div className="flex-1">
-                  {!account ? (
-                    <div className="h-full flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 border-dashed">
-                      <span className="text-sm text-slate-500 font-medium">
-                        Log in to join the discussion
-                      </span>
-                      <button
-                        onClick={() => connectWallet()}
-                        className="text-sm font-bold text-purple-600 hover:text-purple-700"
-                      >
-                        Connect Wallet
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      <textarea
-                        value={replyText}
-                        onChange={(e) => onReplyTextChange(e.target.value)}
-                        placeholder="What are your thoughts?"
-                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-100 min-h-[80px] resize-none"
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          onClick={onSubmitReply}
-                          disabled={!replyText.trim()}
-                          className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          Post Comment
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <CommentTree
-                  comments={thread.comments || []}
-                  userVoteTypes={userVoteTypes}
-                  onVote={(id, dir) => vote("comment", id, dir)}
-                  onReply={(id, text) => postComment(text, id)}
-                  account={account}
-                  connectWallet={connectWallet}
-                  displayName={displayName}
-                />
-              </div>
-            </section>
+            <ProposalMainArticle
+              thread={thread}
+              stats={stats}
+              userVoteTypes={userVoteTypes}
+              displayName={displayName}
+              vote={vote}
+            />
+            <ProposalDiscussionSection
+              thread={thread}
+              stats={stats}
+              userVoteTypes={userVoteTypes}
+              displayName={displayName}
+              vote={vote}
+              postComment={postComment}
+              account={account}
+              connectWallet={connectWallet}
+              replyText={replyText}
+              onReplyTextChange={onReplyTextChange}
+              onSubmitReply={onSubmitReply}
+            />
           </motion.div>
         ) : null}
       </div>
@@ -442,6 +277,267 @@ export default function ProposalDetailClient({ id }: { id: string }) {
       jsonLdMain={jsonLdMain}
       jsonLdBreadcrumb={jsonLdBreadcrumb}
     />
+  );
+}
+
+function InvalidProposalFallback({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-slate-900">Invalid Proposal ID</h2>
+        <button onClick={onBack} className="mt-4 text-purple-600 hover:underline">
+          Back to Proposals
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProposalHeaderNav({ onBack, onCopyLink }: ProposalHeaderNavProps) {
+  return (
+    <nav className="flex items-center justify-between mb-8">
+      <button
+        onClick={onBack}
+        className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm transition-all text-sm font-bold text-slate-600 hover:text-slate-900"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+        Back
+      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onCopyLink}
+          className="p-2 rounded-full bg-white/60 hover:bg-white border border-slate-200/60 shadow-sm text-slate-500 hover:text-slate-900 transition-all"
+          title="Share"
+        >
+          <Share2 className="w-4 h-4" />
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function ProposalIntroCard(_: ProposalIntroCardProps) {
+  return (
+    <div className="mb-6 bg-white/70 backdrop-blur-xl rounded-3xl p-5 border border-white/60 shadow-sm">
+      <p className="text-sm text-slate-700 leading-relaxed mb-2">
+        提案详情页用于集中展示某个预测市场或治理议题的完整说明、上下文和社区讨论，方便参与者在链上投票或发起后续预测市场前充分了解背景。
+      </p>
+      <p className="text-xs text-slate-500 leading-relaxed">
+        想浏览其他提案？返回{" "}
+        <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
+          提案广场
+        </Link>{" "}
+        查看全部议题；如果你更关注最终会变成实际交易市场的事件，可以前往{" "}
+        <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
+          热门预测
+        </Link>{" "}
+        页面，或在{" "}
+        <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
+          讨论区
+        </Link>{" "}
+        继续延伸讨论。
+      </p>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
+      <p className="text-slate-400 font-medium">Loading proposal...</p>
+    </div>
+  );
+}
+
+function ErrorState({ error }: { error: string }) {
+  return (
+    <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
+      <h3 className="text-lg font-bold text-red-800 mb-2">Error Loading Proposal</h3>
+      <p className="text-red-600 mb-4">{error}</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-bold transition-colors"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
+function ProposalMainArticle({
+  thread,
+  stats,
+  userVoteTypes,
+  displayName,
+  vote,
+}: ProposalMainArticleProps) {
+  return (
+    <article className="bg-white/80 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="p-6 sm:p-8 border-b border-slate-100/50">
+        <div className="flex itemscenter gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center text-sm font-bold text-slate-600 border border-white shadow-sm">
+            {displayName(thread.user_id).slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900">
+                {displayName(thread.user_id)}
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
+                AUTHOR
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+              <span>{new Date(thread.created_at).toLocaleString()}</span>
+              <span>•</span>
+              <span>#{thread.id}</span>
+            </div>
+          </div>
+          {thread.category && (
+            <div className="ml-auto px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-bold border border-purple-100">
+              {thread.category}
+            </div>
+          )}
+        </div>
+
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight mb-4">
+          {thread.title}
+        </h1>
+
+        <div className="prose prose-slate prose-lg max-w-none text-slate-600 leading-relaxed">
+          <p className="whitespace-pre-wrap">{thread.content}</p>
+        </div>
+        {thread.created_prediction_id && (
+          <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justifybetween gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+            <p className="text-xs sm:text-sm text-emerald-800">
+              该提案已生成对应的链上预测市场，你可以前往市场页面观察价格信号或直接参与交易。
+            </p>
+            <Link
+              href={`/prediction/${thread.created_prediction_id}`}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-colors whitespace-nowrap"
+            >
+              前往预测市场
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-slate-50/50 px-6 sm:px-8 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+            <button
+              onClick={() => vote("thread", thread.id, "up")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
+                userVoteTypes[`thread:${thread.id}`] === "up"
+                  ? "bg-purple-100 text-purple-700"
+                  : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <ThumbsUp className="w-4 h-4" />
+              {stats.upvotes}
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <button
+              onClick={() => vote("thread", thread.id, "down")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold text-sm ${
+                userVoteTypes[`thread:${thread.id}`] === "down"
+                  ? "bg-slate-200 text-slate-700"
+                  : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              <ThumbsDown className="w-4 h-4" />
+              {stats.downvotes}
+            </button>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+            <MessageCircle className="w-4 h-4" />
+            {stats.commentsCount} Comments
+          </div>
+        </div>
+
+        <button className="text-slate-400 hover:text-slate-600 transition-colors">
+          <Flag className="w-4 h-4" />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ProposalDiscussionSection({
+  thread,
+  stats,
+  userVoteTypes,
+  displayName,
+  vote,
+  postComment,
+  account,
+  connectWallet,
+  replyText,
+  onReplyTextChange,
+  onSubmitReply,
+}: ProposalDiscussionSectionProps) {
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center gap-2 px-2">
+        <h3 className="text-lg font-black text-slate-900">Discussion</h3>
+        <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
+          {stats.commentsCount}
+        </span>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex gap-4">
+        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+          <User className="w-5 h-5 text-slate-400" />
+        </div>
+        <div className="flex-1">
+          {!account ? (
+            <div className="h-full flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 border-dashed">
+              <span className="text-sm text-slate-500 font-medium">
+                Log in to join the discussion
+              </span>
+              <button
+                onClick={() => connectWallet()}
+                className="text-sm font-bold text-purple-600 hover:text-purple-700"
+              >
+                Connect Wallet
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <textarea
+                value={replyText}
+                onChange={(e) => onReplyTextChange(e.target.value)}
+                placeholder="What are your thoughts?"
+                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-purple-100 min-h-[80px] resize-none"
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={onSubmitReply}
+                  disabled={!replyText.trim()}
+                  className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Post Comment
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <CommentTree
+          comments={thread.comments || []}
+          userVoteTypes={userVoteTypes}
+          onVote={(id, dir) => vote("comment", id, dir)}
+          onReply={(id, text) => postComment(text, id)}
+          account={account}
+          connectWallet={connectWallet}
+          displayName={displayName}
+        />
+      </div>
+    </section>
   );
 }
 
