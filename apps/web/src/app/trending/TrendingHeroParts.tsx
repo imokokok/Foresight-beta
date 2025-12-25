@@ -1,5 +1,4 @@
 import React from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   ArrowRightCircle,
@@ -202,15 +201,9 @@ export function HeroMainInfo({
   poolSizeLabel,
   participantsLabel,
 }: HeroMainInfoProps) {
-  const shouldReduceMotion = useReducedMotion();
   return (
     <div className="flex-1 w-full lg:w-1/2 space-y-8 min-h-[420px] flex flex-col justify-center">
-      <motion.div
-        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: shouldReduceMotion ? 0 : 0 }}
-        transition={{ duration: shouldReduceMotion ? 0.2 : 0.5 }}
-        className="space-y-6"
-      >
+      <div className="space-y-6">
         <HeroBadges
           activeCategory={activeCategory}
           dailyPickLabel={dailyPickLabel}
@@ -241,7 +234,7 @@ export function HeroMainInfo({
           placePredictionLabel={placePredictionLabel}
           viewDetailsLabel={viewDetailsLabel}
         />
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -271,7 +264,6 @@ export function HeroPreviewCard({
   onOpenPrediction,
   successRateLabel,
 }: HeroPreviewCardProps) {
-  const shouldReduceMotion = useReducedMotion();
   const canOpenPrediction = typeof activeSlideId === "number" && Number.isFinite(activeSlideId);
   const hasMultipleSlides = heroSlideLength > 1;
 
@@ -279,12 +271,8 @@ export function HeroPreviewCard({
     <div className="w-full lg:w-1/2 relative h-[400px] md:h-[500px] flex items-center justify-center lg:justify-end">
       <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-gradient-to-tr from-purple-100 to-blue-50 rounded-[3rem] rotate-6 opacity-60 pointer-events-none" />
 
-      <motion.div
-        initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.95 }}
-        animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: shouldReduceMotion ? 0.25 : 0.6, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-lg aspect-[4/3] rounded-[2rem] shadow-2xl shadow-purple-900/10 bg-white p-3 cursor-pointer group"
-        whileHover={shouldReduceMotion ? undefined : { y: -5, rotate: -1 }}
+      <div
+        className="relative z-10 w-full max-w-lg aspect-[4/3] rounded-[2rem] shadow-2xl shadow-purple-900/10 bg-white p-3 cursor-pointer group transition-transform duration-200 hover:-translate-y-1 hover:-rotate-1"
         role="button"
         tabIndex={canOpenPrediction ? 0 : -1}
         aria-disabled={!canOpenPrediction}
@@ -340,12 +328,7 @@ export function HeroPreviewCard({
           )}
         </div>
 
-        <motion.div
-          initial={shouldReduceMotion ? { opacity: 0 } : { x: 20, opacity: 0 }}
-          animate={shouldReduceMotion ? { opacity: 1 } : { x: 0, opacity: 1 }}
-          transition={{ delay: shouldReduceMotion ? 0 : 0.3 }}
-          className="absolute -bottom-6 -left-6 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 flex items-center gap-4 max-w-[200px]"
-        >
+        <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 flex items-center gap-4 max-w-[200px]">
           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
             <TrendingUp className="w-5 h-5" />
           </div>
@@ -353,8 +336,8 @@ export function HeroPreviewCard({
             <div className="text-xs text-gray-500 font-bold">{successRateLabel}</div>
             <div className="text-lg font-black text-gray-900">84.5%</div>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {hasMultipleSlides && (
         <div className="absolute right-[-20px] lg:right-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-3">
@@ -419,14 +402,13 @@ export function HeroCategoryList({
           const isActive = String(activeCategory || "") === category.name;
           const count = categoryCounts[category.name] || 0;
           return (
-            <motion.button
+            <button
               key={category.name}
               type="button"
               onClick={() => onCategoryClick(category.name)}
-              whileTap={{ scale: 0.97 }}
               aria-pressed={isActive}
               aria-label={`${category.label}, ${count} ${eventsLabel}`}
-              className={`group flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 shrink-0 ${
+              className={`group flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all duration-300 shrink-0 active:scale-[0.97] ${
                 isActive
                   ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20 transform -translate-y-1"
                   : "bg-white text-gray-600 border-gray-200 hover:border-purple-200 hover:shadow-md hover:-translate-y-0.5"
@@ -447,7 +429,7 @@ export function HeroCategoryList({
                   {count} {eventsLabel}
                 </div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>

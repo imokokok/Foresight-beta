@@ -1,440 +1,22 @@
 "use client";
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import Button from "@/components/ui/Button";
-import DatePicker from "@/components/ui/DatePicker";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
-import { normalizeId } from "@/lib/ids";
-
-interface ForumSectionProps {
-  eventId: number;
-  threadId?: number;
-  hideCreate?: boolean;
-}
-
-interface ThreadView {
-  id: number;
-  event_id: number;
-  title: string;
-  content: string;
-  user_id: string;
-  created_at: string;
-  upvotes: number;
-  downvotes: number;
-  comments?: CommentView[];
-}
-
-interface CommentView {
-  id: number;
-  thread_id: number;
-  event_id: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  upvotes: number;
-  downvotes: number;
-  parent_id?: number | null;
-}
-
-async function fetchThreads(eventId: number, threadId: number | undefined) {
-  const res = await fetch(`/api/forum?eventId=${eventId}`);
-  const data = await res.json();
-  let list = Array.isArray(data?.threads) ? data.threads : [];
-  if (threadId != null) {
-    const idNum = normalizeId(threadId);
-    if (idNum != null) {
-      list = list.filter((t: any) => normalizeId(t.id) === idNum);
-    }
-  }
-  return list as ThreadView[];
-}
-
-async function fetchUserVotes(eventId: number) {
-  const res = await fetch(`/api/forum/user-votes?eventId=${eventId}`);
-  const j = await res.json();
-  const set = new Set<string>();
-  const types: Record<string, "up" | "down"> = {};
-  (Array.isArray(j?.votes) ? j.votes : []).forEach((v: any) => {
-    const key = `${String(v.content_type)}:${String(v.content_id)}`;
-    set.add(key);
-    const vt = String(v.vote_type) === "down" ? "down" : "up";
-    types[key] = vt;
-  });
-  return { set, types };
-}
-
-async function createThread(payload: {
-  eventId: number;
-  title: string;
-  walletAddress: string;
-  subjectName: string;
-  actionVerb: "priceReach" | "willWin" | "willHappen";
-  targetValue: string;
-  category:
-    | "tech"
-    | "entertainment"
-    | "politics"
-    | "weather"
-    | "sports"
-    | "business"
-    | "crypto"
-    | "more";
-  deadline: string;
-  titlePreview: string;
-  criteriaPreview: string;
-}) {
-  const res = await fetch("/api/forum", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      eventId: payload.eventId,
-      title: payload.title,
-      content: "",
-      walletAddress: payload.walletAddress,
-      subjectName: payload.subjectName,
-      actionVerb: payload.actionVerb,
-      targetValue: payload.targetValue,
-      category: payload.category,
-      deadline: payload.deadline,
-      titlePreview: payload.titlePreview,
-      criteriaPreview: payload.criteriaPreview,
-    }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-async function createComment(input: {
-  eventId: number;
-  threadId: number;
-  content: string;
-  walletAddress: string;
-  parentId?: number | null;
-}) {
-  const res = await fetch("/api/forum/comments", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      eventId: input.eventId,
-      threadId: input.threadId,
-      content: input.content,
-      walletAddress: input.walletAddress,
-      parentId: input.parentId,
-    }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-async function sendVote(input: { type: "thread" | "comment"; id: number; dir: "up" | "down" }) {
-  const res = await fetch("/api/forum/vote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || "Vote failed");
-  }
-}
-
-type ForumSectionViewProps = {
-  hideCreate?: boolean;
-  account: string | null | undefined;
-  threads: ThreadView[];
-  loading: boolean;
-  error: string | null;
-  subjectName: string;
-  actionVerb: "priceReach" | "willWin" | "willHappen";
-  targetValue: string;
-  deadline: string;
-  category:
-    | "tech"
-    | "entertainment"
-    | "politics"
-    | "weather"
-    | "sports"
-    | "business"
-    | "crypto"
-    | "more";
-  titlePreview: string;
-  criteriaPreview: string;
-  formError: string;
-  canSubmit: boolean;
-  posting: boolean;
-  userVotes: Set<string>;
-  userVoteTypes: Record<string, "up" | "down">;
-  displayName: (addr: string) => string;
-  onConnectAndSign: () => Promise<void>;
-  onSubjectNameChange: (value: string) => void;
-  onActionVerbChange: (value: "priceReach" | "willWin" | "willHappen") => void;
-  onTargetValueChange: (value: string) => void;
-  onDeadlineChange: (value: string) => void;
-  onCategoryChange: (
-    value:
-      | "tech"
-      | "entertainment"
-      | "politics"
-      | "weather"
-      | "sports"
-      | "business"
-      | "crypto"
-      | "more"
-  ) => void;
-  onPostThread: () => Promise<void>;
-  onVote: (type: "thread" | "comment", id: number, dir: "up" | "down") => Promise<void>;
-  onPostComment: (threadId: number, text: string, parentId?: number | null) => Promise<void>;
-};
-
-function ForumSectionView({
-  hideCreate,
-  account,
-  threads,
-  loading,
-  error,
-  subjectName,
-  actionVerb,
-  targetValue,
-  deadline,
-  category,
-  titlePreview,
-  criteriaPreview,
-  formError,
-  canSubmit,
-  posting,
-  userVotes,
-  userVoteTypes,
-  displayName,
-  onConnectAndSign,
-  onSubjectNameChange,
-  onActionVerbChange,
-  onTargetValueChange,
-  onDeadlineChange,
-  onCategoryChange,
-  onPostThread,
-  onVote,
-  onPostComment,
-}: ForumSectionViewProps) {
-  const tForum = useTranslations("forum");
-
-  const buildTree = (comments: CommentView[] = []) => {
-    const byParent: Record<string, CommentView[]> = {};
-    comments.forEach((c) => {
-      const key = String(c.parent_id ?? "root");
-      if (!byParent[key]) byParent[key] = [];
-      byParent[key].push(c);
-    });
-    const renderBranch = (parentId: number | null, depth = 0): React.ReactNode[] => {
-      const key = String(parentId ?? "root");
-      const nodes = byParent[key] || [];
-      return nodes.flatMap((node) => [
-        <div key={node.id} className="mt-3 pl-0" style={{ marginLeft: depth * 16 }}>
-          <div className="text-sm text-gray-800">
-            <span className="text-purple-700 font-medium mr-2">{displayName(node.user_id)}</span>
-            <span className="text-gray-400">{new Date(node.created_at).toLocaleString()}</span>
-          </div>
-          <div className="mt-1 text-gray-700 break-words">{node.content}</div>
-          <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-            <button
-              onClick={() => onVote("comment", node.id, "up")}
-              disabled={userVotes.has(`comment:${node.id}`)}
-              className="inline-flex items-center px-2 py-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white disabled:opacity-50"
-            >
-              ▲ {node.upvotes}
-            </button>
-            {account && (
-              <ReplyBox onSubmit={(text) => onPostComment(node.thread_id, text, node.id)} />
-            )}
-          </div>
-        </div>,
-        ...renderBranch(node.id, depth + 1),
-      ]);
-    };
-    return renderBranch(null, 0);
-  };
-
-  return (
-    <div className="rounded-2xl border border-white/60 bg-white/40 backdrop-blur-md overflow-hidden shadow-sm">
-      <div className="px-4 py-3 flex items-center justify-between border-b border-white/50">
-        <div className="font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          {tForum("title")}
-        </div>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {!hideCreate && (
-          <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
-            {!account ? (
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600 font-medium">{tForum("loginRequired")}</div>
-                <Button size="sm" variant="cta" onClick={onConnectAndSign}>
-                  {tForum("connectAndSign")}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    value={subjectName}
-                    onChange={(e) => onSubjectNameChange(e.target.value)}
-                    placeholder={tForum("form.subjectPlaceholder")}
-                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                  />
-                  <select
-                    value={actionVerb}
-                    onChange={(e) =>
-                      onActionVerbChange(e.target.value as "priceReach" | "willWin" | "willHappen")
-                    }
-                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                  >
-                    <option value="priceReach">{tForum("form.action.priceReach")}</option>
-                    <option value="willWin">{tForum("form.action.willWin")}</option>
-                    <option value="willHappen">{tForum("form.action.willHappen")}</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input
-                    value={targetValue}
-                    onChange={(e) => onTargetValueChange(e.target.value)}
-                    placeholder={tForum("form.targetPlaceholder")}
-                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                  />
-                  <DatePicker
-                    value={deadline}
-                    onChange={onDeadlineChange}
-                    includeTime={true}
-                    placeholder={tForum("form.deadlinePlaceholder")}
-                    className="w-full"
-                  />
-                  <select
-                    value={category}
-                    onChange={(e) =>
-                      onCategoryChange(
-                        e.target.value as
-                          | "tech"
-                          | "entertainment"
-                          | "politics"
-                          | "weather"
-                          | "sports"
-                          | "business"
-                          | "crypto"
-                          | "more"
-                      )
-                    }
-                    className="w-full px-3 py-2 border border-white/60 rounded-xl bg-white/50 focus:bg-white/90 focus:ring-2 focus:ring-indigo-200 transition-all text-gray-800"
-                  >
-                    <option value="tech">{tForum("form.category.tech")}</option>
-                    <option value="entertainment">{tForum("form.category.entertainment")}</option>
-                    <option value="politics">{tForum("form.category.politics")}</option>
-                    <option value="weather">{tForum("form.category.weather")}</option>
-                    <option value="sports">{tForum("form.category.sports")}</option>
-                    <option value="business">{tForum("form.category.business")}</option>
-                    <option value="crypto">{tForum("form.category.crypto")}</option>
-                    <option value="more">{tForum("form.category.more")}</option>
-                  </select>
-                </div>
-                <div className="bg-white/40 border border-white/60 rounded-xl p-3 text-sm text-gray-800">
-                  <div className="font-medium text-indigo-700">{tForum("form.previewTitle")}</div>
-                  <div className="mt-1">{titlePreview || tForum("form.previewTitleFallback")}</div>
-                  <div className="font-medium text-indigo-700 mt-3">
-                    {tForum("form.previewCriteria")}
-                  </div>
-                  <div className="mt-1">
-                    {criteriaPreview || tForum("form.previewCriteriaFallback")}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-gray-600">{formError || ""}</div>
-                  <Button
-                    onClick={onPostThread}
-                    disabled={posting || !canSubmit}
-                    size="md"
-                    variant="cta"
-                  >
-                    {posting ? tForum("form.submitPosting") : tForum("form.submit")}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {loading && <div className="text-sm text-gray-500">{tForum("list.loading")}</div>}
-          {!loading && threads.length === 0 && (
-            <div className="text-sm text-gray-500">{tForum("list.empty")}</div>
-          )}
-          {threads.map((t) => (
-            <div key={t.id} className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    {t.title}
-                  </div>
-                  {String(t.content || "").trim() && (
-                    <div className="text-sm text-gray-600 mt-1">{t.content}</div>
-                  )}
-                  <div className="text-xs text-gray-400 mt-1">
-                    {tForum("thread.meta.prefix")}{" "}
-                    <span className="text-indigo-700 font-medium">{displayName(t.user_id)}</span>{" "}
-                    {tForum("thread.meta.in")} {new Date(t.created_at).toLocaleString()}{" "}
-                    {tForum("thread.meta.suffix")}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <Button
-                    size="sm"
-                    variant="cta"
-                    className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-200/50"
-                    onClick={() => onVote("thread", t.id, "up")}
-                    disabled={userVotes.has(`thread:${t.id}`)}
-                  >
-                    ▲ {t.upvotes}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="cta"
-                    className="bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-200/50"
-                    onClick={() => onVote("thread", t.id, "down")}
-                    disabled={userVotes.has(`thread:${t.id}`)}
-                  >
-                    ▼ {t.downvotes}
-                  </Button>
-                  {userVotes.has(`thread:${t.id}`) && (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        userVoteTypes[`thread:${t.id}`] === "down"
-                          ? "bg-rose-100 text-rose-700"
-                          : "bg-indigo-100 text-indigo-700"
-                      }`}
-                    >
-                      {userVoteTypes[`thread:${t.id}`] === "down"
-                        ? tForum("thread.vote.downvoted")
-                        : tForum("thread.vote.upvoted")}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3">
-                <div className="text-sm font-medium text-indigo-700">
-                  {tForum("comments.title")}
-                </div>
-                <div className="mt-2">{buildTree(t.comments || [])}</div>
-                {account && (
-                  <div className="mt-2">
-                    <ReplyBox onSubmit={(text) => onPostComment(t.id, text)} />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {error && <div className="text-xs text-red-600">{error}</div>}
-      </div>
-    </div>
-  );
-}
+import {
+  createComment,
+  createThread,
+  fetchThreads,
+  fetchUserVotes,
+  sendVote,
+} from "./forumSection/api";
+import { ForumSectionView } from "./forumSection/ForumSectionView";
+import type {
+  ActionVerb,
+  ForumCategory,
+  ForumSectionProps,
+  ThreadView,
+} from "./forumSection/types";
 
 export default function ForumSection({ eventId, threadId, hideCreate }: ForumSectionProps) {
   const {
@@ -446,22 +28,18 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     multisigSign,
   } = useWallet();
   const tForum = useTranslations("forum");
+
   const [threads, setThreads] = useState<ThreadView[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
   const [posting, setPosting] = useState(false);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
 
   const [subjectName, setSubjectName] = useState("");
-  const [actionVerb, setActionVerb] = useState<"priceReach" | "willWin" | "willHappen">(
-    "priceReach"
-  );
+  const [actionVerb, setActionVerb] = useState<ActionVerb>("priceReach");
   const [targetValue, setTargetValue] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [category, setCategory] = useState<
-    "tech" | "entertainment" | "politics" | "weather" | "sports" | "business" | "crypto" | "more"
-  >("tech");
+  const [category, setCategory] = useState<ForumCategory>("tech");
 
   const titlePreview = useMemo(() => {
     const name = String(subjectName || "").trim();
@@ -482,6 +60,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       .replace("{target}", target)
       .replace("{action}", act);
   }, [subjectName, actionVerb, targetValue, deadline, tForum]);
+
   const criteriaPreview = useMemo(() => {
     const act = String(actionVerb || "").trim();
     let key = "preview.criteria.default";
@@ -491,6 +70,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     const template = tForum(key);
     return template.replace("{action}", act);
   }, [actionVerb, tForum]);
+
   const formError = useMemo(() => {
     const name = String(subjectName || "").trim();
     const target = String(targetValue || "").trim();
@@ -505,9 +85,9 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     if (!cat) return tForum("form.errors.categoryRequired");
     return "";
   }, [subjectName, targetValue, deadline, category, tForum]);
-  const canSubmit = useMemo(() => {
-    return !!titlePreview && !formError;
-  }, [titlePreview, formError]);
+
+  const canSubmit = useMemo(() => !!titlePreview && !formError, [titlePreview, formError]);
+
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [userVoteTypes, setUserVoteTypes] = useState<Record<string, "up" | "down">>({});
@@ -585,7 +165,6 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
         titlePreview,
         criteriaPreview,
       });
-      setTitle("");
       await load();
     } catch (e: any) {
       setError(e?.message || tForum("errors.createFailed"));
@@ -594,7 +173,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     }
   };
 
-  const postComment = async (threadId: number, text: string, parentId?: number | null) => {
+  const postComment = async (threadIdNum: number, text: string, parentId?: number | null) => {
     if (!account) {
       setError(tForum("errors.walletRequired"));
       return;
@@ -603,7 +182,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
     try {
       await createComment({
         eventId,
-        threadId,
+        threadId: threadIdNum,
         content: text,
         walletAddress: account,
         parentId,
@@ -633,6 +212,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       setError(e?.message || tForum("errors.voteFailed"));
     }
   };
+
   const handleConnectAndSign = async () => {
     await connectWallet();
     await requestWalletPermissions();
@@ -670,34 +250,5 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       onVote={vote}
       onPostComment={postComment}
     />
-  );
-}
-
-function ReplyBox({ onSubmit }: { onSubmit: (text: string) => void }) {
-  const tForum = useTranslations("forum");
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const submit = async () => {
-    if (!text.trim()) return;
-    setSending(true);
-    try {
-      await onSubmit(text);
-      setText("");
-    } finally {
-      setSending(false);
-    }
-  };
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={tForum("reply.placeholder")}
-        className="flex-1 px-3 py-2 border border-white/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white/50 focus:bg-white/90 transition-all text-gray-800"
-      />
-      <Button onClick={submit} disabled={sending} size="sm" variant="primary">
-        {sending ? tForum("reply.sending") : tForum("reply.submit")}
-      </Button>
-    </div>
   );
 }

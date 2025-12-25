@@ -95,6 +95,7 @@ export async function generateMetadata(
   };
 }
 
-export default function ProposalDetailPage({ params }: { params: { id: string } }) {
-  return <ProposalDetailClient id={params.id} />;
+export default async function ProposalDetailPage({ params }: Props) {
+  const resolvedParams = await params;
+  return <ProposalDetailClient id={resolvedParams.id} />;
 }

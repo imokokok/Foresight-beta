@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
@@ -95,13 +94,7 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
   const router = useRouter();
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-    >
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {visibleEvents.map((product) => {
         const eventId = normalizeEventId(product.id);
         const isValidId = isValidEventId(eventId);
@@ -138,7 +131,7 @@ const TrendingEventsGrid = React.memo(function TrendingEventsGrid({
           />
         );
       })}
-    </motion.div>
+    </div>
   );
 });
 

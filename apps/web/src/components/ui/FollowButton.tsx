@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { Heart, Loader2 } from "lucide-react";
 
 type FollowButtonProps = {
@@ -20,44 +19,18 @@ export function FollowButton({
   disabled,
 }: FollowButtonProps) {
   return (
-    <motion.button
+    <button
       data-event-index={dataEventId}
       onClick={onClick}
       disabled={disabled}
       aria-busy={disabled || undefined}
-      className={`p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md overflow-hidden ${
-        disabled ? "opacity-60 cursor-not-allowed" : ""
-      } ${className || ""}`}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      animate={isFollowed ? "liked" : "unliked"}
-      variants={{
-        liked: {
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          transition: { duration: 0.3 },
-        },
-        unliked: {
-          backgroundColor: "rgba(255, 255, 255, 0.9)",
-          transition: { duration: 0.3 },
-        },
-      }}
+      className={`p-2 backdrop-blur-sm rounded-full shadow-md overflow-hidden transition-transform duration-150 hover:scale-110 active:scale-90 ${
+        isFollowed ? "bg-red-500/10" : "bg-white/90"
+      } ${disabled ? "opacity-60 cursor-not-allowed hover:scale-100 active:scale-100" : ""} ${
+        className || ""
+      }`}
     >
-      <motion.div
-        animate={isFollowed ? "liked" : "unliked"}
-        variants={{
-          liked: {
-            scale: [1, 1.2, 1],
-            transition: {
-              duration: 0.6,
-              ease: "easeInOut",
-            },
-          },
-          unliked: {
-            scale: 1,
-            transition: { duration: 0.3 },
-          },
-        }}
-      >
+      <div className="transition-transform duration-200">
         {disabled ? (
           <Loader2
             className={`w-4 h-4 animate-spin ${isFollowed ? "text-red-500" : "text-gray-400"}`}
@@ -67,7 +40,7 @@ export function FollowButton({
             className={`w-5 h-5 ${isFollowed ? "fill-red-500 text-red-500" : "text-gray-500"}`}
           />
         )}
-      </motion.div>
-    </motion.button>
+      </div>
+    </button>
   );
 }

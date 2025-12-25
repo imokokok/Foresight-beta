@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { Heart, Pencil, Trash2, Users } from "lucide-react";
 import { FollowButton } from "@/components/ui/FollowButton";
 import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
@@ -115,10 +114,8 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
   );
 
   return (
-    <motion.div
-      className="glass-card glass-card-hover rounded-2xl overflow-hidden relative transform-gpu flex flex-col h-full min-h-[250px] group"
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+    <div
+      className="glass-card glass-card-hover rounded-2xl overflow-hidden relative transform-gpu flex flex-col h-full min-h-[250px] group transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99]"
       role="button"
       tabIndex={0}
       onClick={handleCardClick}
@@ -194,6 +191,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 });

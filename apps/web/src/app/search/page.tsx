@@ -18,16 +18,12 @@ type SearchParams = {
   q?: string;
 };
 
-export default function SearchPage({
+export default async function SearchPage({
   searchParams,
 }: {
-  searchParams?: Promise<SearchParams> | SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
-  const resolved =
-    searchParams && "then" in (searchParams as any)
-      ? undefined
-      : (searchParams as SearchParams | undefined);
-
+  const resolved = searchParams ? await searchParams : undefined;
   const query = resolved?.q?.trim() || "";
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";

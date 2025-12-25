@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Wallet } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
@@ -30,10 +29,7 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
       containerClassName="flex items-center justify-center p-4"
       initialFocusRef={primaryButtonRef as React.RefObject<HTMLElement>}
     >
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      <div
         className="relative max-w-md w-full bg-gradient-to-br from-white via-white to-purple-50 rounded-3xl shadow-2xl border border-white/20 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -90,7 +86,7 @@ export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginMo
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
     </Modal>
   );
 }

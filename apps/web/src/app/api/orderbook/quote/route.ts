@@ -187,7 +187,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const avgPrice = totalCost / filledAmount;
+    // 防御：避免任何情况下出现 BigInt 除 0（同时规避部分构建期静态分析误判导致的 /0n）
+    let avgPrice = 0n;
+    if (filledAmount > 0n) {
+      avgPrice = totalCost / filledAmount;
+    }
     let slippageBps = 0n;
     if (takerSide === "buy") {
       if (worstPrice > bestPrice) {

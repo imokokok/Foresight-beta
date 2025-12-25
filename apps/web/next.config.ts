@@ -1,13 +1,25 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
+  // 生成静态报告与 stats 文件（仅在 ANALYZE=true 时启用，不影响正常运行时）
+  openAnalyzer: false,
+  analyzerMode: "static",
+  generateStatsFile: true,
 });
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // 避免 Next.js 在 monorepo + 多 lockfile 场景下错误推断 workspace root
+  // apps/web -> ../../ 为仓库根目录（包含顶层 lockfile）
+  outputFileTracingRoot: path.join(__dirname, "..", ".."),
 
   // 启用 gzip 压缩
   compress: true,
@@ -127,49 +139,6 @@ const nextConfig: NextConfig = {
 
   // Webpack 优化
   webpack: (config, { dev, isServer }) => {
-    // 生产环境优化
-    if (!dev && !isServer) {
-      // 代码分割优化
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: "all",
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // 第三方库单独打包
-            vendor: {
-              name: "vendor",
-              chunks: "all",
-              test: /node_modules/,
-              priority: 20,
-            },
-            // 公共代码
-            common: {
-              name: "common",
-              minChunks: 2,
-              chunks: "all",
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true,
-            },
-            // React 相关
-            react: {
-              name: "react",
-              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
-              priority: 30,
-            },
-            // 大型库单独打包
-            ethers: {
-              name: "ethers",
-              test: /[\\/]node_modules[\\/](ethers|@ethersproject)[\\/]/,
-              priority: 25,
-            },
-          },
-        },
-      };
-    }
-
     return config;
   },
 };
