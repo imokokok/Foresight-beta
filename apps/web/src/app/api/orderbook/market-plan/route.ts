@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
 type MarketPlanItem = {
   orderId: number;
@@ -16,6 +17,25 @@ type MarketPlanItem = {
     salt: string;
   };
 };
+
+type OrdersRow = Database["public"]["Tables"]["orders"]["Row"];
+
+type NormalizedOrder = {
+  row: OrdersRow;
+  price: bigint;
+  remaining: bigint;
+  sequence: bigint;
+};
+
+function isMissingMarketKeyColumn(
+  error: { code?: string; message?: string | null } | null
+): boolean {
+  if (!error) return false;
+  const code = String(error.code || "").toUpperCase();
+  if (code === "42703") return true;
+  const msg = String(error.message || "").toLowerCase();
+  return msg.includes("market_key");
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -78,9 +98,11 @@ export async function GET(req: NextRequest) {
       query = query.eq("market_key", marketKey);
     }
 
-    // 不依赖数据库对 TEXT price 的排序，拉取后在服务端用 BigInt 排序保证数值正确
-    let { data: orders, error } = await query.limit(2000);
-    if (error && (error as any).code === "42703" && marketKey) {
+    const initial = await query.limit(2000);
+    let orders = (initial.data ?? []) as OrdersRow[];
+    let error = initial.error;
+
+    if (isMissingMarketKeyColumn(error) && marketKey) {
       const fallbackQuery = client
         .from("orders")
         .select(
@@ -93,8 +115,8 @@ export async function GET(req: NextRequest) {
         .in("status", ["open", "filled_partial"])
         .limit(2000);
       const fallback = await fallbackQuery;
-      orders = fallback.data || [];
-      error = fallback.error as any;
+      orders = (fallback.data ?? []) as OrdersRow[];
+      error = fallback.error;
     }
     if (error) {
       return NextResponse.json(
@@ -103,9 +125,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const rows = Array.isArray(orders) ? (orders as any[]) : [];
+    const rows: OrdersRow[] = Array.isArray(orders) ? orders : [];
     const normalized = rows
-      .map((row) => {
+      .map<NormalizedOrder | null>((row) => {
         try {
           const price = BigInt(String(row.price));
           const remaining = BigInt(String(row.remaining));
@@ -120,7 +142,7 @@ export async function GET(req: NextRequest) {
           return null;
         }
       })
-      .filter(Boolean) as Array<{ row: any; price: bigint; remaining: bigint; sequence: bigint }>;
+      .filter((item): item is NormalizedOrder => item !== null);
 
     normalized.sort((a, b) => {
       if (a.price !== b.price) {
@@ -154,7 +176,9 @@ export async function GET(req: NextRequest) {
       remainingToFill -= take;
 
       const expiryUnix =
-        item.row.expiry != null ? Math.floor(new Date(String(item.row.expiry)).getTime() / 1000) : 0;
+        item.row.expiry != null
+          ? Math.floor(new Date(String(item.row.expiry)).getTime() / 1000)
+          : 0;
 
       fills.push({
         orderId: Number(item.row.id),
@@ -217,9 +241,8 @@ export async function GET(req: NextRequest) {
         fills,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
-
-

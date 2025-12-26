@@ -8,6 +8,16 @@ function getRelayerBaseUrl(): string | undefined {
   return raw;
 }
 
+function isMissingMarketKeyColumn(
+  error: { code?: string; message?: string | null } | null
+): boolean {
+  if (!error) return false;
+  const code = String(error.code || "").toUpperCase();
+  if (code === "42703") return true;
+  const msg = String(error.message || "").toLowerCase();
+  return msg.includes("market_key");
+}
+
 function normalizeDepthSideForRelayer(side: string | null): "buy" | "sell" {
   const raw = (side || "").toLowerCase().trim();
   if (raw === "true" || raw === "buy") return "buy";
@@ -68,7 +78,6 @@ export async function GET(req: NextRequest) {
 
     const isBuy = side === "true";
 
-    // Query open orders
     let query = client
       .from("orders")
       .select("price, remaining")
@@ -82,10 +91,11 @@ export async function GET(req: NextRequest) {
       query = query.eq("market_key", marketKey);
     }
 
-    let { data: orders, error } = await query.order("price", { ascending: !isBuy }); // Buy: desc (high to low), Sell: asc (low to high)
+    const initial = await query.order("price", { ascending: !isBuy });
+    let orders = (initial.data ?? []) as Array<{ price: string; remaining: string }>;
+    let error = initial.error;
 
-    // 兼容旧版本数据库（没有 market_key 列时回退为不按 marketKey 过滤）
-    if (error && (error as any).code === "42703" && marketKey) {
+    if (isMissingMarketKeyColumn(error) && marketKey) {
       const fallbackQuery = client
         .from("orders")
         .select("price, remaining")
@@ -95,9 +105,11 @@ export async function GET(req: NextRequest) {
         .eq("is_buy", isBuy)
         .in("status", ["open", "filled_partial"]);
 
-      const fallback = await fallbackQuery.order("price", { ascending: !isBuy });
-      orders = fallback.data || [];
-      error = fallback.error as any;
+      const fallback = await fallbackQuery.order("price", {
+        ascending: !isBuy,
+      });
+      orders = (fallback.data ?? []) as Array<{ price: string; remaining: string }>;
+      error = fallback.error;
     }
 
     if (error) {
@@ -105,14 +117,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 
-    if (!orders || orders.length === 0) {
+    if (!orders.length) {
       return NextResponse.json({ success: true, data: [] });
     }
 
     // Aggregate orders by price
     const depthMap = new Map<string, bigint>();
 
-    for (const order of orders as any[]) {
+    for (const order of orders) {
       const priceStr = String(order.price);
       const currentQty = depthMap.get(priceStr) || BigInt(0);
       depthMap.set(priceStr, currentQty + BigInt(order.remaining));
@@ -139,8 +151,9 @@ export async function GET(req: NextRequest) {
       success: true,
       data: depthArray.slice(0, levels),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Depth API error:", e);
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

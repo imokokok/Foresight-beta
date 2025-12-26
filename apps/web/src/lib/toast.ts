@@ -135,23 +135,27 @@ type ApiErrorPayload = {
 function extractApiErrorPayload(error: unknown): ApiErrorPayload | null {
   if (typeof error !== "object" || error === null) return null;
 
-  const anyError = error as any;
   const payload: ApiErrorPayload = {};
+  const top = error as { status?: unknown; code?: unknown; message?: unknown; error?: unknown };
 
-  if (typeof anyError.status === "number") {
-    payload.status = anyError.status;
+  if (typeof top.status === "number") {
+    payload.status = top.status;
   }
 
-  if (typeof anyError.code === "string") {
-    payload.code = anyError.code;
+  if (typeof top.code === "string") {
+    payload.code = top.code;
   }
 
-  if (typeof anyError.message === "string") {
-    payload.message = anyError.message;
+  if (typeof top.message === "string") {
+    payload.message = top.message;
   }
 
-  if (typeof anyError.error === "object" && anyError.error !== null) {
-    const inner = anyError.error as any;
+  const inner =
+    top.error && typeof top.error === "object"
+      ? (top.error as { status?: unknown; code?: unknown; message?: unknown })
+      : null;
+
+  if (inner) {
     if (typeof inner.status === "number" && payload.status === undefined) {
       payload.status = inner.status;
     }
@@ -238,7 +242,7 @@ export function handleApiError(error: unknown, defaultMessage = "errors.somethin
       : payload && typeof payload.message === "string"
         ? payload.message
         : typeof error === "object" && error !== null && "message" in error
-          ? String((error as any).message)
+          ? String((error as { message?: unknown }).message ?? "")
           : "";
 
   if (message.toLowerCase().includes("network")) {

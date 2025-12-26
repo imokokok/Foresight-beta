@@ -1,35 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
-async function getReviewerSession() {
+type ReviewerSessionOk = { ok: true; reason: "ok"; userId: string };
+type ReviewerSessionFailReason = "no_client" | "unauthorized" | "forbidden";
+type ReviewerSessionFail = { ok: false; reason: ReviewerSessionFailReason; userId: null };
+type ReviewerSession = ReviewerSessionOk | ReviewerSessionFail;
+
+async function getReviewerSession(): Promise<ReviewerSession> {
   const client = getClient();
-  if (!client)
-    return { ok: false as const, reason: "no_client" as const, userId: null as string | null };
+  if (!client) {
+    return { ok: false, reason: "no_client", userId: null };
+  }
   const {
     data: { session },
   } = await client.auth.getSession();
-  if (!session || !session.user)
-    return { ok: false as const, reason: "unauthorized" as const, userId: null as string | null };
-  const userId = session.user.id;
-  const { data: profile } = await (client as any)
+  if (!session || !session.user) {
+    return { ok: false, reason: "unauthorized", userId: null };
+  }
+  const userWithMetadata = session.user as typeof session.user & {
+    user_metadata?: { wallet_address?: string | null };
+  };
+  const walletAddress = userWithMetadata.user_metadata?.wallet_address || "";
+  const { data: profile } = await client
     .from("user_profiles")
     .select("is_admin,is_reviewer")
-    .eq("wallet_address", (session.user as any).user_metadata?.wallet_address || "")
-    .maybeSingle();
-  const isAdmin = !!(profile as any)?.is_admin;
-  const isReviewer = !!(profile as any)?.is_reviewer;
-  if (!isAdmin && !isReviewer)
-    return { ok: false as const, reason: "forbidden" as const, userId: null as string | null };
-  return { ok: true as const, reason: "ok" as const, userId };
+    .eq("wallet_address", walletAddress)
+    .maybeSingle<
+      Pick<Database["public"]["Tables"]["user_profiles"]["Row"], "is_admin" | "is_reviewer">
+    >();
+  const isAdmin = !!profile?.is_admin;
+  const isReviewer = !!profile?.is_reviewer;
+  if (!isAdmin && !isReviewer) {
+    return { ok: false, reason: "forbidden", userId: null };
+  }
+  return { ok: true, reason: "ok", userId: session.user.id };
 }
 
 export async function GET(req: NextRequest) {
   const auth = await getReviewerSession();
   if (!auth.ok) {
-    return NextResponse.json(
-      { message: auth.reason },
-      { status: auth.reason === "unauthorized" ? 401 : 403 }
-    );
+    const status = auth.reason === "unauthorized" ? 401 : 403;
+    return NextResponse.json({ message: auth.reason }, { status });
   }
   const client = getClient();
   if (!client) return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });

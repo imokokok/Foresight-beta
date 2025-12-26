@@ -64,10 +64,14 @@ export function t(key: string, locale?: Locale): string {
   const translations = getTranslation(locale);
   const keys = key.split(".");
 
-  let value: any = translations;
+  let value: unknown = translations;
   for (const k of keys) {
-    value = value?.[k];
-    if (value === undefined) break;
+    if (value && typeof value === "object" && k in value) {
+      value = (value as Record<string, unknown>)[k];
+    } else {
+      value = undefined;
+      break;
+    }
   }
 
   if (value === undefined) {

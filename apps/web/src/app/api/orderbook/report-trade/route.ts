@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
         status: relayerRes.status,
       }
     );
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

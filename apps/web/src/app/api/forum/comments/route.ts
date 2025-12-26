@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 
-function toNum(v: any): number | null {
-  const n = Number(v);
+function toNum(v: unknown): number | null {
+  const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
 }
 
-async function parseBody(req: Request): Promise<Record<string, any>> {
+async function parseBody(req: Request): Promise<Record<string, unknown>> {
   const ct = req.headers.get("content-type") || "";
   try {
     if (ct.includes("application/json")) {
@@ -24,9 +24,9 @@ async function parseBody(req: Request): Promise<Record<string, any>> {
     }
     if (ct.includes("multipart/form-data")) {
       const form = await (req as any).formData?.();
-      if (form && typeof (form as any).entries === "function") {
-        const obj: Record<string, any> = {};
-        for (const [k, v] of (form as any).entries()) obj[k] = v as any;
+      if (form && typeof form.entries === "function") {
+        const obj: Record<string, unknown> = {};
+        for (const [k, v] of form.entries()) obj[k] = v;
         return obj;
       }
       return {};
@@ -49,11 +49,12 @@ async function parseBody(req: Request): Promise<Record<string, any>> {
 export async function POST(req: Request) {
   try {
     const body = await parseBody(req);
-    const eventId = toNum(body?.eventId);
-    const threadId = toNum(body?.threadId);
-    const parentId = body?.parentId == null ? null : toNum(body?.parentId);
-    const content = String(body?.content || "");
-    const walletAddress = String(body?.walletAddress || "");
+    const eventId = toNum((body as { eventId?: unknown }).eventId);
+    const threadId = toNum((body as { threadId?: unknown }).threadId);
+    const parentIdRaw = (body as { parentId?: unknown }).parentId;
+    const parentId = parentIdRaw == null ? null : toNum(parentIdRaw);
+    const content = String((body as { content?: unknown }).content || "");
+    const walletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
     if (!eventId || !threadId || !content.trim()) {
       return NextResponse.json({ message: "eventId、threadId、content 必填" }, { status: 400 });
     }

@@ -1,18 +1,31 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase";
 import type { BetRow, PredictionMeta, PredictionStats } from "./types";
 
-export async function fetchUserBets(admin: any, address: string) {
+type DbClient = SupabaseClient<Database>;
+
+export async function fetchUserBets(admin: DbClient, address: string) {
   const { data: bets, error: betsError } = await admin
     .from("bets")
     .select("id, prediction_id, amount, outcome, created_at")
     .eq("user_id", address)
     .order("created_at", { ascending: false });
 
-  return { bets: (bets || []) as any[], betsError };
+  return { bets: (bets || []) as BetRow[], betsError };
 }
 
-export async function fetchPredictionsMeta(admin: any, predictionIds: number[]) {
+type PredictionRow = {
+  id: number | string | null;
+  title: string | null;
+  image_url: string | null;
+  status: string | null;
+  min_stake: number | string | null;
+  winning_outcome: string | null;
+};
+
+export async function fetchPredictionsMeta(admin: DbClient, predictionIds: number[]) {
   const predictionsMap: Record<number, PredictionMeta> = {};
-  if (predictionIds.length === 0) return { predictionsMap, predictionError: null as any };
+  if (predictionIds.length === 0) return { predictionsMap, predictionError: null };
 
   const { data: predictionRows, error: predictionError } = await admin
     .from("predictions")
@@ -20,16 +33,15 @@ export async function fetchPredictionsMeta(admin: any, predictionIds: number[]) 
     .in("id", predictionIds);
 
   if (!predictionError && Array.isArray(predictionRows)) {
-    for (const row of predictionRows as any[]) {
-      const id = Number((row as any).id);
+    for (const row of (predictionRows || []) as PredictionRow[]) {
+      const id = Number(row.id);
       if (!Number.isFinite(id)) continue;
       predictionsMap[id] = {
-        title: String((row as any).title || "Unknown Event"),
-        image_url: (row as any).image_url || null,
-        status: String((row as any).status || "active"),
-        min_stake: Number((row as any).min_stake || 0),
-        winning_outcome:
-          typeof (row as any).winning_outcome === "string" ? (row as any).winning_outcome : null,
+        title: String(row.title || "Unknown Event"),
+        image_url: row.image_url || null,
+        status: String(row.status || "active"),
+        min_stake: Number(row.min_stake || 0),
+        winning_outcome: typeof row.winning_outcome === "string" ? row.winning_outcome : null,
       };
     }
   }
@@ -37,9 +49,18 @@ export async function fetchPredictionsMeta(admin: any, predictionIds: number[]) 
   return { predictionsMap, predictionError };
 }
 
-export async function fetchPredictionsStats(admin: any, predictionIds: number[]) {
+type PredictionStatsRow = {
+  prediction_id: number | string | null;
+  yes_amount: number | string | null;
+  no_amount: number | string | null;
+  total_amount: number | string | null;
+  participant_count: number | string | null;
+  bet_count: number | string | null;
+};
+
+export async function fetchPredictionsStats(admin: DbClient, predictionIds: number[]) {
   const statsMap: Record<number, PredictionStats> = {};
-  if (predictionIds.length === 0) return { statsMap, statsError: null as any };
+  if (predictionIds.length === 0) return { statsMap, statsError: null };
 
   const { data: statsRows, error: statsError } = await admin
     .from("prediction_stats")
@@ -47,15 +68,15 @@ export async function fetchPredictionsStats(admin: any, predictionIds: number[])
     .in("prediction_id", predictionIds);
 
   if (!statsError && Array.isArray(statsRows)) {
-    for (const row of statsRows as any[]) {
-      const pid = Number((row as any).prediction_id);
+    for (const row of (statsRows || []) as PredictionStatsRow[]) {
+      const pid = Number(row.prediction_id);
       if (!Number.isFinite(pid)) continue;
       statsMap[pid] = {
-        yesAmount: Number((row as any).yes_amount || 0),
-        noAmount: Number((row as any).no_amount || 0),
-        totalAmount: Number((row as any).total_amount || 0),
-        participantCount: Number((row as any).participant_count || 0),
-        betCount: Number((row as any).bet_count || 0),
+        yesAmount: Number(row.yes_amount || 0),
+        noAmount: Number(row.no_amount || 0),
+        totalAmount: Number(row.total_amount || 0),
+        participantCount: Number(row.participant_count || 0),
+        betCount: Number(row.bet_count || 0),
       };
     }
   }

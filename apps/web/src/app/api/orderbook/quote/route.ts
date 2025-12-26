@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 
+function isMissingMarketKeyColumn(
+  error: { code?: string; message?: string | null } | null
+): boolean {
+  if (!error) return false;
+  const code = String(error.code || "").toUpperCase();
+  if (code === "42703") return true;
+  const msg = String(error.message || "").toLowerCase();
+  return msg.includes("market_key");
+}
+
 export async function GET(req: NextRequest) {
   try {
     const client = getClient();
@@ -59,10 +69,11 @@ export async function GET(req: NextRequest) {
       query = query.eq("market_key", marketKey);
     }
 
-    // 不依赖数据库对 TEXT price 的排序；拉取后再用 BigInt 做数值排序
-    let { data: orders, error } = await query;
+    const initial = await query;
+    let orders = initial.data ?? [];
+    let error = initial.error;
 
-    if (error && (error as any).code === "42703" && marketKey) {
+    if (isMissingMarketKeyColumn(error) && marketKey) {
       const fallbackQuery = client
         .from("orders")
         .select("price, remaining")
@@ -73,8 +84,8 @@ export async function GET(req: NextRequest) {
         .in("status", ["open", "filled_partial"]);
 
       const fallback = await fallbackQuery;
-      orders = fallback.data || [];
-      error = fallback.error as any;
+      orders = fallback.data ?? [];
+      error = fallback.error;
     }
 
     if (error) {
@@ -84,7 +95,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (!orders || orders.length === 0) {
+    if (!orders.length) {
       return NextResponse.json({
         success: true,
         data: {
@@ -103,7 +114,7 @@ export async function GET(req: NextRequest) {
     }
 
     const aggregated = new Map<string, bigint>();
-    for (const row of (orders as any[]) || []) {
+    for (const row of orders as Array<{ price: string; remaining: string }>) {
       const priceStr = String(row.price);
       const remainingStr = String(row.remaining);
       let remaining: bigint;
@@ -221,7 +232,8 @@ export async function GET(req: NextRequest) {
         hasMoreDepth,
       },
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

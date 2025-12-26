@@ -7,9 +7,15 @@ function validateEmail(email: string): boolean {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json().catch(() => ({}))) as any;
-    const email = String(body?.email || "").trim();
-    const password = String(body?.password || "");
+    const rawBody = await req.json().catch(() => null);
+    let email = "";
+    let password = "";
+
+    if (rawBody && typeof rawBody === "object") {
+      const body = rawBody as { email?: unknown; password?: unknown };
+      email = typeof body.email === "string" ? body.email.trim() : "";
+      password = typeof body.password === "string" ? body.password : "";
+    }
 
     if (!validateEmail(email) || password.length < 6) {
       return NextResponse.json({ message: "参数无效：邮箱或密码不符合要求" }, { status: 400 });
@@ -18,15 +24,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
     }
 
-    const { data, error } = await (supabase as any).auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       return NextResponse.json({ message: "注册失败", detail: error.message }, { status: 400 });
     }
     return NextResponse.json({ message: "ok", data });
-  } catch (e: any) {
-    return NextResponse.json(
-      { message: "注册失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message: "注册失败", detail }, { status: 500 });
   }
 }

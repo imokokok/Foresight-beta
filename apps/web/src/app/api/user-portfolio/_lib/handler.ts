@@ -50,7 +50,7 @@ export async function handleUserPortfolioGet(req: Request) {
 
     const response = buildPortfolioResponse({ grouped, predictionsMap, statsMap });
     return NextResponse.json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API Error:", error);
     if (process.env.NODE_ENV !== "production") {
       const empty = buildPortfolioResponse({
@@ -60,9 +60,7 @@ export async function handleUserPortfolioGet(req: Request) {
       });
       return NextResponse.json(empty);
     }
-    return NextResponse.json(
-      { message: error?.message || "Internal Server Error" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

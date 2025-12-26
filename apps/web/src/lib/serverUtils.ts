@@ -32,9 +32,11 @@ export async function getSessionAddress(req: NextRequest) {
   if (!raw) return "";
 
   try {
-    const obj = JSON.parse(raw);
-    const addr = String((obj as any)?.address || "");
-    if (addr) return normalizeAddress(addr);
+    const obj = JSON.parse(raw) as unknown;
+    if (obj && typeof obj === "object" && "address" in obj) {
+      const addr = String((obj as { address?: unknown }).address || "");
+      if (addr) return normalizeAddress(addr);
+    }
   } catch {}
 
   const payload = await verifyToken(raw);
@@ -51,7 +53,10 @@ export async function getSessionAddress(req: NextRequest) {
 }
 
 export function getEmailOtpShared() {
-  const g = globalThis as any;
+  const g = globalThis as unknown as {
+    __emailOtpStore?: Map<string, OtpRecord>;
+    __emailOtpLogs?: LogItem[];
+  };
   if (!g.__emailOtpStore) g.__emailOtpStore = new Map<string, OtpRecord>();
   if (!g.__emailOtpLogs) g.__emailOtpLogs = [] as LogItem[];
   return {
@@ -70,7 +75,7 @@ export function isAdminAddress(addr: string) {
   return list.includes(a);
 }
 
-export async function parseRequestBody(req: Request): Promise<Record<string, any>> {
+export async function parseRequestBody(req: Request): Promise<Record<string, unknown>> {
   const contentType = req.headers.get("content-type") || "";
   try {
     if (contentType.includes("application/json")) {
@@ -88,10 +93,10 @@ export async function parseRequestBody(req: Request): Promise<Record<string, any
     }
     if (contentType.includes("multipart/form-data")) {
       const form = await (req as any).formData?.();
-      if (form && typeof (form as any).entries === "function") {
-        const obj: Record<string, any> = {};
-        for (const [k, v] of (form as any).entries()) {
-          obj[k] = v as any;
+      if (form && typeof form.entries === "function") {
+        const obj: Record<string, unknown> = {};
+        for (const [k, v] of form.entries()) {
+          obj[k] = v;
         }
         return obj;
       }

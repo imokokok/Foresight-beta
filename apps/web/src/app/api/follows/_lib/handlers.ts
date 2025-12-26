@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { logApiError, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
 import {
   isEventIdForeignKeyViolation,
@@ -88,9 +89,15 @@ export async function handleFollowsPost(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from("event_follows")
-      .upsert({ user_id: walletAddress, event_id: predictionId } as any, {
-        onConflict: "user_id,event_id",
-      })
+      .upsert(
+        {
+          user_id: walletAddress,
+          event_id: predictionId,
+        } as Database["public"]["Tables"]["event_follows"]["Insert"] as never,
+        {
+          onConflict: "user_id,event_id",
+        }
+      )
       .select()
       .maybeSingle();
 
@@ -184,7 +191,10 @@ export async function handleFollowsPost(req: Request) {
 
         const { data: insData, error: insError } = await supabaseAdmin
           .from("event_follows")
-          .insert({ user_id: walletAddress, event_id: predictionId } as any)
+          .insert({
+            user_id: walletAddress,
+            event_id: predictionId,
+          } as Database["public"]["Tables"]["event_follows"]["Insert"] as never)
           .select()
           .maybeSingle();
 
@@ -241,11 +251,9 @@ export async function handleFollowsPost(req: Request) {
     }
 
     return NextResponse.json({ message: "Already followed", follow: data }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { message: "Failed to process request", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message: "Failed to process request", detail }, { status: 500 });
   }
 }
 

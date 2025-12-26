@@ -17,15 +17,16 @@ export async function GET(req: NextRequest) {
       .order("created_at", { ascending: false });
     if (error) return NextResponse.json({ flags: [] }, { status: 200 });
     return NextResponse.json({ flags: data || [] }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ flags: [], message: "Failed to fetch flags" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to fetch flags";
+    return NextResponse.json({ flags: [], message }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await parseRequestBody(req as any);
-    const client = (supabaseAdmin || getClient()) as any;
+    const body = await parseRequestBody(req);
+    const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const title = String(body?.title || "");
@@ -54,20 +55,28 @@ export async function POST(req: NextRequest) {
     if (witness_id) {
       const res = await client
         .from("flags")
-        .insert({ ...payload, witness_id })
+        .insert({ ...payload, witness_id } as never)
         .select("*")
         .maybeSingle();
-      data = res.data;
+      data = res.data as Database["public"]["Tables"]["flags"]["Row"] | null;
       error = res.error;
       // 若列不存在导致失败，回退不带 witness_id 插入
       if (error) {
-        const res2 = await client.from("flags").insert(payload).select("*").maybeSingle();
-        data = res2.data;
+        const res2 = await client
+          .from("flags")
+          .insert(payload as never)
+          .select("*")
+          .maybeSingle();
+        data = res2.data as Database["public"]["Tables"]["flags"]["Row"] | null;
         error = res2.error;
       }
     } else {
-      const res = await client.from("flags").insert(payload).select("*").maybeSingle();
-      data = res.data;
+      const res = await client
+        .from("flags")
+        .insert(payload as never)
+        .select("*")
+        .maybeSingle();
+      data = res.data as Database["public"]["Tables"]["flags"]["Row"] | null;
       error = res.error;
     }
     if (error)
@@ -87,20 +96,18 @@ export async function POST(req: NextRequest) {
             owner_id: user_id,
             title,
             description,
-            deadline: String((data as any)?.deadline || ""),
+            deadline: String(data.deadline || ""),
             ts: new Date().toISOString(),
           }),
         };
-        await client.from("discussions").insert(payload);
+        await client.from("discussions").insert(payload as never);
       }
     } catch (e) {
       logApiError("POST /api/flags witness invite insert failed", e);
     }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { message: "Failed to create flag", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message: "Failed to create flag", detail }, { status: 500 });
   }
 }

@@ -28,8 +28,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true, data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     logApiError("GET /api/orderbook/order unhandled error", e);
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

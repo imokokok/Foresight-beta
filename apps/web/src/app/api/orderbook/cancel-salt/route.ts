@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { ethers } from "ethers";
 
 function getRelayerBaseUrl(): string | undefined {
@@ -89,20 +90,20 @@ export async function POST(req: NextRequest) {
     const runUpdate = async (useMk: boolean) => {
       let q = client
         .from("orders")
-        // @ts-ignore
-        .update({ status: "canceled", remaining: "0" })
+        .update({ status: "canceled", remaining: "0" } as never)
         .eq("chain_id", chainIdNum)
         .eq("verifying_contract", vc.toLowerCase())
         .eq("maker_address", maker.toLowerCase())
         .eq("maker_salt", String(salt))
         .select();
-      if (useMk && mk) q = (q as any).eq("market_key", mk);
+      if (useMk && mk) q = q.eq("market_key", mk);
       return await q;
     };
 
     let { error } = await runUpdate(true);
     if (error) {
-      const msg = String((error as any).message || "");
+      const pgError = error as PostgrestError;
+      const msg = String(pgError.message || "");
       if (mk && /market_key/i.test(msg)) {
         ({ error } = await runUpdate(false));
       }
@@ -110,12 +111,14 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Error cancelling order:", error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+      const message = error.message || "Failed to cancel order";
+      return NextResponse.json({ success: false, message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: "Order cancelled" });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Cancel Order API error:", e);
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

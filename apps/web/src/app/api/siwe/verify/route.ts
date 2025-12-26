@@ -5,10 +5,12 @@ import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   try {
-    const payload = await parseRequestBody(req as any);
+    const payload = await parseRequestBody(req);
 
-    const messageStr: string = payload?.message || "";
-    const signature: string = payload?.signature || "";
+    const messageVal = payload?.message;
+    const signatureVal = payload?.signature;
+    const messageStr = typeof messageVal === "string" ? messageVal : "";
+    const signature = typeof signatureVal === "string" ? signatureVal : "";
 
     if (!messageStr || !signature) {
       return ApiResponses.badRequest("SIWE 必填字段缺失: message 或 signature");
@@ -25,10 +27,14 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("无效的 SIWE 消息格式");
     }
 
-    const domain = (payload?.domain ||
+    const domainFromPayload = typeof payload?.domain === "string" ? payload.domain : undefined;
+    const uriFromPayload = typeof payload?.uri === "string" ? payload.uri : undefined;
+
+    const domain =
+      domainFromPayload ||
       msg.domain ||
-      (typeof window === "undefined" ? undefined : window.location.host)) as string | undefined;
-    const origin = (payload?.uri || msg.uri) as string | undefined;
+      (typeof window === "undefined" ? undefined : window.location.host);
+    const origin = uriFromPayload || msg.uri;
     const nonce = msg.nonce;
 
     if (!domain || !msg.address || !origin || !msg.version || !msg.chainId || !nonce) {
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const url = new URL((req as any).nextUrl?.href || req.url);
+      const url = new URL(req.nextUrl?.href || req.url);
       const expectedDomain = url.host;
       if (domain !== expectedDomain) {
         return ApiResponses.badRequest("SIWE domain 不匹配");
@@ -89,8 +95,9 @@ export async function POST(req: NextRequest) {
       maxAge: 0,
     });
     return res;
-  } catch (e: any) {
+  } catch (e: unknown) {
     logApiError("POST /api/siwe/verify", e);
-    return ApiResponses.internalError("服务器错误", String(e?.message || e));
+    const detail = e instanceof Error ? e.message : String(e);
+    return ApiResponses.internalError("服务器错误", detail);
   }
 }

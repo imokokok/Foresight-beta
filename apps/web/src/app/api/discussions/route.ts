@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
@@ -20,11 +21,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "查询失败", detail: error.message }, { status: 500 });
     }
     return NextResponse.json({ discussions: data || [] }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { message: "请求失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message: "请求失败", detail }, { status: 500 });
   }
 }
 
@@ -37,11 +36,15 @@ export async function POST(req: NextRequest) {
     if (!proposalId || !content.trim() || !userId.trim()) {
       return NextResponse.json({ message: "proposalId、content、userId 必填" }, { status: 400 });
     }
-    const client = (supabaseAdmin || getClient()) as any;
+    const client = supabaseAdmin || getClient();
     if (!client) return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
     const { data, error } = await client
       .from("discussions")
-      .insert({ proposal_id: proposalId, user_id: userId, content })
+      .insert({
+        proposal_id: proposalId,
+        user_id: userId,
+        content,
+      } as Database["public"]["Tables"]["discussions"]["Insert"] as never)
       .select()
       .maybeSingle();
     if (error) {
@@ -49,10 +52,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "创建失败", detail: error.message }, { status: 500 });
     }
     return NextResponse.json({ discussion: data }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { message: "请求失败", detail: String(e?.message || e) },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message: "请求失败", detail }, { status: 500 });
   }
 }

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 
+type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
+type UserProfileRow = Database["public"]["Tables"]["user_profiles"]["Row"];
+
 async function getReviewerSession() {
   const client = getClient();
   if (!client)
@@ -12,19 +15,22 @@ async function getReviewerSession() {
   if (!session || !session.user)
     return { ok: false as const, reason: "unauthorized" as const, userId: null as string | null };
   const userId = session.user.id;
-  const { data: profile } = await (client as any)
+  const wallet = (session.user.user_metadata as { wallet_address?: string } | null)?.wallet_address;
+  const { data: profile } = await client
     .from("user_profiles")
     .select("is_admin,is_reviewer")
-    .eq("wallet_address", (session.user as any).user_metadata?.wallet_address || "")
+    .eq("wallet_address", wallet || "")
     .maybeSingle();
-  const isAdmin = !!(profile as any)?.is_admin;
-  const isReviewer = !!(profile as any)?.is_reviewer;
+  const flags = (profile ?? ({} as UserProfileRow)) as Pick<
+    UserProfileRow,
+    "is_admin" | "is_reviewer"
+  >;
+  const isAdmin = !!flags.is_admin;
+  const isReviewer = !!flags.is_reviewer;
   if (!isAdmin && !isReviewer)
     return { ok: false as const, reason: "forbidden" as const, userId: null as string | null };
   return { ok: true as const, reason: "ok" as const, userId };
 }
-
-type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = await getReviewerSession();
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if ((action === "reject" || action === "needs_changes") && !reason.trim()) {
     return NextResponse.json({ message: "reason_required" }, { status: 400 });
   }
-  const { data: existing, error: fetchError } = await (client as any)
+  const { data: existing, error: fetchError } = await client
     .from("forum_threads")
     .select("*")
     .eq("id", threadId)
@@ -66,7 +72,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ message: "not_found" }, { status: 404 });
   }
   const now = new Date().toISOString();
-  let reviewStatus = String((existing as ForumThreadRow).review_status || "");
+  const existingRow = existing as ForumThreadRow;
+  let reviewStatus = String(existingRow.review_status || "");
   if (action === "approve") reviewStatus = "approved";
   if (action === "reject") reviewStatus = "rejected";
   if (action === "needs_changes") reviewStatus = "needs_changes";
@@ -74,19 +81,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     review_status: reviewStatus,
     reviewed_by: auth.userId,
     reviewed_at: now,
-    review_reason: reason || (existing as ForumThreadRow).review_reason || null,
+    review_reason: reason || existingRow.review_reason || null,
   };
   if (action === "edit_metadata" && patch && typeof patch === "object") {
     const allowedKeys = ["category", "deadline", "title_preview", "criteria_preview"];
     for (const key of allowedKeys) {
       if (key in patch) {
-        (updatePayload as any)[key] = patch[key];
+        const value = patch[key];
+        (updatePayload as Record<string, unknown>)[key] = value as unknown;
       }
     }
   }
-  const { data, error } = await (client as any)
+  const { data, error } = await client
     .from("forum_threads")
-    .update(updatePayload)
+    .update(updatePayload as never)
     .eq("id", threadId)
     .select("*")
     .maybeSingle();

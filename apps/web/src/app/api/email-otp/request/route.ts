@@ -25,8 +25,8 @@ async function sendMailSMTP(email: string, code: string) {
   const pass = process.env.SMTP_PASS || "";
   const from = process.env.SMTP_FROM || "noreply@localhost";
   if (!host || !port || !user || !pass) throw new Error("SMTP 未配置完整");
-  const nodemailer = await import("nodemailer");
-  const transporter = (nodemailer as any).createTransport({
+  const nodemailerMod = (await import("nodemailer")) as typeof import("nodemailer");
+  const transporter = nodemailerMod.createTransport({
     host,
     port,
     secure,
@@ -36,13 +36,17 @@ async function sendMailSMTP(email: string, code: string) {
   const html = `<div style="font-family:system-ui,Segoe UI,Arial">验证码：<b>${code}</b>（15分钟内有效）。如非本人操作请忽略。</div>`;
   const text = `验证码：${code}（15分钟内有效）。如非本人操作请忽略。`;
   const info = await transporter.sendMail({ from, to: email, subject, text, html });
-  return String((info as any)?.messageId || "");
+  const messageId =
+    typeof (info as { messageId?: unknown }).messageId === "string"
+      ? (info as { messageId: string }).messageId
+      : "";
+  return String(messageId || "");
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { store, logs } = getEmailOtpShared();
-    const payload = await parseRequestBody(req as any);
+    const payload = await parseRequestBody(req);
 
     const email = String(payload?.email || "")
       .trim()
@@ -106,7 +110,8 @@ export async function POST(req: NextRequest) {
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
       return NextResponse.json({ success: true, message: "验证码已发送", expiresInSec: 900 });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : String(err);
       try {
         const host = process.env.SMTP_HOST || "";
         const port = Number(process.env.SMTP_PORT || 0);
@@ -120,14 +125,14 @@ export async function POST(req: NextRequest) {
           port,
           secure,
           user: maskedUser,
-          error: String(err?.message || err),
+          error: errMessage,
         });
       } catch {}
       logs.push({
         email,
         address: walletAddress,
         status: "error",
-        error: String(err?.message || err),
+        error: errMessage,
         sentAt: Date.now(),
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
@@ -141,8 +146,9 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ success: false, message: "邮件发送失败" }, { status: 500 });
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     logApiError("POST /api/email-otp/request", e);
-    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

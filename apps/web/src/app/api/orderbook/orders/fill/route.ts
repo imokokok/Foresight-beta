@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { ethers } from "ethers";
+
+type OrdersRow = Pick<Database["public"]["Tables"]["orders"]["Row"], "id" | "remaining" | "status">;
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,13 +16,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
+    const bodyRaw = await req.json().catch(() => null);
+    if (!bodyRaw || typeof bodyRaw !== "object") {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
     const { chainId, verifyingContract, contract, marketKey, market_key, maker, salt, fillAmount } =
-      body as Record<string, any>;
+      bodyRaw as {
+        chainId?: unknown;
+        verifyingContract?: unknown;
+        contract?: unknown;
+        marketKey?: unknown;
+        market_key?: unknown;
+        maker?: unknown;
+        salt?: unknown;
+        fillAmount?: unknown;
+      };
 
     const vcRaw = (verifyingContract || contract || "").toString();
     const vc = vcRaw.trim();
@@ -57,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     const runSelect = async (useMk: boolean) => {
-      let q: any = client
+      let q = client
         .from("orders")
         .select("id, remaining, status")
         .eq("chain_id", chainIdNum)
@@ -73,8 +86,9 @@ export async function POST(req: NextRequest) {
 
     let { data, error } = await runSelect(true);
     if (error && mk) {
-      const msg = String((error as any).message || "");
-      const code = (error as any).code ? String((error as any).code) : "";
+      const pgError = error as PostgrestError;
+      const msg = String(pgError.message || "");
+      const code = pgError.code ? String(pgError.code) : "";
       if (code === "42703" || /market_key/i.test(msg)) {
         ({ data, error } = await runSelect(false));
       }
@@ -94,7 +108,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const remainingStr = String((data as any).remaining ?? "0");
+    const orderRow = data as OrdersRow;
+    const remainingStr = String(orderRow.remaining ?? "0");
     let remainingBN: bigint;
     try {
       remainingBN = BigInt(remainingStr);
@@ -109,9 +124,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          id: (data as any).id,
+          id: orderRow.id,
           remaining: "0",
-          status: (data as any).status || "filled",
+          status: orderRow.status || "filled",
         },
       });
     }
@@ -120,12 +135,13 @@ export async function POST(req: NextRequest) {
     const newStatus = newRemaining === 0n ? "filled" : "filled_partial";
 
     const runUpdate = async (useMk: boolean) => {
-      let q: any = (client.from("orders") as any)
+      let q = client
+        .from("orders")
         .update({
           remaining: newRemaining.toString(),
           status: newStatus,
-        } as any)
-        .eq("id", (data as any).id)
+        } as never)
+        .eq("id", orderRow.id)
         .select("id, remaining, status");
       if (useMk && mk) {
         q = q.eq("market_key", mk);
@@ -135,25 +151,25 @@ export async function POST(req: NextRequest) {
 
     let { data: updated, error: updateError } = await runUpdate(true);
     if (updateError && mk) {
-      const msg = String((updateError as any).message || "");
-      const code = (updateError as any).code ? String((updateError as any).code) : "";
+      const pgError = updateError as PostgrestError;
+      const msg = String(pgError.message || "");
+      const code = pgError.code ? String(pgError.code) : "";
       if (code === "42703" || /market_key/i.test(msg)) {
         ({ data: updated, error: updateError } = await runUpdate(false));
       }
     }
 
     if (updateError) {
-      return NextResponse.json(
-        { success: false, message: updateError.message || "Order update failed" },
-        { status: 500 }
-      );
+      const message = updateError.message || "Order update failed";
+      return NextResponse.json({ success: false, message }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
       data: updated,
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

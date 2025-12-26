@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import type { TypedDataField } from "ethers";
 import { ORDER_TYPES, type EIP712Order, type EIP712Domain } from "@/types/market";
 
 /**
@@ -34,9 +35,10 @@ export async function verifyOrderSignature(
 
     // 创建 domain
     const domain = createOrderDomain(chainId, normalizedContract);
-
-    // 验证签名并恢复地址
-    const recoveredAddress = ethers.verifyTypedData(domain, ORDER_TYPES as any, order, signature);
+    const orderTypesMutable: Record<string, TypedDataField[]> = {
+      Order: ORDER_TYPES.Order.map((field) => ({ ...field })),
+    };
+    const recoveredAddress = ethers.verifyTypedData(domain, orderTypesMutable, order, signature);
 
     // 检查恢复的地址是否与 maker 匹配
     const valid = recoveredAddress.toLowerCase() === normalizedMaker;
@@ -53,11 +55,11 @@ export async function verifyOrderSignature(
       valid: true,
       recoveredAddress,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Order signature verification error:", error);
     return {
       valid: false,
-      error: error.message || "Signature verification failed",
+      error: error instanceof Error ? error.message : "Signature verification failed",
     };
   }
 }

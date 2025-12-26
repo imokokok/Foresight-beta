@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 import { successResponse, ApiResponses } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
+
+type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
+type DbClient = SupabaseClient<Database>;
 
 function getRelayerBaseUrl(): string | undefined {
   const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
@@ -45,8 +50,9 @@ export async function GET(req: NextRequest) {
     let { data, error } = await run(true);
 
     if (error && marketKey) {
-      const code = (error as any).code;
-      const msg = String((error as any).message || "");
+      const pgError = error as PostgrestError;
+      const code = pgError.code;
+      const msg = String(pgError.message || "");
       if (code === "42703" || /market_key/i.test(msg)) {
         ({ data, error } = await run(false));
       }
@@ -57,8 +63,9 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: e?.message || String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
 
@@ -87,7 +94,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const client = supabaseAdmin || getClient();
+    const client: DbClient | null = supabaseAdmin || getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }
@@ -151,8 +158,8 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidSignature(signatureValidation.error || "Invalid order signature");
     }
 
-    // 检查订单是否已存在（防止重复提交）
-    const { data: existingOrder } = await (client.from("orders") as any)
+    const existingRes = await client
+      .from("orders")
       .select("id, market_key")
       .eq("chain_id", chainIdNum)
       .eq("verifying_contract", vc.toLowerCase())
@@ -160,10 +167,11 @@ export async function POST(req: NextRequest) {
       .eq("maker_salt", orderData.salt)
       .maybeSingle();
 
+    const existingOrder =
+      (existingRes.data as { id?: number; market_key?: unknown } | null) ?? null;
+
     if (existingOrder) {
-      const existingMk = (existingOrder as any).market_key
-        ? String((existingOrder as any).market_key)
-        : "";
+      const existingMk = existingOrder.market_key ? String(existingOrder.market_key) : "";
       if (mk && existingMk && existingMk !== mk) {
         return ApiResponses.conflict(
           "Salt conflict: existing order uses same salt with different marketKey"
@@ -172,11 +180,9 @@ export async function POST(req: NextRequest) {
       return ApiResponses.conflict("Order already exists with the same salt");
     }
 
-    // 转换过期时间
-    const expiryTs = orderData.expiry > 0 ? new Date(orderData.expiry * 1000) : null;
+    const expiryIso = orderData.expiry > 0 ? new Date(orderData.expiry * 1000).toISOString() : null;
 
-    // 插入订单
-    const insertRow: Record<string, any> = {
+    const insertRow: OrderInsert = {
       chain_id: chainIdNum,
       verifying_contract: vc.toLowerCase(),
       maker_address: orderData.maker.toLowerCase(),
@@ -185,24 +191,24 @@ export async function POST(req: NextRequest) {
       price: orderData.price,
       amount: orderData.amount,
       remaining: orderData.amount,
-      expiry: expiryTs,
+      expiry: expiryIso,
       maker_salt: orderData.salt,
       signature: signature,
       status: "open",
     };
     if (mk) insertRow.market_key = mk;
 
-    const tryInsert = async (row: Record<string, any>) =>
-      (client.from("orders") as any).insert(row);
+    const tryInsert = async (row: OrderInsert) => client.from("orders").insert(row as never);
     let { error: insertError } = await tryInsert(insertRow);
     if (insertError) {
-      const msg = String((insertError as any).message || "");
-      const code = String((insertError as any).code || "");
+      const pgError = insertError as PostgrestError;
+      const msg = String(pgError.message || "");
+      const code = String(pgError.code || "");
       const isDup = code === "23505" || /duplicate key/i.test(msg);
       if (isDup) return ApiResponses.conflict("Order already exists with the same salt");
       if (mk && /market_key/i.test(msg)) {
-        delete insertRow.market_key;
-        ({ error: insertError } = await tryInsert(insertRow));
+        const fallbackRow: OrderInsert = { ...insertRow, market_key: undefined };
+        ({ error: insertError } = await tryInsert(fallbackRow));
       }
     }
 
@@ -212,11 +218,12 @@ export async function POST(req: NextRequest) {
     }
 
     return successResponse({ orderId: orderData.salt }, "Order created successfully");
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Create Order API error:", e);
+    const detail = e instanceof Error ? e.message : undefined;
     return ApiResponses.internalError(
       "Failed to create order",
-      process.env.NODE_ENV === "development" ? e.message : undefined
+      process.env.NODE_ENV === "development" ? detail : undefined
     );
   }
 }

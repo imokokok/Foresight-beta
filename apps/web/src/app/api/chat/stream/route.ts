@@ -1,3 +1,4 @@
+import type { ChatMessage } from "@/lib/localChatStore";
 import { getMessagesByEvent } from "@/lib/localChatStore";
 import { logApiError } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      async function flush(messages: any[]) {
+      async function flush(messages: ChatMessage[]) {
         if (!messages.length) return;
         const data = JSON.stringify(messages);
         controller.enqueue(encoder.encode(`event: messages\n`));

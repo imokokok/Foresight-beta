@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { getClient } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
 /**
  * 全局搜索 API
@@ -75,8 +77,25 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: false }),
     ]);
 
-    const { data: predictions, error: predictionsError } = predictionsRes as any;
-    const { data: proposals, error: proposalsError } = proposalsRes as any;
+    type PredictionRow = Pick<
+      Database["public"]["Tables"]["predictions"]["Row"],
+      "id" | "title" | "description" | "category" | "status"
+    >;
+    type ProposalRow = Pick<
+      Database["public"]["Tables"]["forum_threads"]["Row"],
+      "id" | "event_id" | "title" | "content"
+    > & {
+      category?: string | null;
+    };
+
+    const { data: predictions, error: predictionsError } = predictionsRes as {
+      data: PredictionRow[] | null;
+      error: PostgrestError | null;
+    };
+    const { data: proposals, error: proposalsError } = proposalsRes as {
+      data: ProposalRow[] | null;
+      error: PostgrestError | null;
+    };
 
     if (predictionsError) {
       console.error("Search predictions error:", predictionsError);
@@ -86,7 +105,7 @@ export async function GET(request: NextRequest) {
       console.error("Search proposals error:", proposalsError);
     }
 
-    const predictionResults = (predictions || []).map((p: any) => ({
+    const predictionResults = (predictions || []).map((p) => ({
       id: p.id,
       title: p.title || "Untitled",
       description: p.description || "No description",
@@ -94,7 +113,7 @@ export async function GET(request: NextRequest) {
       type: "prediction" as const,
     }));
 
-    const proposalResults = (proposals || []).map((p: any) => ({
+    const proposalResults = (proposals || []).map((p) => ({
       id: p.id,
       title: p.title || "未命名提案",
       description: p.content || "来自 Foresight 提案广场的社区提案讨论。",
@@ -155,7 +174,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { query, filters } = await request.json();
+    const { query } = (await request.json().catch(() => ({}))) as {
+      query?: string;
+    };
 
     if (!query || query.trim().length < 2) {
       return NextResponse.json({ suggestions: [] });
@@ -168,14 +189,16 @@ export async function POST(request: NextRequest) {
 
     // 只返回标题作为建议
     const searchTerm = `%${query.trim()}%`;
-    const { data } = await supabase
+    type TitleOnly = Pick<Database["public"]["Tables"]["predictions"]["Row"], "title">;
+
+    const { data } = (await supabase
       .from("predictions")
       .select("title")
       .ilike("title", searchTerm)
       .eq("status", "active")
-      .limit(5);
+      .limit(5)) as { data: TitleOnly[] | null };
 
-    const suggestions = (data || []).map((p: any) => p.title);
+    const suggestions = (data || []).map((p) => p.title);
 
     return NextResponse.json({ suggestions });
   } catch (error) {

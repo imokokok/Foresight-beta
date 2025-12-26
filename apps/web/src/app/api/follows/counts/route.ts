@@ -66,10 +66,11 @@ export async function POST(req: Request) {
       if (Number.isFinite(eid)) counts[eid] = (counts[eid] || 0) + 1;
     }
     return NextResponse.json({ counts }, { status: 200 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     logApiError("POST /api/follows/counts", e);
-    if (e?.type === "setup") {
-      const err = e.error;
+    const wrapped = e as { type?: string; error?: { message?: string } };
+    if (wrapped?.type === "setup") {
+      const err = wrapped.error;
       return NextResponse.json(
         {
           message: "批量计数查询失败，需要修复表结构",
@@ -82,9 +83,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.e
         { status: 501 }
       );
     }
-    return NextResponse.json(
-      { message: "批量计数查询失败", detail: String(e?.error?.message || e?.message || e) },
-      { status: 500 }
-    );
+    const detail =
+      (wrapped?.error && wrapped.error.message) || (e instanceof Error ? e.message : String(e));
+    return NextResponse.json({ message: "批量计数查询失败", detail }, { status: 500 });
   }
 }
