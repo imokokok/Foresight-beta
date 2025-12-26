@@ -34,26 +34,26 @@ export function ProposalDiscussionSection({
 }: ProposalDiscussionSectionProps) {
   return (
     <section className="space-y-4">
-      <div className="rounded-[28px] overflow-hidden border border-purple-200/70 bg-gradient-to-br from-purple-50/80 via-indigo-50/80 to-white shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 text-white flex items-center justify-between">
+      <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center border border-white/30 shadow-inner shrink-0">
-              <MessageCircle className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-2xl bg-purple-50 flex items-center justify-center border border-purple-100 shrink-0">
+              <MessageCircle className="w-5 h-5 text-purple-600" />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-white truncate">提案讨论</h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/15 border border-white/25 font-medium whitespace-nowrap">
+                <h3 className="text-sm font-semibold text-slate-900 truncate">全部讨论</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-medium whitespace-nowrap text-slate-600">
                   {stats.commentsCount} 条回复
                 </span>
               </div>
-              <p className="mt-0.5 text-[11px] text-white/80 truncate">
-                围绕这个提案展开实时讨论和观点碰撞。
+              <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+                围绕这个提案展开楼层讨论与观点交换。
               </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-3">
-            <div className="text-[11px] px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-white/80 font-medium">
+            <div className="text-[11px] px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-medium">
               {account ? `你：${displayName(account)}` : "未连接钱包"}
             </div>
           </div>
@@ -66,7 +66,7 @@ export function ProposalDiscussionSection({
             </div>
             <div className="flex-1">
               {!account ? (
-                <div className="h-full flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-white/70 border border-slate-200/70">
+                <div className="h-full flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 bg-slate-50 border border-slate-200/70">
                   <span className="text-sm text-slate-700">连接钱包后即可加入这条讨论线。</span>
                   <button
                     onClick={() => connectWallet()}
@@ -80,8 +80,8 @@ export function ProposalDiscussionSection({
                   <textarea
                     value={replyText}
                     onChange={(e) => onReplyTextChange(e.target.value)}
-                    placeholder="写下你的想法，让第一条楼层更有分量……"
-                    className="w-full bg-white/90 border border-purple-100/80 rounded-2xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-300 outline-none min-h-[90px] resize-none shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
+                    placeholder="写下你的想法，让这一楼更有分量……"
+                    className="w-full bg-white border border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-purple-200 focus:border-purple-300 outline-none min-h-[90px] resize-none"
                   />
                   <div className="flex justify-between items-center">
                     <span className="hidden sm:inline text-[11px] text-slate-400">
@@ -90,7 +90,7 @@ export function ProposalDiscussionSection({
                     <button
                       onClick={onSubmitReply}
                       disabled={!replyText.trim()}
-                      className="px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-semibold hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-sm"
+                      className="px-4 py-1.5 rounded-full bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                     >
                       <Send className="w-3.5 h-3.5" />
                       发表楼层
@@ -101,7 +101,7 @@ export function ProposalDiscussionSection({
             </div>
           </div>
 
-          <div className="h-px bg-gradient-to-r from-purple-100 via-slate-200/70 to-transparent" />
+          <div className="h-px bg-slate-100" />
 
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5">
@@ -127,7 +127,7 @@ export function ProposalDiscussionSection({
             <span className="text-slate-400">共 {stats.commentsCount} 条讨论</span>
           </div>
 
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-4 pt-1">
             <CommentTree
               comments={(thread.comments || []) as CommentView[]}
               userVoteTypes={userVoteTypes}

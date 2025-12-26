@@ -69,7 +69,6 @@ export function ProposalDetailClientView({
       )}
 
       <ProposalHeaderNav onBack={onBack} onCopyLink={onCopyLink} />
-      <ProposalIntroCard />
 
       {loading ? (
         <LoadingState />
@@ -79,24 +78,10 @@ export function ProposalDetailClientView({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-8 items-start"
+          className="mt-4 space-y-6"
         >
-          <div className="space-y-6">
-            <ProposalDiscussionSection
-              thread={thread}
-              stats={stats}
-              userVoteTypes={userVoteTypes}
-              displayName={displayName}
-              vote={vote}
-              postComment={postComment}
-              account={account}
-              connectWallet={connectWallet}
-              replyText={replyText}
-              onReplyTextChange={onReplyTextChange}
-              onSubmitReply={onSubmitReply}
-            />
-          </div>
-          <aside className="space-y-6">
+          <ProposalIntroCard />
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-5 py-4 sm:px-6 sm:py-5">
             <ProposalMainArticle
               thread={thread}
               stats={stats}
@@ -104,7 +89,20 @@ export function ProposalDetailClientView({
               displayName={displayName}
               vote={vote}
             />
-          </aside>
+          </div>
+          <ProposalDiscussionSection
+            thread={thread}
+            stats={stats}
+            userVoteTypes={userVoteTypes}
+            displayName={displayName}
+            vote={vote}
+            postComment={postComment}
+            account={account}
+            connectWallet={connectWallet}
+            replyText={replyText}
+            onReplyTextChange={onReplyTextChange}
+            onSubmitReply={onSubmitReply}
+          />
         </motion.div>
       ) : null}
     </ProposalShell>

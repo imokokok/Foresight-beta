@@ -259,6 +259,30 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
               )}
             </div>
 
+            <div className="text-xs text-gray-500 leading-relaxed space-y-1">
+              <p>
+                Foresight
+                讨论区是预测市场参与者交流观点、分享策略的核心社区，你可以创建主题讨论现实世界事件，或参与现有预测的深度分析。
+              </p>
+              <p>
+                前往{" "}
+                <Link
+                  href="/trending"
+                  className="text-purple-600 hover:text-purple-700 hover:underline"
+                >
+                  热门预测
+                </Link>{" "}
+                发现可讨论的事件，或在{" "}
+                <Link
+                  href="/proposals"
+                  className="text-purple-600 hover:text-purple-700 hover:underline"
+                >
+                  提案广场
+                </Link>{" "}
+                发起新预测。
+              </p>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/forum?eventId=${prediction.id}`}

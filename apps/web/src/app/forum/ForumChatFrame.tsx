@@ -29,26 +29,28 @@ export function ForumChatFrame({
   loading,
   error,
 }: ForumChatFrameProps) {
+  const style = getCategoryStyle(activeCat);
+
   return (
     <div className="flex-1 flex flex-col">
       <header
         className={`h-16 px-6 border-b border-white/20 flex items-center justify-between bg-gradient-to-r ${
-          getCategoryStyle(activeCat).headerGradient
-        } sticky top-0 z-20 text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.15)]`}
+          style.headerGradient
+        } sticky top-0 z-20 text-white shadow-none`}
       >
         <div className="flex items-center gap-4 min-w-0">
-          <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
-            <MessageSquare className="w-5 h-5 text-white" />
+          <div className="flex-shrink-0 w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
+            <MessageSquare className="w-5 h-5 text-white drop-shadow" />
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-white truncate text-lg">
+              <h2 className="font-semibold text-white truncate text-lg tracking-tight">
                 {currentTopic?.title || "聊天室"}
               </h2>
               <Sparkles className="w-4 h-4 text-white/80" />
             </div>
             <div className="flex items-center gap-2 text-xs text-white/80">
-              <span className="flex items-center gap-1 bg-white/20 text-white px-2 py-0.5 rounded-full border border-white/30 font-medium">
+              <span className="flex items-center gap-1 bg-white/15 text-white px-2 py-0.5 rounded-full border border-white/30 font-medium">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Discussion
               </span>
@@ -59,7 +61,7 @@ export function ForumChatFrame({
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="text-xs font-medium bg-white/20 text-white px-3 py-1.5 rounded-xl border border-white/20">
+          <div className="text-xs font-medium bg-white/15 text-white px-3 py-1.5 rounded-xl border border-white/20">
             {account ? `你：${displayName(account)}` : "未连接钱包"}
           </div>
 
@@ -73,7 +75,7 @@ export function ForumChatFrame({
                 </span>
                 <Link
                   href={`/prediction/${currentTopic.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-white hover:text-emerald-100 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-white/90 hover:text-white hover:underline"
                 >
                   查看市场
                   <ArrowUpRight size={14} />
@@ -88,7 +90,7 @@ export function ForumChatFrame({
               Followers
             </span>
             <span className="text-sm font-bold text-white flex items-center gap-1">
-              <Users size={14} className={getCategoryStyle(activeCat).accentText} />
+              <Users size={14} className={style.accentText} />
               {currentTopic?.followers_count ?? 0}
             </span>
           </div>
@@ -100,7 +102,7 @@ export function ForumChatFrame({
               Category
             </span>
             <span className="text-sm font-bold text-white flex items-center gap-1">
-              <TrendingUp size={14} className={getCategoryStyle(activeCat).accentText} />
+              <TrendingUp size={14} className={style.accentText} />
               {currentTopic?.category}
             </span>
           </div>
@@ -114,11 +116,7 @@ export function ForumChatFrame({
       </header>
 
       <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
-        <div
-          className={`absolute inset-0 bg-gradient-to-br ${
-            getCategoryStyle(activeCat).chatGradient
-          } opacity-30`}
-        />
+        <div className={`absolute inset-0 bg-gradient-to-br ${style.chatGradient} opacity-30`} />
         <div className="flex-1 flex flex-col z-10 relative">
           {currentTopic?.id ? (
             <ChatPanel
