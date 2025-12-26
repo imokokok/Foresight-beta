@@ -18,11 +18,13 @@ export const OrderSchema = z.object({
   salt: asBigInt("salt").refine((v) => v > 0n),
 });
 
+const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]+$/);
+
 export const InputSchemaPlace = z.object({
   chainId: z.number().int().positive(),
   verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   order: OrderSchema,
-  signature: z.string(),
+  signature: SignatureSchema,
   marketKey: z.string().optional(),
   market_key: z.string().optional(),
   eventId: z.number().int().positive().optional(),
@@ -34,7 +36,7 @@ export const InputSchemaCancelSalt = z.object({
   verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   salt: asBigInt("salt"),
-  signature: z.string(),
+  signature: SignatureSchema,
 });
 
 function normalizeAddr(a: string) {
@@ -67,6 +69,9 @@ const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
 const clobIface = new ethers.Interface([
   "event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt)",
 ]);
+const orderFilledTopic = ethers.id(
+  "OrderFilledSigned(address,address,uint256,bool,uint256,uint256,uint256,uint256)"
+);
 
 export async function placeSignedOrder(input: z.infer<typeof InputSchemaPlace>) {
   if (!supabaseAdmin) throw new Error("Supabase not configured");
@@ -243,7 +248,11 @@ export async function getDepth(
   entries.sort((a, b) => {
     const pa = BigInt(a.price);
     const pb = BigInt(b.price);
-    return isBuy ? Number(pb - pa) : Number(pa - pb);
+    if (pa === pb) return 0;
+    if (isBuy) {
+      return pa < pb ? 1 : -1;
+    }
+    return pa < pb ? -1 : 1;
   });
   return entries.slice(0, limit);
 }
@@ -293,23 +302,142 @@ export function getOrderTypes() {
   return Types;
 }
 
-export async function ingestTrade(chainId: number, txHash: string) {
+export async function ingestTrade(chainId: number, txHash: string, blockTimestamp?: string) {
   if (!supabaseAdmin) throw new Error("Supabase not configured");
 
   const receipt = await rpcProvider.getTransactionReceipt(txHash);
   if (!receipt) throw new Error("Transaction not found");
 
-  const block = await rpcProvider.getBlock(receipt.blockNumber);
-  if (!block) throw new Error("Block not found for trade tx");
-
-  const blockTsIso = new Date(Number(block.timestamp) * 1000).toISOString();
+  let blockTsIso = blockTimestamp;
+  if (!blockTsIso) {
+    const block = await rpcProvider.getBlock(receipt.blockNumber);
+    if (!block) throw new Error("Block not found for trade tx");
+    const ts = (block as any).timestamp;
+    const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
+    blockTsIso = new Date(tsNum * 1000).toISOString();
+  }
   const ingested: any[] = [];
 
   for (let i = 0; i < receipt.logs.length; i++) {
     const log = receipt.logs[i] as any;
+    let parsed;
     try {
-      const parsed = clobIface.parseLog(log);
-      if (!parsed || parsed.name !== "OrderFilledSigned") continue;
+      parsed = clobIface.parseLog(log);
+    } catch {
+      continue;
+    }
+    if (!parsed || parsed.name !== "OrderFilledSigned") continue;
+
+    const maker = normalizeAddr(String((parsed.args as any).maker));
+    const taker = normalizeAddr(String((parsed.args as any).taker));
+    const outcomeIndex = Number((parsed.args as any).outcomeIndex);
+    const isBuy = Boolean((parsed.args as any).isBuy);
+    const price = BigInt((parsed.args as any).price).toString();
+    const amount = BigInt((parsed.args as any).amount).toString();
+    const fee = BigInt((parsed.args as any).fee).toString();
+    const salt = BigInt((parsed.args as any).salt).toString();
+
+    const logIndexRaw =
+      typeof log.logIndex === "number"
+        ? log.logIndex
+        : typeof log.index === "number"
+          ? log.index
+          : i;
+    const logIndex = Number.isFinite(logIndexRaw) ? Number(logIndexRaw) : i;
+
+    try {
+      const { data, error } = await (supabaseAdmin as any).rpc("ingest_trade_event", {
+        p_network_id: chainId,
+        p_market_address: normalizeAddr(log.address),
+        p_outcome_index: outcomeIndex,
+        p_price: price,
+        p_amount: amount,
+        p_taker_address: taker,
+        p_maker_address: maker,
+        p_is_buy: isBuy,
+        p_tx_hash: normalizeAddr(txHash),
+        p_log_index: logIndex,
+        p_block_number: BigInt(receipt.blockNumber).toString(),
+        p_block_timestamp: blockTsIso,
+        p_fee: fee,
+        p_salt: salt,
+      });
+      if (error) {
+        console.warn(
+          "[ingestTrade] supabase error",
+          String(error.message || String(error)),
+          chainId,
+          txHash,
+          logIndex
+        );
+        continue;
+      }
+      ingested.push({
+        logIndex,
+        maker,
+        taker,
+        outcomeIndex,
+        isBuy,
+        price,
+        amount,
+        fee,
+        salt,
+        result: data,
+      });
+    } catch (e: any) {
+      console.warn("[ingestTrade] rpc error", String(e?.message || e), chainId, txHash, logIndex);
+      continue;
+    }
+  }
+
+  if (ingested.length === 0) {
+    throw new Error("No OrderFilledSigned events found in transaction");
+  }
+
+  return { txHash, blockTimestamp: blockTsIso, ingestedCount: ingested.length, ingested };
+}
+
+export async function ingestTradesByLogs(
+  chainId: number,
+  fromBlock: number,
+  toBlock: number,
+  maxConcurrent: number
+) {
+  if (!supabaseAdmin) throw new Error("Supabase not configured");
+
+  const maxAttempts = Math.max(1, Number(process.env.RELAYER_INGEST_RETRY_ATTEMPTS || "3"));
+  const baseDelayMs = Math.max(50, Number(process.env.RELAYER_INGEST_RETRY_DELAY_MS || "200"));
+
+  const logs = await rpcProvider.getLogs({
+    fromBlock,
+    toBlock,
+    topics: [orderFilledTopic],
+  });
+
+  if (logs.length === 0) {
+    return { fromBlock, toBlock, ingestedCount: 0, ingested: [] as any[] };
+  }
+
+  const block = await rpcProvider.getBlock(fromBlock);
+  if (!block) throw new Error("Block not found for trade logs");
+  const ts = (block as any).timestamp;
+  const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
+  const blockTsIso = new Date(tsNum * 1000).toISOString();
+
+  const ingested: any[] = [];
+  const jobs: Promise<void>[] = [];
+  const limit = Math.max(1, maxConcurrent);
+
+  for (let i = 0; i < logs.length; i++) {
+    const log = logs[i] as any;
+    const job = (async () => {
+      let parsed;
+      try {
+        parsed = clobIface.parseLog(log);
+      } catch {
+        return;
+      }
+      if (!parsed || parsed.name !== "OrderFilledSigned") return;
 
       const maker = normalizeAddr(String((parsed.args as any).maker));
       const taker = normalizeAddr(String((parsed.args as any).taker));
@@ -328,35 +456,82 @@ export async function ingestTrade(chainId: number, txHash: string) {
             : i;
       const logIndex = Number.isFinite(logIndexRaw) ? Number(logIndexRaw) : i;
 
-      // Idempotent ingest + maker order remaining update happens inside SQL (ingest_trade_event)
-      const { data, error } = await (supabaseAdmin as any).rpc("ingest_trade_event", {
-        p_network_id: chainId,
-        p_market_address: normalizeAddr(log.address),
-        p_outcome_index: outcomeIndex,
-        p_price: price,
-        p_amount: amount,
-        p_taker_address: taker,
-        p_maker_address: maker,
-        p_is_buy: isBuy,
-        p_tx_hash: normalizeAddr(txHash),
-        p_log_index: logIndex,
-        p_block_number: BigInt(receipt.blockNumber).toString(),
-        p_block_timestamp: blockTsIso,
-        p_fee: fee,
-        p_salt: salt,
-      });
-      if (error) throw new Error(error.message || String(error));
-      ingested.push({ logIndex, maker, taker, outcomeIndex, isBuy, price, amount, fee, salt, result: data });
-    } catch {
-      continue;
+      const txHash = String(log.transactionHash || "");
+
+      let attempt = 0;
+      let done = false;
+      while (!done && attempt < maxAttempts) {
+        attempt += 1;
+        try {
+          const { data, error } = await (supabaseAdmin as any).rpc("ingest_trade_event", {
+            p_network_id: chainId,
+            p_market_address: normalizeAddr(log.address),
+            p_outcome_index: outcomeIndex,
+            p_price: price,
+            p_amount: amount,
+            p_taker_address: taker,
+            p_maker_address: maker,
+            p_is_buy: isBuy,
+            p_tx_hash: normalizeAddr(txHash),
+            p_log_index: logIndex,
+            p_block_number: BigInt(log.blockNumber).toString(),
+            p_block_timestamp: blockTsIso,
+            p_fee: fee,
+            p_salt: salt,
+          });
+          if (error) {
+            console.warn(
+              "[ingestTradesByLogs] supabase error",
+              String(error.message || String(error)),
+              chainId,
+              txHash,
+              logIndex,
+              "attempt",
+              attempt
+            );
+          } else {
+            ingested.push({
+              logIndex,
+              maker,
+              taker,
+              outcomeIndex,
+              isBuy,
+              price,
+              amount,
+              fee,
+              salt,
+              result: data,
+            });
+            done = true;
+          }
+        } catch (e: any) {
+          console.warn(
+            "[ingestTradesByLogs] rpc error",
+            String(e?.message || e),
+            chainId,
+            txHash,
+            logIndex,
+            "attempt",
+            attempt
+          );
+        }
+        if (!done && attempt < maxAttempts) {
+          const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 5000);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    })();
+    jobs.push(job);
+    if (jobs.length >= limit) {
+      await Promise.all(jobs);
+      jobs.length = 0;
     }
   }
-
-  if (ingested.length === 0) {
-    throw new Error("No OrderFilledSigned events found in transaction");
+  if (jobs.length > 0) {
+    await Promise.all(jobs);
   }
 
-  return { txHash, blockTimestamp: blockTsIso, ingestedCount: ingested.length, ingested };
+  return { fromBlock, toBlock, ingestedCount: ingested.length, ingested };
 }
 
 export async function getCandles(

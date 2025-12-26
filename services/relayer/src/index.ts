@@ -68,12 +68,22 @@ import {
   getQueue,
   getOrderTypes,
   ingestTrade,
+  ingestTradesByLogs,
   getCandles,
 } from "./orderbook.js";
 
 export const app = express();
-app.use(cors());
-app.use(express.json());
+const allowedOriginsRaw = process.env.RELAYER_CORS_ORIGINS || "";
+const allowedOrigins = allowedOriginsRaw
+  .split(",")
+  .map((v) => v.trim())
+  .filter((v) => v.length > 0);
+app.use(
+  cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
 
 const PORT = RELAYER_PORT;
 
@@ -268,9 +278,23 @@ async function startAutoIngestLoop() {
     return;
   }
 
+  let chainId: number;
+  try {
+    const net = await provider.getNetwork();
+    chainId = Number(net.chainId);
+  } catch (e: any) {
+    console.warn("[auto-ingest] failed to get network:", String(e?.message || e));
+    return;
+  }
+
   let last = Number(process.env.RELAYER_AUTO_INGEST_FROM_BLOCK || "0") || 0;
   const confirmations = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_CONFIRMATIONS || "1"));
   const pollMs = Math.max(2000, Number(process.env.RELAYER_AUTO_INGEST_POLL_MS || "5000"));
+  const maxConcurrent = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_CONCURRENCY || "3"));
+  const blockConcurrency = Math.max(
+    1,
+    Number(process.env.RELAYER_AUTO_INGEST_BLOCK_CONCURRENCY || "4")
+  );
 
   const loop = async () => {
     try {
@@ -279,25 +303,55 @@ async function startAutoIngestLoop() {
       if (last === 0) last = target;
       if (target <= last) return;
 
-      // Small step to avoid heavy RPC
       const maxStep = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_MAX_STEP || "20"));
       const to = Math.min(target, last + maxStep);
 
-      for (let b = last + 1; b <= to; b++) {
-        const block = await provider!.getBlock(b, true);
-        if (!block || !Array.isArray((block as any).transactions)) continue;
-        for (const tx of (block as any).transactions as any[]) {
-          const hash = String(tx?.hash || "");
-          if (!hash) continue;
-          // ingestTrade will scan receipt logs for OrderFilledSigned and upsert to supabase
-          try {
-            await ingestTrade(Number((await provider!.getNetwork()).chainId), hash);
-          } catch {
-            // ignore tx without events or transient errors
-          }
+      const fromBlock = last + 1;
+      if (fromBlock > to) return;
+
+      const blocks: number[] = [];
+      for (let b = fromBlock; b <= to; b++) {
+        blocks.push(b);
+      }
+
+      const startTime = Date.now();
+      let totalIngested = 0;
+      let index = 0;
+      while (index < blocks.length) {
+        const slice = blocks.slice(index, index + blockConcurrency);
+        const results = await Promise.all(
+          slice.map(async (b) => {
+            try {
+              const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
+              return { block: b, ingested: r.ingestedCount || 0 };
+            } catch (e: any) {
+              console.warn(
+                "[auto-ingest] ingestTradesByLogs error:",
+                String(e?.message || e),
+                chainId,
+                b
+              );
+              return { block: b, ingested: 0 };
+            }
+          })
+        );
+        for (const r of results) {
+          totalIngested += r.ingested;
         }
+        index += blockConcurrency;
       }
       last = to;
+      const duration = Date.now() - startTime;
+      console.log(
+        "[auto-ingest] window",
+        fromBlock,
+        "to",
+        to,
+        "events",
+        totalIngested,
+        "durationMs",
+        duration
+      );
     } catch (e: any) {
       console.warn("[auto-ingest] loop error:", String(e?.message || e));
     }
