@@ -126,7 +126,7 @@ export default function Sidebar() {
     <>
       <div className="lg:hidden fixed top-3 left-3 z-50">
         <button
-          className="px-3 py-2 rounded-xl bg-white/80 text-black border border-gray-200 shadow-sm"
+          className="px-3 py-2 rounded-xl bg-white/80 text-slate-700 border border-gray-200 shadow-sm"
           onClick={() => setMobileOpen((v) => !v)}
           aria-label={tCommon("menu")}
           aria-expanded={mobileOpen}
@@ -193,8 +193,8 @@ export default function Sidebar() {
                     aria-current={isActive(it.href) ? "page" : undefined}
                     className={`group w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 relative overflow-hidden ${
                       isActive(it.href)
-                        ? "bg-white text-gray-900 shadow-md shadow-gray-100/50 border border-gray-100"
-                        : "hover:bg-white/60 text-gray-500 hover:text-gray-900"
+                        ? "bg-white text-slate-800 shadow-md shadow-purple-100/60 border border-purple-50"
+                        : "hover:bg-white/60 text-gray-500 hover:text-slate-800"
                     }`}
                   >
                     {isActive(it.href) && (
@@ -255,12 +255,12 @@ export default function Sidebar() {
               </div>
             ) : (
               <button
-                className="w-full py-3.5 rounded-2xl bg-gray-900 text-white font-bold shadow-lg shadow-gray-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 font-bold border border-purple-200 shadow-md shadow-purple-200/80 hover:from-purple-400 hover:to-pink-400 hover:text-white hover:shadow-lg hover:shadow-purple-300/90 hover:scale-[1.02] active:scale-[0.98] transition-all relative overflow-hidden group"
                 onClick={() => setWalletModalOpen(true)}
                 aria-label={tAuth("connectWallet")}
               >
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
                 <span className="relative z-10">{tAuth("connectWallet")}</span>
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r from-purple-500/20 to-pink-500/20" />
               </button>
             )}
           </div>

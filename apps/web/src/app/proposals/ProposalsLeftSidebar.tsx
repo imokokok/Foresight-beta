@@ -79,7 +79,7 @@ export default function ProposalsLeftSidebar({
             if (!account) connectWallet();
             else setCreateModalOpen(true);
           }}
-          className="w-full py-3 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-lg shadow-purple-500/30 hover:bg-purple-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
+          className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold border border-purple-200 shadow-md shadow-purple-200/80 hover:from-purple-400 hover:to-pink-400 hover:text-white hover:shadow-lg hover:shadow-purple-300/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
         >
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
           New Proposal

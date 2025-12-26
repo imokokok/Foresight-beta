@@ -3,7 +3,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { useForumList } from "./useForumList";
 
-export function useForumData(initialEventId?: number | null) {
+export function useForumData() {
   const { account, formatAddress } = useWallet();
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
 
@@ -31,7 +31,7 @@ export function useForumData(initialEventId?: number | null) {
     setSelectedTopicId,
     currentTopic,
     activeCat,
-  } = useForumList(initialEventId);
+  } = useForumList();
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 

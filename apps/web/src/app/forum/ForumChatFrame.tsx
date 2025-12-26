@@ -1,13 +1,5 @@
 import React from "react";
-import Link from "next/link";
-import {
-  MessageSquare,
-  Sparkles,
-  Users,
-  TrendingUp,
-  MoreHorizontal,
-  ArrowUpRight,
-} from "lucide-react";
+import { MessageSquare, Sparkles, Users, TrendingUp, MoreHorizontal } from "lucide-react";
 import ChatPanel from "@/components/ChatPanel";
 import { getCategoryStyle } from "./forumConfig";
 import type { PredictionItem } from "./useForumList";
@@ -64,24 +56,6 @@ export function ForumChatFrame({
           </div>
 
           <div className="w-px h-8 bg-white/30" />
-
-          {currentTopic?.id && (
-            <>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
-                  关联预测
-                </span>
-                <Link
-                  href={`/prediction/${currentTopic.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-white hover:text-emerald-100 hover:underline"
-                >
-                  查看市场
-                  <ArrowUpRight size={14} />
-                </Link>
-              </div>
-              <div className="w-px h-8 bg-white/30" />
-            </>
-          )}
 
           <div className="flex flex-col items-end">
             <span className="text-[10px] uppercase tracking-wider text-white/70 font-bold">
