@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCategories } from "@/hooks/useQueries";
+import { useTranslations } from "@/lib/i18n";
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export default function CreateProposalModal({
     deadline: "",
   });
   const { data: categoriesData } = useCategories();
+  const tProposals = useTranslations("proposals");
 
   const categoryNames = React.useMemo(() => {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
@@ -115,10 +117,10 @@ export default function CreateProposalModal({
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-purple-700 tracking-tight">
-                    New Proposal
+                    {tProposals("create.title")}
                   </h2>
                   <p className="text-sm font-medium text-gray-400">
-                    Share your ideas with the community
+                    {tProposals("create.subtitle")}
                   </p>
                 </div>
               </div>
@@ -133,9 +135,9 @@ export default function CreateProposalModal({
             {/* Content Type Tabs */}
             <div className="flex gap-3 mb-8 relative z-10">
               {[
-                { id: "post", label: "Post", icon: FileText },
-                { id: "image", label: "Media", icon: ImageIcon },
-                { id: "link", label: "Link", icon: LinkIcon },
+                { id: "post", label: tProposals("create.tabPost"), icon: FileText },
+                { id: "image", label: tProposals("create.tabImage"), icon: ImageIcon },
+                { id: "link", label: tProposals("create.tabLink"), icon: LinkIcon },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -158,7 +160,7 @@ export default function CreateProposalModal({
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="What's on your mind?"
+                  placeholder={tProposals("create.titlePlaceholder")}
                   className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-lg font-bold text-gray-800 placeholder:text-gray-300 transition-all shadow-sm"
                   maxLength={100}
                 />
@@ -170,10 +172,10 @@ export default function CreateProposalModal({
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                   placeholder={
                     activeTab === "post"
-                      ? "Elaborate on your proposal..."
+                      ? tProposals("create.contentPlaceholderPost")
                       : activeTab === "link"
-                        ? "Paste URL here..."
-                        : "Add a caption..."
+                        ? tProposals("create.contentPlaceholderLink")
+                        : tProposals("create.contentPlaceholderImage")
                   }
                   rows={6}
                   className="w-full px-6 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-purple-300 focus:ring-4 focus:ring-purple-100/50 outline-none text-base font-medium text-gray-700 placeholder:text-gray-300 resize-none transition-all shadow-sm"
@@ -182,7 +184,7 @@ export default function CreateProposalModal({
 
               <div className="space-y-3">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
-                  Select Category
+                  {tProposals("create.categoryLabel")}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {categoryNames.map((cat) => (
@@ -208,7 +210,7 @@ export default function CreateProposalModal({
                 onClick={onClose}
                 className="px-6 py-3 rounded-xl text-sm font-bold text-gray-500 hover:bg-gray-100 transition-colors"
               >
-                Cancel
+                {tProposals("create.cancel")}
               </button>
               <button
                 onClick={handleSubmit}
@@ -220,7 +222,7 @@ export default function CreateProposalModal({
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                Post Proposal
+                {loading ? tProposals("create.submitting") : tProposals("create.submit")}
               </button>
             </div>
           </motion.div>

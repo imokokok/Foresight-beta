@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import type { Database } from "@/lib/database.types";
+import { useTranslations } from "@/lib/i18n";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -20,6 +21,8 @@ export default function ReviewPage() {
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState("");
   const router = useRouter();
+  const tCommon = useTranslations("common");
+  const tProposals = useTranslations("proposals");
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -27,7 +30,7 @@ export default function ReviewPage() {
     try {
       const res = await fetch("/api/review/proposals?status=pending_review", { cache: "no-store" });
       if (!res.ok) {
-        setError("加载失败，可能没有权限访问");
+        setError(tProposals("review.loadFailed"));
         setItems([]);
         return;
       }
@@ -47,7 +50,7 @@ export default function ReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, [selectedId, tProposals]);
 
   useEffect(() => {
     loadItems();
@@ -58,7 +61,7 @@ export default function ReviewPage() {
   const submitAction = async (action: "approve" | "reject" | "needs_changes") => {
     if (!selected) return;
     if ((action === "reject" || action === "needs_changes") && !reason.trim()) {
-      alert("请填写原因");
+      alert(tProposals("review.alertReasonRequired"));
       return;
     }
     setSubmitting(true);
@@ -69,13 +72,13 @@ export default function ReviewPage() {
         body: JSON.stringify({ action, reason }),
       });
       if (!res.ok) {
-        alert("提交失败");
+        alert(tProposals("review.alertSubmitFailed"));
         return;
       }
       setReason("");
       await loadItems();
     } catch {
-      alert("提交失败");
+      alert(tProposals("review.alertSubmitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -86,14 +89,14 @@ export default function ReviewPage() {
       <div className="max-w-6xl mx-auto flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">提案审核工作台</h1>
-            <p className="text-sm text-slate-500 mt-1">只对具有审核权限的账户开放</p>
+            <h1 className="text-2xl font-bold text-slate-900">{tProposals("review.title")}</h1>
+            <p className="text-sm text-slate-500 mt-1">{tProposals("review.subtitle")}</p>
           </div>
           <button
             onClick={() => router.push("/proposals")}
             className="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
           >
-            返回提案广场
+            {tProposals("review.backToProposals")}
           </button>
         </div>
 
@@ -102,26 +105,28 @@ export default function ReviewPage() {
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-500" />
-                <span className="text-sm font-semibold text-slate-800">待审核提案</span>
+                <span className="text-sm font-semibold text-slate-800">
+                  {tProposals("review.pendingListTitle")}
+                </span>
               </div>
               <button
                 onClick={loadItems}
                 disabled={loading}
                 className="text-xs px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
               >
-                刷新
+                {tCommon("refresh")}
               </button>
             </div>
             <div className="flex-1 overflow-auto">
               {loading ? (
-                <div className="p-6 text-sm text-slate-500">正在加载提案...</div>
+                <div className="p-6 text-sm text-slate-500">{tProposals("review.loading")}</div>
               ) : error ? (
                 <div className="p-6 flex items-center gap-2 text-sm text-rose-500">
                   <AlertCircle className="w-4 h-4" />
                   <span>{error}</span>
                 </div>
               ) : items.length === 0 ? (
-                <div className="p-6 text-sm text-slate-500">当前没有待审核的提案</div>
+                <div className="p-6 text-sm text-slate-500">{tProposals("review.empty")}</div>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {items.map((item) => (
@@ -135,15 +140,15 @@ export default function ReviewPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="text-slate-900 font-semibold truncate">
-                            {item.title || "未命名提案"}
+                            {item.title || tProposals("review.untitled")}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
-                            {item.content || "无描述"}
+                            {item.content || tProposals("review.noDescription")}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <span className="text-[10px] font-semibold text-slate-400">
-                            {item.category || "未分类"}
+                            {item.category || tProposals("review.uncategorized")}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {new Date(item.created_at).toLocaleString()}
@@ -159,7 +164,9 @@ export default function ReviewPage() {
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-800">提案详情与操作</span>
+              <span className="text-sm font-semibold text-slate-800">
+                {tProposals("review.detailTitle")}
+              </span>
               {selected && (
                 <a
                   href={selected.proposalLink}
@@ -167,41 +174,51 @@ export default function ReviewPage() {
                   rel="noreferrer"
                   className="text-xs text-purple-600 hover:text-purple-700"
                 >
-                  在提案页打开
+                  {tProposals("review.openProposalPage")}
                 </a>
               )}
             </div>
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {!selected ? (
-                <div className="text-sm text-slate-500">请选择左侧列表中的一个提案</div>
+                <div className="text-sm text-slate-500">{tProposals("review.selectPrompt")}</div>
               ) : (
                 <>
                   <div>
-                    <div className="text-xs font-semibold text-slate-400 mb-1">标题</div>
+                    <div className="text-xs font-semibold text-slate-400 mb-1">
+                      {tProposals("review.fieldTitle")}
+                    </div>
                     <div className="text-lg font-bold text-slate-900">{selected.title}</div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-400 mb-1">正文</div>
+                    <div className="text-xs font-semibold text-slate-400 mb-1">
+                      {tProposals("review.fieldBody")}
+                    </div>
                     <div className="text-sm text-slate-700 whitespace-pre-wrap">
-                      {selected.content || "无正文"}
+                      {selected.content || tProposals("review.noBody")}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 text-xs text-slate-600">
                     <div>
-                      <div className="font-semibold text-slate-400 mb-1">发起人</div>
+                      <div className="font-semibold text-slate-400 mb-1">
+                        {tProposals("review.fieldAuthor")}
+                      </div>
                       <div>{selected.user_id}</div>
                     </div>
                     <div>
-                      <div className="font-semibold text-slate-400 mb-1">当前状态</div>
+                      <div className="font-semibold text-slate-400 mb-1">
+                        {tProposals("review.fieldStatus")}
+                      </div>
                       <div>{selected.review_status || "pending_review"}</div>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-400 mb-1">审核备注</div>
+                    <div className="text-xs font-semibold text-slate-400 mb-1">
+                      {tProposals("review.fieldReviewNote")}
+                    </div>
                     <textarea
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="填写拒绝或需要修改时的原因，方便作者理解"
+                      placeholder={tProposals("review.reviewReasonPlaceholder")}
                       rows={3}
                       className="w-full text-sm rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     />
@@ -216,7 +233,7 @@ export default function ReviewPage() {
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                通过
+                {tProposals("review.actionApprove")}
               </button>
               <button
                 disabled={!selected || submitting}
@@ -224,7 +241,7 @@ export default function ReviewPage() {
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50"
               >
                 <AlertCircle className="w-4 h-4" />
-                需要修改
+                {tProposals("review.actionNeedsChanges")}
               </button>
               <button
                 disabled={!selected || submitting}
@@ -232,10 +249,10 @@ export default function ReviewPage() {
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
               >
                 <XCircle className="w-4 h-4" />
-                拒绝
+                {tProposals("review.actionReject")}
               </button>
               <div className="ml-auto text-[11px] text-slate-400">
-                提示: 只有通过的提案才会参与自动生成预测市场
+                {tProposals("review.hintAutoMarket")}
               </div>
             </div>
           </div>

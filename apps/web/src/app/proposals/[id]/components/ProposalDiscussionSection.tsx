@@ -2,6 +2,7 @@
 
 import React from "react";
 import { MessageCircle } from "lucide-react";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 import type { CommentView, ThreadView } from "../useProposalDetail";
 import { CommentTree } from "./CommentTree";
 import { ChatInput } from "./chat/ChatInput";
@@ -33,6 +34,8 @@ export function ProposalDiscussionSection({
   onReplyTextChange,
   onSubmitReply,
 }: ProposalDiscussionSectionProps) {
+  const tProposals = useTranslations("proposals");
+
   return (
     <section className="flex flex-col h-full">
       <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex items-start justify-between gap-4">
@@ -43,10 +46,12 @@ export function ProposalDiscussionSection({
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-900 text-white font-semibold">
-                提案聊天室
+                {tProposals("discussion.badge")}
               </span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 font-medium whitespace-nowrap text-slate-600">
-                {stats.commentsCount} 条回复
+                {formatTranslation(tProposals("discussion.badgeComments"), {
+                  count: stats.commentsCount,
+                })}
               </span>
             </div>
             <h2 className="text-sm sm:text-base font-semibold text-slate-900 leading-snug line-clamp-2">
@@ -61,7 +66,11 @@ export function ProposalDiscussionSection({
         </div>
         <div className="hidden sm:flex items-center gap-3">
           <div className="text-[11px] px-3 py-1.5 rounded-full bg-slate-100/80 border border-slate-200 text-slate-500 font-medium">
-            {account ? `你：${displayName(account)}` : "未连接钱包"}
+            {account
+              ? formatTranslation(tProposals("discussion.currentUser"), {
+                  name: displayName(account),
+                })
+              : tProposals("discussion.walletNotConnected")}
           </div>
         </div>
       </div>
@@ -73,22 +82,26 @@ export function ProposalDiscussionSection({
               type="button"
               className="px-2 py-1 rounded-full bg-slate-900 text-white font-semibold"
             >
-              按时间
+              {tProposals("discussion.filterByTime")}
             </button>
             <button
               type="button"
               className="px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             >
-              按热度
+              {tProposals("discussion.filterByHot")}
             </button>
             <button
               type="button"
               className="px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100"
             >
-              只看楼主
+              {tProposals("discussion.filterOnlyAuthor")}
             </button>
           </div>
-          <span className="text-slate-400">共 {stats.commentsCount} 条讨论</span>
+          <span className="text-slate-400">
+            {formatTranslation(tProposals("discussion.summary"), {
+              count: stats.commentsCount,
+            })}
+          </span>
         </div>
 
         <div className="space-y-4 pt-1 flex-1 overflow-y-auto">
@@ -110,7 +123,7 @@ export function ProposalDiscussionSection({
           onSubmit={onSubmitReply}
           isConnected={!!account}
           onConnect={connectWallet}
-          placeholder="写下你的观点，和大家一起把这个提案聊透……"
+          placeholder={tProposals("discussion.inputPlaceholder")}
         />
       </div>
     </section>

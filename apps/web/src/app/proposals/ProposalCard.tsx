@@ -1,7 +1,7 @@
 import React from "react";
 import { MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 import type { ProposalItem } from "./proposalsListUtils";
 
@@ -36,26 +36,27 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
+
   let timeAgo: string;
   if (diffMinutes < 1) {
-    timeAgo = "刚刚";
+    timeAgo = tProposals("card.timeJustNow");
   } else if (diffMinutes < 60) {
-    timeAgo = `${diffMinutes} 分钟前`;
+    timeAgo = formatTranslation(tProposals("card.timeMinutesAgo"), { count: diffMinutes });
   } else if (diffHours < 24) {
-    timeAgo = `${diffHours} 小时前`;
+    timeAgo = formatTranslation(tProposals("card.timeHoursAgo"), { count: diffHours });
   } else if (diffDays < 7) {
-    timeAgo = `${diffDays} 天前`;
+    timeAgo = formatTranslation(tProposals("card.timeDaysAgo"), { count: diffDays });
   } else {
     timeAgo = createdAt.toLocaleDateString();
   }
   const statusRaw = String(proposal.review_status || "").trim();
-  let statusLabel = "待审核";
+  let statusLabel = tProposals("card.statusPending");
   let statusClass = "bg-amber-50 text-amber-600 border border-amber-200";
   if (statusRaw === "approved") {
-    statusLabel = "已通过";
+    statusLabel = tProposals("card.statusApproved");
     statusClass = "bg-emerald-50 text-emerald-600 border border-emerald-200";
   } else if (statusRaw === "rejected") {
-    statusLabel = "被拒绝";
+    statusLabel = tProposals("card.statusRejected");
     statusClass = "bg-rose-50 text-rose-600 border border-rose-200";
   }
 
@@ -84,7 +85,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-600 text-[10px] font-bold text-white tracking-wider">
               <span className="w-1 h-1 rounded-full bg-white/70" />
-              提案
+              {tProposals("card.badge")}
             </span>
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cat.bg} ${cat.color} ${cat.border}`}
@@ -101,7 +102,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
             {isHot && (
               <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 text-[10px] font-bold">
                 <FlameIcon className="w-3 h-3" />
-                热门
+                {tProposals("card.hot")}
               </div>
             )}
           </div>
@@ -119,7 +120,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] font-bold text-slate-400 tracking-wider">
-                提案发起人
+                {tProposals("card.authorLabel")}
               </span>
               <span className="text-[11px] font-semibold text-slate-800 truncate">
                 {authorLabel}
@@ -133,7 +134,11 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold hover:bg-slate-50 px-2 py-1 rounded-lg transition-colors">
               <MessageCircle className="w-3.5 h-3.5" />
-              <span>{proposal.comments?.length || 0} 条讨论</span>
+              <span>
+                {formatTranslation(tProposals("card.commentCount"), {
+                  count: proposal.comments?.length || 0,
+                })}
+              </span>
             </div>
 
             <button
@@ -142,7 +147,9 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
               className="flex items-center gap-1.5 text-gray-400 text-[11px] font-bold hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors group/share"
             >
               <Share2 className="w-3.5 h-3.5 group-hover/share:text-purple-500" />
-              <span className="group-hover/share:text-purple-500">分享</span>
+              <span className="group-hover/share:text-purple-500">
+                {tProposals("share.copyLinkSuccessTitle")}
+              </span>
             </button>
 
             <div className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 text-[11px] font-bold hover:bg-gray-50 transition-colors">

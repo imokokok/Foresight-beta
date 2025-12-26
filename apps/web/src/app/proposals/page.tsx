@@ -7,13 +7,7 @@ import { useProposalsList } from "./useProposalsList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-const INSPIRATIONS = [
-  "Will AI achieve AGI by 2026?",
-  "Will humans land on Mars before 2030?",
-  "Is Bitcoin hitting $100k this year?",
-  "Who wins the next World Cup?",
-  "Will Apple release a folding iPhone?",
-];
+const INSPIRATIONS_COUNT = 5;
 
 function buildProposalsJsonLd() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
@@ -56,14 +50,14 @@ export default function ProposalsPage() {
   const router = useRouter();
   const listState = useProposalsList(account, connectWallet);
 
-  const [inspiration, setInspiration] = useState(INSPIRATIONS[0]);
+  const [inspirationIndex, setInspirationIndex] = useState(0);
   const [isRolling, setIsRolling] = useState(false);
 
   const rollInspiration = () => {
     setIsRolling(true);
     let count = 0;
     const interval = setInterval(() => {
-      setInspiration(INSPIRATIONS[Math.floor(Math.random() * INSPIRATIONS.length)]);
+      setInspirationIndex(Math.floor(Math.random() * INSPIRATIONS_COUNT));
       count += 1;
       if (count > 10) {
         clearInterval(interval);
@@ -82,7 +76,7 @@ export default function ProposalsPage() {
       connectWallet={connectWallet}
       isCreateModalOpen={isCreateModalOpen}
       setCreateModalOpen={setCreateModalOpen}
-      inspiration={inspiration}
+      inspiration={inspirationIndex}
       isRolling={isRolling}
       rollInspiration={rollInspiration}
       jsonLd={jsonLd}

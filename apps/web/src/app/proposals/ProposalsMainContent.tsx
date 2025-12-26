@@ -1,5 +1,6 @@
 import React from "react";
 import { Search, Activity, Plus } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import ProposalsList from "./ProposalsList";
 import type { ProposalItem, CategoryOption } from "./proposalsListUtils";
 
@@ -30,10 +31,12 @@ export default function ProposalsMainContent({
   isLoading,
   router,
 }: ProposalsMainContentProps) {
+  const tProposals = useTranslations("proposals");
+
   return (
     <div className="flex-1 flex flex-col min-w-0 z-10">
       <div className="lg:hidden flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-black text-purple-700">Proposals</h1>
+        <h1 className="text-2xl font-black text-purple-700">{tProposals("page.mobileTitle")}</h1>
         <button
           onClick={() => {
             if (!account) connectWallet();
@@ -54,8 +57,8 @@ export default function ProposalsMainContent({
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search proposals..."
-                  aria-label="Search proposals"
+                  placeholder={tProposals("page.searchPlaceholder")}
+                  aria-label={tProposals("page.searchAria")}
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/80 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/10 focus:border-purple-400/80"
                 />
               </div>

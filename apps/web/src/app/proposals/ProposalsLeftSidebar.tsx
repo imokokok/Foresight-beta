@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Plus, Flame, Clock, Trophy } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import type { ProposalFilter, ProposalItem } from "./proposalsListUtils";
 
 type ProposalsLeftSidebarProps = {
@@ -22,6 +23,7 @@ export default function ProposalsLeftSidebar({
   filter,
   setFilter,
 }: ProposalsLeftSidebarProps) {
+  const tProposals = useTranslations("proposals");
   const myPostsCount = React.useMemo(() => {
     return proposals.filter((p: any) => {
       const me = account || user?.id || "";
@@ -53,7 +55,7 @@ export default function ProposalsLeftSidebar({
           </div>
           <div className="min-w-0">
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
-              Member
+              {tProposals("sidebar.member")}
             </div>
             <div className="text-sm font-black text-gray-800 truncate">
               {(account || user?.email || "Guest").slice(0, 12)}
@@ -66,11 +68,15 @@ export default function ProposalsLeftSidebar({
         <div className="grid grid-cols-2 gap-2 text-center">
           <div className="bg-gray-50 rounded-xl p-2">
             <div className="text-lg font-black text-gray-800">{myPostsCount}</div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase">My Posts</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">
+              {tProposals("sidebar.myPosts")}
+            </div>
           </div>
           <div className="bg-gray-50 rounded-xl p-2">
             <div className="text-lg font-black text-gray-800">{proposals.length}</div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase">Total</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">
+              {tProposals("sidebar.totalPosts")}
+            </div>
           </div>
         </div>
 
@@ -82,42 +88,38 @@ export default function ProposalsLeftSidebar({
           className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold border border-purple-200 shadow-md shadow-purple-200/80 hover:from-purple-400 hover:to-pink-400 hover:text-white hover:shadow-lg hover:shadow-purple-300/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
         >
           <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-          New Proposal
+          {tProposals("actions.newProposal")}
         </button>
       </div>
 
       <div className="px-2 text-[11px] text-slate-600 leading-relaxed">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-          <span className="font-semibold text-slate-800">
-            提案广场是 Foresight 的“产品经理面板”
-          </span>
+          <span className="font-semibold text-slate-800">{tProposals("sidebar.summaryTitle")}</span>
         </div>
-        <p className="mb-1">
-          用于发起新预测市场想法或协议治理提案，由社区讨论与投票后决定是否上线为正式预测市场。
-        </p>
+        <p className="mb-1">{tProposals("sidebar.summaryBody")}</p>
         <p className="text-[10px] text-slate-500">
-          想先看正在交易的市场？前往{" "}
+          {tProposals("sidebar.helperPrefix")}{" "}
           <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
-            热门预测
+            {tProposals("sidebar.helperTrending")}
           </Link>{" "}
-          浏览已有事件；有想法但还不成熟，可以先在{" "}
+          {tProposals("sidebar.helperMiddle")}{" "}
           <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-            讨论区
+            {tProposals("sidebar.helperForum")}
           </Link>{" "}
-          收集反馈。
+          {tProposals("sidebar.helperSuffix")}
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="px-3 py-1 text-[10px] font-black text-gray-400 uppercase tracking-wider flex items-center gap-2">
           <div className="w-1 h-1 rounded-full bg-gray-300" />
-          Views
+          {tProposals("sidebar.views")}
         </div>
         {[
-          { id: "hot", label: "Hot & Trending", icon: Flame },
-          { id: "new", label: "Newest First", icon: Clock },
-          { id: "top", label: "Top Voted", icon: Trophy },
+          { id: "hot", label: tProposals("sidebar.viewHot"), icon: Flame },
+          { id: "new", label: tProposals("sidebar.viewNew"), icon: Clock },
+          { id: "top", label: tProposals("sidebar.viewTop"), icon: Trophy },
         ].map((item) => (
           <button
             key={item.id}

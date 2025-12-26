@@ -12,7 +12,7 @@ type ProposalsPageViewProps = UseProposalsListReturn & {
   connectWallet: () => void;
   isCreateModalOpen: boolean;
   setCreateModalOpen: (open: boolean) => void;
-  inspiration: string;
+  inspiration: number;
   isRolling: boolean;
   rollInspiration: () => void;
   jsonLd: unknown;
@@ -50,10 +50,10 @@ export default function ProposalsPageView({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <GradientPage className="min-h-[calc(100vh-64px)] w-full relative overflow-x-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-          <div className="absolute top-[-12%] left-[-10%] w-[42%] h-[42%] bg-purple-200/35 rounded-full blur-[110px] mix-blend-multiply animate-pulse" />
-          <div className="absolute bottom-[-14%] right-[-10%] w-[40%] h-[40%] bg-rose-200/30 rounded-full blur-[110px] mix-blend-multiply animate-pulse" />
-          <div className="absolute bottom-[-18%] left-[18%] w-[46%] h-[46%] bg-blue-200/30 rounded-full blur-[115px] mix-blend-multiply animate-pulse" />
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-gradient-to-b from-violet-300/40 to-fuchsia-300/40 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[700px] h-[700px] bg-gradient-to-t from-rose-300/40 to-orange-200/40 rounded-full blur-[100px]" />
+          <div className="absolute top-[30%] left-[20%] w-[400px] h-[400px] bg-cyan-200/30 rounded-full blur-[80px]" />
         </div>
 
         <ProposalsLeftSidebar
@@ -81,7 +81,7 @@ export default function ProposalsPageView({
         />
 
         <ProposalsRightSidebar
-          inspiration={inspiration}
+          inspirationIndex={inspiration}
           isRolling={isRolling}
           rollInspiration={rollInspiration}
         />

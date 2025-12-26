@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Flag, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import type { ThreadView } from "../useProposalDetail";
 
 export type ProposalMainArticleProps = {
@@ -21,6 +22,7 @@ export function ProposalMainArticle({
   vote,
 }: ProposalMainArticleProps) {
   const [showFullContent, setShowFullContent] = useState(false);
+  const tProposals = useTranslations("proposals");
 
   return (
     <article className="space-y-4">
@@ -32,7 +34,7 @@ export function ProposalMainArticle({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-bold text-slate-900">{displayName(thread.user_id)}</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold">
-              提案发起人
+              {tProposals("detail.authorBadge")}
             </span>
             {thread.category && (
               <span className="ml-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 text-[11px] font-bold border border-purple-100">
@@ -62,21 +64,21 @@ export function ProposalMainArticle({
             onClick={() => setShowFullContent(!showFullContent)}
             className="mt-2 text-xs font-semibold text-purple-600 hover:text-purple-700"
           >
-            {showFullContent ? "收起提案内容" : "展开完整提案"}
+            {showFullContent
+              ? tProposals("detail.collapseContent")
+              : tProposals("detail.expandContent")}
           </button>
         )}
       </section>
 
       {thread.created_prediction_id && (
         <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
-          <p className="text-xs sm:text-sm text-emerald-800">
-            该提案已生成对应的链上预测市场，你可以前往市场页面观察价格信号或直接参与交易。
-          </p>
+          <p className="text-xs sm:text-sm text-emerald-800">{tProposals("detail.marketHint")}</p>
           <Link
             href={`/prediction/${thread.created_prediction_id}`}
             className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm hover:bg-emerald-700 transition-colors whitespace-nowrap"
           >
-            前往预测市场
+            {tProposals("detail.marketButton")}
           </Link>
         </div>
       )}
@@ -110,7 +112,9 @@ export function ProposalMainArticle({
           </div>
           <div className="flex items-center gap-1.5 font-semibold text-slate-400">
             <MessageCircle className="w-3.5 h-3.5" />
-            <span>{stats.commentsCount} Comments</span>
+            <span>
+              {stats.commentsCount} {tProposals("detail.comments")}
+            </span>
           </div>
         </div>
         <button className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">

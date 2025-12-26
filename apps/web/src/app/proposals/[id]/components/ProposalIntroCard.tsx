@@ -2,27 +2,28 @@
 
 import React from "react";
 import Link from "next/link";
+import { useTranslations } from "@/lib/i18n";
 
 export function ProposalIntroCard() {
+  const tProposals = useTranslations("proposals");
+
   return (
     <div className="mb-8 pl-4 border-l-2 border-purple-200/70 space-y-2">
-      <p className="text-sm text-slate-700 leading-relaxed">
-        提案详情页用于集中展示某个预测市场或治理议题的完整说明、上下文和社区讨论，方便参与者在链上投票或发起后续预测市场前充分了解背景。
-      </p>
+      <p className="text-sm text-slate-700 leading-relaxed">{tProposals("intro.description")}</p>
       <p className="text-xs text-slate-500 leading-relaxed">
-        想浏览其他提案？返回{" "}
+        {tProposals("intro.helperPrefix")}{" "}
         <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
-          提案广场
+          {tProposals("intro.helperProposals")}
         </Link>{" "}
-        查看全部议题；如果你更关注最终会变成实际交易市场的事件，可以前往{" "}
+        {tProposals("intro.helperMiddle")}{" "}
         <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
-          热门预测
+          {tProposals("intro.helperTrending")}
         </Link>{" "}
-        页面，或在{" "}
+        {tProposals("intro.helperMiddle2")}{" "}
         <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-          讨论区
+          {tProposals("intro.helperForum")}
         </Link>{" "}
-        继续延伸讨论。
+        {tProposals("intro.helperSuffix")}
       </p>
     </div>
   );
