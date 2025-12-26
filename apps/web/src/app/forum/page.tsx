@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import GradientPage from "@/components/ui/GradientPage";
 import { getCategoryStyle } from "./forumConfig";
 import { ForumSidebar } from "./ForumSidebar";
 import { ForumChatFrame } from "./ForumChatFrame";
@@ -26,18 +27,17 @@ export default function ForumPage() {
   } = useForumData();
 
   return (
-    <div className="h-screen w-full bg-[#f8faff] p-4 lg:p-6 flex overflow-hidden overflow-x-hidden font-sans text-slate-800 relative">
+    <GradientPage className="h-screen w-full px-4 lg:px-6 pt-8 lg:pt-14 pb-4 lg:pb-8 flex overflow-hidden overflow-x-hidden font-sans text-slate-800 relative">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-200/20 blur-[110px]" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-200/20 blur-[110px]" />
       </div>
-      {/* TV Frame: unify left cards and chat into one frame */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`w-full max-w-6xl max-h-[720px] flex rounded-[32px] bg-slate-900/10 bg-gradient-to-br ${
+        className={`w-full max-w-6xl max-h-[720px] flex rounded-[32px] bg-white/70 bg-gradient-to-br ${
           getCategoryStyle(activeCat).frameSurfaceGradient
-        } backdrop-blur-xl border border-white/40 shadow-none overflow-hidden z-10`}
+        } backdrop-blur-2xl border border-white/70 shadow-xl shadow-purple-500/10 overflow-hidden z-10`}
       >
         <ForumSidebar
           categories={categories}
@@ -60,6 +60,6 @@ export default function ForumPage() {
           error={error}
         />
       </motion.div>
-    </div>
+    </GradientPage>
   );
 }

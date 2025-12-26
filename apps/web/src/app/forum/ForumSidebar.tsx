@@ -29,8 +29,11 @@ export function ForumSidebar({
   selectedTopicId,
   setSelectedTopicId,
 }: ForumSidebarProps) {
+  const allCategory = categories.find((cat) => cat.id === "all");
+  const otherCategories = categories.filter((cat) => cat.id !== "all");
+
   return (
-    <div className="w-80 flex-shrink-0 border-r border-white/30 flex flex-col overflow-x-hidden">
+    <div className="w-64 flex-shrink-0 border-r border-white/30 flex flex-col overflow-x-hidden">
       <div className="p-5 border-b border-white/20 bg-white/10">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand shadow-lg shadow-indigo-200/50 border border-white/50">
@@ -49,22 +52,46 @@ export function ForumSidebar({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {categories.map((cat) => {
-            const style = getCategoryStyle(cat.name);
-            const isActive = activeCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 border ${
-                  isActive ? style.chipActive : style.chip
-                }`}
-              >
-                {cat.name}
-              </button>
-            );
-          })}
+        <div className="mb-4 space-y-3">
+          {allCategory && (
+            <div>
+              {(() => {
+                const style = getCategoryStyle(allCategory.name);
+                const isActive = activeCategory === allCategory.id;
+                return (
+                  <button
+                    key={allCategory.id}
+                    onClick={() => setActiveCategory(allCategory.id)}
+                    className={`w-full justify-center px-4 py-2 rounded-full text-[11px] font-bold transition-all duration-200 border flex items-center ${
+                      isActive ? style.chipActive : style.chip
+                    }`}
+                  >
+                    {allCategory.name}
+                  </button>
+                );
+              })()}
+            </div>
+          )}
+
+          {otherCategories.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {otherCategories.map((cat) => {
+                const style = getCategoryStyle(cat.name);
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 border text-center ${
+                      isActive ? style.chipActive : style.chip
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="relative group">
@@ -103,11 +130,6 @@ export function ForumSidebar({
                     : `border-transparent hover:ring-1 hover:ring-white/40 hover:shadow-sm ${style.border}`
                 }`}
               >
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 ${style.accentBar} ${
-                    isActive ? "" : "opacity-40"
-                  }`}
-                />
                 <div className="flex justify-between items-start mb-1.5">
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${style.badge}`}

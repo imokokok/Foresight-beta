@@ -1,4 +1,5 @@
 import React from "react";
+import GradientPage from "@/components/ui/GradientPage";
 import CreateProposalModal from "./CreateProposalModal";
 import ProposalsLeftSidebar from "./ProposalsLeftSidebar";
 import ProposalsMainContent from "./ProposalsMainContent";
@@ -48,7 +49,7 @@ export default function ProposalsPageView({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="min-h-[calc(100vh-64px)] w-full relative overflow-x-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6 bg-[#f8faff]">
+      <GradientPage className="min-h-[calc(100vh-64px)] w-full relative overflow-x-hidden font-sans p-4 sm:p-6 lg:p-8 flex gap-6">
         <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute top-[-12%] left-[-10%] w-[42%] h-[42%] bg-purple-200/35 rounded-full blur-[110px] mix-blend-multiply animate-pulse" />
           <div className="absolute bottom-[-14%] right-[-10%] w-[40%] h-[40%] bg-rose-200/30 rounded-full blur-[110px] mix-blend-multiply animate-pulse" />
@@ -93,7 +94,7 @@ export default function ProposalsPageView({
             setFilter("new");
           }}
         />
-      </div>
+      </GradientPage>
     </>
   );
 }

@@ -1,11 +1,11 @@
 import { Activity, Globe } from "lucide-react";
 
 export const ALLOWED_CATEGORIES = [
-  "体育",
+  "科技",
   "娱乐",
   "时政",
   "天气",
-  "科技",
+  "体育",
   "商业",
   "加密货币",
   "更多",
@@ -131,5 +131,5 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
 };
 
 export function getCategoryStyle(cat: string): CategoryStyle {
-  return CATEGORY_STYLES[cat] || CATEGORY_STYLES.default;
+  return CATEGORY_STYLES.default;
 }

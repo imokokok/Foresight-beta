@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCategories } from "@/hooks/useQueries";
-import { normalizeCategory, fetchPredictions } from "@/features/trending/trendingModel";
+import {
+  normalizeCategory,
+  fetchPredictions,
+  TRENDING_CATEGORIES,
+} from "@/features/trending/trendingModel";
 import { CATEGORIES } from "./forumConfig";
 
 export type PredictionItem = {
@@ -76,9 +80,24 @@ export function useForumList() {
           };
         })
         .filter(Boolean) as ForumCategory[];
-      return [{ id: "all", name: "All Topics", icon: require("lucide-react").Globe }].concat(
-        dynamic
-      );
+
+      const order = TRENDING_CATEGORIES.map((cat) => cat.name);
+
+      const sortedDynamic = [...dynamic].sort((a, b) => {
+        const na = normalizeCategory(a.name);
+        const nb = normalizeCategory(b.name);
+        const ia = order.indexOf(na);
+        const ib = order.indexOf(nb);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return a.name.localeCompare(b.name, "zh-CN");
+      });
+
+      return [
+        { id: "all", name: "All Topics", icon: require("lucide-react").Globe },
+        ...sortedDynamic,
+      ];
     }
     return CATEGORIES as ForumCategory[];
   }, [categoriesData]);
