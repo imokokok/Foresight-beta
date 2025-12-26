@@ -1,6 +1,7 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { X, Lightbulb } from "lucide-react";
-import { useEventTheme } from "@/hooks/useEventTheme";
 import Link from "next/link";
 
 interface OnboardingBannerProps {
@@ -9,7 +10,12 @@ interface OnboardingBannerProps {
 
 export function OnboardingBanner({ category }: OnboardingBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const { colors } = useEventTheme(category);
+  const colors = {
+    bgApp: "bg-white/85 backdrop-blur-xl",
+    border: category ? "border-purple-200/60" : "border-purple-100/60",
+    textPrimary: "text-slate-900",
+    textSecondary: "text-slate-500",
+  };
 
   useEffect(() => {
     const hasSeen = localStorage.getItem("hasSeenPredictionGuide");
@@ -49,11 +55,12 @@ export function OnboardingBanner({ category }: OnboardingBannerProps) {
           <div className="flex-1 space-y-3">
             <div className={`text-sm leading-relaxed ${colors.textPrimary}`}>
               <p className="mb-2 font-medium">
-                在这个预测市场中，你可以通过买入不同选项来交易自己对事件结果的看法，价格代表市场对事件发生概率的共识。
+                在这个{category ? `${category} ` : ""}
+                预测市场中，你可以通过买入不同选项来交易自己对事件结果的看法，价格代表市场对事件发生概率的共识。
               </p>
               <p className={`text-xs ${colors.textSecondary}`}>
                 👉
-                右侧（或底部）交易面板用于下单和管理仓位，图表和盘口数据可以帮助你观察市场情绪和价格变化。
+                交易面板位于右侧（桌面端）或通过底部按钮唤起（移动端），图表和盘口数据可以帮助你观察市场情绪和价格变化。
               </p>
             </div>
 

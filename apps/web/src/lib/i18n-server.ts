@@ -1,10 +1,10 @@
 import { cookies, headers } from "next/headers";
 import { defaultLocale, locales, type Locale } from "../i18n-config";
 
-function detectFromCookie(): Locale | null {
+async function detectFromCookie(): Promise<Locale | null> {
   try {
-    const store = cookies() as any;
-    const raw = store.get("preferred-language")?.value as string | undefined;
+    const store = await cookies();
+    const raw = store.get("preferred-language")?.value;
     if (!raw) return null;
     if (locales.includes(raw as Locale)) {
       return raw as Locale;
@@ -18,10 +18,10 @@ type LanguagePart = {
   q: number;
 };
 
-function detectFromAcceptLanguage(): Locale | null {
+async function detectFromAcceptLanguage(): Promise<Locale | null> {
   try {
-    const rawHeaders = headers() as any;
-    const acceptLanguage = rawHeaders.get("accept-language") as string | null;
+    const rawHeaders = await headers();
+    const acceptLanguage = rawHeaders.get("accept-language");
     if (!acceptLanguage) return null;
 
     const parts: LanguagePart[] = acceptLanguage.split(",").map((item: string) => {
@@ -41,11 +41,11 @@ function detectFromAcceptLanguage(): Locale | null {
   return null;
 }
 
-export function getServerLocale(): Locale {
-  const fromCookie = detectFromCookie();
+export async function getServerLocale(): Promise<Locale> {
+  const fromCookie = await detectFromCookie();
   if (fromCookie) return fromCookie;
 
-  const fromHeader = detectFromAcceptLanguage();
+  const fromHeader = await detectFromAcceptLanguage();
   if (fromHeader) return fromHeader;
 
   return defaultLocale;
