@@ -42,7 +42,7 @@ export function ChatInputArea({
   error,
 }: ChatInputAreaProps) {
   return (
-    <div className="p-3 border-t border-slate-100 bg-white/90 relative pb-[env(safe-area-inset-bottom)] text-slate-800">
+    <div className="p-3 border-t border-brand-accent/25 bg-gradient-to-t from-brand-accent/30 via-brand-accent/15 to-white/90 relative pb-[env(safe-area-inset-bottom)] text-slate-800">
       {!account ? (
         <div className="flex items-center justify-between">
           <div className="text-sm text-slate-700 font-medium">{tChat("input.walletRequired")}</div>
@@ -67,7 +67,7 @@ export function ChatInputArea({
                 key={idx}
                 type="button"
                 onClick={() => setInput(p)}
-                className="text-xs px-2 py-1 rounded-full border border-gray-200 bg-white/60 text-slate-600 hover:bg-white hover:text-brand transition-colors shadow-sm"
+                className="text-xs px-2 py-1 rounded-full border border-brand-accent/30 bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 hover:text-white transition-colors shadow-sm"
               >
                 {p}
               </button>
@@ -87,7 +87,7 @@ export function ChatInputArea({
                 }}
                 placeholder={tChat("input.placeholder")}
                 rows={2}
-                className="input-base w-full resize-none px-3 py-2 bg-white/90 text-slate-900 placeholder:text-slate-400"
+                className="input-base w-full resize-none px-3 py-2 bg-brand-accent/5 border-brand-accent/30 text-slate-900 placeholder:text-slate-400"
               />
               <div className="absolute right-2 bottom-2">
                 <button

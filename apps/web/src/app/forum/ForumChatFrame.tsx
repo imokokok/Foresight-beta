@@ -34,9 +34,7 @@ export function ForumChatFrame({
   return (
     <div className="flex-1 flex flex-col">
       <header
-        className={`h-16 px-6 border-b border-white/20 flex items-center justify-between bg-gradient-to-r ${
-          style.headerGradient
-        } sticky top-0 z-20 text-white shadow-none`}
+        className={`h-16 px-6 border-b border-white/20 flex items-center justify-between ${style.headerGradient} sticky top-0 z-20 text-white shadow-none`}
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex-shrink-0 w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
@@ -115,8 +113,8 @@ export function ForumChatFrame({
         </div>
       </header>
 
-      <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
-        <div className={`absolute inset-0 bg-gradient-to-br ${style.chatGradient} opacity-30`} />
+      <div className="flex-1 relative overflow-hidden flex flex-col px-4 pb-4 pt-3">
+        <div className={`absolute inset-0 bg-gradient-to-br ${style.chatGradient} opacity-40`} />
         <div className="flex-1 flex flex-col z-10 relative">
           {currentTopic?.id ? (
             <ChatPanel

@@ -56,14 +56,15 @@ export function ForumSidebar({
           {allCategory && (
             <div>
               {(() => {
-                const style = getCategoryStyle(allCategory.name);
                 const isActive = activeCategory === allCategory.id;
                 return (
                   <button
                     key={allCategory.id}
                     onClick={() => setActiveCategory(allCategory.id)}
-                    className={`w-full justify-center px-4 py-2 rounded-full text-[11px] font-bold transition-all duration-200 border flex items-center ${
-                      isActive ? style.chipActive : style.chip
+                    className={`w-full flex items-center justify-center px-4 py-2.5 rounded-full text-[12px] font-bold tracking-wide border-2 transition-all duration-200 ${
+                      isActive
+                        ? "bg-brand-accent text-white border-brand-accent shadow-md shadow-brand/40"
+                        : "bg-brand-accent/15 text-brand-accent border-brand-accent/50 hover:bg-brand-accent/25"
                     }`}
                   >
                     {allCategory.name}
@@ -74,19 +75,21 @@ export function ForumSidebar({
           )}
 
           {otherCategories.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               {otherCategories.map((cat) => {
-                const style = getCategoryStyle(cat.name);
                 const isActive = activeCategory === cat.id;
+                const label = cat.id === "加密货币" ? "加密货币" : cat.name;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-200 border text-center ${
-                      isActive ? style.chipActive : style.chip
+                    className={`w-full px-3 py-1.5 rounded-full text-[11px] font-bold border-2 text-center transition-all duration-200 whitespace-nowrap ${
+                      isActive
+                        ? "bg-brand-accent text-white border-brand-accent shadow-sm"
+                        : "bg-white/70 text-brand-accent border-brand-accent/40 hover:bg-brand-accent/10"
                     }`}
                   >
-                    {cat.name}
+                    {label}
                   </button>
                 );
               })}

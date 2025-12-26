@@ -96,7 +96,7 @@ export default function ChatPanel({
   };
 
   const containerCls =
-    "flex flex-col h-full bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl text-slate-900 shadow-sm";
+    "flex flex-col h-full bg-gradient-to-br from-white via-brand-accent/10 to-white backdrop-blur-sm border border-white/70 rounded-3xl text-slate-900 shadow-md shadow-brand/20";
   const minH = String(
     minHeightPx && minHeightPx > 0
       ? `${minHeightPx}px`

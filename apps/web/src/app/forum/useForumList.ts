@@ -67,12 +67,18 @@ export function useForumList() {
 
   const categories: ForumCategory[] = useMemo(() => {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
+      const seen = new Set<string>();
       const dynamic = (categoriesData as any[])
         .map((item) => {
-          const name = String((item as any).name || "").trim();
-          if (!name) {
+          const rawName = String((item as any).name || "").trim();
+          if (!rawName) {
             return null;
           }
+          const name = rawName === "其他" ? "更多" : rawName;
+          if (seen.has(name)) {
+            return null;
+          }
+          seen.add(name);
           return {
             id: name,
             name,
