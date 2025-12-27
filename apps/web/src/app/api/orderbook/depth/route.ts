@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 function getRelayerBaseUrl(): string | undefined {
   const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
     const levels = Number(url.searchParams.get("levels") || 10);
 
     if (!contract || !chainId || outcome === null || side === null) {
-      return NextResponse.json({ success: false, message: "Missing parameters" }, { status: 400 });
+      return ApiResponses.invalidParameters("Missing parameters");
     }
 
     const relayerBase = getRelayerBaseUrl();
@@ -70,10 +72,7 @@ export async function GET(req: NextRequest) {
 
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const isBuy = side === "true";
@@ -113,12 +112,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (error) {
-      console.error("Error fetching depth:", error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+      logApiError("GET /api/orderbook/depth query failed", error);
+      return ApiResponses.databaseError("Failed to fetch depth", error.message);
     }
 
     if (!orders.length) {
-      return NextResponse.json({ success: true, data: [] });
+      return successResponse([]);
     }
 
     // Aggregate orders by price
@@ -147,13 +146,13 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      data: depthArray.slice(0, levels),
-    });
+    return successResponse(depthArray.slice(0, levels));
   } catch (e: unknown) {
-    console.error("Depth API error:", e);
+    logApiError("GET /api/orderbook/depth unhandled error", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to fetch depth",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }

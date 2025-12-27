@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { logApiError } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function GET(req: NextRequest) {
   try {
     const client = getClient();
-    if (!client)
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+    if (!client) {
+      return ApiResponses.internalError("Supabase not configured");
+    }
     const url = new URL(req.url);
     const idStr = url.searchParams.get("id") || "";
     const id = Number(idStr);
-    if (!Number.isFinite(id))
-      return NextResponse.json({ success: false, message: "invalid id" }, { status: 400 });
+    if (!Number.isFinite(id)) {
+      return ApiResponses.badRequest("invalid id");
+    }
     const { data, error } = await client
       .from("orders")
       .select(
@@ -25,12 +25,12 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
     if (error) {
       logApiError("GET /api/orderbook/order query failed", error);
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch order", error.message);
     }
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {
     logApiError("GET /api/orderbook/order unhandled error", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError("Failed to fetch order", message);
   }
 }

@@ -201,25 +201,135 @@ app.post("/orderbook/cancel-salt", async (req, res) => {
   }
 });
 
+const DepthQuerySchema = z.object({
+  contract: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .transform((v) => v.toLowerCase()),
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  outcome: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
+  side: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .refine((v) => v === "buy" || v === "sell", {
+      message: "side must be buy or sell",
+    }),
+  levels: z.preprocess((v) => {
+    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
+    if (!Number.isFinite(n)) return 10;
+    return Math.max(1, Math.min(50, n));
+  }, z.number().int().min(1).max(50)),
+  marketKey: z.string().optional(),
+  market_key: z.string().optional(),
+});
+
+const QueueQuerySchema = z.object({
+  contract: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .transform((v) => v.toLowerCase()),
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  outcome: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
+  side: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .refine((v) => v === "buy" || v === "sell", {
+      message: "side must be buy or sell",
+    }),
+  price: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? BigInt(String(v)) : v),
+    z.bigint()
+  ),
+  limit: z.preprocess((v) => {
+    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
+    if (!Number.isFinite(n)) return 50;
+    return Math.max(1, Math.min(200, n));
+  }, z.number().int().min(1).max(200)),
+  offset: z.preprocess((v) => {
+    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, n);
+  }, z.number().int().min(0)),
+  marketKey: z.string().optional(),
+  market_key: z.string().optional(),
+});
+
+const CandlesQuerySchema = z.object({
+  market: z.string(),
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  outcome: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
+  resolution: z.string().default("15m"),
+  limit: z.preprocess((v) => {
+    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
+    if (!Number.isFinite(n)) return 100;
+    return Math.max(1, Math.min(1000, n));
+  }, z.number().int().min(1).max(1000)),
+});
+
+const TradeReportSchema = z.object({
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+});
+
 app.get("/orderbook/depth", async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
-    const vc = String(req.query.contract || "");
-    const chainId = Number(req.query.chainId || 0);
-    const outcome = Number(req.query.outcome || 0);
-    const side = String(req.query.side || "buy").toLowerCase() === "buy";
-    const levels = Math.max(1, Math.min(50, Number(req.query.levels || 10)));
+    const parsed = DepthQuerySchema.parse({
+      contract: req.query.contract,
+      chainId: req.query.chainId,
+      outcome: req.query.outcome,
+      side: req.query.side || "buy",
+      levels: req.query.levels,
+      marketKey: req.query.marketKey,
+      market_key: req.query.market_key,
+    });
+    const isBuy = parsed.side === "buy";
     const marketKey =
-      typeof req.query.marketKey === "string"
-        ? req.query.marketKey
-        : typeof req.query.market_key === "string"
-          ? req.query.market_key
+      typeof parsed.marketKey === "string"
+        ? parsed.marketKey
+        : typeof parsed.market_key === "string"
+          ? parsed.market_key
           : undefined;
-    const data = await getDepth(vc, chainId, outcome, side, levels, marketKey);
+    const data = await getDepth(
+      parsed.contract,
+      parsed.chainId as number,
+      parsed.outcome as number,
+      isBuy,
+      parsed.levels as number,
+      marketKey
+    );
     res.setHeader("Cache-Control", "public, max-age=2");
     res.json({ success: true, data });
   } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "depth query validation failed",
+        detail: e.flatten(),
+      });
+    }
     res
       .status(400)
       .json({ success: false, message: "depth query failed", detail: String(e?.message || e) });
@@ -230,35 +340,48 @@ app.get("/orderbook/queue", async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
-    const vc = String(req.query.contract || "");
-    const chainId = Number(req.query.chainId || 0);
-    const outcome = Number(req.query.outcome || 0);
-    const side = String(req.query.side || "buy").toLowerCase() === "buy";
-    const price = BigInt(String(req.query.price || "0"));
-    const limit = Math.max(1, Math.min(200, Number(req.query.limit || 50)));
-    const offset = Math.max(0, Number(req.query.offset || 0));
+    const parsed = QueueQuerySchema.parse({
+      contract: req.query.contract,
+      chainId: req.query.chainId,
+      outcome: req.query.outcome,
+      side: req.query.side || "buy",
+      price: req.query.price || "0",
+      limit: req.query.limit,
+      offset: req.query.offset,
+      marketKey: req.query.marketKey,
+      market_key: req.query.market_key,
+    });
+    const isBuy = parsed.side === "buy";
     const marketKey =
-      typeof req.query.marketKey === "string"
-        ? req.query.marketKey
-        : typeof req.query.market_key === "string"
-          ? req.query.market_key
+      typeof parsed.marketKey === "string"
+        ? parsed.marketKey
+        : typeof parsed.market_key === "string"
+          ? parsed.market_key
           : undefined;
-    const data = await getQueue(vc, chainId, outcome, side, price, limit, offset, marketKey);
+    const data = await getQueue(
+      parsed.contract,
+      parsed.chainId as number,
+      parsed.outcome as number,
+      isBuy,
+      parsed.price,
+      parsed.limit as number,
+      parsed.offset as number,
+      marketKey
+    );
     res.setHeader("Cache-Control", "public, max-age=2");
     res.json({ success: true, data });
   } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "queue query validation failed",
+        detail: e.flatten(),
+      });
+    }
     res
       .status(400)
       .json({ success: false, message: "queue query failed", detail: String(e?.message || e) });
   }
-});
-
-const TradeReportSchema = z.object({
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
 });
 
 app.post("/orderbook/report-trade", limitReportTrade, async (req, res) => {
@@ -282,15 +405,30 @@ app.get("/orderbook/candles", async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
-    const market = String(req.query.market || "");
-    const chainId = Number(req.query.chainId || 0);
-    const outcome = Number(req.query.outcome || 0);
-    const resolution = String(req.query.resolution || "15m");
-    const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 100)));
-    const data = await getCandles(market, chainId, outcome, resolution, limit);
+    const parsed = CandlesQuerySchema.parse({
+      market: req.query.market,
+      chainId: req.query.chainId,
+      outcome: req.query.outcome,
+      resolution: req.query.resolution || "15m",
+      limit: req.query.limit,
+    });
+    const data = await getCandles(
+      parsed.market,
+      parsed.chainId as number,
+      parsed.outcome as number,
+      parsed.resolution,
+      parsed.limit as number
+    );
     res.setHeader("Cache-Control", "public, max-age=5");
     res.json({ success: true, data });
   } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "candles query validation failed",
+        detail: e.flatten(),
+      });
+    }
     res.status(400).json({
       success: false,
       message: "candles query failed",

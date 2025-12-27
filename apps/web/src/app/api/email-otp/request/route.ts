@@ -8,6 +8,7 @@ import {
   parseRequestBody,
   logApiError,
 } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email);
@@ -55,13 +56,10 @@ export async function POST(req: NextRequest) {
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
-      return NextResponse.json(
-        { success: false, message: "未认证或会话地址不匹配" },
-        { status: 401 }
-      );
+      return ApiResponses.unauthorized("未认证或会话地址不匹配");
     }
     if (!isValidEmail(email)) {
-      return NextResponse.json({ success: false, message: "邮箱格式不正确" }, { status: 400 });
+      return ApiResponses.invalidParameters("邮箱格式不正确");
     }
 
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
@@ -82,10 +80,7 @@ export async function POST(req: NextRequest) {
 
     if (rec.lockUntil && now < rec.lockUntil) {
       const waitMin = Math.ceil((rec.lockUntil - now) / 60000);
-      return NextResponse.json(
-        { success: false, message: `该邮箱已被锁定，请 ${waitMin} 分钟后重试` },
-        { status: 429 }
-      );
+      return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
     }
 
     rec.sentAtList = rec.sentAtList || [];
@@ -144,11 +139,11 @@ export async function POST(req: NextRequest) {
           expiresInSec: 300,
         });
       }
-      return NextResponse.json({ success: false, message: "邮件发送失败" }, { status: 500 });
+      return ApiResponses.internalError("邮件发送失败", errMessage);
     }
   } catch (e: unknown) {
     logApiError("POST /api/email-otp/request", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError("邮箱验证码请求失败", message);
   }
 }

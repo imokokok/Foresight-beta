@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 // 获取设备类型
 function getDeviceType(userAgent: string): string {
@@ -102,8 +103,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e) {
+  } catch (e: any) {
+    const detail = String(e?.message || e);
     console.error("Analytics error:", e);
-    return NextResponse.json({ success: false }, { status: 500 });
+    return ApiResponses.internalError("Analytics error", detail);
   }
 }

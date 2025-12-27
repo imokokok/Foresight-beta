@@ -11,6 +11,8 @@ import {
   generateCacheKey,
   setCache,
 } from "@/lib/apiCache";
+import { ApiResponses } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 // 预测列表可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -55,10 +57,7 @@ export async function GET(request: NextRequest) {
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase client is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase client is not configured");
     }
 
     const paging = parsePagination({ limit, page, pageSize });
@@ -85,12 +84,10 @@ export async function GET(request: NextRequest) {
       },
       CachePresets.SHORT
     );
-  } catch (error) {
-    console.error("Unexpected error while fetching prediction list:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to fetch prediction list" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    logApiError("GET /api/predictions", error);
+    const detail = error?.message || String(error);
+    return ApiResponses.internalError("Failed to fetch prediction list", detail);
   }
 }
 
@@ -99,10 +96,7 @@ export async function POST(request: NextRequest) {
     // 选择客户端：优先使用服务端密钥，缺失则回退匿名（需有RLS读取策略）
     const client = getClient() || supabase;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase client is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase client is not configured");
     }
 
     const { newPrediction } = await createPredictionFromRequest(request, client as any);
@@ -115,18 +109,18 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Unexpected error while creating prediction:", error);
-    const status = typeof (error as any)?.status === "number" ? (error as any).status : 500;
-    return NextResponse.json(
-      {
-        success: false,
-        message: (error as any)?.message || "Failed to create prediction",
-        error: error instanceof Error ? error.message : String(error),
-        missingFields: (error as any)?.missingFields,
-        duplicateEvents: (error as any)?.duplicateEvents,
-      },
-      { status }
-    );
+  } catch (error: any) {
+    logApiError("POST /api/predictions", error);
+    const status = typeof error?.status === "number" ? error.status : 500;
+    const message = error?.message || "Failed to create prediction";
+    const details = {
+      error: error instanceof Error ? error.message : String(error),
+      missingFields: (error as any)?.missingFields,
+      duplicateEvents: (error as any)?.duplicateEvents,
+    };
+    if (status === 400) {
+      return ApiResponses.invalidParameters(message);
+    }
+    return ApiResponses.internalError(message, details);
   }
 }

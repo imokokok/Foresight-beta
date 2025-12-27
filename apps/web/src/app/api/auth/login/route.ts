@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: Request) {
   try {
@@ -15,15 +16,15 @@ export async function POST(req: Request) {
     }
 
     if (!email || !password) {
-      return NextResponse.json({ message: "参数无效：缺少邮箱或密码" }, { status: 400 });
+      return ApiResponses.invalidParameters("参数无效：缺少邮箱或密码");
     }
     if (!supabase) {
-      return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+      return ApiResponses.internalError("Supabase 未配置");
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      return NextResponse.json({ message: "登录失败", detail: error.message }, { status: 401 });
+      return ApiResponses.unauthorized("登录失败");
     }
     return NextResponse.json({
       message: "ok",
@@ -31,6 +32,6 @@ export async function POST(req: Request) {
     });
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ message: "登录失败", detail }, { status: 500 });
+    return ApiResponses.internalError("登录失败", detail);
   }
 }

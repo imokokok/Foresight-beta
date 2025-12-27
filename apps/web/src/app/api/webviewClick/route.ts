@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,8 +23,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e) {
+  } catch (e: any) {
+    const detail = String(e?.message || e);
     console.error("webviewClick API error:", e);
-    return NextResponse.json({ success: false }, { status: 500 });
+    return ApiResponses.internalError("webviewClick API error", detail);
   }
 }

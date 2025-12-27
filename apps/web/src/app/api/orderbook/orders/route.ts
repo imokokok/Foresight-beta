@@ -6,6 +6,7 @@ import type { Database } from "@/lib/database.types";
 import { successResponse, ApiResponses } from "@/lib/apiResponse";
 import { validateOrderParams, verifyOrderSignature, isOrderExpired } from "@/lib/orderVerification";
 import type { EIP712Order } from "@/types/market";
+import { logApiError } from "@/lib/serverUtils";
 
 type OrderInsert = Database["public"]["Tables"]["orders"]["Insert"];
 type DbClient = SupabaseClient<Database>;
@@ -21,10 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const { searchParams } = new URL(req.url);
@@ -59,13 +57,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (error) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+      return ApiResponses.databaseError("Failed to fetch orders", error.message);
     }
 
-    return NextResponse.json({ success: true, data });
+    return successResponse(data);
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    logApiError("GET /api/orderbook/orders", e);
+    const detail = e instanceof Error ? e.message : String(e);
+    return ApiResponses.internalError(
+      "Failed to fetch orders",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -219,7 +221,7 @@ export async function POST(req: NextRequest) {
 
     return successResponse({ orderId: orderData.salt }, "Order created successfully");
   } catch (e: unknown) {
-    console.error("Create Order API error:", e);
+    logApiError("POST /api/orderbook/orders", e);
     const detail = e instanceof Error ? e.message : undefined;
     return ApiResponses.internalError(
       "Failed to create order",

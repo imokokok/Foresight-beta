@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -18,19 +19,19 @@ export async function POST(req: Request) {
     }
 
     if (!validateEmail(email) || password.length < 6) {
-      return NextResponse.json({ message: "参数无效：邮箱或密码不符合要求" }, { status: 400 });
+      return ApiResponses.invalidParameters("参数无效：邮箱或密码不符合要求");
     }
     if (!supabase) {
-      return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+      return ApiResponses.internalError("Supabase 未配置");
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      return NextResponse.json({ message: "注册失败", detail: error.message }, { status: 400 });
+      return ApiResponses.badRequest("注册失败");
     }
     return NextResponse.json({ message: "ok", data });
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ message: "注册失败", detail }, { status: 500 });
+    return ApiResponses.internalError("注册失败", detail);
   }
 }

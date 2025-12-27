@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import type { PostgrestError } from "@supabase/supabase-js";
 import { ethers } from "ethers";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 function getRelayerBaseUrl(): string | undefined {
   const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
@@ -30,10 +32,7 @@ export async function POST(req: NextRequest) {
 
     const client = supabaseAdmin || getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const body = (() => {
@@ -52,21 +51,15 @@ export async function POST(req: NextRequest) {
     const mk = (marketKey || market_key || "").toString().trim() || undefined;
 
     if (!chainId || !vc || !salt || !maker || !signature) {
-      return NextResponse.json(
-        { success: false, message: "Missing required fields" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Missing required fields");
     }
 
     if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
-      return NextResponse.json({ success: false, message: "Invalid chainId" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid chainId");
     }
 
     if (!ethers.isAddress(vc)) {
-      return NextResponse.json(
-        { success: false, message: "Invalid verifyingContract" },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Invalid verifyingContract");
     }
 
     const domain = {
@@ -83,7 +76,7 @@ export async function POST(req: NextRequest) {
     };
     const recoveredAddress = ethers.verifyTypedData(domain, types, { maker, salt }, signature);
     if (recoveredAddress.toLowerCase() !== maker.toLowerCase()) {
-      return NextResponse.json({ success: false, message: "Invalid signature" }, { status: 401 });
+      return ApiResponses.invalidSignature("Invalid signature");
     }
 
     // 2. Cancel Order in DB
@@ -110,15 +103,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (error) {
-      console.error("Error cancelling order:", error);
+      logApiError("POST /api/orderbook/cancel-salt update failed", error);
       const message = error.message || "Failed to cancel order";
-      return NextResponse.json({ success: false, message }, { status: 500 });
+      return ApiResponses.databaseError("Failed to cancel order", message);
     }
 
-    return NextResponse.json({ success: true, message: "Order cancelled" });
+    return successResponse({ success: true }, "Order cancelled");
   } catch (e: unknown) {
-    console.error("Cancel Order API error:", e);
+    logApiError("POST /api/orderbook/cancel-salt unhandled error", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to cancel order",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }

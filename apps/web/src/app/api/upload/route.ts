@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildDiceBearUrl } from "@/lib/dicebear";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,60 +12,30 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file") as File;
 
     if (!walletAddress) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "请先连接钱包登录",
-        },
-        { status: 401 }
-      );
+      return ApiResponses.unauthorized("请先连接钱包登录");
     }
 
     // 验证钱包地址格式
     const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
     if (!ethAddressRegex.test(walletAddress)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "无效的钱包地址格式",
-        },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("无效的钱包地址格式");
     }
 
     // 验证文件
     if (!file) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "请选择要上传的图片文件",
-        },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("请选择要上传的图片文件");
     }
 
     // 验证文件类型
     const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "只支持 JPEG、PNG、WebP 和 GIF 格式的图片",
-        },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("只支持 JPEG、PNG、WebP 和 GIF 格式的图片");
     }
 
     // 验证文件大小（最大5MB）
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "图片文件大小不能超过5MB",
-        },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("图片文件大小不能超过5MB");
     }
 
     // 生成唯一的文件名
@@ -125,16 +96,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("图片上传异常:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: "图片上传失败",
-        error: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    const detail = error instanceof Error ? error.message : String(error);
+    return ApiResponses.internalError("图片上传失败", detail);
   }
 }
 

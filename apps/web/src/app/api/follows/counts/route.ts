@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false;
@@ -35,13 +36,13 @@ export async function POST(req: Request) {
     );
 
     if (ids.length === 0) {
-      return NextResponse.json({ message: "eventIds 必须为正整数数组" }, { status: 400 });
+      return ApiResponses.invalidParameters("eventIds 必须为正整数数组");
     }
     const limitedIds = ids.slice(0, 50); // 简单限制一次查询数量，避免过多并发
 
     const client = getClient();
     if (!client) {
-      return NextResponse.json({ message: "Supabase 未配置" }, { status: 500 });
+      return ApiResponses.internalError("Supabase 未配置");
     }
     const { data: rows, error } = await client
       .from("event_follows")
@@ -71,20 +72,17 @@ export async function POST(req: Request) {
     const wrapped = e as { type?: string; error?: { message?: string } };
     if (wrapped?.type === "setup") {
       const err = wrapped.error;
-      return NextResponse.json(
-        {
-          message: "批量计数查询失败，需要修复表结构",
-          setupRequired: true,
-          detail: err?.message,
-          sql: `
+      const details = {
+        setupRequired: true,
+        detail: err?.message,
+        sql: `
 ALTER TABLE public.event_follows ALTER COLUMN user_id TYPE TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.event_follows (user_id, event_id);`,
-        },
-        { status: 501 }
-      );
+      };
+      return ApiResponses.internalError("批量计数查询失败，需要修复表结构", details);
     }
     const detail =
       (wrapped?.error && wrapped.error.message) || (e instanceof Error ? e.message : String(e));
-    return NextResponse.json({ message: "批量计数查询失败", detail }, { status: 500 });
+    return ApiResponses.internalError("批量计数查询失败", detail);
   }
 }

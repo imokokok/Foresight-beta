@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ApiResponses } from "@/lib/apiResponse";
 
 function getRelayerBaseUrl(): string | undefined {
   const raw = (process.env.RELAYER_URL || process.env.NEXT_PUBLIC_RELAYER_URL || "").trim();
@@ -20,10 +21,7 @@ export async function POST(req: NextRequest) {
 
     const relayerBase = getRelayerBaseUrl();
     if (!relayerBase) {
-      return NextResponse.json(
-        { success: false, message: "Relayer not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Relayer not configured");
     }
 
     const url = new URL("/orderbook/report-trade", relayerBase);
@@ -41,6 +39,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError("Failed to report trade", message);
   }
 }

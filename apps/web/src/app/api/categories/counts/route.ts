@@ -1,6 +1,8 @@
 // 分类热点数量API路由 - 获取每个分类的预测事件数量
 import { NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 // 分类统计数据可以短暂缓存
 export const revalidate = 60; // 1分钟缓存
@@ -9,10 +11,7 @@ export async function GET() {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase is not configured");
     }
     const { data: rawCategories, error: categoriesError } = await client
       .from("categories")
@@ -21,7 +20,8 @@ export async function GET() {
     const categories = rawCategories as Array<{ name: string }> | null;
 
     if (categoriesError) {
-      throw new Error(`Failed to fetch category list: ${categoriesError.message}`);
+      logApiError("GET /api/categories/counts fetch categories failed", categoriesError);
+      return ApiResponses.databaseError("Failed to fetch category list", categoriesError.message);
     }
 
     const categoryCounts = [];
@@ -32,7 +32,7 @@ export async function GET() {
       .eq("status", "active");
 
     if (predictionsError) {
-      console.error("Failed to query category event counts:", predictionsError);
+      logApiError("GET /api/categories/counts fetch predictions failed", predictionsError);
     }
 
     const predictions = rawPredictions as Array<{ id: number; category: string }> | null;
@@ -67,11 +67,9 @@ export async function GET() {
         },
       }
     );
-  } catch (error) {
-    console.error("Failed to fetch category counts:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to fetch category counts" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    logApiError("GET /api/categories/counts unhandled error", error);
+    const detail = error?.message || String(error);
+    return ApiResponses.internalError("Failed to fetch category counts", detail);
   }
 }

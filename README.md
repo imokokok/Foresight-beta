@@ -1,264 +1,269 @@
-# 🔮 Foresight - 去中心化预测市场平台
+<p align="center">
+  <img src="apps/web/public/images/logo.png" alt="Foresight Logo" width="120" />
+</p>
 
-> Foresight 是一个基于区块链与智能合约的去中心化预测市场（Decentralized Prediction Market）基础设施，围绕真实事件、链上资产和社区情绪，提供安全、透明、公平的预测与交易体验。用户可以在热门预测、讨论区、提案广场和排行榜等频道之间流转，形成从发现、讨论、提案、交易到复盘的完整闭环。
+<h1 align="center">🔮 Foresight</h1>
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.4-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-blue)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
+<p align="center">
+  <strong>下一代去中心化预测市场协议</strong><br/>
+  <em>Polymarket 级别的交易体验 · UMA 预言机结算 · 链下订单簿架构</em>
+</p>
 
----
+<p align="center">
+  <a href="https://foresight.market">🌐 官网</a> •
+  <a href="./DOCS.md">📚 开发文档</a> •
+  <a href="https://twitter.com/ForesightMarket">🐦 Twitter</a> •
+  <a href="https://discord.gg/foresight">💬 Discord</a>
+</p>
 
-## ✨ 产品特性概览
-
-- 🎯 多类型预测市场：支持二元事件、多选事件等不同结构的预测市场
-- 💰 链上真实结算：预测以智能合约结算，可验证、可追溯
-- 👛 多钱包接入：支持 MetaMask、Coinbase Wallet、WalletConnect 等主流钱包
-- 💬 事件内讨论区与论坛：预测详情页内讨论 + 独立论坛频道，促进深度观点交流与策略分享
-- 📋 提案广场：用于发起新预测市场与协议治理提案，让社区共识真正落地为链上市场
-- 🏆 预测者排行榜：按收益率和命中率展示顶级预测者与钱包地址表现，强化社区声誉体系
-- 🌍 中英文双语体验：全站支持中文/英文，URL 级国际化路由
-- 📱 移动端优先设计：专门的底部导航、汉堡菜单和下拉刷新体验
-- ⚡ 性能指标可量化：首屏加载 < 2s，LCP < 2.5s，滚动帧率接近 60fps
-- 📊 内建性能监控面板：内置 Web Vitals 与自建性能数据上报与查看能力
-
----
-
-## 🧩 架构总览
-
-Foresight 采用 Monorepo 结构，主要模块包括：
-
-- `apps/web`：Next.js Web 前端应用
-- `packages/contracts`：Solidity 智能合约与 Hardhat 工程
-- `services/relayer`：简化版 ERC-4337 Relayer/Bundler
-- `infra/supabase`：Supabase 数据库 schema 与管理脚本
-- `scripts`：合约部署与链上工具脚本
-
-目标是：**让用户体验接近 Web2 产品，但由 Web3 基础设施提供安全与结算。**
+<p align="center">
+  <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity" alt="Solidity" />
+  <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Polygon-Amoy-8247E5?logo=polygon" alt="Polygon" />
+  <img src="https://img.shields.io/badge/UMA-Oracle-FF4A4A" alt="UMA Oracle" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
+</p>
 
 ---
 
-## 🚀 快速开始
+## 🎯 什么是 Foresight？
 
-### 环境要求
+**Foresight** 是一个生产级去中心化预测市场协议，允许用户对真实世界事件进行交易。我们采用与 Polymarket 相同的技术架构——**链下订单簿撮合 + 链上结算**，结合 **UMA 乐观预言机**进行市场裁决，实现了：
 
-- Node.js 18+
-- npm
-- Git
+- ⚡ **毫秒级交易响应**（链下撮合）
+- 💰 **零 Gas 挂单/撤单**（只有成交才上链）
+- 🔒 **去中心化结算**（UMA 预言机 + 多签治理）
+- 🎨 **Web2 级用户体验**（钱包抽象 + 社交登录）
 
-### 克隆与安装
+---
+
+## ✨ 核心特性
+
+### 🏛️ Polymarket 级协议架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         用户界面层                               │
+│  Next.js 15 · React 19 · Tailwind CSS · Framer Motion          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       链下订单簿引擎                             │
+│  EIP-712 签名订单 · 内存撮合 · Supabase 持久化 · WebSocket 推送   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       智能合约层 (Polygon)                       │
+│                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │MarketFactory │  │OutcomeToken  │  │ UMAOracleAdapterV2   │  │
+│  │  (UUPS 代理) │  │    1155      │  │  (乐观预言机适配器)   │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────┘  │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                市场模板 (Minimal Proxy)                  │   │
+│  │  OffchainBinaryMarket · OffchainMultiMarket8 (≤8结果)   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        治理层                                    │
+│  Gnosis Safe (3/5 多签) → ForesightTimelock (24h 延迟执行)       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 📊 支持的市场类型
+
+| 类型         | 描述                     | 示例                              |
+| ------------ | ------------------------ | --------------------------------- |
+| **二元市场** | Yes/No 两种结果          | "BTC 会在 2025 年突破 $100k 吗？" |
+| **多元市场** | 2-8 种结果               | "2024 美国大选获胜者？"           |
+| **Invalid**  | UMA 争议失败时的退款机制 | 自动触发，用户可赎回本金          |
+
+### 🔐 安全特性
+
+- ✅ **UMA 乐观预言机** — 去中心化裁决，2h 争议期
+- ✅ **多签治理** — Gnosis Safe 3/5 阈值
+- ✅ **Timelock** — 关键操作 24h 延迟
+- ✅ **闪电贷保护** — 单区块交易量限制
+- ✅ **签名防重放** — EIP-712 + Nonce 机制
+- ✅ **电路熔断器** — 管理员可紧急暂停
+
+---
+
+## 🚀 快速体验
+
+### 线上 Demo
+
+访问 [https://foresight.market](https://foresight.market) 体验完整功能。
+
+### 本地开发
 
 ```bash
+# 1. 克隆仓库
 git clone https://github.com/Foresight-builder/Foresight-beta.git
 cd Foresight-beta
+
+# 2. 安装依赖
 npm install
-```
 
-### 配置环境变量
+# 3. 配置环境变量
+cp apps/web/.env.example apps/web/.env.local
+# 编辑 .env.local 填入必要的 API Keys
 
-```bash
-cp .env.example .env.local
-```
-
-关键变量示例：
-
-- `NEXT_PUBLIC_APP_URL`：前端站点 URL（例如 `http://localhost:3000`）
-- `NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_KEY`
-- `NEXT_PUBLIC_RELAYER_URL`
-- 区块链接口与合约相关变量（如 `USDC_ADDRESS_AMOY`、`COLLATERAL_TOKEN_ADDRESS`）
-
-数据库与 Supabase 相关变量的完整说明，见 `infra/supabase/README.md`。
-
-### 启动开发环境
-
-仅启动 Web：
-
-```bash
+# 4. 启动开发服务器
 npm run ws:dev
+
+# 访问 http://localhost:3000
 ```
-
-或进入子目录：
-
-```bash
-cd apps/web
-npm run dev
-```
-
-同时启动 Web + Relayer：
-
-```bash
-cd /path/to/Foresight-beta
-npm run ws:dev:all
-```
-
-默认访问：<http://localhost:3000>
 
 ---
 
-## 📚 文档导航
+## 📦 仓库结构
 
-当前仓库仅保留 1 个项目概括文档和 1 个统一的开发者文档：
-
-- `README.md`：项目概括与整体架构（你正在阅读的文档）
-- [DOCS.md](./DOCS.md)：唯一开发者手册（包含快速上手、组件与 Hooks、API、数据库、测试、国际化与 Sentry 等全部内容）
-
-推荐阅读路径：
-
-- 新同学：`README.md` → `DOCS.md` 的「🚀 快速上手」与「核心组件」
-- 了解高级能力：`DOCS.md` 的「🧠 高级能力」
-
----
-
-## 🏗️ 技术栈
-
-### 前端（apps/web）
-
-- Next.js 15.5.4（App Router）
-- React 19 + TypeScript
-- Tailwind CSS + Framer Motion
-- React Query + 自定义 Context（Auth、Wallet、UserProfile）
-- React Hook Form
-- next-intl 多语言
-
-### 区块链与钱包
-
-- Ethers.js
-- 支持多网络（Polygon 主网、Amoy 测试网、Sepolia 等）
-- EIP-4361 / Sign-In with Ethereum (SIWE)
-- 扩展型预测市场合约（`Foresight` + 模板市场）
-
-### 后端与数据
-
-- Supabase (PostgreSQL)
-- Supabase Realtime + Storage
-- 行级安全（RLS）、索引与物化视图
-
-### 工具链
-
-- Web Vitals + 自建性能上报与可视化
-- Vercel 部署
-- GitHub Actions CI/CD（测试与构建）
-
----
-
-```bash
+```
 Foresight-beta/
-├── apps/
-│   └── web/                    # Next.js 主应用
-│       ├── src/
-│       │   ├── app/            # App Router 页面 (trending, prediction, forum, admin 等)
-│       │   ├── components/     # UI、骨架屏、导航、弹窗等
-│       │   ├── contexts/       # Auth、Wallet、UserProfile 等上下文
-│       │   ├── hooks/          # useInfiniteScroll、usePersistedState 等
-│       │   ├── lib/            # apiWithFeedback、security、rateLimit、i18n 等工具
-│       │   └── test/           # 前端测试工具与 Mock
-│       └── public/             # 静态资源与 PWA 文件
-├── packages/
-│   └── contracts/              # 智能合约与 Hardhat
-├── services/
-│   └── relayer/                # 中继服务（ERC-4337 风格）
-├── infra/
-│   └── supabase/               # 数据库脚本与管理工具
-├── scripts/                    # 部署与链上工具脚本
+├── 📱 apps/web/                    # Next.js 前端应用
+│   ├── src/
+│   │   ├── app/                    # App Router 页面
+│   │   ├── components/             # UI 组件库
+│   │   ├── contexts/               # React Context (Auth, Wallet)
+│   │   ├── hooks/                  # 自定义 Hooks
+│   │   └── lib/                    # 工具函数
+│   └── public/                     # 静态资源
+│
+├── 📜 packages/contracts/          # Solidity 智能合约
+│   └── contracts/
+│       ├── MarketFactory.sol       # 市场工厂 (UUPS)
+│       ├── tokens/                 # ERC-1155 结果代币
+│       ├── templates/              # 市场模板
+│       ├── oracles/                # UMA 预言机适配器
+│       └── governance/             # Timelock 治理
+│
+├── 🔄 services/relayer/            # 链下订单簿中继器
+│   └── src/
+│       ├── index.ts                # Express API
+│       └── orderbook.ts            # 撮合引擎
+│
+├── 🗄️ infra/supabase/              # 数据库脚本
+│   └── sql/                        # PostgreSQL 迁移
+│
+└── 🛠️ scripts/                     # 部署与工具脚本
 ```
 
 ---
 
-## 🎨 核心功能与场景
+## 🏆 为什么选择 Foresight？
 
-### 1. 预测市场
-
-- 创建和参与预测事件
-- 二元和多元选项支持
-- 实时赔率更新
-- 自动结算
-
-### 2. 钱包集成
-
-- MetaMask
-- Coinbase Wallet
-- WalletConnect
-- Sign-In with Ethereum (SIWE)
-
-### 3. 社交功能
-
-- 实时聊天
-- 讨论论坛与提案广场
-- 用户资料
-- 排行榜与荣誉体系
-
-### 4. 移动端
-
-- 响应式设计
-- 汉堡菜单
-- 底部导航
-- 下拉刷新
-- 触摸优化
-
-### 5. 性能监控与运营
-
-- Web Vitals 收集与上报
-- 管理端性能仪表板
-- 实时查看关键指标与历史趋势
-- 根据监控数据评估改动效果
+| 维度         | Foresight          | 传统 AMM 预测市场  |
+| ------------ | ------------------ | ------------------ |
+| **交易延迟** | ~100ms (链下)      | 15s+ (等待区块)    |
+| **挂单成本** | 0 Gas              | 每次操作需 Gas     |
+| **滑点**     | 订单簿定价，无滑点 | AMM 曲线滑点       |
+| **结算**     | UMA 预言机 + 多签  | 中心化或简单预言机 |
+| **市场类型** | 二元 + 多元 (≤8)   | 通常仅二元         |
 
 ---
 
-## 🧪 测试与质量保障
+## 🛠️ 技术栈
 
-### 合约测试（Hardhat）
+### 前端
+
+- **框架**: Next.js 15 (App Router) + React 19
+- **样式**: Tailwind CSS + Framer Motion
+- **状态**: React Query + Zustand
+- **钱包**: ethers.js + WalletConnect + SIWE
+
+### 智能合约
+
+- **语言**: Solidity 0.8.24
+- **框架**: Hardhat + OpenZeppelin 5.x
+- **模式**: UUPS 可升级 + Minimal Proxy (EIP-1167)
+- **预言机**: UMA Optimistic Oracle V3
+
+### 后端
+
+- **数据库**: Supabase (PostgreSQL)
+- **订单簿**: Node.js + Express + WebSocket
+- **缓存**: 内存缓存 + HTTP Cache Headers
+
+### 基础设施
+
+- **网络**: Polygon Mainnet / Amoy Testnet
+- **部署**: Vercel (前端) + Railway (Relayer)
+- **监控**: Sentry + Web Vitals
+
+---
+
+## 📈 已部署合约 (Polygon Amoy)
+
+| 合约                        | 地址                                         |
+| --------------------------- | -------------------------------------------- |
+| MarketFactory               | `0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30` |
+| OutcomeToken1155            | `0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087` |
+| UMAOracleAdapterV2          | `0x5e42fce766Ad623cE175002B7b2528411C47cc92` |
+| OffchainBinaryMarket (impl) | `0x846145DC2850FfB97D14C4AF79675815b6D7AF0f` |
+| OffchainMultiMarket8 (impl) | `0x1e8BeCF558Baf0F74cEc2D7fa7ba44F0335282e8` |
+
+---
+
+## 🗺️ 路线图
+
+### ✅ Phase 1 — 核心协议 (已完成)
+
+- [x] 链下订单簿架构
+- [x] UMA 预言机集成
+- [x] 二元/多元市场模板
+- [x] 多签 + Timelock 治理
+
+### 🚧 Phase 2 — 生态扩展 (进行中)
+
+- [ ] 移动端 PWA 优化
+- [ ] 做市商激励计划
+- [ ] 跨链流动性 (Base, Arbitrum)
+
+### 🔮 Phase 3 — 去中心化治理
+
+- [ ] SIGHT 治理代币
+- [ ] DAO 提案系统
+- [ ] 社区预言机网络
+
+---
+
+## 🤝 参与贡献
+
+我们欢迎社区贡献！请查阅 [开发者文档](./DOCS.md) 了解详细的开发指南。
 
 ```bash
-npm run hardhat:test
+# 运行测试
+npm run hardhat:test        # 合约测试
+npm run ws:test             # 前端测试
+
+# 代码检查
+npm run ws:lint
+npm run ws:type-check
 ```
 
-### 前端测试（Vitest）
+---
 
-```bash
-cd apps/web
-npm run test
-```
+## 📄 许可证
 
-关于覆盖率目标和目录结构，请查看 [DOCS.md](./DOCS.md) 中的「🧠 高级能力 - 测试与覆盖率」章节。
+本项目采用 [MIT License](./LICENSE) 开源。
 
 ---
 
-## 🤝 贡献
+## 📬 联系我们
 
-欢迎通过 Issue 或 Pull Request 参与共建：
-
-1. Fork 本仓库
-2. 创建特性分支
-3. 提交变更并描述设计思路
-4. 提交 PR 并关联相关 Issue（如有）
+- **官网**: [foresight.market](https://foresight.market)
+- **Twitter**: [@ForesightMarket](https://twitter.com/ForesightMarket)
+- **Discord**: [discord.gg/foresight](https://discord.gg/foresight)
+- **Email**: hello@foresight.market
 
 ---
 
-## 📝 许可证
-
-本项目采用 MIT 许可证，详情见 [LICENSE](./LICENSE)。
-
----
-
-## 📡 联系我们
-
-- Website: <https://foresight.market>
-- Twitter: `@ForesightMarket`
-- Discord: <https://discord.gg/foresight>
-- Email: `hello@foresight.market`
-
----
-
-## ⭐ 支持项目
-
-如果这个项目对你有帮助，欢迎：
-
-- 在 GitHub 上点一个 Star
-- 与团队或朋友分享
-- 在 Issue 中告诉我们你的使用场景与建议
-
----
-
-**最后更新**: 2024-12-19
+<p align="center">
+  <strong>🔮 Foresight — Trade the Future</strong>
+</p>

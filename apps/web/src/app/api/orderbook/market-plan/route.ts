@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 type MarketPlanItem = {
   orderId: number;
@@ -41,10 +43,7 @@ export async function GET(req: NextRequest) {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const url = new URL(req.url);
@@ -56,16 +55,13 @@ export async function GET(req: NextRequest) {
     const amountRaw = url.searchParams.get("amount");
 
     if (!contract || !chainIdRaw || outcomeRaw === null || !sideRaw || !amountRaw) {
-      return NextResponse.json({ success: false, message: "Missing parameters" }, { status: 400 });
+      return ApiResponses.invalidParameters("Missing parameters");
     }
 
     const chainId = Number(chainIdRaw);
     const outcome = Number(outcomeRaw);
     if (!Number.isFinite(chainId) || chainId <= 0 || !Number.isFinite(outcome) || outcome < 0) {
-      return NextResponse.json(
-        { success: false, message: "Invalid chainId or outcome" },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Invalid chainId or outcome");
     }
 
     let targetAmount18: bigint;
@@ -73,11 +69,11 @@ export async function GET(req: NextRequest) {
       // amount is in shares (1e18)
       const parsed = BigInt(String(amountRaw));
       if (parsed <= 0n) {
-        return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });
+        return ApiResponses.badRequest("Invalid amount");
       }
       targetAmount18 = parsed;
     } catch {
-      return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid amount");
     }
 
     const takerSide = sideRaw.toLowerCase() === "buy" ? "buy" : "sell";
@@ -119,10 +115,7 @@ export async function GET(req: NextRequest) {
       error = fallback.error;
     }
     if (error) {
-      return NextResponse.json(
-        { success: false, message: error.message || "Order query failed" },
-        { status: 500 }
-      );
+      return ApiResponses.databaseError("Order query failed", error.message);
     }
 
     const rows: OrdersRow[] = Array.isArray(orders) ? orders : [];
@@ -198,20 +191,17 @@ export async function GET(req: NextRequest) {
     }
 
     if (filledAmount === 0n || bestPrice === null || worstPrice === null) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          side: takerSide,
-          amount: targetAmount18.toString(),
-          filledAmount: "0",
-          total: "0",
-          avgPrice: "0",
-          bestPrice: null,
-          worstPrice: null,
-          slippageBps: "0",
-          hasMoreDepth: false,
-          fills: [],
-        },
+      return successResponse({
+        side: takerSide,
+        amount: targetAmount18.toString(),
+        filledAmount: "0",
+        total: "0",
+        avgPrice: "0",
+        bestPrice: null,
+        worstPrice: null,
+        slippageBps: "0",
+        hasMoreDepth: false,
+        fills: [],
       });
     }
 
@@ -226,23 +216,24 @@ export async function GET(req: NextRequest) {
 
     const hasMoreDepth = remainingToFill > 0n;
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        side: takerSide,
-        amount: targetAmount18.toString(),
-        filledAmount: filledAmount.toString(),
-        total: totalCost.toString(),
-        avgPrice: avgPrice.toString(),
-        bestPrice: bestPrice.toString(),
-        worstPrice: worstPrice.toString(),
-        slippageBps: slippageBps.toString(),
-        hasMoreDepth,
-        fills,
-      },
+    return successResponse({
+      side: takerSide,
+      amount: targetAmount18.toString(),
+      filledAmount: filledAmount.toString(),
+      total: totalCost.toString(),
+      avgPrice: avgPrice.toString(),
+      bestPrice: bestPrice.toString(),
+      worstPrice: worstPrice.toString(),
+      slippageBps: slippageBps.toString(),
+      hasMoreDepth,
+      fills,
     });
   } catch (e: unknown) {
+    logApiError("GET /api/orderbook/market-plan", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to compute market plan",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }

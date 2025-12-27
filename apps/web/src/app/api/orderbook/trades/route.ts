@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
+import { ApiResponses } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 export const revalidate = 5; // 5 seconds cache
 
@@ -7,10 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const client = getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const { searchParams } = new URL(req.url);
@@ -38,12 +37,14 @@ export async function GET(req: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+      logApiError("GET /api/orderbook/trades query failed", error);
+      return ApiResponses.databaseError("Failed to fetch trades", error.message);
     }
 
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {
+    logApiError("GET /api/orderbook/trades unhandled error", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError("Failed to fetch trades", message);
   }
 }

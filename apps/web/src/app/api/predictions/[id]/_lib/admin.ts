@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function requireAdmin(args: {
   request: NextRequest;
@@ -12,10 +13,7 @@ export async function requireAdmin(args: {
   if (!/^0x[a-f0-9]{40}$/.test(addr)) {
     return {
       ok: false as const,
-      response: NextResponse.json(
-        { success: false, message: "Unauthorized or invalid wallet address" },
-        { status: 401 }
-      ),
+      response: ApiResponses.unauthorized("Unauthorized or invalid wallet address"),
     };
   }
   const { data: prof } = await (client as any)
@@ -27,10 +25,7 @@ export async function requireAdmin(args: {
   if (!isAdmin) {
     return {
       ok: false as const,
-      response: NextResponse.json(
-        { success: false, message: "Admin permission is required" },
-        { status: 403 }
-      ),
+      response: ApiResponses.forbidden("Admin permission is required"),
     };
   }
   return { ok: true as const, addr };

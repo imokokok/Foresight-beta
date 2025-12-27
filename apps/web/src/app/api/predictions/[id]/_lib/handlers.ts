@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { normalizeAddress } from "@/lib/serverUtils";
+import { normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { requireAdmin } from "./admin";
 import { computeProbabilities, fetchPredictionStats, toPredictionStatsResponse } from "./stats";
 import { getTimeAgo, getTimeRemaining } from "./time";
 import { parseIncludeOutcomesParam, parseIncludeStatsParam, parsePredictionId } from "./validators";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function handleGetPredictionDetail(request: NextRequest, id: string) {
   try {
@@ -14,18 +15,12 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
 
     const predictionId = parsePredictionId(id);
     if (!predictionId) {
-      return NextResponse.json(
-        { success: false, message: "Invalid prediction id" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Invalid prediction id");
     }
 
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase client is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase client is not configured");
     }
 
     const sel = includeOutcomes ? "*, outcomes:prediction_outcomes(*)" : "*";
@@ -37,16 +32,10 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
 
     if (error) {
       if ((error as any)?.code === "PGRST116") {
-        return NextResponse.json(
-          { success: false, message: "Prediction not found" },
-          { status: 404 }
-        );
+        return ApiResponses.notFound("Prediction not found");
       }
-      console.error("Failed to fetch prediction detail:", error);
-      return NextResponse.json(
-        { success: false, message: "Failed to fetch prediction detail" },
-        { status: 500 }
-      );
+      logApiError("GET /api/predictions/[id] detail query failed", error);
+      return ApiResponses.databaseError("Failed to fetch prediction detail", error.message);
     }
 
     let stats = {
@@ -101,12 +90,10 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
         },
       }
     );
-  } catch (error) {
-    console.error("Unexpected error while fetching prediction detail:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to fetch prediction detail" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    logApiError("GET /api/predictions/[id] detail unhandled error", error);
+    const detail = error?.message || String(error);
+    return ApiResponses.internalError("Failed to fetch prediction detail", detail);
   }
 }
 
@@ -114,19 +101,13 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
   try {
     const predictionId = parsePredictionId(id);
     if (!predictionId) {
-      return NextResponse.json(
-        { success: false, message: "Invalid prediction id" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Invalid prediction id");
     }
     const body = await request.json().catch(() => ({}));
 
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase client is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase client is not configured");
     }
 
     const admin = await requireAdmin({
@@ -149,7 +130,7 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
     if (typeof (body as any).image_url === "string") upd.image_url = (body as any).image_url;
     if (typeof (body as any).status === "string") upd.status = (body as any).status;
     if (Object.keys(upd).length === 0) {
-      return NextResponse.json({ success: false, message: "No fields to update" }, { status: 400 });
+      return ApiResponses.invalidParameters("No fields to update");
     }
 
     const { data, error } = await client
@@ -159,17 +140,17 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
       .select("*")
       .maybeSingle();
     if (error) {
-      return NextResponse.json(
-        { success: false, message: "Failed to update prediction", detail: error.message },
-        { status: 500 }
-      );
+      logApiError("PATCH /api/predictions/[id] update failed", error);
+      return ApiResponses.databaseError("Failed to update prediction", error.message);
     }
     return NextResponse.json(
       { success: true, data, message: "Prediction updated successfully" },
       { status: 200 }
     );
   } catch (e: any) {
-    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
+    logApiError("PATCH /api/predictions/[id] unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("Failed to update prediction", detail);
   }
 }
 
@@ -177,17 +158,11 @@ export async function handleDeletePrediction(request: NextRequest, id: string) {
   try {
     const predictionId = parsePredictionId(id);
     if (!predictionId) {
-      return NextResponse.json(
-        { success: false, message: "Invalid prediction id" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Invalid prediction id");
     }
     const client = getClient() as any;
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase client is not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase client is not configured");
     }
 
     const admin = await requireAdmin({ request, client });
@@ -195,13 +170,13 @@ export async function handleDeletePrediction(request: NextRequest, id: string) {
 
     const { error } = await client.from("predictions").delete().eq("id", predictionId);
     if (error) {
-      return NextResponse.json(
-        { success: false, message: "Failed to delete prediction", detail: error.message },
-        { status: 500 }
-      );
+      logApiError("DELETE /api/predictions/[id] delete failed", error);
+      return ApiResponses.databaseError("Failed to delete prediction", error.message);
     }
     return NextResponse.json({ success: true, message: "Prediction deleted" }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
+    logApiError("DELETE /api/predictions/[id] unhandled error", e);
+    const detail = String(e?.message || e);
+    return ApiResponses.internalError("Failed to delete prediction", detail);
   }
 }

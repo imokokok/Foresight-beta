@@ -9,6 +9,7 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
+import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,29 +24,20 @@ export async function POST(req: NextRequest) {
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
-      return NextResponse.json(
-        { success: false, message: "未认证或会话地址不匹配" },
-        { status: 401 }
-      );
+      return ApiResponses.unauthorized("未认证或会话地址不匹配");
     }
 
     const rec = store.get(email);
     const now = Date.now();
     if (!rec) {
-      return NextResponse.json(
-        { success: false, message: "验证码未发送或已失效" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("验证码未发送或已失效");
     }
     if (rec.lockUntil && now < rec.lockUntil) {
       const waitMin = Math.ceil((rec.lockUntil - now) / 60000);
-      return NextResponse.json(
-        { success: false, message: `该邮箱已被锁定，请 ${waitMin} 分钟后重试` },
-        { status: 429 }
-      );
+      return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
     }
     if (now > rec.expiresAt) {
-      return NextResponse.json({ success: false, message: "验证码已过期" }, { status: 400 });
+      return ApiResponses.invalidParameters("验证码已过期");
     }
     if (code !== rec.code) {
       rec.failCount = (rec.failCount || 0) + 1;
@@ -54,14 +46,9 @@ export async function POST(req: NextRequest) {
       }
       store.set(email, rec);
       const remain = Math.max(0, 3 - rec.failCount);
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            remain > 0 ? `验证码不正确，剩余 ${remain} 次尝试` : "连续失败次数过多，已锁定 1 小时",
-        },
-        { status: 400 }
-      );
+      const msg =
+        remain > 0 ? `验证码不正确，剩余 ${remain} 次尝试` : "连续失败次数过多，已锁定 1 小时";
+      return ApiResponses.invalidParameters(msg);
     }
 
     // 通过验证：绑定邮箱到钱包地址
@@ -107,6 +94,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: "验证成功" });
   } catch (e: any) {
-    return NextResponse.json({ success: false, message: String(e?.message || e) }, { status: 500 });
+    const detail = String(e?.message || e);
+    logApiError("POST /api/email-otp/verify unhandled error", e);
+    return ApiResponses.internalError("邮箱验证码验证失败", detail);
   }
 }

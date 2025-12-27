@@ -3,6 +3,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { ethers } from "ethers";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 type OrdersRow = Pick<Database["public"]["Tables"]["orders"]["Row"], "id" | "remaining" | "status">;
 
@@ -10,15 +12,12 @@ export async function POST(req: NextRequest) {
   try {
     const client = supabaseAdmin || getClient();
     if (!client) {
-      return NextResponse.json(
-        { success: false, message: "Supabase not configured" },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const bodyRaw = await req.json().catch(() => null);
     if (!bodyRaw || typeof bodyRaw !== "object") {
-      return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid JSON body");
     }
 
     const { chainId, verifyingContract, contract, marketKey, market_key, maker, salt, fillAmount } =
@@ -39,34 +38,25 @@ export async function POST(req: NextRequest) {
     const mk = (marketKey || market_key || "").toString().trim() || undefined;
 
     if (!chainId || !vc || !maker || salt === undefined || fillAmount === undefined) {
-      return NextResponse.json(
-        { success: false, message: "Missing required fields" },
-        { status: 400 }
-      );
+      return ApiResponses.invalidParameters("Missing required fields");
     }
 
     if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
-      return NextResponse.json({ success: false, message: "Invalid chainId" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid chainId");
     }
 
     if (!ethers.isAddress(vc) || !ethers.isAddress(maker)) {
-      return NextResponse.json(
-        { success: false, message: "Invalid verifyingContract or maker" },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Invalid verifyingContract or maker");
     }
 
     let fillBN: bigint;
     try {
       fillBN = BigInt(String(fillAmount));
       if (fillBN <= 0n) {
-        return NextResponse.json(
-          { success: false, message: "fillAmount must be positive" },
-          { status: 400 }
-        );
+        return ApiResponses.badRequest("fillAmount must be positive");
       }
     } catch {
-      return NextResponse.json({ success: false, message: "Invalid fillAmount" }, { status: 400 });
+      return ApiResponses.badRequest("Invalid fillAmount");
     }
 
     const runSelect = async (useMk: boolean) => {
@@ -95,17 +85,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (error) {
-      return NextResponse.json(
-        { success: false, message: error.message || "Order query failed" },
-        { status: 500 }
-      );
+      return ApiResponses.databaseError("Order query failed", error.message);
     }
 
     if (!data) {
-      return NextResponse.json(
-        { success: false, message: "Order not found or already closed" },
-        { status: 404 }
-      );
+      return ApiResponses.notFound("Order not found or already closed");
     }
 
     const orderRow = data as OrdersRow;
@@ -121,13 +105,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (remainingBN <= 0n) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: orderRow.id,
-          remaining: "0",
-          status: orderRow.status || "filled",
-        },
+      return successResponse({
+        id: orderRow.id,
+        remaining: "0",
+        status: orderRow.status || "filled",
       });
     }
 
@@ -161,15 +142,16 @@ export async function POST(req: NextRequest) {
 
     if (updateError) {
       const message = updateError.message || "Order update failed";
-      return NextResponse.json({ success: false, message }, { status: 500 });
+      return ApiResponses.databaseError("Order update failed", message);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: updated,
-    });
+    return successResponse(updated);
   } catch (e: unknown) {
+    logApiError("POST /api/orderbook/orders/fill", e);
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return ApiResponses.internalError(
+      "Failed to fill order",
+      process.env.NODE_ENV === "development" ? message : undefined
+    );
   }
 }
