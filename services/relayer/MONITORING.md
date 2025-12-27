@@ -281,11 +281,11 @@ services/relayer/
 └── MONITORING.md
 ```
 
-## ⚡ 下一步: Phase 2
+## ⚡ Phase 2 已完成
 
-Phase 2 将包含:
-- [ ] 撮合引擎主备切换
-- [ ] WebSocket 集群化
-- [ ] 数据库读写分离
-- [ ] 链上对账系统
+Phase 2 功能已实现，详见 [PHASE2.md](./PHASE2.md):
+- [x] 撮合引擎主备切换 (Leader Election)
+- [x] WebSocket 集群化 (Redis Pub/Sub)
+- [x] 数据库读写分离
+- [x] 链上对账系统
 

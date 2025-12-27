@@ -3,4 +3,5 @@
  */
 
 export { default as healthRoutes } from "./healthRoutes.js";
+export { default as clusterRoutes } from "./clusterRoutes.js";
 

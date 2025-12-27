@@ -28,12 +28,27 @@ import {
 } from "./monitoring/health.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
-import { healthRoutes } from "./routes/index.js";
+import { healthRoutes, clusterRoutes } from "./routes/index.js";
 import {
   metricsMiddleware,
   requestIdMiddleware,
   requestLoggerMiddleware,
 } from "./middleware/index.js";
+
+// 🚀 Phase 2: 导入集群和高可用模块
+import { 
+  initClusterManager, 
+  closeClusterManager, 
+  getClusterManager 
+} from "./cluster/index.js";
+import { 
+  initDatabasePool, 
+  closeDatabasePool 
+} from "./database/index.js";
+import { 
+  initChainReconciler, 
+  closeChainReconciler 
+} from "./reconciliation/index.js";
 
 // 环境变量校验与读取
 const EnvSchema = z.object({
@@ -196,6 +211,9 @@ app.use(metricsMiddleware);
 
 // 🚀 Phase 1: 添加健康检查路由
 app.use(healthRoutes);
+
+// 🚀 Phase 2: 添加集群管理路由
+app.use(clusterRoutes);
 
 const PORT = RELAYER_PORT;
 
@@ -929,6 +947,60 @@ if (process.env.NODE_ENV !== "test") {
       }
     }
 
+    // 🚀 Phase 2: 初始化数据库连接池
+    try {
+      await initDatabasePool();
+      logger.info("Database pool initialized");
+    } catch (e: any) {
+      logger.warn("Database pool initialization failed, using single connection", {}, e);
+    }
+
+    // 🚀 Phase 2: 初始化集群管理器 (需要 Redis)
+    const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
+    if (clusterEnabled) {
+      try {
+        const cluster = await initClusterManager({
+          enableLeaderElection: true,
+          enablePubSub: true,
+        });
+        
+        // 监听 Leader 事件
+        cluster.on("became_leader", () => {
+          logger.info("This node became the leader, starting matching engine");
+          // 可以在这里添加 Leader 专属逻辑
+        });
+        
+        cluster.on("lost_leadership", () => {
+          logger.warn("This node lost leadership");
+          // 可以在这里添加 Follower 逻辑
+        });
+        
+        logger.info("Cluster manager initialized", { 
+          nodeId: cluster.getNodeId(),
+          isLeader: cluster.isLeader(),
+        });
+      } catch (e: any) {
+        logger.warn("Cluster manager initialization failed, running in standalone mode", {}, e);
+      }
+    }
+
+    // 🚀 Phase 2: 初始化链上对账系统 (可选)
+    const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
+    if (reconciliationEnabled && process.env.RPC_URL && process.env.MARKET_ADDRESS) {
+      try {
+        await initChainReconciler({
+          rpcUrl: process.env.RPC_URL,
+          marketAddress: process.env.MARKET_ADDRESS,
+          chainId: Number(process.env.CHAIN_ID || "80002"),
+          intervalMs: Number(process.env.RECONCILIATION_INTERVAL_MS || "300000"),
+          autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
+        });
+        logger.info("Chain reconciler initialized");
+      } catch (e: any) {
+        logger.warn("Chain reconciler initialization failed", {}, e);
+      }
+    }
+
     // 🚀 Phase 1: 注册健康检查器
     healthService.registerHealthCheck("supabase", createSupabaseHealthChecker(supabaseAdmin));
     healthService.registerHealthCheck("matching_engine", createMatchingEngineHealthChecker(matchingEngine));
@@ -966,11 +1038,13 @@ if (process.env.NODE_ENV !== "test") {
       port: PORT, 
       wsPort: process.env.WS_PORT || 3006,
       redisEnabled,
+      clusterEnabled,
+      reconciliationEnabled,
     });
   });
 }
 
-// 🚀 Phase 1: 优雅关闭 (增加 Redis 和快照服务关闭)
+// 🚀 Phase 1 & 2: 优雅关闭 (增加 Redis、集群、对账服务关闭)
 async function gracefulShutdown(signal: string) {
   logger.info("Graceful shutdown initiated", { signal });
   
@@ -980,6 +1054,22 @@ async function gracefulShutdown(signal: string) {
       logger.error("Shutdown timeout, forcing exit");
       process.exit(1);
     }, 30000);
+    
+    // 🚀 Phase 2: 关闭链上对账服务
+    try {
+      await closeChainReconciler();
+      logger.info("Chain reconciler stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop chain reconciler", {}, e);
+    }
+    
+    // 🚀 Phase 2: 关闭集群管理器
+    try {
+      await closeClusterManager();
+      logger.info("Cluster manager stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop cluster manager", {}, e);
+    }
     
     // 关闭订单簿快照服务
     try {
@@ -1012,6 +1102,14 @@ async function gracefulShutdown(signal: string) {
       logger.info("Redis connection closed");
     } catch (e: any) {
       logger.error("Failed to close Redis", {}, e);
+    }
+    
+    // 🚀 Phase 2: 关闭数据库连接池
+    try {
+      await closeDatabasePool();
+      logger.info("Database pool closed");
+    } catch (e: any) {
+      logger.error("Failed to close database pool", {}, e);
     }
     
     clearTimeout(shutdownTimeout);
