@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, ImgHTMLAttributes } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "@/lib/i18n";
 
 interface LazyImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> {
   src: string;
@@ -65,6 +66,7 @@ export default function LazyImage({
   fallbackSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23f3f4f6' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%239ca3af' font-size='14'%3E%E5%9B%BE%E7%89%87%3C/text%3E%3C/svg%3E",
   ...props
 }: LazyImageProps) {
+  const tErrors = useTranslations("errors");
   const [loaded, setLoaded] = useState(false);
   const [inView, setInView] = useState(false);
   const [error, setError] = useState(false);
@@ -180,7 +182,7 @@ export default function LazyImage({
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <p className="text-xs">图片加载失败</p>
+            <p className="text-xs">{tErrors("imageLoadFailed")}</p>
           </div>
         </div>
       )}

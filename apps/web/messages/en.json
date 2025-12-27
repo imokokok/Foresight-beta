@@ -539,11 +539,37 @@
       "arbitratorName": "Foresight Oracle Committee"
     },
     "comments": {
-      "loading": "Loading comments..."
+      "loading": "Loading comments...",
+      "loadPreviewFailed": "Failed to load discussion preview, please try again later",
+      "migratedToForum": "Discussions have been moved to the dedicated chat room in the forum",
+      "migrationReason": "To keep all opinions, strategies and reviews in one place, inline discussions are no longer provided here. You can continue the conversation in the Foresight forum chat room for this event.",
+      "chatPreview": "Chat room preview",
+      "totalPosts": "{count} posts and replies",
+      "noDiscussion": "No discussions yet. Be the first to start a topic in the forum!",
+      "forumDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
+      "gotoChat": "Go to chat room",
+      "chatHint": "In the forum you can view full message history, topic lists and related prediction markets.",
+      "discoverEvents": "Go to",
+      "orCreateNew": "to discover events to discuss, or",
+      "createNewProposal": "create a new prediction"
     },
     "chart": {
       "loading": "Market data loading...",
       "outcomeFallback": "Outcome {index}"
+    },
+    "outcomes": {
+      "multiDistribution": "Multi-outcome probability distribution",
+      "realTimeUpdate": "Updated in real-time based on market prices"
+    },
+    "detail": {
+      "notFound": "Prediction event not found",
+      "priceHint": "Price represents the implied probability of the event. You can buy or sell positions at any time and quickly adjust when your view changes.",
+      "myPosition": "My position",
+      "stake": "Stake",
+      "pnl": "PnL",
+      "implied": "Implied",
+      "proposalOriginHint": "This prediction market originates from community discussions in the Proposals Square. You can go back to the original proposal to continue exchanging ideas and iteration suggestions.",
+      "viewProposal": "View proposal"
     }
   },
   "filters": {
@@ -598,6 +624,18 @@
     "goHome": "Back to home",
     "contactSupport": "Contact support",
     "followActionFailed": "Follow action failed, please try again later",
+    "componentLoadFailed": "Component failed to load",
+    "errorOccurred": "An error occurred",
+    "unknownError": "An unknown error occurred, please try again later",
+    "viewDetails": "View error details",
+    "errorMessage": "Error message",
+    "stackTrace": "Stack trace",
+    "componentStack": "Component stack",
+    "refreshPage": "Refresh page",
+    "autoReported": "Error automatically reported. We will fix it soon.",
+    "loadFailed": "Load failed",
+    "contentUnavailable": "This content is temporarily unavailable",
+    "imageLoadFailed": "Image failed to load",
     "network": {
       "title": "Network error",
       "description": "Please check your connection and try again"
@@ -1244,5 +1282,25 @@
         "deadline": "Ends on {date}"
       }
     }
+  },
+  "adminRoles": {
+    "title": "Role Management",
+    "description": "Admin only. Grant or revoke reviewer permissions for users.",
+    "refreshList": "Refresh list",
+    "userList": "User list",
+    "totalUsers": "{count} users, showing up to 200",
+    "loading": "Loading user list...",
+    "empty": "No users to display, or you lack permission.",
+    "loadFailed": "Failed to load, you may not have permission",
+    "updateFailed": "Update failed",
+    "walletAddress": "Wallet address",
+    "username": "Username",
+    "email": "Email",
+    "isAdmin": "Admin",
+    "isReviewer": "Reviewer",
+    "actions": "Actions",
+    "saving": "Saving...",
+    "grantReviewer": "Grant reviewer",
+    "revokeReviewer": "Revoke reviewer"
   }
 }

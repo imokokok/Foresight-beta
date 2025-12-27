@@ -539,11 +539,37 @@
       "arbitratorName": "Foresight Oracle Committee"
     },
     "comments": {
-      "loading": "Cargando comentarios..."
+      "loading": "Cargando comentarios...",
+      "loadPreviewFailed": "Error al cargar la vista previa del debate, inténtalo de nuevo más tarde",
+      "migratedToForum": "Los debates se han trasladado a la sala de chat dedicada del foro",
+      "migrationReason": "Para mantener todas las opiniones, estrategias y reseñas en un solo lugar, ya no se ofrecen debates en línea aquí. Puedes continuar la conversación en la sala de chat del foro de Foresight para este evento.",
+      "chatPreview": "Vista previa de la sala de chat",
+      "totalPosts": "{count} publicaciones y respuestas",
+      "noDiscussion": "Aún no hay debates. ¡Sé el primero en iniciar un tema en el foro!",
+      "forumDescription": "El foro de Foresight es la comunidad central para que los participantes del mercado de predicciones compartan ideas y estrategias. Puedes crear temas para debatir eventos del mundo real o unirte al análisis profundo de predicciones existentes.",
+      "gotoChat": "Ir a la sala de chat",
+      "chatHint": "En el foro puedes ver el historial completo de mensajes, las listas de temas y los mercados de predicción relacionados.",
+      "discoverEvents": "Ir a",
+      "orCreateNew": "para descubrir eventos para debatir, o",
+      "createNewProposal": "crear una nueva predicción"
     },
     "chart": {
       "loading": "Cargando datos de mercado...",
       "outcomeFallback": "Resultado {index}"
+    },
+    "outcomes": {
+      "multiDistribution": "Distribución de probabilidades multi-resultado",
+      "realTimeUpdate": "Actualizado en tiempo real según los precios del mercado"
+    },
+    "detail": {
+      "notFound": "Evento de predicción no encontrado",
+      "priceHint": "El precio representa la probabilidad implícita del evento. Puedes comprar o vender posiciones en cualquier momento y ajustar rápidamente cuando cambies de opinión.",
+      "myPosition": "Mi posición",
+      "stake": "Apuesta",
+      "pnl": "Ganancia/Pérdida",
+      "implied": "Implícito",
+      "proposalOriginHint": "Este mercado de predicción surge de las discusiones de la comunidad en la Plaza de Propuestas. Puedes volver a la propuesta original para seguir intercambiando ideas y sugerencias de mejora.",
+      "viewProposal": "Ver propuesta"
     }
   },
   "filters": {
@@ -598,6 +624,18 @@
     "goHome": "Ir al inicio",
     "contactSupport": "Contactar soporte",
     "followActionFailed": "La acción de seguir falló, inténtalo más tarde",
+    "componentLoadFailed": "El componente no se pudo cargar",
+    "errorOccurred": "Ocurrió un error",
+    "unknownError": "Ocurrió un error desconocido, inténtalo de nuevo más tarde",
+    "viewDetails": "Ver detalles del error",
+    "errorMessage": "Mensaje de error",
+    "stackTrace": "Seguimiento de la pila",
+    "componentStack": "Pila de componentes",
+    "refreshPage": "Actualizar página",
+    "autoReported": "El error se ha reportado automáticamente. Lo solucionaremos pronto.",
+    "loadFailed": "Error al cargar",
+    "contentUnavailable": "Este contenido no está disponible temporalmente",
+    "imageLoadFailed": "Error al cargar la imagen",
     "network": {
       "title": "Error de red",
       "description": "Comprueba tu conexión y vuelve a intentarlo"
@@ -1244,5 +1282,25 @@
         "deadline": "Finaliza el {date}"
       }
     }
+  },
+  "adminRoles": {
+    "title": "Gestión de roles",
+    "description": "Solo administradores. Otorga o revoca permisos de revisor para usuarios.",
+    "refreshList": "Actualizar lista",
+    "userList": "Lista de usuarios",
+    "totalUsers": "{count} usuarios, mostrando hasta 200",
+    "loading": "Cargando lista de usuarios...",
+    "empty": "No hay usuarios para mostrar, o no tienes permiso.",
+    "loadFailed": "Error al cargar, es posible que no tengas permiso",
+    "updateFailed": "Error al actualizar",
+    "walletAddress": "Dirección de billetera",
+    "username": "Nombre de usuario",
+    "email": "Correo electrónico",
+    "isAdmin": "Administrador",
+    "isReviewer": "Revisor",
+    "actions": "Acciones",
+    "saving": "Guardando...",
+    "grantReviewer": "Otorgar revisor",
+    "revokeReviewer": "Revocar revisor"
   }
 }

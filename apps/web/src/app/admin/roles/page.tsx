@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useTranslations } from "@/lib/i18n";
 
 interface RoleUser {
   wallet_address: string;
@@ -12,6 +13,8 @@ interface RoleUser {
 }
 
 export default function RolesPage() {
+  const t = useTranslations("adminRoles");
+  const tCommon = useTranslations("common");
   const [users, setUsers] = useState<RoleUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,14 +27,14 @@ export default function RolesPage() {
       const res = await fetch("/api/admin/roles");
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.message || "加载失败，可能没有权限访问");
+        setError(data?.message || t("loadFailed"));
         setUsers([]);
         return;
       }
       const list: RoleUser[] = Array.isArray(data?.users) ? data.users : [];
       setUsers(list);
     } catch (e: any) {
-      setError(e?.message || "加载失败");
+      setError(e?.message || t("loadFailed"));
       setUsers([]);
     } finally {
       setLoading(false);
@@ -53,7 +56,7 @@ export default function RolesPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        const msg = data?.message || "更新失败";
+        const msg = data?.message || t("updateFailed");
         alert(msg);
         return;
       }
@@ -61,7 +64,7 @@ export default function RolesPage() {
         prev.map((u) => (u.wallet_address === wallet ? { ...u, is_reviewer: !current } : u))
       );
     } catch (e: any) {
-      alert(e?.message || "更新失败");
+      alert(e?.message || t("updateFailed"));
     } finally {
       setSavingWallet(null);
     }
@@ -72,17 +75,15 @@ export default function RolesPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">角色管理</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              仅管理员可访问，用于为用户开通或取消审核权限。
-            </p>
+            <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t("description")}</p>
           </div>
           <button
             onClick={loadUsers}
             disabled={loading}
             className="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            刷新列表
+            {t("refreshList")}
           </button>
         </div>
 
@@ -94,27 +95,39 @@ export default function RolesPage() {
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-800">用户列表</span>
+            <span className="text-sm font-semibold text-slate-800">{t("userList")}</span>
             <span className="text-xs text-slate-400">
-              共 {users.length} 个用户，最多显示最近 200 条
+              {t("totalUsers").replace("{count}", String(users.length))}
             </span>
           </div>
 
           {loading ? (
-            <div className="p-6 text-sm text-slate-500">正在加载用户列表...</div>
+            <div className="p-6 text-sm text-slate-500">{t("loading")}</div>
           ) : users.length === 0 ? (
-            <div className="p-6 text-sm text-slate-500">暂无可显示的用户，或没有权限访问。</div>
+            <div className="p-6 text-sm text-slate-500">{t("empty")}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-500">钱包地址</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-500">用户名</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-500">邮箱</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-500">管理员</th>
-                    <th className="px-4 py-2 text-left font-semibold text-slate-500">审核员</th>
-                    <th className="px-4 py-2 text-right font-semibold text-slate-500">操作</th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-500">
+                      {t("walletAddress")}
+                    </th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-500">
+                      {t("username")}
+                    </th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-500">
+                      {t("email")}
+                    </th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-500">
+                      {t("isAdmin")}
+                    </th>
+                    <th className="px-4 py-2 text-left font-semibold text-slate-500">
+                      {t("isReviewer")}
+                    </th>
+                    <th className="px-4 py-2 text-right font-semibold text-slate-500">
+                      {t("actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -133,7 +146,7 @@ export default function RolesPage() {
                               : "bg-slate-50 text-slate-400 border border-slate-200"
                           }`}
                         >
-                          {u.is_admin ? "是" : "否"}
+                          {u.is_admin ? tCommon("yes") : tCommon("no")}
                         </span>
                       </td>
                       <td className="px-4 py-2">
@@ -144,7 +157,7 @@ export default function RolesPage() {
                               : "bg-slate-50 text-slate-400 border border-slate-200"
                           }`}
                         >
-                          {u.is_reviewer ? "是" : "否"}
+                          {u.is_reviewer ? tCommon("yes") : tCommon("no")}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right">
@@ -158,10 +171,10 @@ export default function RolesPage() {
                           onClick={() => toggleReviewer(u.wallet_address, u.is_reviewer)}
                         >
                           {savingWallet === u.wallet_address
-                            ? "保存中..."
+                            ? t("saving")
                             : u.is_reviewer
-                              ? "取消审核权限"
-                              : "开通审核权限"}
+                              ? t("revokeReviewer")
+                              : t("grantReviewer")}
                         </button>
                       </td>
                     </tr>

@@ -80,7 +80,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
         setPreview((prev) => ({
           ...prev,
           loading: false,
-          error: "加载讨论预览失败，请稍后重试",
+          error: tMarket("comments.loadPreviewFailed"),
         }));
       }
     };
@@ -229,20 +229,23 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
           <div className="min-h-[240px] flex flex-col gap-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
               <MessageSquare className="w-4 h-4 text-purple-500" />
-              讨论已迁移到预测论坛的专属聊天室
+              {tMarket("comments.migratedToForum")}
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">
-              为了把同一事件下的观点、策略和复盘集中在一个地方，本页面不再提供内嵌讨论。 你可以前往
-              Foresight 讨论区中该事件的聊天室继续交流。
+              {tMarket("comments.migrationReason")}
             </p>
 
             <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/50 px-4 py-3 text-sm text-gray-700 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-gray-900">聊天室预览</span>
-                {preview.loading && <span className="text-xs text-gray-400">加载中…</span>}
+                <span className="font-semibold text-gray-900">
+                  {tMarket("comments.chatPreview")}
+                </span>
+                {preview.loading && (
+                  <span className="text-xs text-gray-400">{tCommon("loading")}</span>
+                )}
                 {!preview.loading && preview.totalCount > 0 && (
                   <span className="text-xs text-gray-500">
-                    共 {preview.totalCount} 条帖子与回复
+                    {tMarket("comments.totalPosts").replace("{count}", String(preview.totalCount))}
                   </span>
                 )}
               </div>
@@ -253,33 +256,28 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 </div>
               )}
               {!preview.error && !preview.loading && !preview.lastMessage && (
-                <div className="text-xs text-gray-500">
-                  还没有任何讨论，快去论坛里发起第一条话题吧。
-                </div>
+                <div className="text-xs text-gray-500">{tMarket("comments.noDiscussion")}</div>
               )}
             </div>
 
             <div className="text-xs text-gray-500 leading-relaxed space-y-1">
+              <p>{tMarket("comments.forumDescription")}</p>
               <p>
-                Foresight
-                讨论区是预测市场参与者交流观点、分享策略的核心社区，你可以创建主题讨论现实世界事件，或参与现有预测的深度分析。
-              </p>
-              <p>
-                前往{" "}
+                {tMarket("comments.discoverEvents")}{" "}
                 <Link
                   href="/trending"
                   className="text-purple-600 hover:text-purple-700 hover:underline"
                 >
-                  热门预测
+                  {tEvents("nav.trending")}
                 </Link>{" "}
-                发现可讨论的事件，或在{" "}
+                {tMarket("comments.orCreateNew")}{" "}
                 <Link
                   href="/proposals"
                   className="text-purple-600 hover:text-purple-700 hover:underline"
                 >
-                  提案广场
+                  {tEvents("nav.proposals")}
                 </Link>{" "}
-                发起新预测。
+                {tMarket("comments.createNewProposal")}
               </p>
             </div>
 
@@ -288,11 +286,9 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 href={`/forum?eventId=${prediction.id}`}
                 className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold shadow-sm hover:bg-purple-700 transition-colors"
               >
-                前往对应聊天室
+                {tMarket("comments.gotoChat")}
               </Link>
-              <span className="text-xs text-gray-500">
-                在讨论区中可以查看完整消息历史、话题列表和相关预测市场。
-              </span>
+              <span className="text-xs text-gray-500">{tMarket("comments.chatHint")}</span>
             </div>
           </div>
         )}

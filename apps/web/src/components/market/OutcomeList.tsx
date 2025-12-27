@@ -47,6 +47,7 @@ export function OutcomeList({
 }: OutcomeListProps) {
   const tCommon = useTranslations("common");
   const tTrading = useTranslations("trading");
+  const tMarket = useTranslations("market");
   const outcomes = prediction.outcomes || [];
   const stats = prediction.stats;
 
@@ -93,8 +94,10 @@ export function OutcomeList({
       {isMultiOutcome && (
         <div className="px-6 pt-4 pb-3 border-b border-gray-100 space-y-2 bg-white">
           <div className="flex justify-between items-center text-[11px] text-gray-500">
-            <span className="font-semibold text-gray-700">多结局概率分布</span>
-            <span className="text-gray-400">根据当前市场价格实时更新</span>
+            <span className="font-semibold text-gray-700">
+              {tMarket("outcomes.multiDistribution")}
+            </span>
+            <span className="text-gray-400">{tMarket("outcomes.realTimeUpdate")}</span>
           </div>
           <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden flex">
             {displayItems.map(({ outcome, idx, prob }) => {
