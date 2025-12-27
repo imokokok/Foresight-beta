@@ -1,10 +1,5 @@
 // 统一导出所有骨架屏组件
 export * from "./CardSkeleton";
-export * from "./ProfileSkeleton";
-export * from "./TableSkeleton";
-export { default as FlagCardSkeleton, FlagCardListSkeleton } from "./FlagCardSkeleton";
-export { default as LeaderboardSkeleton } from "./LeaderboardSkeleton";
-export { default as ChatSkeleton, ForumThreadSkeleton } from "./ChatSkeleton";
 
 /**
  * 通用文本骨架屏
