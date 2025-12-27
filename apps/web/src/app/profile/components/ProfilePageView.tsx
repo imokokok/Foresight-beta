@@ -7,6 +7,7 @@ import { ChevronRight, LogOut, Settings, Wallet } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
+import { formatAddress } from "@/lib/cn";
 import type { PortfolioStats, TabConfig, TabType } from "../types";
 import { SidebarStatCard } from "./ProfileUI";
 import { PredictionsTab } from "./PredictionsTab";
@@ -100,9 +101,7 @@ export function ProfilePageView({
                 >
                   <Wallet className="w-3.5 h-3.5 text-purple-600" />
                   <span className={account ? "text-purple-600" : "text-gray-400"}>
-                    {account
-                      ? `${account.slice(0, 6)}...${account.slice(-4)}`
-                      : tProfile("username.walletDisconnected")}
+                    {account ? formatAddress(account) : tProfile("username.walletDisconnected")}
                   </span>
                 </button>
 

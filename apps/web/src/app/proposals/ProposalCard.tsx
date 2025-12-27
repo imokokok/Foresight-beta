@@ -2,6 +2,7 @@ import React from "react";
 import { MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { formatAddress } from "@/lib/cn";
 
 import type { ProposalItem } from "./proposalsListUtils";
 
@@ -29,7 +30,7 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
 
   const cat = categoryConfig[proposal.category || "General"];
   const author = String(proposal.user_id || "").trim();
-  const authorLabel = author ? `${author.slice(0, 6)}...${author.slice(-4)}` : "Anonymous";
+  const authorLabel = author ? formatAddress(author) : "Anonymous";
   const createdAt = new Date(proposal.created_at);
   const now = new Date();
   const diffMs = now.getTime() - createdAt.getTime();

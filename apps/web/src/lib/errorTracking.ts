@@ -4,6 +4,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs";
+import { formatAddress } from "./cn";
 
 /**
  * 错误类型
@@ -244,9 +245,7 @@ export class ErrorTracker {
       username: user.username,
       email: user.email,
       // 不要发送完整的钱包地址
-      wallet: user.walletAddress
-        ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-        : undefined,
+      wallet: user.walletAddress ? formatAddress(user.walletAddress) : undefined,
     });
   }
 

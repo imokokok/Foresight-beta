@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Users, X, Clock, CheckCircle2 } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";
+import { formatAddress } from "@/lib/cn";
 
 type HistoryItem = {
   id: string;
@@ -60,11 +61,7 @@ export function FlagsHistoryModal({
                   <div className="mt-1 text-xs font-bold text-gray-500 flex items-center gap-1">
                     <Users className="w-3 h-3" />
                     <span>{tFlags("history.witnessLabel")}</span>
-                    <span className="text-gray-700">
-                      {flag.witness_id.length > 12
-                        ? `${flag.witness_id.slice(0, 6)}...${flag.witness_id.slice(-4)}`
-                        : flag.witness_id}
-                    </span>
+                    <span className="text-gray-700">{formatAddress(flag.witness_id)}</span>
                   </div>
                 )}
               </div>

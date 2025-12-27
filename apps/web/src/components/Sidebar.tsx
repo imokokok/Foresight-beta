@@ -32,7 +32,7 @@ type MenuItem = {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { account } = useWallet();
+  const { account, formatAddress } = useWallet();
   const { user } = useAuth();
   const profileCtx = useUserProfileOptional();
   const isAdmin = !!profileCtx?.isAdmin;
@@ -250,9 +250,7 @@ export default function Sidebar() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-black text-gray-800 truncate">
-                      {account
-                        ? `${String(account).slice(0, 6)}...${String(account).slice(-4)}`
-                        : user?.email?.split("@")[0]}
+                      {account ? formatAddress(account) : user?.email?.split("@")[0]}
                     </div>
                     <div className="text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
                       {tCommon("userLevelDreamer").replace("{level}", "3")}

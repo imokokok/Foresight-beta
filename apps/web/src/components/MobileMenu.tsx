@@ -36,7 +36,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { account, disconnectWallet } = useWallet();
+  const { account, disconnectWallet, formatAddress } = useWallet();
   const tNav = useTranslations("nav");
   const tMobileNav = useTranslations("mobileNav");
   const firstItemRef = React.useRef<HTMLAnchorElement | null>(null);
@@ -157,7 +157,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {account.slice(0, 6)}...{account.slice(-4)}
+                        {formatAddress(account)}
                       </p>
                       <p className="text-xs text-gray-500">{tMobileNav("wallet.connected")}</p>
                     </div>

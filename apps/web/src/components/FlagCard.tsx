@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import LazyImage from "@/components/ui/LazyImage";
 import { useTranslations } from "@/lib/i18n";
+import { formatAddress } from "@/lib/cn";
 
 export type FlagItem = {
   id: number;
@@ -207,9 +208,7 @@ export const FlagCard = memo(function FlagCard({
                   <span>{tFlags("card.verification.friend")}</span>
                   {flag.witness_id && (
                     <span className="text-[10px] text-gray-500">
-                      {flag.witness_id.length > 12
-                        ? `${flag.witness_id.slice(0, 6)}...${flag.witness_id.slice(-4)}`
-                        : flag.witness_id}
+                      {formatAddress(flag.witness_id)}
                     </span>
                   )}
                 </div>
