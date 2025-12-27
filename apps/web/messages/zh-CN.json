@@ -1001,7 +1001,24 @@
       "title": "我的愿望看板",
       "badge": "大胆做梦",
       "activeLabel": "进行中",
-      "achievedLabel": "已完成"
+      "achievedLabel": "已完成",
+      "tipPrefix": "想把现实目标和预测市场结合？你可以在",
+      "tipTrending": "热门预测",
+      "tipTrendingAction": "中选择事件创建对应 Flag，在",
+      "tipProposals": "提案广场",
+      "tipProposalsAction": "发起长期挑战，前往",
+      "tipLeaderboard": "排行榜",
+      "tipLeaderboardAction": "查看活跃挑战者，并在",
+      "tipForum": "讨论区",
+      "tipOr": "或",
+      "tipSearch": "全站搜索",
+      "tipSuffix": "中发现更多灵感。"
+    },
+    "page": {
+      "jsonLdName": "Foresight 成就 Flags",
+      "jsonLdDescription": "在 Foresight 成就 Flags 页面创建和完成挑战任务，解锁成就徽章，记录预测成长路径，并与预测市场、提案和社区讨论联动。",
+      "breadcrumbHome": "首页",
+      "breadcrumbFlags": "成就 Flags"
     },
     "stats": {
       "ongoingBadge": "进行中",

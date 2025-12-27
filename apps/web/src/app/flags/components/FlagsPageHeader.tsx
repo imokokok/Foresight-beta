@@ -55,27 +55,27 @@ function FlagsHeaderTitleSection({
         </div>
       </div>
       <p className="text-xs text-gray-500 font-medium max-w-xl">
-        想把现实目标和预测市场结合？你可以在{" "}
+        {tFlags("header.tipPrefix")}{" "}
         <Link href="/trending" className="text-purple-600 hover:text-purple-700 hover:underline">
-          热门预测
-        </Link>{" "}
-        中选择事件创建对应 Flag，在{" "}
+          {tFlags("header.tipTrending")}
+        </Link>
+        {tFlags("header.tipTrendingAction")}{" "}
         <Link href="/proposals" className="text-purple-600 hover:text-purple-700 hover:underline">
-          提案广场
-        </Link>{" "}
-        发起长期挑战，前往{" "}
+          {tFlags("header.tipProposals")}
+        </Link>
+        {tFlags("header.tipProposalsAction")}{" "}
         <Link href="/leaderboard" className="text-purple-600 hover:text-purple-700 hover:underline">
-          排行榜
-        </Link>{" "}
-        查看活跃挑战者，并在{" "}
+          {tFlags("header.tipLeaderboard")}
+        </Link>
+        {tFlags("header.tipLeaderboardAction")}{" "}
         <Link href="/forum" className="text-purple-600 hover:text-purple-700 hover:underline">
-          讨论区
+          {tFlags("header.tipForum")}
         </Link>{" "}
-        或{" "}
+        {tFlags("header.tipOr")}{" "}
         <Link href="/search" className="text-purple-600 hover:text-purple-700 hover:underline">
-          全站搜索
-        </Link>{" "}
-        中发现更多灵感。
+          {tFlags("header.tipSearch")}
+        </Link>
+        {tFlags("header.tipSuffix")}
       </p>
     </>
   );

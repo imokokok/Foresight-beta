@@ -1001,7 +1001,24 @@
       "title": "Mi tablero de sueños",
       "badge": "Sueña en grande",
       "activeLabel": "En curso",
-      "achievedLabel": "Completado"
+      "achievedLabel": "Completado",
+      "tipPrefix": "¿Quieres combinar objetivos reales con mercados de predicción? Puedes crear un Flag desde eventos en",
+      "tipTrending": "Tendencias",
+      "tipTrendingAction": ", iniciar retos a largo plazo en",
+      "tipProposals": "Propuestas",
+      "tipProposalsAction": ", ver retadores activos en",
+      "tipLeaderboard": "Ranking",
+      "tipLeaderboardAction": ", y encontrar inspiración en",
+      "tipForum": "Foro",
+      "tipOr": "o",
+      "tipSearch": "Búsqueda global",
+      "tipSuffix": "."
+    },
+    "page": {
+      "jsonLdName": "Foresight Logros Flags",
+      "jsonLdDescription": "Crea y completa tareas de desafío en la página de Foresight Logros Flags, desbloquea insignias de logros, registra tu camino de crecimiento en predicciones y conecta con mercados de predicción, propuestas y discusiones comunitarias.",
+      "breadcrumbHome": "Inicio",
+      "breadcrumbFlags": "Logros Flags"
     },
     "stats": {
       "ongoingBadge": "En curso",

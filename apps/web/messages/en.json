@@ -1001,7 +1001,24 @@
       "title": "My Vision Board",
       "badge": "Dream Big!",
       "activeLabel": "Active",
-      "achievedLabel": "Achieved"
+      "achievedLabel": "Achieved",
+      "tipPrefix": "Want to combine real-world goals with prediction markets? You can create a Flag from events in",
+      "tipTrending": "Trending",
+      "tipTrendingAction": ", start long-term challenges in",
+      "tipProposals": "Proposals",
+      "tipProposalsAction": ", check active challengers on",
+      "tipLeaderboard": "Leaderboard",
+      "tipLeaderboardAction": ", and find inspiration in",
+      "tipForum": "Forum",
+      "tipOr": "or",
+      "tipSearch": "Global Search",
+      "tipSuffix": "."
+    },
+    "page": {
+      "jsonLdName": "Foresight Achievement Flags",
+      "jsonLdDescription": "Create and complete challenge tasks on the Foresight Achievement Flags page, unlock achievement badges, record your prediction growth path, and connect with prediction markets, proposals and community discussions.",
+      "breadcrumbHome": "Home",
+      "breadcrumbFlags": "Achievement Flags"
     },
     "stats": {
       "ongoingBadge": "Ongoing",

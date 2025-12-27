@@ -11,17 +11,16 @@ import { useFlagsData } from "./useFlagsData";
 import { buildOfficialTemplates, defaultConfigFor, OfficialTemplate } from "./flagsConfig";
 import { FlagsPageView } from "./FlagsPageView";
 
-function buildFlagsJsonLd() {
+function buildFlagsJsonLd(tFlags: (key: string) => string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "CollectionPage",
-        name: "Foresight 成就 Flags",
+        name: tFlags("page.jsonLdName"),
         url: baseUrl + "/flags",
-        description:
-          "在 Foresight 成就 Flags 页面创建和完成挑战任务，解锁成就徽章，记录预测成长路径，并与预测市场、提案和社区讨论联动。",
+        description: tFlags("page.jsonLdDescription"),
         inLanguage: "zh-CN",
       },
       {
@@ -30,13 +29,13 @@ function buildFlagsJsonLd() {
           {
             "@type": "ListItem",
             position: 1,
-            name: "首页",
+            name: tFlags("page.breadcrumbHome"),
             item: baseUrl + "/",
           },
           {
             "@type": "ListItem",
             position: 2,
-            name: "成就 Flags",
+            name: tFlags("page.breadcrumbFlags"),
             item: baseUrl + "/flags",
           },
         ],
@@ -266,7 +265,7 @@ export default function FlagsPage() {
     setCreateOpen(true);
   };
 
-  const jsonLd = buildFlagsJsonLd();
+  const jsonLd = buildFlagsJsonLd(tFlags);
 
   return (
     <FlagsPageView
