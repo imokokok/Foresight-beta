@@ -154,42 +154,47 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
       {imageElement}
 
       <div className="p-4 flex flex-col flex-1">
-        <div className="flex justify-between items-start mb-2">
+        {/* 标题区域 - 弹性填充 */}
+        <div className="flex-1 min-h-[3rem]">
           <h4 className="font-bold text-gray-900 text-base line-clamp-2 group-hover:text-purple-700 transition-colors">
             {tEvents(product.title)}
           </h4>
         </div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
-            {tTrending("card.volumePrefix")}
-            {Number(product?.stats?.totalAmount || 0).toFixed(2)}
-          </span>
-          <div className="flex items-center text-gray-500 text-[10px] font-medium">
-            <Users className="w-3 h-3 mr-1" />
-            <span>{Number(product?.stats?.participantCount || 0)}</span>
+
+        {/* 统计信息 - 固定在底部 */}
+        <div className="mt-auto">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">
+              {tTrending("card.volumePrefix")}
+              {Number(product?.stats?.totalAmount || 0).toFixed(2)}
+            </span>
+            <div className="flex items-center text-gray-500 text-[10px] font-medium">
+              <Users className="w-3 h-3 mr-1" />
+              <span>{Number(product?.stats?.participantCount || 0)}</span>
+            </div>
+            <div className="flex items-center text-gray-500 text-[10px] font-medium">
+              <Heart className="w-3 h-3 mr-1" />
+              <span>{product.followers_count || 0}</span>
+            </div>
           </div>
-          <div className="flex items-center text-gray-500 text-[10px] font-medium">
-            <Heart className="w-3 h-3 mr-1" />
-            <span>{product.followers_count || 0}</span>
-          </div>
+          {Array.isArray(product.outcomes) && product.outcomes.length > 0 && (
+            <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-1">
+              {product.outcomes.slice(0, 4).map((o: any, oi: number) => (
+                <span
+                  key={oi}
+                  className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-600 border border-gray-200/60"
+                >
+                  {String(o?.label || `${tTrending("card.optionFallbackPrefix")}${oi}`)}
+                </span>
+              ))}
+              {product.outcomes.length > 4 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-400 border border-gray-200/60">
+                  +{product.outcomes.length - 4}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        {Array.isArray(product.outcomes) && product.outcomes.length > 0 && (
-          <div className="mt-auto pt-2 border-t border-gray-100 flex flex-wrap gap-1">
-            {product.outcomes.slice(0, 4).map((o: any, oi: number) => (
-              <span
-                key={oi}
-                className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-600 border border-gray-200/60"
-              >
-                {String(o?.label || `${tTrending("card.optionFallbackPrefix")}${oi}`)}
-              </span>
-            ))}
-            {product.outcomes.length > 4 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-50 text-gray-400 border border-gray-200/60">
-                +{product.outcomes.length - 4}
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
