@@ -22,6 +22,8 @@ type TrendingHeroProps = {
   activeSlideId: number | null;
   currentHeroIndex: number;
   heroSlideLength: number;
+  autoPlayEnabled?: boolean;
+  isHoveringHero?: boolean;
   highlightHero?: boolean;
   onPrevHero: () => void;
   onNextHero: () => void;
@@ -50,6 +52,8 @@ type TrendingHeroViewProps = {
     slideId: number | null;
     currentIndex: number;
     totalSlides: number;
+    autoPlayEnabled?: boolean;
+    isHovering?: boolean;
     highlight?: boolean;
   };
   actions: {
@@ -150,6 +154,8 @@ function TrendingHeroView({
             activeSlideId={hero.slideId}
             currentHeroIndex={hero.currentIndex}
             heroSlideLength={hero.totalSlides}
+            autoPlayEnabled={hero.autoPlayEnabled}
+            isHovering={hero.isHovering}
             onPrevHero={actions.onPrevHero}
             onNextHero={actions.onNextHero}
             onHeroBulletClick={actions.onHeroBulletClick}
@@ -189,6 +195,8 @@ export const TrendingHero = React.memo(function TrendingHero({
   activeSlideId,
   currentHeroIndex,
   heroSlideLength,
+  autoPlayEnabled,
+  isHoveringHero,
   highlightHero,
   onPrevHero,
   onNextHero,
@@ -223,6 +231,8 @@ export const TrendingHero = React.memo(function TrendingHero({
         slideId: activeSlideId,
         currentIndex: currentHeroIndex,
         totalSlides: heroSlideLength,
+        autoPlayEnabled,
+        isHovering: isHoveringHero,
         highlight: highlightHero,
       }}
       actions={{

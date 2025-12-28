@@ -49,6 +49,8 @@ function TrendingPageView({
         activeSlideId={hero.activeSlideId}
         currentHeroIndex={hero.currentHeroIndex}
         heroSlideLength={hero.heroSlideLength}
+        autoPlayEnabled={hero.autoPlayEnabled}
+        isHoveringHero={hero.isHoveringHero}
         onHeroMouseEnter={hero.handleHeroMouseEnter}
         onHeroMouseLeave={hero.handleHeroMouseLeave}
         onPrevHero={hero.handlePrevHero}

@@ -152,6 +152,8 @@ export function useTrendingHero(
     activeCategory,
     activeFollowers,
     activeSlideId,
+    autoPlayEnabled,
+    isHoveringHero,
     handlePrevHero,
     handleNextHero,
     handleHeroBulletClick,

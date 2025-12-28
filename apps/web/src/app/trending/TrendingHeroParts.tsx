@@ -233,6 +233,8 @@ export type HeroPreviewCardProps = {
   activeSlideId: number | null;
   currentHeroIndex: number;
   heroSlideLength: number;
+  autoPlayEnabled?: boolean;
+  isHovering?: boolean;
   onPrevHero: () => void;
   onNextHero: () => void;
   onHeroBulletClick: (idx: number) => void;
@@ -246,6 +248,8 @@ export function HeroPreviewCard({
   activeSlideId,
   currentHeroIndex,
   heroSlideLength,
+  autoPlayEnabled = true,
+  isHovering = false,
   onPrevHero,
   onNextHero,
   onHeroBulletClick,
@@ -254,6 +258,7 @@ export function HeroPreviewCard({
 }: HeroPreviewCardProps) {
   const canOpenPrediction = typeof activeSlideId === "number" && Number.isFinite(activeSlideId);
   const hasMultipleSlides = heroSlideLength > 1;
+  const shouldAnimate = autoPlayEnabled && !isHovering && hasMultipleSlides;
 
   return (
     <div className="w-full lg:w-1/2 relative h-[400px] md:h-[500px] flex items-center justify-center lg:justify-end">
@@ -290,9 +295,45 @@ export function HeroPreviewCard({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
 
+          {/* 底部进度条区域 */}
+          {hasMultipleSlides && (
+            <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-4">
+              {/* 分段进度条 */}
+              <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                {Array.from({ length: Math.min(heroSlideLength, 5) }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onHeroBulletClick(idx)}
+                    className="relative flex-1 h-1 rounded-full overflow-hidden bg-white/30 backdrop-blur-sm cursor-pointer hover:bg-white/50 transition-colors"
+                    aria-label={`Go to slide ${idx + 1}`}
+                    aria-current={currentHeroIndex === idx ? "true" : undefined}
+                  >
+                    {/* 已播放的进度 */}
+                    {idx < currentHeroIndex && (
+                      <div className="absolute inset-0 bg-white rounded-full" />
+                    )}
+                    {/* 当前播放的进度动画 */}
+                    {idx === currentHeroIndex && (
+                      <div
+                        className={`absolute inset-y-0 left-0 bg-white rounded-full ${
+                          shouldAnimate ? "animate-progress-bar" : "w-0"
+                        }`}
+                        style={{
+                          animationDuration: shouldAnimate ? "5s" : "0s",
+                          animationPlayState: shouldAnimate ? "running" : "paused",
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {hasMultipleSlides && (
             <div
-              className="absolute bottom-6 right-6 flex gap-3 z-20"
+              className="absolute bottom-14 right-6 flex gap-3 z-20"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -331,25 +372,6 @@ export function HeroPreviewCard({
           </div>
         </div>
       </div>
-
-      {hasMultipleSlides && (
-        <div className="absolute right-[-20px] lg:right-[-40px] top-1/2 -translate-y-1/2 flex flex-col gap-3">
-          {Array.from({ length: Math.min(heroSlideLength, 5) }).map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => onHeroBulletClick(idx)}
-              className={`w-1.5 rounded-full transition-all duration-300 ${
-                currentHeroIndex === idx
-                  ? "h-8 bg-purple-600"
-                  : "h-2 bg-gray-300 hover:bg-purple-300"
-              }`}
-              aria-label={`Go to slide ${idx + 1}`}
-              aria-current={currentHeroIndex === idx ? "true" : undefined}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
