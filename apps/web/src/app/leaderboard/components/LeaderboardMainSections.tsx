@@ -2,17 +2,20 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, BarChart2, Search, Sparkles, Users } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import type { LeaderboardUser } from "../data";
 import { RankItem } from "./LeaderboardCards";
 
 export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUser[] }) {
+  const t = useTranslations("leaderboard");
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       <div className="lg:col-span-8 space-y-4">
         <div className="flex items-center justify-between px-6 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-          <span>Rank & Trader</span>
-          <span className="hidden md:block">Performance Trend</span>
-          <span>Winnings & Status</span>
+          <span>{t("card.rankTrader")}</span>
+          <span className="hidden md:block">{t("card.performanceTrend")}</span>
+          <span>{t("card.winningsStatus")}</span>
         </div>
         <AnimatePresence mode="wait">
           <motion.div
@@ -23,7 +26,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
             className="space-y-3"
           >
             {restRank.map((user, idx) => (
-              <RankItem key={user.name} user={user} index={idx + 3} />
+              <RankItem key={user.wallet_address || user.name} user={user} index={idx + 3} />
             ))}
           </motion.div>
         </AnimatePresence>
@@ -34,7 +37,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
           className="w-full py-4 mt-8 rounded-3xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-xl hover:shadow-purple-500/30 transition-all flex items-center justify-center gap-2 group"
         >
           <Sparkles className="w-4 h-4 group-hover:animate-spin" />
-          Load More Traders
+          {t("loadMore")}
         </motion.button>
       </div>
 
@@ -43,7 +46,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Search traders..."
+            placeholder={t("sidebar.searchPlaceholder")}
             className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border-2 border-transparent focus:border-purple-200 focus:bg-white/80 outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 shadow-sm"
           />
         </div>
@@ -56,10 +59,10 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
             <div className="flex items-center justify-between mb-8">
               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
                 <Users className="w-5 h-5 text-purple-500" />
-                My Spot ✨
+                {t("sidebar.mySpot")}
               </h3>
               <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-bold border border-purple-100">
-                Weekly
+                {t("sidebar.weekly")}
               </span>
             </div>
 
@@ -69,7 +72,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
               </div>
               <div>
                 <div className="text-gray-400 text-xs font-bold mb-1 uppercase tracking-wider">
-                  Current Profit
+                  {t("sidebar.currentProfit")}
                 </div>
                 <div className="text-3xl font-black tracking-tight text-gray-900">
                   +120 <span className="text-sm text-gray-400">USDC</span>
@@ -79,19 +82,19 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
 
             <div className="space-y-3">
               <div className="flex justify-between items-center text-sm bg-white/50 p-4 rounded-xl border border-white/60">
-                <span className="text-gray-500 font-medium">Next Rank</span>
+                <span className="text-gray-500 font-medium">{t("sidebar.nextRank")}</span>
                 <span className="font-bold text-green-500 flex items-center gap-1">
                   +45 USDC <ArrowUpRight className="w-3 h-3" />
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm bg-white/50 p-4 rounded-xl border border-white/60">
-                <span className="text-gray-500 font-medium">Top 100</span>
+                <span className="text-gray-500 font-medium">{t("sidebar.top100")}</span>
                 <span className="font-bold text-gray-700">+420 USDC</span>
               </div>
             </div>
 
             <button className="w-full mt-8 py-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all">
-              View Full Profile
+              {t("sidebar.viewFullProfile")}
             </button>
           </div>
         </div>
@@ -99,7 +102,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
         <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-8 border border-white/60 shadow-sm">
           <div className="flex items-center gap-2 mb-6 text-gray-900 font-black text-lg">
             <BarChart2 className="w-5 h-5 text-purple-600" />
-            Trending Now 🔥
+            {t("sidebar.trendingNow")}
           </div>
           <div className="space-y-4">
             {[
@@ -116,7 +119,7 @@ export function LeaderboardMainSections({ restRank }: { restRank: LeaderboardUse
                     {item.name}
                   </div>
                   <div className="text-xs font-bold text-gray-400 mt-1">
-                    {item.users} active users
+                    {item.users} {t("sidebar.activeUsers")}
                   </div>
                 </div>
                 <div

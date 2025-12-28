@@ -1372,7 +1372,50 @@
     "week": "This Week",
     "month": "This Month",
     "avatarAlt": "{name}'s avatar",
-    "viewAll": "View full leaderboard"
+    "viewAll": "View full leaderboard",
+    "pageTitle": "Leaderboard",
+    "seasonBadge": "Season 4 · Week 12",
+    "heroSubtitle": "Who's the smartest predictor? 🧠",
+    "heroDescription": "Follow top strategies and climb the ranks!",
+    "introText": "Foresight leaderboard ranks traders based on prediction earnings and win rate, helping you discover wallets with consistent profits and trading styles.",
+    "linkHint": "Want to see what these top traders are betting on? Visit",
+    "linkTrending": "Trending Predictions",
+    "linkMiddle": "to browse live markets, or follow their insights in the",
+    "linkForum": "Forum",
+    "linkSuffix": ".",
+    "timeRange": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "all": "All Time"
+    },
+    "category": {
+      "profit": "Winnings",
+      "winrate": "Accuracy",
+      "streak": "Streak"
+    },
+    "card": {
+      "totalProfit": "Total Volume",
+      "winRate": "Win Rate",
+      "tradesCount": "Trades",
+      "rankTrader": "Rank & Trader",
+      "performanceTrend": "Performance Trend",
+      "winningsStatus": "Winnings & Status"
+    },
+    "sidebar": {
+      "mySpot": "My Spot ✨",
+      "weekly": "Weekly",
+      "currentRank": "Current Rank",
+      "currentProfit": "Current Profit",
+      "nextRank": "Next Rank",
+      "top100": "Top 100",
+      "viewFullProfile": "View Full Profile",
+      "searchPlaceholder": "Search traders...",
+      "trendingNow": "Trending Now 🔥",
+      "activeUsers": "active users"
+    },
+    "loadMore": "Load More Traders",
+    "noData": "No leaderboard data",
+    "loading": "Loading leaderboard..."
   },
   "stickerGallery": {
     "title": "Sticker Collection",

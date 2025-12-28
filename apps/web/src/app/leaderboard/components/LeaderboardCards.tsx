@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { ArrowUpRight, Crown, Sparkles, Star, Target, Trophy, TrendingUp, Zap } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 import type { LeaderboardUser } from "../data";
 import { formatVolume } from "../data";
 import { Sparkline } from "./Sparkline";
@@ -35,6 +36,7 @@ function getRankStyles(rank: number) {
 }
 
 export function TopThreeCard({ user }: { user: LeaderboardUser }) {
+  const t = useTranslations("leaderboard");
   const isFirst = user.rank === 1;
   const styles = getRankStyles(user.rank);
   const displayName = user.name || user.username;
@@ -99,7 +101,7 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
         <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white/60 border border-white/60 shadow-sm relative overflow-hidden group-hover:bg-white/80 transition-colors">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <span className="text-xs font-bold text-gray-400 uppercase mb-1 tracking-widest">
-            交易量
+            {t("card.totalProfit")}
           </span>
           <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
             {formatVolume(user.total_volume)} <span className="text-sm text-gray-400 font-bold">USDC</span>
@@ -108,14 +110,14 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">胜率</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t("card.winRate")}</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Target className="w-3.5 h-3.5 text-emerald-500" />
               {user.winRate || `${user.win_rate}%`}
             </div>
           </div>
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">交易次数</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">{t("card.tradesCount")}</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-500" />
               {user.trades_count || user.trades}
@@ -128,6 +130,7 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
 }
 
 export function RankItem({ user, index }: { user: LeaderboardUser; index: number }) {
+  const t = useTranslations("leaderboard");
   const displayName = user.name || user.username;
 
   return (
@@ -166,7 +169,7 @@ export function RankItem({ user, index }: { user: LeaderboardUser; index: number
           </h4>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
             <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> 胜率 {user.winRate || `${user.win_rate}%`}
+              <TrendingUp className="w-3 h-3" /> {t("card.winRate")} {user.winRate || `${user.win_rate}%`}
             </span>
           </div>
         </div>

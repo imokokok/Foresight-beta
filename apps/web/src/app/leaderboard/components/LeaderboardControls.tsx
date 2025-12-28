@@ -1,6 +1,7 @@
 "use client";
 
 import { Flame, Target, Trophy } from "lucide-react";
+import { useTranslations } from "@/lib/i18n";
 
 export type LeaderboardControlsProps = {
   timeRange: string;
@@ -15,14 +16,24 @@ export function LeaderboardControls({
   onTimeRangeChange,
   onCategoryChange,
 }: LeaderboardControlsProps) {
+  const t = useTranslations("leaderboard");
+
+  const timeRangeOptions = [
+    { id: "weekly", labelKey: "timeRange.weekly" },
+    { id: "monthly", labelKey: "timeRange.monthly" },
+    { id: "all", labelKey: "timeRange.all" },
+  ];
+
+  const categoryOptions = [
+    { id: "profit", labelKey: "category.profit", icon: Trophy },
+    { id: "winrate", labelKey: "category.winrate", icon: Target },
+    { id: "streak", labelKey: "category.streak", icon: Flame },
+  ];
+
   return (
     <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-16 bg-white/70 backdrop-blur-2xl p-2 rounded-[2rem] border border-white/60 shadow-lg shadow-purple-500/5 max-w-4xl mx-auto">
       <div className="flex bg-gray-100/50 p-1 rounded-[1.5rem]">
-        {[
-          { id: "weekly", label: "Weekly" },
-          { id: "monthly", label: "Monthly" },
-          { id: "all", label: "All Time" },
-        ].map((tab) => (
+        {timeRangeOptions.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTimeRangeChange(tab.id)}
@@ -35,17 +46,13 @@ export function LeaderboardControls({
                   }
                 `}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar px-2">
-        {[
-          { id: "profit", label: "Winnings", icon: Trophy },
-          { id: "winrate", label: "Accuracy", icon: Target },
-          { id: "streak", label: "Streak", icon: Flame },
-        ].map((cat) => (
+        {categoryOptions.map((cat) => (
           <button
             key={cat.id}
             onClick={() => onCategoryChange(cat.id)}
@@ -61,7 +68,7 @@ export function LeaderboardControls({
             <cat.icon
               className={`w-4 h-4 ${category === cat.id ? "text-fuchsia-500" : "text-gray-400"}`}
             />
-            {cat.label}
+            {t(cat.labelKey)}
           </button>
         ))}
       </div>
