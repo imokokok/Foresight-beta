@@ -4,6 +4,24 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { ChatMessageView } from "../types";
 
+// 二分查找插入位置，避免每次排序整个数组
+function binaryInsertPosition(arr: ChatMessageView[], target: ChatMessageView): number {
+  const targetTime = new Date(target.created_at).getTime();
+  let left = 0;
+  let right = arr.length;
+
+  while (left < right) {
+    const mid = Math.floor((left + right) / 2);
+    const midTime = new Date(arr[mid].created_at).getTime();
+    if (midTime < targetTime) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  return left;
+}
+
 export function useDiscussionMessages(eventId: number) {
   const [messages, setMessages] = useState<ChatMessageView[]>([]);
 
@@ -67,19 +85,20 @@ export function useDiscussionMessages(eventId: number) {
           (payload) => {
             if (!isSubscribed) return;
             const r: any = payload.new;
-            const m = {
+            const m: ChatMessageView = {
               id: String(r.id),
               user_id: String(r.user_id),
               content: String(r.content),
               created_at: String(r.created_at),
             };
             setMessages((prev) => {
-              const merged = [...prev];
-              if (!merged.find((x) => x.id === m.id)) merged.push(m);
-              merged.sort(
-                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-              );
-              return merged;
+              // 检查是否已存在
+              if (prev.some((x) => x.id === m.id)) return prev;
+              // 使用二分插入，O(log n) 而非 O(n log n)
+              const insertIdx = binaryInsertPosition(prev, m);
+              const next = [...prev];
+              next.splice(insertIdx, 0, m);
+              return next;
             });
           }
         )

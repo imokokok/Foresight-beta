@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { MessageSquare, Search, Users, TrendingUp } from "lucide-react";
 import { normalizeCategory } from "@/features/trending/trendingModel";
 import { getCategoryStyle } from "./forumConfig";
@@ -18,7 +18,7 @@ type ForumSidebarProps = {
   setSelectedTopicId: React.Dispatch<React.SetStateAction<number | null>>;
 };
 
-export function ForumSidebar({
+export const ForumSidebar = memo(function ForumSidebar({
   categories,
   activeCategory,
   setActiveCategory,
@@ -171,4 +171,4 @@ export function ForumSidebar({
       </div>
     </div>
   );
-}
+});

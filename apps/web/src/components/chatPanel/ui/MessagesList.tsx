@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import EmptyState from "@/components/EmptyState";
 import { MessageSquare } from "lucide-react";
 import type { ChatMessageView } from "../types";
@@ -14,7 +14,7 @@ export type MessagesListProps = {
   listRef: React.RefObject<HTMLDivElement | null>;
 };
 
-export function MessagesList({
+export const MessagesList = memo(function MessagesList({
   mergedMessages,
   account,
   displayName,
@@ -98,4 +98,4 @@ export function MessagesList({
       })}
     </div>
   );
-}
+});

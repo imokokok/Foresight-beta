@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCategories } from "@/hooks/useQueries";
+import { Activity, Globe } from "lucide-react";
 import {
   normalizeCategory,
   fetchPredictions,
@@ -19,7 +20,7 @@ export type PredictionItem = {
 export type ForumCategory = {
   id: string;
   name: string;
-  icon: typeof import("lucide-react").Activity;
+  icon: typeof Activity;
 };
 
 export function useForumList() {
@@ -82,7 +83,7 @@ export function useForumList() {
           return {
             id: name,
             name,
-            icon: require("lucide-react").Activity,
+            icon: Activity,
           };
         })
         .filter(Boolean) as ForumCategory[];
@@ -100,10 +101,7 @@ export function useForumList() {
         return a.name.localeCompare(b.name, "zh-CN");
       });
 
-      return [
-        { id: "all", name: "All Topics", icon: require("lucide-react").Globe },
-        ...sortedDynamic,
-      ];
+      return [{ id: "all", name: "All Topics", icon: Globe }, ...sortedDynamic];
     }
     return CATEGORIES as ForumCategory[];
   }, [categoriesData]);

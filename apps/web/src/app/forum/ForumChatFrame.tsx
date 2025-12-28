@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import {
   MessageSquare,
@@ -21,7 +22,7 @@ type ForumChatFrameProps = {
   error: string | null;
 };
 
-export function ForumChatFrame({
+export const ForumChatFrame = memo(function ForumChatFrame({
   account,
   currentTopic,
   activeCat,
@@ -146,4 +147,4 @@ export function ForumChatFrame({
       </div>
     </div>
   );
-}
+});

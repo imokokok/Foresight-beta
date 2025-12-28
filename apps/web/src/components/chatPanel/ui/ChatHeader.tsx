@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { MessageSquare, Sparkles } from "lucide-react";
 
 export type ChatHeaderProps = {
@@ -11,7 +12,7 @@ export type ChatHeaderProps = {
   accentClass: string;
 };
 
-export function ChatHeader({
+export const ChatHeader = memo(function ChatHeader({
   roomLabel,
   roomCategory,
   account,
@@ -51,4 +52,4 @@ export function ChatHeader({
       </div>
     </div>
   );
-}
+});
