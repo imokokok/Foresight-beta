@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
-import { getPooledClient } from "./dbPool";
 
 export type { Database };
 
@@ -59,12 +58,7 @@ export type EventFollow = Database["public"]["Tables"]["event_follows"]["Row"];
 
 export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
-export function getClient(id?: string) {
-  if (isServer) {
-    const pooled = getPooledClient(undefined, undefined, id);
-    if (pooled) {
-      return pooled;
-    }
-  }
-  return (supabaseAdmin || supabase) as SupabaseClient<Database>;
+export function getClient(_id?: string) {
+  // 服务端优先使用 admin 客户端，客户端使用普通客户端
+  return (isServer ? supabaseAdmin || supabase : supabase) as SupabaseClient<Database>;
 }

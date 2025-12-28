@@ -12,6 +12,7 @@ import { useSiweAuth } from "../lib/useSiweAuth";
 import { requestWalletPermissions as requestWalletPermissionsImpl } from "../lib/walletPermissions";
 import { multisigSign as multisigSignImpl } from "../lib/walletMultisig";
 import { switchNetwork as switchNetworkImpl } from "../lib/walletNetwork";
+import { formatAddress } from "../lib/cn";
 
 declare global {
   interface Window {
@@ -74,8 +75,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       refreshBalance(walletState.account);
     }
   }, [walletState.account, walletState.chainId, rawProvider, refreshBalance]);
-
-  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
   const requestWalletPermissions = async (): Promise<{ success: boolean; error?: string }> => {
     return requestWalletPermissionsImpl(rawProvider);

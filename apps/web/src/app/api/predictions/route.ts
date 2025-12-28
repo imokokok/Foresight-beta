@@ -4,13 +4,6 @@ import { getClient, supabase } from "@/lib/supabase";
 import { getPredictionsList } from "./_lib/getPredictionsList";
 import { buildPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
-import {
-  createCachedResponse,
-  CachePresets,
-  getFromCache,
-  generateCacheKey,
-  setCache,
-} from "@/lib/apiCache";
 import { ApiResponses } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
 
@@ -27,33 +20,6 @@ export async function GET(request: NextRequest) {
     const pageSize = searchParams.get("pageSize");
     const includeOutcomes = (searchParams.get("includeOutcomes") || "0") !== "0";
 
-    // 🚀 生成缓存键并检查内存缓存
-    const cacheKey = generateCacheKey("predictions", {
-      category,
-      status,
-      limit,
-      page,
-      pageSize,
-      includeOutcomes,
-    });
-
-    const cached = getFromCache<{ items: unknown[]; total: number }>(cacheKey);
-    if (cached) {
-      const paging = parsePagination({ limit, page, pageSize });
-      return createCachedResponse(
-        {
-          success: true,
-          data: cached.items,
-          message: "获取预测事件列表成功 (cached)",
-          pagination:
-            page && pageSize
-              ? buildPaginationMeta(cached.total, paging.currentPage, paging.pageSize)
-              : undefined,
-        },
-        CachePresets.SHORT
-      );
-    }
-
     // 在缺少服务密钥时使用匿名客户端降级读取
     const client = getClient();
     if (!client) {
@@ -69,10 +35,7 @@ export async function GET(request: NextRequest) {
       limit: paging.mode === "limit" ? paging.limit : undefined,
     });
 
-    // 🚀 存入内存缓存
-    setCache(cacheKey, { items, total }, CachePresets.SHORT.memoryTtl);
-
-    return createCachedResponse(
+    return NextResponse.json(
       {
         success: true,
         data: items,
@@ -82,7 +45,12 @@ export async function GET(request: NextRequest) {
             ? buildPaginationMeta(total, paging.currentPage, paging.pageSize)
             : undefined,
       },
-      CachePresets.SHORT
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+        },
+      }
     );
   } catch (error: any) {
     logApiError("GET /api/predictions", error);
