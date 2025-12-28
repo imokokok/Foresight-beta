@@ -101,7 +101,7 @@ export default function ReviewPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,2fr)] gap-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden max-h-[70vh]">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-500" />
@@ -162,7 +162,7 @@ export default function ReviewPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden max-h-[70vh]">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-800">
                 {tProposals("review.detailTitle")}
