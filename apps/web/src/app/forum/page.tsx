@@ -7,6 +7,17 @@ import { ForumSidebar } from "./ForumSidebar";
 import { ForumChatFrame } from "./ForumChatFrame";
 import { useForumData } from "./useForumData";
 
+// 提取动画配置为模块级常量，避免每次渲染重新创建对象
+const TV_ANIMATION = {
+  initial: { scaleY: 0.005, scaleX: 0.2, opacity: 0 },
+  animate: { scaleY: 1, scaleX: 1, opacity: 1 },
+  transition: {
+    scaleY: { duration: 0.4, ease: "easeOut" },
+    scaleX: { duration: 0.3, delay: 0.15, ease: "easeOut" },
+    opacity: { duration: 0.2 },
+  },
+} as const;
+
 export default function ForumPage() {
   const {
     account,
@@ -35,13 +46,9 @@ export default function ForumPage() {
 
       {/* 电视机整体容器 */}
       <motion.div
-        initial={{ scaleY: 0.005, scaleX: 0.2, opacity: 0 }}
-        animate={{ scaleY: 1, scaleX: 1, opacity: 1 }}
-        transition={{
-          scaleY: { duration: 0.4, ease: "easeOut" },
-          scaleX: { duration: 0.3, delay: 0.15, ease: "easeOut" },
-          opacity: { duration: 0.2 },
-        }}
+        initial={TV_ANIMATION.initial}
+        animate={TV_ANIMATION.animate}
+        transition={TV_ANIMATION.transition}
         className="w-full max-w-6xl flex flex-col items-center z-10"
       >
         {/* 电视机外壳 */}

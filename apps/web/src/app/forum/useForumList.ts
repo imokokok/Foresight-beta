@@ -120,11 +120,16 @@ export function useForumList() {
     });
   }, [predictions, activeCategory, searchQuery]);
 
+  // 使用 Map 优化 O(1) 查找
+  const predictionsMap = useMemo(() => {
+    return new Map(predictions.map((p) => [p.id, p]));
+  }, [predictions]);
+
   const currentTopic = useMemo(() => {
     const id = selectedTopicId;
     if (!id && filtered.length) return filtered[0];
-    return predictions.find((p) => p.id === id) || filtered[0] || null;
-  }, [predictions, filtered, selectedTopicId]);
+    return predictionsMap.get(id!) || filtered[0] || null;
+  }, [predictionsMap, filtered, selectedTopicId]);
 
   const activeCat = normalizeCategory(currentTopic?.category);
 

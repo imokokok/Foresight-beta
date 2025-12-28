@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useMemo, useState, useEffect, useCallback } from "react";
 import { MessageSquare, Search, Users, TrendingUp } from "lucide-react";
 import { normalizeCategory } from "@/features/trending/trendingModel";
 import { getCategoryStyle } from "./forumConfig";
@@ -30,8 +30,45 @@ export const ForumSidebar = memo(function ForumSidebar({
   selectedTopicId,
   setSelectedTopicId,
 }: ForumSidebarProps) {
-  const allCategory = categories.find((cat) => cat.id === "all");
-  const otherCategories = categories.filter((cat) => cat.id !== "all");
+  // 使用 useMemo 缓存分类计算
+  const { allCategory, otherCategories } = useMemo(
+    () => ({
+      allCategory: categories.find((cat) => cat.id === "all"),
+      otherCategories: categories.filter((cat) => cat.id !== "all"),
+    }),
+    [categories]
+  );
+
+  // 搜索防抖 - 内部维护即时显示值，延迟更新父级
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        setSearchQuery(localSearch);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch, searchQuery, setSearchQuery]);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearch(e.target.value);
+  }, []);
+
+  // 预格式化日期缓存
+  const formattedDates = useMemo(() => {
+    const map = new Map<number, string>();
+    filtered.forEach((topic) => {
+      if (topic.created_at) {
+        map.set(topic.id, new Date(topic.created_at).toLocaleDateString());
+      }
+    });
+    return map;
+  }, [filtered]);
 
   return (
     <div className="w-64 flex-shrink-0 border-r border-purple-200/60 dark:border-slate-700/50 flex flex-col overflow-x-hidden relative overflow-hidden bg-gradient-to-b from-white/90 via-purple-50/50 to-fuchsia-50/40 dark:from-slate-900/90 dark:via-purple-950/30 dark:to-slate-900/80 backdrop-blur-xl">
@@ -61,22 +98,16 @@ export const ForumSidebar = memo(function ForumSidebar({
         <div className="mb-4 space-y-3">
           {allCategory && (
             <div>
-              {(() => {
-                const isActive = activeCategory === allCategory.id;
-                return (
-                  <button
-                    key={allCategory.id}
-                    onClick={() => setActiveCategory(allCategory.id)}
-                    className={`w-full flex items-center justify-center px-4 py-2.5 rounded-full text-[12px] font-bold tracking-wide border-2 transition-all duration-200 ${
-                      isActive
-                        ? "bg-brand-accent text-white border-brand-accent shadow-md shadow-brand/40"
-                        : "bg-brand-accent/15 text-brand-accent border-brand-accent/50 hover:bg-brand-accent/25"
-                    }`}
-                  >
-                    {allCategory.name}
-                  </button>
-                );
-              })()}
+              <button
+                onClick={() => setActiveCategory(allCategory.id)}
+                className={`w-full flex items-center justify-center px-4 py-2.5 rounded-full text-[12px] font-bold tracking-wide border-2 transition-all duration-200 ${
+                  activeCategory === allCategory.id
+                    ? "bg-brand-accent text-white border-brand-accent shadow-md shadow-brand/40"
+                    : "bg-brand-accent/15 text-brand-accent border-brand-accent/50 hover:bg-brand-accent/25"
+                }`}
+              >
+                {allCategory.name}
+              </button>
             </div>
           )}
 
@@ -113,8 +144,8 @@ export const ForumSidebar = memo(function ForumSidebar({
             type="text"
             placeholder={t("forum.searchPlaceholder")}
             className="w-full pl-10 pr-4 py-2.5 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl text-sm text-[var(--foreground)] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-4 focus:ring-brand/10 focus:border-brand/40 transition-all outline-none relative z-0 shadow-sm group-hover:shadow-md"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={localSearch}
+            onChange={handleSearchChange}
           />
         </div>
       </div>
@@ -149,7 +180,7 @@ export const ForumSidebar = memo(function ForumSidebar({
                       {catName}
                     </span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                      {topic.created_at ? new Date(topic.created_at).toLocaleDateString() : ""}
+                      {formattedDates.get(topic.id) ?? ""}
                     </span>
                   </div>
                   <h3 className="text-sm font-bold leading-snug mb-2 text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white line-clamp-2">
