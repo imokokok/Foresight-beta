@@ -160,17 +160,6 @@ export default function FilterSort({
     }
   }, [initialFilters]);
 
-  // 当 categories 加载完成后，验证 activeCategory 是否有效
-  useEffect(() => {
-    if (activeCategory && activeCategory !== "all" && categories.length > 0) {
-      const exists = categories.some((c) => c.id === activeCategory);
-      if (!exists) {
-        // 保存的分类不存在于当前列表，重置为 null
-        setActiveCategory(null);
-      }
-    }
-  }, [categories, activeCategory]);
-
   // 更新父组件
   useEffect(() => {
     onFilterChange({
@@ -180,12 +169,14 @@ export default function FilterSort({
     });
   }, [activeCategory, sortBy, status, onFilterChange]);
 
-  // 选中的筛选项数量
-  const activeFiltersCount = [
-    activeCategory && activeCategory !== "all",
-    sortBy !== "trending",
-    status,
-  ].filter(Boolean).length;
+  // 检查 activeCategory 是否有效
+  const isValidCategory =
+    activeCategory && activeCategory !== "all" && categories.some((c) => c.id === activeCategory);
+
+  // 选中的筛选项数量（只计算有效的筛选）
+  const activeFiltersCount = [isValidCategory, sortBy !== "trending", status].filter(
+    Boolean
+  ).length;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -388,12 +379,9 @@ export default function FilterSort({
       </AnimatePresence>
 
       {/* 当前筛选标签 */}
-      {activeCategory &&
-        activeCategory !== "all" &&
+      {isValidCategory &&
         (() => {
-          const activeCat = categories.find((c) => c.id === activeCategory);
-          // 如果找不到对应分类，不显示标签
-          if (!activeCat) return null;
+          const activeCat = categories.find((c) => c.id === activeCategory)!;
           return (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-500">{t("filters.actions.currentFilter")}</span>
