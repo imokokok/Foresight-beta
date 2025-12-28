@@ -32,9 +32,9 @@ export function ForumChatFrame({
   const style = getCategoryStyle(activeCat);
 
   return (
-    <div className="flex-1 flex flex-col">
-      <header className="h-16 px-6 border-b border-[var(--card-border)] flex items-center justify-between sticky top-0 z-20 bg-[var(--card-bg)] backdrop-blur-xl shadow-none relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/12 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
+    <div className="flex-1 flex flex-col bg-gradient-to-br from-white/80 via-purple-50/30 to-fuchsia-50/20 dark:from-slate-900/80 dark:via-purple-950/20 dark:to-slate-900/70">
+      <header className="h-16 px-6 border-b border-purple-200/50 dark:border-slate-700/40 flex items-center justify-between sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-none relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-100/60 via-fuchsia-100/40 to-violet-50/30 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-80" />
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex-shrink-0 w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-brand/15 shadow-inner">
             <MessageSquare className="w-5 h-5 text-brand drop-shadow" />
@@ -122,7 +122,9 @@ export function ForumChatFrame({
       </header>
 
       <div className="flex-1 relative overflow-hidden flex flex-col px-4 pb-4 pt-3">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/15 dark:via-brand-accent/10 dark:to-transparent opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 via-fuchsia-100/30 to-violet-50/40 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-slate-900/50 opacity-80" />
+        {/* 右上角光晕 */}
+        <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-fuchsia-200/50 blur-3xl dark:bg-fuchsia-600/15" />
         <div className="flex-1 flex flex-col z-10 relative">
           {currentTopic?.id ? (
             <ChatPanel

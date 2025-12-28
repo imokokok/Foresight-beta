@@ -34,13 +34,13 @@ export function ForumSidebar({
   const otherCategories = categories.filter((cat) => cat.id !== "all");
 
   return (
-    <div className="w-64 flex-shrink-0 border-r border-[var(--card-border)] flex flex-col overflow-x-hidden relative overflow-hidden bg-[var(--card-bg)]/55 backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-brand/10 via-brand-accent/8 to-transparent dark:from-brand/12 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
-      <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-64 w-64 rounded-full bg-purple-500/12 blur-3xl dark:bg-purple-500/10" />
-      <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl dark:bg-fuchsia-500/10" />
+    <div className="w-64 flex-shrink-0 border-r border-purple-200/60 dark:border-slate-700/50 flex flex-col overflow-x-hidden relative overflow-hidden bg-gradient-to-b from-white/90 via-purple-50/50 to-fuchsia-50/40 dark:from-slate-900/90 dark:via-purple-950/30 dark:to-slate-900/80 backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-purple-100/60 via-fuchsia-100/40 to-violet-50/50 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-slate-900/50 opacity-90" />
+      <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-64 w-64 rounded-full bg-purple-300/50 blur-3xl dark:bg-purple-600/20" />
+      <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-64 w-64 rounded-full bg-fuchsia-300/40 blur-3xl dark:bg-fuchsia-600/15" />
 
-      <div className="p-5 border-b border-[var(--card-border)] bg-[var(--card-bg)]/55 backdrop-blur-xl relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/12 dark:via-brand-accent/10 dark:to-transparent opacity-60" />
+      <div className="p-5 border-b border-purple-200/50 dark:border-slate-700/40 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-100/50 via-fuchsia-100/40 to-violet-50/30 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-80" />
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 bg-[var(--card-bg)] rounded-xl flex items-center justify-center text-brand shadow-lg shadow-indigo-200/20 border border-[var(--card-border)]">
             <MessageSquare size={20} fill="currentColor" />
@@ -136,13 +136,13 @@ export function ForumSidebar({
               <button
                 key={topic.id}
                 onClick={() => setSelectedTopicId(topic.id)}
-                className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 border group relative overflow-hidden bg-[var(--card-bg)]/65 backdrop-blur-xl border-[var(--card-border)] hover:shadow-sm ${
+                className={`w-full text-left p-3.5 rounded-2xl transition-all duration-200 border group relative overflow-hidden bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-purple-200/50 dark:border-slate-700/50 hover:shadow-md hover:shadow-purple-200/30 ${
                   isActive
-                    ? "ring-2 ring-brand/20 border-brand/20 shadow-brand"
-                    : "ring-1 ring-transparent hover:border-brand/15"
+                    ? "ring-2 ring-purple-400/40 border-purple-300/60 shadow-lg shadow-purple-200/40 dark:ring-purple-500/40 dark:border-purple-500/40"
+                    : "ring-1 ring-transparent hover:border-purple-300/60 dark:hover:border-purple-600/40"
                 }`}
               >
-                <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand/10 via-brand-accent/8 to-transparent dark:from-brand/12 dark:via-brand-accent/10 dark:to-transparent opacity-55" />
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-100/50 via-fuchsia-100/30 to-violet-50/20 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-70" />
                 <div className="relative z-10">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-brand/10 text-brand border border-brand/15">
