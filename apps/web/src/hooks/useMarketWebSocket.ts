@@ -139,7 +139,8 @@ class MarketWebSocketManager {
 
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[WebSocket] Max reconnect attempts reached");
+      console.warn("[WebSocket] Max reconnect attempts reached");
+      this.setStatus("error");
       return;
     }
 

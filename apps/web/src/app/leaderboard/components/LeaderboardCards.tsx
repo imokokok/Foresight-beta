@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight, Crown, Sparkles, Star, Target, Trophy, TrendingUp, Zap } from "lucide-react";
 import type { LeaderboardUser } from "../data";
+import { formatVolume } from "../data";
 import { Sparkline } from "./Sparkline";
 
 function getRankStyles(rank: number) {
@@ -36,6 +37,7 @@ function getRankStyles(rank: number) {
 export function TopThreeCard({ user }: { user: LeaderboardUser }) {
   const isFirst = user.rank === 1;
   const styles = getRankStyles(user.rank);
+  const displayName = user.name || user.username;
 
   return (
     <motion.div
@@ -66,7 +68,7 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
         <div className={`p-2.5 rounded-full border-[4px] relative z-10 bg-white ${styles.avatar}`}>
           <img
             src={user.avatar}
-            alt={user.name}
+            alt={displayName}
             className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-50 object-cover"
           />
         </div>
@@ -81,7 +83,7 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
         </div>
       </div>
 
-      <h3 className="text-2xl font-black text-gray-800 mb-2 mt-6 tracking-tight">{user.name}</h3>
+      <h3 className="text-2xl font-black text-gray-800 mb-2 mt-6 tracking-tight">{displayName}</h3>
       <div className="flex items-center gap-1.5 mb-6">
         {user.tags?.map((tag: string) => (
           <span
@@ -97,26 +99,26 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
         <div className="flex flex-col items-center justify-center p-4 rounded-3xl bg-white/60 border border-white/60 shadow-sm relative overflow-hidden group-hover:bg-white/80 transition-colors">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <span className="text-xs font-bold text-gray-400 uppercase mb-1 tracking-widest">
-            Total Profit
+            交易量
           </span>
           <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
-            {user.profit} <span className="text-sm text-gray-400 font-bold">USDC</span>
+            {formatVolume(user.total_volume)} <span className="text-sm text-gray-400 font-bold">USDC</span>
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Win Rate</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">胜率</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Target className="w-3.5 h-3.5 text-emerald-500" />
-              {user.winRate}
+              {user.winRate || `${user.win_rate}%`}
             </div>
           </div>
           <div className="p-3 rounded-2xl bg-white/60 border border-white/60 shadow-sm text-center hover:scale-105 transition-transform">
-            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">Best Hit</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase mb-1">交易次数</div>
             <div className="text-sm font-black text-gray-700 flex items-center justify-center gap-1">
               <Zap className="w-3.5 h-3.5 text-amber-500" />
-              {user.bestTrade || "N/A"}
+              {user.trades_count || user.trades}
             </div>
           </div>
         </div>
@@ -126,6 +128,8 @@ export function TopThreeCard({ user }: { user: LeaderboardUser }) {
 }
 
 export function RankItem({ user, index }: { user: LeaderboardUser; index: number }) {
+  const displayName = user.name || user.username;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -145,7 +149,7 @@ export function RankItem({ user, index }: { user: LeaderboardUser; index: number
       <div className="relative">
         <img
           src={user.avatar}
-          alt={user.name}
+          alt={displayName}
           className="w-12 h-12 rounded-full bg-gray-100 border-2 border-white shadow-sm group-hover:scale-110 transition-transform"
         />
         {index < 3 && (
@@ -158,11 +162,11 @@ export function RankItem({ user, index }: { user: LeaderboardUser; index: number
       <div className="flex-grow min-w-0 grid grid-cols-12 gap-4 items-center">
         <div className="col-span-4">
           <h4 className="font-bold text-gray-800 truncate group-hover:text-purple-700 transition-colors">
-            {user.name}
+            {displayName}
           </h4>
           <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
             <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Win {user.winRate}
+              <TrendingUp className="w-3 h-3" /> 胜率 {user.winRate || `${user.win_rate}%`}
             </span>
           </div>
         </div>
@@ -178,7 +182,7 @@ export function RankItem({ user, index }: { user: LeaderboardUser; index: number
 
         <div className="col-span-4 text-right">
           <div className="font-black text-gray-900 text-lg group-hover:text-purple-600 transition-colors">
-            {user.profit}
+            {formatVolume(user.total_volume)}
           </div>
           <div
             className={`text-xs font-bold flex items-center justify-end gap-1 ${

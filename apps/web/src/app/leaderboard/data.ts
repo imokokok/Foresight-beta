@@ -1,148 +1,106 @@
 import { buildDiceBearUrl } from "@/lib/dicebear";
 
+// API 返回的排行榜用户类型
 export type LeaderboardUser = {
   rank: number;
-  name: string;
-  profit: string;
-  winRate: string;
-  trades: number;
+  wallet_address: string;
+  username: string;
   avatar: string;
+  trades_count: number;
+  total_volume: number;
+  profit: number;
+  win_rate: number;
   trend: string;
+  // 兼容旧字段
+  name?: string;
+  winRate?: string;
+  trades?: number;
   tags?: string[];
   history?: number[];
   badge?: string;
   bestTrade?: string;
 };
 
-export const leaderboardData: LeaderboardUser[] = [
-  {
-    rank: 1,
-    name: "YangZ",
-    profit: "+8,240",
-    winRate: "82%",
-    trades: 142,
-    avatar: buildDiceBearUrl("YangZ", "&backgroundColor=FFD700&clothing=blazerAndShirt"),
-    badge: "🏆 预言家",
-    trend: "+12%",
-    tags: ["High Volume", "Sniper"],
-    history: [40, 55, 45, 60, 75, 65, 85, 90, 82],
-    bestTrade: "BTC +400%",
-  },
-  {
-    rank: 2,
-    name: "lkbhua24",
-    profit: "+5,120",
-    winRate: "75%",
-    trades: 98,
-    avatar: buildDiceBearUrl("lkbhua24", "&backgroundColor=C0C0C0&clothing=hoodie"),
-    badge: "🥈 策略家",
-    trend: "+8%",
-    tags: ["Consistent", "Macro"],
-    history: [30, 35, 40, 38, 45, 50, 48, 55, 51],
-    bestTrade: "ETH +250%",
-  },
-  {
-    rank: 3,
-    name: "Dave_DeFi",
-    profit: "+3,450",
-    winRate: "68%",
-    trades: 112,
-    avatar: buildDiceBearUrl("Dave_DeFi", "&backgroundColor=CD7F32&clothing=graphicShirt"),
-    badge: "🥉 新星",
-    trend: "+15%",
-    tags: ["Aggressive"],
-    history: [20, 40, 15, 50, 30, 60, 25, 45, 34],
-    bestTrade: "SOL +180%",
-  },
-  {
-    rank: 4,
-    name: "Eve_NFT",
-    profit: "+2,890",
-    winRate: "65%",
-    trades: 87,
-    avatar: buildDiceBearUrl("Eve_NFT", "&backgroundColor=b6e3f4"),
-    trend: "+5%",
-    tags: ["NFT Degen"],
-    history: [45, 42, 48, 40, 38, 42, 45, 28],
-  },
-  {
-    rank: 5,
-    name: "Frank_Whale",
-    profit: "+1,920",
-    winRate: "59%",
-    trades: 65,
-    avatar: buildDiceBearUrl("Frank_Whale", "&backgroundColor=c0aede"),
-    trend: "-2%",
-    tags: ["Whale"],
-    history: [60, 58, 55, 52, 50, 48, 45, 19],
-  },
-  {
-    rank: 6,
-    name: "Grace_Yield",
-    profit: "+1,240",
-    winRate: "62%",
-    trades: 45,
-    avatar: buildDiceBearUrl("Grace_Yield", "&backgroundColor=ffdfbf"),
-    trend: "+3%",
-    tags: ["Yield Farmer"],
-    history: [20, 22, 25, 24, 26, 28, 30, 12],
-  },
-  {
-    rank: 7,
-    name: "Helen_Stake",
-    profit: "+980",
-    winRate: "55%",
-    trades: 32,
-    avatar: buildDiceBearUrl("Helen_Stake", "&backgroundColor=d1d4f9"),
-    trend: "+1%",
-    tags: ["Staker"],
-    history: [15, 16, 15, 17, 16, 18, 17, 9],
-  },
-  {
-    rank: 8,
-    name: "Ivan_Invest",
-    profit: "+850",
-    winRate: "51%",
-    trades: 28,
-    avatar: buildDiceBearUrl("Ivan_Invest", "&backgroundColor=ffd5dc"),
-    trend: "+4%",
-    tags: ["Investor"],
-    history: [10, 12, 11, 13, 12, 14, 13, 8],
-  },
-  {
-    rank: 9,
-    name: "Jack_Trade",
-    profit: "+720",
-    winRate: "48%",
-    trades: 22,
-    avatar: buildDiceBearUrl("Jack_Trade", "&backgroundColor=c0aede"),
-    trend: "0%",
-    tags: ["Trader"],
-    history: [8, 8, 8, 9, 8, 9, 8, 7],
-  },
-  {
-    rank: 10,
-    name: "Kate_Hold",
-    profit: "+540",
-    winRate: "45%",
-    trades: 18,
-    avatar: buildDiceBearUrl("Kate_Hold", "&backgroundColor=b6e3f4"),
-    trend: "-1%",
-    tags: ["Hodler"],
-    history: [10, 9, 8, 7, 6, 5, 6, 5],
-  },
-];
+// 格式化数字显示
+export function formatVolume(volume: number): string {
+  if (volume >= 1000000) {
+    return `${(volume / 1000000).toFixed(1)}M`;
+  } else if (volume >= 1000) {
+    return `${(volume / 1000).toFixed(1)}K`;
+  }
+  return volume.toFixed(0);
+}
 
-export function buildLeaderboardJsonLd() {
+// 格式化利润显示
+export function formatProfit(profit: number): string {
+  const prefix = profit >= 0 ? "+" : "";
+  return `${prefix}${formatVolume(profit)}`;
+}
+
+// 获取徽章
+export function getBadge(rank: number): string {
+  switch (rank) {
+    case 1:
+      return "🏆 预言家";
+    case 2:
+      return "🥈 策略家";
+    case 3:
+      return "🥉 新星";
+    default:
+      return "";
+  }
+}
+
+// 生成交易历史图表数据（模拟）
+export function generateHistory(tradesCount: number): number[] {
+  const points = 8;
+  const history: number[] = [];
+  let base = Math.random() * 50 + 20;
+  for (let i = 0; i < points; i++) {
+    base += (Math.random() - 0.4) * 15;
+    base = Math.max(5, Math.min(100, base));
+    history.push(Math.round(base));
+  }
+  return history;
+}
+
+// 生成标签
+export function generateTags(tradesCount: number, winRate: number): string[] {
+  const tags: string[] = [];
+  if (tradesCount >= 50) tags.push("High Volume");
+  if (winRate >= 70) tags.push("Sniper");
+  if (winRate >= 60 && winRate < 70) tags.push("Consistent");
+  if (tradesCount >= 100) tags.push("Active");
+  if (tradesCount < 20) tags.push("Newbie");
+  return tags.slice(0, 2);
+}
+
+// 转换 API 数据为完整的用户数据
+export function transformLeaderboardData(data: LeaderboardUser[]): LeaderboardUser[] {
+  return data.map((user, index) => ({
+    ...user,
+    rank: index + 1,
+    name: user.username,
+    winRate: `${user.win_rate}%`,
+    trades: user.trades_count,
+    badge: getBadge(index + 1),
+    tags: generateTags(user.trades_count, user.win_rate),
+    history: generateHistory(user.trades_count),
+    bestTrade: `+${Math.round(user.total_volume * 0.1)}`,
+    profit: formatProfit(user.profit),
+  })) as unknown as LeaderboardUser[];
+}
+
+export function buildLeaderboardJsonLd(users: LeaderboardUser[] = []) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
-  const items = leaderboardData.slice(0, 50).map((user, index) => {
-    const description = `预测收益：${user.profit}，胜率：${user.winRate}，交易次数：${user.trades}`;
+  const items = users.slice(0, 50).map((user, index) => {
+    const description = `交易量：${formatVolume(user.total_volume)}，胜率：${user.win_rate}%，交易次数：${user.trades_count}`;
     return {
       "@type": "ListItem",
       position: index + 1,
       item: {
         "@type": "Person",
-        name: user.name,
+        name: user.username,
         description,
       },
     };
