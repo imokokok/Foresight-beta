@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -10,12 +10,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const body = await parseRequestBody(req as any);
-    const settler_id = String(body?.settler_id || body?.user_id || "").trim();
     const minDays = Math.max(1, Number(body?.min_days || 10));
     const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)));
 
-    const client = (supabaseAdmin || getClient()) as any;
+    const client = (supabase || getClient()) as any;
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
+
+    const settler_id = await getSessionAddress(req);
+    if (!settler_id)
+      return NextResponse.json(
+        { message: "Unauthorized", detail: "Missing session address" },
+        { status: 401 }
+      );
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -30,8 +36,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
     if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
     const owner = String(flag.user_id || "");
-    if (!settler_id)
-      return NextResponse.json({ message: "settler_id is required" }, { status: 400 });
     if (settler_id.toLowerCase() !== owner.toLowerCase())
       return NextResponse.json({ message: "Only the owner can settle this flag" }, { status: 403 });
 
@@ -114,6 +118,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     };
 
     await client.from("flags").update({ status }).eq("id", flagId);
+
+    let rewardedSticker: {
+      id: string;
+      emoji: string;
+      name: string;
+      rarity: string;
+      desc: string;
+      color: string;
+      image_url?: string;
+    } | null = null;
+
     try {
       await client.from("flag_settlements").insert({
         flag_id: flagId,
@@ -125,20 +140,60 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       } as Database["public"]["Tables"]["flag_settlements"]["Insert"]);
 
       if (status === "success") {
-        const stickers = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"];
-        const stickerId = stickers[Math.floor(Math.random() * stickers.length)];
+        const { data: emojis } = await client.from("emojis").select("*");
 
-        await client.from("user_stickers").insert({
-          user_id: owner,
-          sticker_id: stickerId,
-          created_at: new Date().toISOString(),
-        });
+        if (emojis && emojis.length > 0) {
+          const randomDbEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+          const { error: rewardError } = await client.from("user_emojis").insert({
+            user_id: owner,
+            emoji_id: randomDbEmoji.id,
+            created_at: new Date().toISOString(),
+            source: "flag_settle",
+          });
+
+          if (!rewardError) {
+            const getRarityClass = (r: string) => {
+              switch (r) {
+                case "common":
+                  return "bg-green-100";
+                case "rare":
+                  return "bg-blue-100";
+                case "epic":
+                  return "bg-purple-100";
+                case "legendary":
+                  return "bg-fuchsia-100";
+                default:
+                  return "bg-gray-100";
+              }
+            };
+
+            rewardedSticker = {
+              id: String(randomDbEmoji.id),
+              emoji: randomDbEmoji.image_url || randomDbEmoji.url || "❓",
+              name: randomDbEmoji.name,
+              rarity: randomDbEmoji.rarity || "common",
+              desc: randomDbEmoji.description || "",
+              color: getRarityClass(randomDbEmoji.rarity),
+              image_url: randomDbEmoji.image_url || randomDbEmoji.url,
+            };
+          }
+        }
       }
     } catch (e) {
       logApiError("POST /api/flags/[id]/settle settlement insert failed", e);
     }
 
-    return NextResponse.json({ status, metrics }, { status: 200 });
+    return NextResponse.json(
+      {
+        status,
+        metrics,
+        sticker_earned: !!rewardedSticker,
+        sticker_id: rewardedSticker?.id,
+        sticker: rewardedSticker,
+      },
+      { status: 200 }
+    );
   } catch (e: any) {
     return NextResponse.json(
       { message: "Failed to settle flag", detail: String(e?.message || e) },

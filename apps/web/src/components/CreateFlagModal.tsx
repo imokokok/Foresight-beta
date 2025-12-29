@@ -227,7 +227,6 @@ export default function CreateFlagModal({
     try {
       setLoading(true);
       const payload: any = {
-        user_id: account || user?.id || "anonymous",
         title: title,
         description: desc,
         deadline: deadline,

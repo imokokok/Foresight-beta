@@ -137,12 +137,10 @@ export default function FlagsPage() {
     if (!checkinFlag) return;
     try {
       setCheckinSubmitting(true);
-      const me = account || user?.id || "";
       const res = await fetch(`/api/flags/${checkinFlag.id}/checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: me,
           note: checkinNote,
           image_url: checkinImage,
         }),
@@ -176,13 +174,9 @@ export default function FlagsPage() {
     setHistoryLoading(true);
     setHistoryOpen(true);
     try {
-      const me = account || user?.id || "";
-      const res = await fetch(
-        `/api/flags/${flag.id}/checkins?limit=50&viewer_id=${encodeURIComponent(me)}`,
-        {
-          cache: "no-store",
-        }
-      );
+      const res = await fetch(`/api/flags/${flag.id}/checkins?limit=50`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => ({}) as any);
       const items = Array.isArray(data?.items) ? data.items : [];
       setHistoryItems(items);
@@ -195,7 +189,6 @@ export default function FlagsPage() {
   const handleReview = async (checkinId: string, action: "approve" | "reject") => {
     try {
       setReviewSubmittingId(checkinId);
-      const me = account || user?.id || "";
       const reasonKey =
         action === "reject" ? "history.reviewReason.rejected" : "history.reviewReason.approved";
       const reason = tFlags(reasonKey);
@@ -203,7 +196,6 @@ export default function FlagsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reviewer_id: me,
           action,
           reason,
         }),
@@ -236,11 +228,10 @@ export default function FlagsPage() {
     if (!confirm(tFlags("toast.settleConfirmMessage"))) return;
     try {
       setSettlingId(flag.id);
-      const me = account || user?.id || "";
       const res = await fetch(`/api/flags/${flag.id}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: me }),
+        body: JSON.stringify({}),
       });
       if (!res.ok) throw new Error("Settle failed");
       const ret = await res.json();

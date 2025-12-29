@@ -34,8 +34,7 @@ export function useFlagsData(
         return;
       }
 
-      const url = `/api/flags?viewer_id=${encodeURIComponent(me)}`;
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch("/api/flags", { cache: "no-store" });
 
       if (!res.ok) {
         toast.error(tFlags("toast.loadFailedTitle"), `HTTP ${res.status}: ${res.statusText}`);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -15,17 +15,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .toLowerCase();
     const action =
       actionRaw === "approve" ? "approved" : actionRaw === "reject" ? "rejected" : null;
-    const reviewer_id = String(body?.reviewer_id || "").trim();
     const reason = String(body?.reason || "").trim() || null;
     if (!action)
       return NextResponse.json(
         { message: "action must be 'approve' or 'reject'" },
         { status: 400 }
       );
-    if (!reviewer_id)
-      return NextResponse.json({ message: "reviewer_id is required" }, { status: 400 });
 
-    const client = (supabaseAdmin || getClient()) as any;
+    const reviewer_id = await getSessionAddress(req);
+    if (!reviewer_id)
+      return NextResponse.json(
+        { message: "Unauthorized", detail: "Missing session address" },
+        { status: 401 }
+      );
+
+    const client = (supabase || getClient()) as any;
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const { data: rawChk, error: chkErr } = await client

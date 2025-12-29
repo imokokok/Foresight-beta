@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { logApiError } from "@/lib/serverUtils";
+import { logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -10,15 +10,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const { searchParams } = new URL(req.url);
-    const viewer = String(searchParams.get("viewer_id") || "").trim();
-    if (!viewer) return NextResponse.json({ message: "viewer_id is required" }, { status: 400 });
+    const viewer = await getSessionAddress(req);
+    if (!viewer)
+      return NextResponse.json(
+        { message: "Unauthorized", detail: "Missing session address" },
+        { status: 401 }
+      );
 
     const rawLimit = Number(searchParams.get("limit") || 50);
     const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(200, rawLimit)) : 50;
 
     const rawOffset = Number(searchParams.get("offset") || 0);
     const offset = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
-    const client = supabaseAdmin || getClient();
+    const client = supabase || getClient();
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
     const f = await client

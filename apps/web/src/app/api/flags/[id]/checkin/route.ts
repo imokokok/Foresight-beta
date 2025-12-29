@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabase, getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -11,13 +11,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
 
     const body = await parseRequestBody(req as any);
-    const client = (supabaseAdmin || getClient()) as any;
+    const client = (supabase || getClient()) as any;
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });
 
-    const userId = String(body?.user_id || "").trim();
+    const userId = await getSessionAddress(req);
+    if (!userId)
+      return NextResponse.json(
+        { message: "Unauthorized", detail: "Missing session address" },
+        { status: 401 }
+      );
+
     const note = String(body?.note || "").trim();
     const imageUrl = String(body?.image_url || "").trim();
-    if (!userId) return NextResponse.json({ message: "user_id is required" }, { status: 400 });
 
     const { data: rawFlag, error: findErr } = await client
       .from("flags")
@@ -33,7 +38,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 500 }
       );
     if (!flag) return NextResponse.json({ message: "Flag not found" }, { status: 404 });
-    if (String(flag.user_id || "") !== userId)
+    if (String(flag.user_id || "").toLowerCase() !== userId.toLowerCase())
       return NextResponse.json({ message: "Only the owner can check in" }, { status: 403 });
 
     const now = new Date();

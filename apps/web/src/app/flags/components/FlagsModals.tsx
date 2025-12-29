@@ -192,7 +192,6 @@ export function FlagsModals({
         onClose={() => setHistoryOpen(false)}
         onReview={handleReview}
         tFlags={tFlags}
-        tasksMode={witnessTasksMode}
         tasksIndex={witnessTaskIndex ?? undefined}
         tasksTotal={witnessTaskTotal}
       />
