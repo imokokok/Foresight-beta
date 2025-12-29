@@ -144,8 +144,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     await client.from("flags").update({ status }).eq("id", flagId);
 
-    const luckyAddress = "0x23d930b75a647a11a12b94d747488aa232375859";
-    const isLuckyOwner = owner.toLowerCase() === luckyAddress.toLowerCase();
+    const luckyAddresses = [
+      "0x23d930b75a647a11a12b94d747488aa232375859",
+      "0x377f4bb22f0ebd9238c1a30a8872fd00fb0b6f43",
+    ];
+    const isLuckyOwner = luckyAddresses.some((addr) => addr.toLowerCase() === owner.toLowerCase());
 
     let rewardedSticker: {
       id: string;

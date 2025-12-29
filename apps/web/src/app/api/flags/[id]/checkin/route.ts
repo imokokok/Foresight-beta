@@ -21,8 +21,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { status: 401 }
       );
 
-    const luckyAddress = "0x23d930b75a647a11a12b94d747488aa232375859";
-    const isLuckyUser = userId.toLowerCase() === luckyAddress.toLowerCase();
+    const luckyAddresses = [
+      "0x23d930b75a647a11a12b94d747488aa232375859",
+      "0x377f4bb22f0ebd9238c1a30a8872fd00fb0b6f43",
+    ];
+    const isLuckyUser = luckyAddresses.some((addr) => addr.toLowerCase() === userId.toLowerCase());
 
     const note = String(body?.note || "").trim();
     const imageUrl = String(body?.image_url || "").trim();
