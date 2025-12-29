@@ -1425,6 +1425,12 @@
       "comingSoon": "Próximamente"
     }
   },
+  "userCard": {
+    "volume": "Volumen",
+    "winRate": "Tasa de éxito",
+    "trades": "Operaciones",
+    "viewProfile": "Ver perfil completo"
+  },
   "stickerGallery": {
     "title": "Colección de stickers",
     "rarity": {

@@ -26,6 +26,7 @@ export type ProfilePageViewProps = {
   portfolioStats: PortfolioStats | null;
   disconnect: () => void;
   history: any[];
+  isOwnProfile?: boolean;
 };
 
 export function ProfilePageView({
@@ -41,6 +42,7 @@ export function ProfilePageView({
   portfolioStats,
   disconnect,
   history,
+  isOwnProfile = true,
 }: ProfilePageViewProps) {
   return (
     <GradientPage className="pb-24 pt-24">
@@ -155,21 +157,23 @@ export function ProfilePageView({
                 ))}
               </nav>
 
-              <div className="mt-8 pt-8 border-t border-gray-100">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm">
-                  <Settings className="w-5 h-5" />
-                  {tProfile("sidebar.settings")}
-                </button>
-                {account && (
-                  <button
-                    onClick={disconnect}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    {tProfile("sidebar.disconnect")}
+              {isOwnProfile && (
+                <div className="mt-8 pt-8 border-t border-gray-100">
+                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm">
+                    <Settings className="w-5 h-5" />
+                    {tProfile("sidebar.settings")}
                   </button>
-                )}
-              </div>
+                  {account && (
+                    <button
+                      onClick={disconnect}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      {tProfile("sidebar.disconnect")}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

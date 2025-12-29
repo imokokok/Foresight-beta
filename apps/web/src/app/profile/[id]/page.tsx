@@ -1,28 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, use } from "react";
 import { Heart, History, TrendingUp } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
-import type { TabConfig, TabType } from "./types";
-import { useProfileAggregates } from "./hooks/useProfileAggregates";
-import { ProfilePageView } from "./components/ProfilePageView";
+import type { TabConfig, TabType } from "../types";
+import { useProfileAggregates } from "../hooks/useProfileAggregates";
+import { ProfilePageView } from "../components/ProfilePageView";
 
-export default function ProfilePage() {
-  const { account, disconnectWallet: disconnect } = useWallet();
-  const { user } = useAuth();
-  const profileCtx = useUserProfileOptional();
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export default function UserProfilePage({ params }: Props) {
+  const resolvedParams = use(params);
+  const address = resolvedParams.id;
+  const { account: myAccount, disconnectWallet: disconnect } = useWallet();
+  const { user: authUser } = useAuth();
   const tProfile = useTranslations("profile");
 
   const [activeTab, setActiveTab] = useState<TabType>("predictions");
 
+  const isOwnProfile = myAccount?.toLowerCase() === address?.toLowerCase();
+
   const { history, username, portfolioStats, positionsCount, followingCount } =
     useProfileAggregates({
-      account,
-      user,
-      profile: profileCtx?.profile,
+      account: address,
+      user: isOwnProfile ? authUser : null,
+      profile: null,
       tProfile,
     });
 
@@ -34,7 +40,7 @@ export default function ProfilePage() {
 
   return (
     <ProfilePageView
-      account={account}
+      account={address}
       username={username}
       tProfile={tProfile}
       activeTab={activeTab}
@@ -44,9 +50,9 @@ export default function ProfilePage() {
       positionsCount={positionsCount}
       followingCount={followingCount}
       portfolioStats={portfolioStats}
-      disconnect={disconnect}
+      disconnect={isOwnProfile ? disconnect : () => {}}
       history={history}
-      isOwnProfile={true}
+      isOwnProfile={isOwnProfile}
     />
   );
 }

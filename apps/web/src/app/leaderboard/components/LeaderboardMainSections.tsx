@@ -92,16 +92,20 @@ export function LeaderboardMainSections({
           <span className="hidden md:block">{t("card.performanceTrend")}</span>
           <span>{t("card.winningsStatus")}</span>
         </div>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           <motion.div
-            key="leaderboard-list"
+            key={`leaderboard-list-${isSearching}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="space-y-3"
           >
             {restRank.map((user, idx) => (
-              <RankItem key={user.wallet_address || user.name} user={user} index={idx + 3} />
+              <RankItem
+                key={user.wallet_address || user.name}
+                user={user}
+                index={isSearching ? user.rank - 1 : idx + 3}
+              />
             ))}
           </motion.div>
         </AnimatePresence>

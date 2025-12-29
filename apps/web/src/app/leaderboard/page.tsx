@@ -82,14 +82,19 @@ export default function LeaderboardPage() {
     () => filteredData.slice(0, displayCount),
     [filteredData, displayCount]
   );
-  const topThree = useMemo(
-    () => (searchQuery.trim() ? [] : displayedData.slice(0, 3)),
-    [displayedData, searchQuery]
-  );
-  const restRank = useMemo(
-    () => (searchQuery.trim() ? displayedData : displayedData.slice(3)),
-    [displayedData, searchQuery]
-  );
+
+  // 始终显示当前排行榜的前三名，避免搜索时领奖台完全消失导致布局大幅跳动
+  const topThree = useMemo(() => leaderboardData.slice(0, 3), [leaderboardData]);
+
+  // 列表部分逻辑优化：
+  // 1. 如果正在搜索，展示所有匹配项（包括前三名，方便用户在列表中直接看到搜索结果）
+  // 2. 如果没有搜索，只展示第4名以后的项，因为前3名已经在领奖台展示了
+  const restRank = useMemo(() => {
+    if (searchQuery.trim()) {
+      return displayedData;
+    }
+    return leaderboardData.slice(3, displayCount);
+  }, [leaderboardData, displayedData, searchQuery, displayCount]);
   const jsonLd = useMemo(() => buildLeaderboardJsonLd(leaderboardData), [leaderboardData]);
 
   // 加载状态

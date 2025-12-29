@@ -1447,6 +1447,12 @@
     "loading": "加载中...",
     "loadingData": "加载排行榜数据..."
   },
+  "userCard": {
+    "volume": "交易量",
+    "winRate": "胜率",
+    "trades": "交易次数",
+    "viewProfile": "查看完整资料"
+  },
   "stickerGallery": {
     "title": "表情包图鉴",
     "rarity": {

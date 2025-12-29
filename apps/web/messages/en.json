@@ -1447,6 +1447,12 @@
     "loading": "Loading...",
     "loadingData": "Loading leaderboard..."
   },
+  "userCard": {
+    "volume": "Volume",
+    "winRate": "Win Rate",
+    "trades": "Trades",
+    "viewProfile": "View Full Profile"
+  },
   "stickerGallery": {
     "title": "Sticker Collection",
     "rarity": {

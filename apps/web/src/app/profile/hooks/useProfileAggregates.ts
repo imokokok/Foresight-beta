@@ -26,6 +26,17 @@ export function useProfileAggregates(args: {
   const results = useQueries({
     queries: [
       {
+        queryKey: ["profile", "info", account],
+        queryFn: async () => {
+          if (!account) return null;
+          const res = await fetch(`/api/user-profiles?address=${account}`);
+          const data = await res.json();
+          return data.profile || null;
+        },
+        enabled: !!account,
+        staleTime: 5 * 60 * 1000,
+      },
+      {
         queryKey: ["profile", "history", account],
         queryFn: async () => {
           if (!account) return [];
@@ -75,9 +86,10 @@ export function useProfileAggregates(args: {
     ],
   });
 
-  const [historyQuery, portfolioQuery, followingQuery] = results;
+  const [infoQuery, historyQuery, portfolioQuery, followingQuery] = results;
 
   // 提取数据
+  const info = infoQuery.data;
   const history = historyQuery.data || [...MOCK_HISTORY];
   const portfolioStats: PortfolioStats | null = portfolioQuery.data?.stats || null;
   const positionsCount = portfolioQuery.data?.positionsCount || 0;
@@ -87,6 +99,10 @@ export function useProfileAggregates(args: {
   const username = useMemo(() => {
     if (!account) {
       return tProfile("username.anonymous");
+    }
+    // 优先使用从 API 获取的 profile 信息
+    if (info?.username) {
+      return info.username;
     }
     if (profile?.username) {
       return profile.username;
@@ -98,7 +114,7 @@ export function useProfileAggregates(args: {
       return String(user.email).split("@")[0];
     }
     return `User ${account.slice(0, 4)}`;
-  }, [account, user, profile, tProfile]);
+  }, [account, user, profile, info, tProfile]);
 
   // 提供 setHistory 用于兼容性（实际应该用 mutation）
   const setHistory = (newHistory: any[] | ((prev: any[]) => any[])) => {
