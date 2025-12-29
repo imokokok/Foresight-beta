@@ -1,0 +1,207 @@
+{
+  "common": {
+    "appName": "Foresight",
+    "welcome": "환영합니다",
+    "loading": "로딩 중...",
+    "error": "오류",
+    "success": "성공",
+    "confirm": "확인",
+    "cancel": "취소",
+    "save": "저장",
+    "delete": "삭제",
+    "edit": "편집",
+    "search": "검색",
+    "filter": "필터",
+    "more": "더 보기",
+    "less": "접기",
+    "menu": "메뉴",
+    "explore": "탐색",
+    "userLevelDreamer": "레벨 {level} 드리머",
+    "mainNav": "메인 내비게이션",
+    "yes": "예",
+    "no": "아니오",
+    "close": "닫기",
+    "retry": "다시 시도",
+    "refresh": "새로고침",
+    "switchLanguage": "언어 변경",
+    "openUserMenu": "사용자 메뉴 열기",
+    "userMenu": "사용자 메뉴",
+    "userAvatar": "사용자 아바타",
+    "hideBalance": "잔액 숨기기",
+    "showBalance": "잔액 보기"
+  },
+  "nav": {
+    "home": "홈",
+    "trending": "트렌딩",
+    "leaderboard": "리더보드",
+    "forum": "포럼",
+    "flags": "내 플래그",
+    "proposals": "제안",
+    "profile": "프로필",
+    "admin": "관리자",
+    "myFollows": "내 팔로우",
+    "backToTop": "맨 위로"
+  },
+  "auth": {
+    "login": "로그인",
+    "logout": "로그아웃",
+    "register": "회원가입",
+    "connectWallet": "지갑 연결",
+    "disconnectWallet": "연결 해제",
+    "signMessage": "메시지 서명",
+    "welcome": "Foresight에 오신 것을 환영합니다",
+    "signToConnect": "서명하여 연결",
+    "siweStatement": "Foresight에 오신 것을 환영합니다! 지갑을 연결하려면 서명하세요.",
+    "loggedIn": "로그인됨",
+    "noEmail": "이메일 없음"
+  },
+  "wallet": {
+    "connected": "연결됨",
+    "disconnected": "연결 해제됨",
+    "balance": "잔액",
+    "address": "주소",
+    "copyAddress": "주소 복사",
+    "addressCopied": "주소 복사됨",
+    "viewOnExplorer": "익스플로러에서 보기",
+    "switchNetwork": "네트워크 전환",
+    "refreshBalance": "잔액 새로고침",
+    "noWallet": "지갑이 감지되지 않음",
+    "installMetaMask": "MetaMask 설치",
+    "connectFailedTitle": "지갑 연결 실패",
+    "installMetaMaskExtension": "MetaMask 브라우저 확장 프로그램 설치",
+    "unknownNetwork": "알 수 없는 네트워크",
+    "notDetected": "{walletName} 확장 프로그램이 감지되지 않음",
+    "installPrompt": "공식 확장 프로그램을 설치한 후 페이지를 새로고침하세요.",
+    "safeInstallHint": "보안을 위해 공식 소스에서만 설치하세요.",
+    "refreshAfterInstall": "설치 후 페이지를 새로고침하여 연결을 계속하세요.",
+    "goInstall": "설치",
+    "later": "나중에"
+  },
+  "mobileNav": {
+    "menuOpen": "메뉴 열기",
+    "menuClose": "메뉴 닫기",
+    "marketSubtitle": "예측 시장",
+    "items": {
+      "home": "홈",
+      "trending": "트렌딩",
+      "search": "검색",
+      "forum": "토론",
+      "me": "내 정보",
+      "settings": "설정"
+    },
+    "wallet": {
+      "connected": "지갑 연결됨",
+      "disconnect": "연결 해제",
+      "connect": "지갑 연결"
+    }
+  },
+  "profile": {
+    "username": {
+      "anonymous": "익명 사용자",
+      "walletDisconnected": "지갑 연결 안됨"
+    },
+    "sidebar": {
+      "tabs": {
+        "overview": "개요",
+        "predictions": "내 예측",
+        "history": "열람 기록",
+        "following": "팔로잉"
+      },
+      "stats": {
+        "predictions": "예측",
+        "followers": "팔로워",
+        "following": "팔로잉",
+        "history": "기록"
+      },
+      "settings": "설정",
+      "disconnect": "연결 해제"
+    }
+  },
+  "search": {
+    "placeholder": "예측, 주제, 사용자 검색...",
+    "resultsTitle": "검색 결과",
+    "emptyTitle": "검색 결과 없음",
+    "emptyDescription": "다른 키워드를 시도하거나 인기 검색어를 찾아보세요",
+    "recentTitle": "최근 검색",
+    "clear": "지우기",
+    "hotTitle": "인기 검색어",
+    "clearSearchAria": "검색 지우기",
+    "hintConfirm": "확인",
+    "hintClose": "닫기",
+    "hintOpen": "검색 열기",
+    "hot": {
+      "usElection": "미국 선거",
+      "btcPrice": "BTC 가격",
+      "worldCup": "월드컵",
+      "ai": "AI 발전",
+      "climate": "기후 변화"
+    }
+  },
+  "leaderboard": {
+    "sidebar": {
+      "mySpot": "내 순위 ✨",
+      "weekly": "주간",
+      "currentRank": "현재 순위",
+      "currentProfit": "거래량",
+      "nextRank": "다음 순위까지",
+      "top100": "상위 100까지",
+      "topRank": "1위",
+      "inTop100": "상위 100 진입",
+      "notRanked": "아직 순위 없음",
+      "startTrading": "거래를 시작하여 순위에 오르세요",
+      "explorePredictions": "예측 탐색",
+      "viewFullProfile": "전체 프로필 보기",
+      "searchPlaceholder": "트레이더 검색...",
+      "searchResults": "일치하는 트레이더 발견",
+      "noResults": "일치하는 트레이더 없음",
+      "trendingNow": "지금 트렌딩 🔥",
+      "activeUsers": "활성 사용자",
+      "connectToView": "지갑을 연결하여 순위 확인",
+      "connectWallet": "지갑 연결",
+      "comingSoon": "곧 출시",
+      "noTrending": "트렌딩 예측 없음"
+    }
+  },
+  "proposals": {
+    "sidebar": {
+      "member": "멤버",
+      "myPosts": "내 제안",
+      "totalPosts": "전체 제안",
+      "summaryTitle": "제안 광장은 Foresight의 제품 관리자 패널입니다",
+      "summaryBody": "새로운 예측 시장 아이디어나 거버넌스 제안을 시작하고 커뮤니티가 토론하고 투표한 후 전체 시장으로 전환됩니다.",
+      "helperPrefix": "라이브 시장을 먼저 보고 싶으신가요?",
+      "helperTrending": "트렌딩",
+      "helperMiddle": "에서 기존 이벤트를 탐색하세요. 아이디어가 아직 준비되지 않았다면",
+      "helperForum": "포럼",
+      "helperSuffix": "에서 초기 피드백을 수집하세요.",
+      "views": "조회수",
+      "viewHot": "인기 & 트렌딩",
+      "viewNew": "최신순",
+      "viewTop": "투표순"
+    }
+  },
+  "forum": {
+    "title": "커뮤니티 토론",
+    "loginRequired": "스레드를 시작하려면 지갑을 연결하세요",
+    "connectAndSign": "연결 및 서명",
+    "chatRoom": "채팅방",
+    "relatedPrediction": "관련 예측",
+    "viewMarket": "시장 보기",
+    "loadingTopic": "주제 로딩 중...",
+    "loadFailed": "로드 실패, 나중에 다시 시도하세요",
+    "selectTopic": "토론을 시작할 주제를 선택하세요",
+    "searchPlaceholder": "주제 또는 토론 검색...",
+    "noTopics": "사용 가능한 주제 없음",
+    "emptyTopics": "주제 없음"
+  },
+  "flags": {
+    "sidebar": {
+      "trendingTitle": "트렌딩",
+      "viewAll": "모두 보기",
+      "quote": {
+        "text": "\"하지 않은 운동만이 나쁜 운동이다.\"",
+        "label": "오늘의 동기부여"
+      }
+    }
+  }
+}

@@ -4,18 +4,27 @@ import { useState, useRef, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { useTranslations, getCurrentLocale, setLocale } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { defaultLocale } from "@/i18n-config";
 
 const languages: { code: Locale; name: string; flag: string }[] = [
   { code: "zh-CN", name: "简体中文", flag: "🇨🇳" },
   { code: "en", name: "English", flag: "🇺🇸" },
   { code: "es", name: "Español", flag: "🇪🇸" },
+  { code: "ko", name: "한국어", flag: "🇰🇷" },
 ];
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentLang, setCurrentLang] = useState<Locale>(() => getCurrentLocale());
+  const [currentLang, setCurrentLang] = useState<Locale>(defaultLocale);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const tCommon = useTranslations("common");
+
+  // 客户端挂载后同步真实的 locale
+  useEffect(() => {
+    setCurrentLang(getCurrentLocale());
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,6 +44,21 @@ export default function LanguageSwitcher() {
   };
 
   const currentLanguage = languages.find((l) => l.code === currentLang) || languages[0];
+
+  // 避免 hydration 不匹配：在挂载前显示固定内容
+  if (!mounted) {
+    return (
+      <div className="relative">
+        <button
+          className="flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl hover:bg-white transition-colors text-sm font-medium text-gray-700"
+          aria-label={tCommon("switchLanguage")}
+        >
+          <Globe className="w-4 h-4" />
+          <span className="w-5 h-5" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={menuRef}>

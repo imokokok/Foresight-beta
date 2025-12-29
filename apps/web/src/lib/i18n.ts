@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
+import ko from "../../messages/ko.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
 
 type Messages = typeof zhCN;
@@ -12,6 +13,7 @@ const messages: Record<Locale, Messages> = {
   "zh-CN": zhCN,
   en,
   es,
+  ko: ko as unknown as Messages,
 };
 
 export function getSupportedLocales(): Locale[] {
@@ -51,6 +53,9 @@ export function getCurrentLocale(): Locale {
       }
       if (lower.startsWith("es")) {
         return "es";
+      }
+      if (lower.startsWith("ko")) {
+        return "ko";
       }
     }
   }
