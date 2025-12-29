@@ -215,7 +215,6 @@ type TrendingEventsFilterBarProps = {
   onFilterChange: (state: FilterSortState) => void;
   searchQuery: string;
   onClearSearch: () => void;
-  highlightFilters: boolean;
   tTrending: (key: string) => string;
 };
 
@@ -226,7 +225,6 @@ function TrendingEventsFilterBar({
   onFilterChange,
   searchQuery,
   onClearSearch,
-  highlightFilters,
   tTrending,
 }: TrendingEventsFilterBarProps) {
   if (loading || error) return null;
@@ -234,11 +232,7 @@ function TrendingEventsFilterBar({
   const hasSearch = searchQuery.trim().length > 0;
 
   return (
-    <div
-      className={`mb-8 space-y-3 transition-shadow duration-300 ${
-        highlightFilters ? "shadow-[0_0_0_2px_rgba(129,140,248,0.45)] rounded-2xl" : ""
-      }`}
-    >
+    <div className="mb-8 space-y-3">
       <FilterSort onFilterChange={onFilterChange} initialFilters={filters} showStatus />
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-gray-500">
         {hasSearch && (
@@ -420,24 +414,6 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
   const isSearchActive = searchQuery.trim().length > 0;
   const isFilterActive = activeFiltersCount > 0;
 
-  const [highlightFilters, setHighlightFilters] = React.useState(false);
-  const hasInitializedRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      return;
-    }
-    if (!isSearchActive && !isFilterActive) return;
-    setHighlightFilters(true);
-    const timer = window.setTimeout(() => {
-      setHighlightFilters(false);
-    }, 400);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [isSearchActive, isFilterActive, filters, searchQuery]);
-
   const emptyTitleKey =
     isSearchActive && !isFilterActive
       ? "empty.searchTitle"
@@ -461,7 +437,6 @@ export const TrendingEventsSection = React.memo(function TrendingEventsSection(
         onFilterChange={onFilterChange}
         searchQuery={searchQuery}
         onClearSearch={onClearSearch}
-        highlightFilters={highlightFilters}
         tTrending={tTrending}
       />
 
