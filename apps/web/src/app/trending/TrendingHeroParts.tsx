@@ -81,11 +81,11 @@ export type HeroMainInfoProps = {
   activeFollowers: number;
   onPlacePrediction: () => void;
   placePredictionLabel: string;
-  viewDetailsLabel: string;
   dailyPickLabel: string;
   trendingFallbackLabel: string;
   poolSizeLabel: string;
   participantsLabel: string;
+  platformDescription: string;
 };
 
 type HeroBadgesProps = {
@@ -152,25 +152,17 @@ function HeroMetricsSummary({
 type HeroActionsProps = {
   onPlacePrediction: () => void;
   placePredictionLabel: string;
-  viewDetailsLabel: string;
 };
 
-function HeroActions({
-  onPlacePrediction,
-  placePredictionLabel,
-  viewDetailsLabel,
-}: HeroActionsProps) {
+function HeroActions({ onPlacePrediction, placePredictionLabel }: HeroActionsProps) {
   return (
-    <div className="flex items-center gap-4 pt-2">
+    <div className="pt-2">
       <button
         onClick={onPlacePrediction}
         className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm shadow-lg shadow-gray-900/20 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2 group"
       >
         {placePredictionLabel}
         <ArrowRightCircle className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-      </button>
-      <button className="px-8 py-4 bg-white text-gray-900 border border-gray-200 rounded-2xl font-bold text-sm shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all">
-        {viewDetailsLabel}
       </button>
     </div>
   );
@@ -183,11 +175,11 @@ export function HeroMainInfo({
   activeFollowers,
   onPlacePrediction,
   placePredictionLabel,
-  viewDetailsLabel,
   dailyPickLabel,
   trendingFallbackLabel,
   poolSizeLabel,
   participantsLabel,
+  platformDescription,
 }: HeroMainInfoProps) {
   return (
     <div className="flex-1 w-full lg:w-1/2 space-y-8 min-h-[420px] flex flex-col justify-center">
@@ -206,10 +198,7 @@ export function HeroMainInfo({
           {activeDescription}
         </p>
 
-        <p className="text-sm text-gray-500 leading-relaxed max-w-xl">
-          Foresight
-          是一个基于区块链的去中心化预测市场平台，你可以创建和交易各种现实世界事件的预测，使用加密货币表达观点并获得潜在收益。
-        </p>
+        <p className="text-sm text-gray-500 leading-relaxed max-w-xl">{platformDescription}</p>
 
         <HeroMetricsSummary
           activeFollowers={activeFollowers}
@@ -220,7 +209,6 @@ export function HeroMainInfo({
         <HeroActions
           onPlacePrediction={onPlacePrediction}
           placePredictionLabel={placePredictionLabel}
-          viewDetailsLabel={viewDetailsLabel}
         />
       </div>
     </div>

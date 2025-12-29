@@ -141,11 +141,11 @@ function TrendingHeroView({
               actions.onOpenPrediction(hero.slideId);
             }}
             placePredictionLabel={tTrending("actions.placePrediction")}
-            viewDetailsLabel={tTrending("actions.viewDetails")}
             dailyPickLabel={tTrending("badges.dailyPick")}
             trendingFallbackLabel={tTrending("badges.trending")}
             poolSizeLabel={tTrending("metrics.poolSize")}
             participantsLabel={tTrending("metrics.participants")}
+            platformDescription={tTrending("platformDescription")}
           />
 
           <HeroPreviewCard
