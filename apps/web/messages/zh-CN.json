@@ -1144,15 +1144,15 @@
       }
     },
     "checkin": {
-      "title": "打卡时刻",
-      "subtitle": "记录你的每一次进步",
-      "noteLabel": "心得体会",
-      "notePlaceholder": "今天感觉如何？写点什么吧...",
-      "imageLabel": "图片链接（可选）",
-      "imagePlaceholder": "https://...",
-      "cancel": "取消",
-      "submit": "确认打卡",
-      "submitLoading": "提交中…"
+      "title": "记录这一刻的坚持 📝",
+      "subtitle": "每一个微小的进步，都值得被大声夸奖",
+      "noteLabel": "此时此刻的心情",
+      "notePlaceholder": "写下今天的感悟吧，哪怕只有一句话...",
+      "imageLabel": "上传一张小确幸",
+      "imagePlaceholder": "粘贴图片链接，记录下这个珍贵的瞬间吧",
+      "cancel": "下次再说",
+      "submit": "记录我的进步 ✨",
+      "submitLoading": "正在把努力存进时光机..."
     },
     "history": {
       "title": "挑战记录",
@@ -1201,28 +1201,28 @@
     },
     "modal": {
       "header": {
-        "joinChallengeTitle": "加入挑战",
-        "joinChallengeSubtitle": "一起坚持完成目标吧！",
-        "newFlagTitle": "创建新的挑战",
-        "newFlagSubtitle": "从今天开始改变自己"
+        "joinChallengeTitle": "嘿！我们一起挑战吧 ✨",
+        "joinChallengeSubtitle": "有人陪伴的旅程，终点总会更有意义",
+        "newFlagTitle": "种下一个新愿望 🌱",
+        "newFlagSubtitle": "小小的改变，是送给未来自己最好的礼物"
       },
       "form": {
-        "titleLabel": "挑战标题",
-        "titlePlaceholder": "例如：每天阅读 10 页书",
-        "descLabel": "详情与规则",
-        "descPlaceholder": "描述你的计划...",
-        "verificationLabel": "验证方式",
-        "selfCheck": "自我验证",
-        "friendCheck": "好友监督",
-        "witnessLabel": "监督人 ID / 地址",
-        "witnessPlaceholder": "请输入好友的 ID 或地址",
-        "targetDateLabel": "目标日期（可选）",
-        "targetDatePlaceholder": "选择日期"
+        "titleLabel": "你的目标是什么？",
+        "titlePlaceholder": "比如：每天喝够 8 杯水，做个水灵的少年...",
+        "descLabel": "详细说来听听",
+        "descPlaceholder": "在这个目标背后，藏着怎样的期待呢？",
+        "verificationLabel": "谁来见证你的进步？",
+        "selfCheck": "我自己来",
+        "friendCheck": "找个树洞",
+        "witnessLabel": "你的监督人 ID",
+        "witnessPlaceholder": "输入对方的钱包地址或 ID，让 TA 陪你一起坚持",
+        "targetDateLabel": "哪天完成这个梦想？",
+        "targetDatePlaceholder": "选一个幸运的日子吧"
       },
       "footer": {
-        "cancel": "取消",
-        "joinNow": "立即加入",
-        "createFlag": "创建挑战"
+        "cancel": "先等等",
+        "joinNow": "立刻出发 🚀",
+        "createFlag": "开启这段旅程 ✨"
       },
       "templates": {
         "early_morning": {

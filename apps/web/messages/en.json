@@ -1144,15 +1144,15 @@
       }
     },
     "checkin": {
-      "title": "Check-in Moment",
-      "subtitle": "Capture every bit of your progress",
-      "noteLabel": "Reflection",
-      "notePlaceholder": "How do you feel today? Write something…",
-      "imageLabel": "Image URL (optional)",
-      "imagePlaceholder": "https://...",
-      "cancel": "Cancel",
-      "submit": "Confirm check-in",
-      "submitLoading": "Submitting…"
+      "title": "Capturing Your Grit 📝",
+      "subtitle": "Every small step forward deserves a huge high-five!",
+      "noteLabel": "How's your heart feeling?",
+      "notePlaceholder": "Jot down a thought, even a single word matters...",
+      "imageLabel": "Snap a little joy",
+      "imagePlaceholder": "Paste an image link to freeze this precious moment",
+      "cancel": "Maybe later",
+      "submit": "Log my progress ✨",
+      "submitLoading": "Tucking your effort into the time machine..."
     },
     "history": {
       "title": "Challenge History",

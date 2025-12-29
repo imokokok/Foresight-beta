@@ -1144,15 +1144,15 @@
       }
     },
     "checkin": {
-      "title": "Momento de check-in",
-      "subtitle": "Registra cada paso de tu progreso",
-      "noteLabel": "Reflexión",
-      "notePlaceholder": "¿Cómo te sientes hoy? Escribe algo...",
-      "imageLabel": "URL de imagen (opcional)",
-      "imagePlaceholder": "https://...",
-      "cancel": "Cancelar",
-      "submit": "Confirmar check-in",
-      "submitLoading": "Enviando…"
+      "title": "Capturando tu Esfuerzo 📝",
+      "subtitle": "¡Cada pequeño paso merece un gran aplauso!",
+      "noteLabel": "¿Cómo te sientes en este momento?",
+      "notePlaceholder": "Escribe una reflexión, una sola palabra cuenta...",
+      "imageLabel": "Sube un rayo de sol",
+      "imagePlaceholder": "Pega el enlace de una foto para congelar este momento",
+      "cancel": "En otro momento",
+      "submit": "Registrar mi progreso ✨",
+      "submitLoading": "Guardando tu esfuerzo en la máquina del tiempo..."
     },
     "history": {
       "title": "Historial del reto",
