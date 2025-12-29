@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowRight,
   ArrowUpRight,
   BarChart2,
   ChevronDown,
@@ -46,6 +48,17 @@ export function LeaderboardMainSections({
   const t = useTranslations("leaderboard");
   const { account, connectWallet } = useWallet();
   const isSearching = searchQuery.trim().length > 0;
+
+  // 获取热门预测数据
+  const { data: trendingPredictions, isLoading: loadingTrending } = useQuery({
+    queryKey: ["trending-predictions-simple"],
+    queryFn: async () => {
+      const res = await fetch("/api/predictions?limit=3&status=active");
+      const data = await res.json();
+      return data.data || [];
+    },
+    staleTime: 60 * 1000, // 1分钟
+  });
 
   // 查找当前用户在排行榜中的数据
   const myRankData = useMemo(() => {
@@ -283,14 +296,55 @@ export function LeaderboardMainSections({
           </div>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-8 border border-white/60 shadow-sm">
-          <div className="flex items-center gap-2 mb-6 text-gray-900 font-black text-lg">
-            <BarChart2 className="w-5 h-5 text-purple-600" />
-            {t("sidebar.trendingNow")}
+        <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-8 border border-white/60 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2 text-gray-900 font-black text-lg">
+              <BarChart2 className="w-5 h-5 text-purple-600" />
+              {t("sidebar.trendingNow")}
+            </div>
+            <Link href="/trending" className="text-purple-600 hover:text-purple-700">
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
-          <div className="text-center py-8">
-            <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">{t("sidebar.comingSoon")}</p>
+
+          <div className="space-y-4">
+            {loadingTrending ? (
+              <div className="flex flex-col gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-gray-100/50 animate-pulse rounded-2xl" />
+                ))}
+              </div>
+            ) : trendingPredictions && trendingPredictions.length > 0 ? (
+              trendingPredictions.map((prediction: any) => (
+                <Link
+                  key={prediction.id}
+                  href={`/prediction/${prediction.id}`}
+                  className="block group"
+                >
+                  <div className="p-4 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/80 hover:shadow-md hover:border-purple-100 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-2 group-hover:text-purple-700 transition-colors">
+                      {prediction.title}
+                    </h4>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 text-[10px] font-black uppercase">
+                          {prediction.category || "General"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400">
+                        <TrendingUp className="w-3 h-3" />
+                        {formatVolume(prediction.stats?.totalAmount || 0)} USDC
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">{t("sidebar.noTrending") || "暂无热门预测"}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

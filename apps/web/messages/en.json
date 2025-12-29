@@ -1439,7 +1439,8 @@
       "activeUsers": "active users",
       "connectToView": "Connect wallet to view your ranking",
       "connectWallet": "Connect Wallet",
-      "comingSoon": "Coming Soon"
+      "comingSoon": "Coming Soon",
+      "noTrending": "No trending predictions"
     },
     "loadMore": "Load More Traders",
     "allLoaded": "All traders displayed",

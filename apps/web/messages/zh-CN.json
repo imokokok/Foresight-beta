@@ -1439,7 +1439,8 @@
       "activeUsers": "活跃用户",
       "connectToView": "连接钱包查看您的排名",
       "connectWallet": "连接钱包",
-      "comingSoon": "敬请期待"
+      "comingSoon": "敬请期待",
+      "noTrending": "暂无热门预测"
     },
     "loadMore": "加载更多交易者",
     "allLoaded": "已展示全部交易者",

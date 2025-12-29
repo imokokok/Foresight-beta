@@ -1422,7 +1422,8 @@
       "activeUsers": "usuarios activos",
       "connectToView": "Conecta tu billetera para ver tu ranking",
       "connectWallet": "Conectar Billetera",
-      "comingSoon": "Próximamente"
+      "comingSoon": "Próximamente",
+      "noTrending": "No hay predicciones populares"
     }
   },
   "userCard": {
