@@ -17,13 +17,14 @@ export type LeaderboardEntry = {
 };
 
 type TimeRange = "daily" | "weekly" | "monthly" | "all";
+type Category = "profit" | "winrate" | "streak";
 
 // 简单的内存缓存
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 1000; // 1分钟缓存
 
-function getCacheKey(range: TimeRange, limit: number): string {
-  return `leaderboard:${range}:${limit}`;
+function getCacheKey(range: TimeRange, category: Category, limit: number): string {
+  return `leaderboard:${range}:${category}:${limit}`;
 }
 
 function getFromCache(key: string): any | null {
@@ -43,11 +44,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const range = (searchParams.get("range") || "weekly") as TimeRange;
+    const category = (searchParams.get("category") || "profit") as Category;
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
     const noCache = searchParams.get("nocache") === "true";
 
     // 检查缓存
-    const cacheKey = getCacheKey(range, limit);
+    const cacheKey = getCacheKey(range, category, limit);
     if (!noCache) {
       const cached = getFromCache(cacheKey);
       if (cached) {
@@ -62,9 +64,9 @@ export async function GET(req: NextRequest) {
 
     // 首先尝试从 user_trading_stats 表获取数据（已预计算）
     let leaderboard: LeaderboardEntry[] = [];
-    
+
     const statsResult = await fetchFromStatsTable(client, range, limit);
-    
+
     if (statsResult.success && statsResult.data.length > 0) {
       leaderboard = statsResult.data;
     } else {
@@ -95,10 +97,20 @@ export async function GET(req: NextRequest) {
       }));
     }
 
+    // 根据分类重新排序
+    leaderboard = sortByCategory(leaderboard, category);
+
+    // 重新分配排名
+    leaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+
     const response = {
       leaderboard,
       meta: {
         range,
+        category,
         total_users: leaderboard.length,
         generated_at: new Date().toISOString(),
         cached: false,
@@ -116,6 +128,31 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// 根据分类排序
+function sortByCategory(data: LeaderboardEntry[], category: Category): LeaderboardEntry[] {
+  return [...data].sort((a, b) => {
+    switch (category) {
+      case "profit":
+        // 按交易量/利润排序（降序）
+        return b.total_volume - a.total_volume;
+      case "winrate":
+        // 按胜率排序（降序），胜率相同时按交易量排序
+        if (b.win_rate !== a.win_rate) {
+          return b.win_rate - a.win_rate;
+        }
+        return b.total_volume - a.total_volume;
+      case "streak":
+        // 按交易次数排序（降序），作为"活跃度/连胜"的近似
+        if (b.trades_count !== a.trades_count) {
+          return b.trades_count - a.trades_count;
+        }
+        return b.win_rate - a.win_rate;
+      default:
+        return b.total_volume - a.total_volume;
+    }
+  });
+}
+
 // 从预计算的统计表获取数据
 async function fetchFromStatsTable(
   client: any,
@@ -126,7 +163,7 @@ async function fetchFromStatsTable(
     // 根据时间范围选择排序字段
     let volumeField: string;
     let tradesField: string;
-    
+
     switch (range) {
       case "daily":
         volumeField = "daily_volume";
@@ -167,10 +204,10 @@ async function fetchFromStatsTable(
       const trades = parseInt(row[tradesField] || 0);
       const buyVolume = parseFloat(row.buy_volume || 0);
       const totalVolume = parseFloat(row.total_volume || 0);
-      
+
       // 计算胜率（基于买入比例作为近似）
       const winRate = totalVolume > 0 ? Math.round((buyVolume / totalVolume) * 100) : 50;
-      
+
       // 计算趋势（基于最近交易活跃度）
       const weeklyVol = parseFloat(row.weekly_volume || 0);
       const monthlyVol = parseFloat(row.monthly_volume || 0);
@@ -217,7 +254,7 @@ async function fetchFromTradesTable(
   // 获取时间过滤
   let timeFilter: string | null = null;
   const now = new Date();
-  
+
   switch (range) {
     case "daily":
       now.setDate(now.getDate() - 1);
@@ -236,9 +273,7 @@ async function fetchFromTradesTable(
       timeFilter = null;
   }
 
-  let query = client
-    .from("trades")
-    .select("taker_address, maker_address, amount, price, is_buy");
+  let query = client.from("trades").select("taker_address, maker_address, amount, price, is_buy");
 
   if (timeFilter) {
     query = query.gte("block_timestamp", timeFilter);
@@ -252,15 +287,18 @@ async function fetchFromTradesTable(
   }
 
   // 聚合用户交易数据
-  const userStats: Record<string, {
-    trades_count: number;
-    total_volume: number;
-    buy_volume: number;
-    sell_volume: number;
-  }> = {};
+  const userStats: Record<
+    string,
+    {
+      trades_count: number;
+      total_volume: number;
+      buy_volume: number;
+      sell_volume: number;
+    }
+  > = {};
 
   for (const trade of trades) {
-    const volume = parseFloat(trade.amount || "0") * parseFloat(trade.price || "0") / 1000000;
+    const volume = (parseFloat(trade.amount || "0") * parseFloat(trade.price || "0")) / 1000000;
 
     // 统计 taker
     if (trade.taker_address) {
@@ -299,9 +337,8 @@ async function fetchFromTradesTable(
     .slice(0, limit);
 
   return sortedUsers.map(([addr, stats], index) => {
-    const winRate = stats.total_volume > 0
-      ? Math.round((stats.buy_volume / stats.total_volume) * 100)
-      : 50;
+    const winRate =
+      stats.total_volume > 0 ? Math.round((stats.buy_volume / stats.total_volume) * 100) : 50;
 
     const trendValue = Math.round((Math.random() - 0.3) * 20);
     const trend = trendValue >= 0 ? `+${trendValue}%` : `${trendValue}%`;
@@ -327,7 +364,10 @@ export async function POST(req: NextRequest) {
   try {
     const client = getClient("leaderboard-refresh");
     if (!client) {
-      return NextResponse.json({ success: false, message: "Database not configured" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, message: "Database not configured" },
+        { status: 500 }
+      );
     }
 
     // 调用刷新函数
@@ -341,10 +381,10 @@ export async function POST(req: NextRequest) {
     // 清除缓存
     cache.clear();
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: "User trading stats refreshed successfully",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
     console.error("Refresh API Error:", error);

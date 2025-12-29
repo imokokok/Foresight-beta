@@ -2,11 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import {
-  buildLeaderboardJsonLd,
-  transformLeaderboardData,
-  type LeaderboardUser,
-} from "./data";
+import { buildLeaderboardJsonLd, transformLeaderboardData, type LeaderboardUser } from "./data";
 import { LeaderboardPageView } from "./components/LeaderboardPageView";
 import GradientPage from "@/components/ui/GradientPage";
 import { useTranslations } from "@/lib/i18n";
@@ -25,15 +21,18 @@ export default function LeaderboardPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [displayCount, setDisplayCount] = useState(INITIAL_LOAD);
   const [totalLoaded, setTotalLoaded] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 获取排行榜数据
   useEffect(() => {
     async function fetchLeaderboard() {
       setLoading(true);
-      setDisplayCount(INITIAL_LOAD); // 切换时间范围时重置显示条数
+      setDisplayCount(INITIAL_LOAD); // 切换时重置显示条数
       try {
-        // 首次加载获取足够的数据
-        const res = await fetch(`/api/leaderboard?range=${timeRange}&limit=${MAX_LOAD}`);
+        // 首次加载获取足够的数据，传入 category 参数
+        const res = await fetch(
+          `/api/leaderboard?range=${timeRange}&category=${category}&limit=${MAX_LOAD}`
+        );
         const data = await res.json();
         if (data.leaderboard && Array.isArray(data.leaderboard)) {
           const transformed = transformLeaderboardData(data.leaderboard);
@@ -47,12 +46,12 @@ export default function LeaderboardPage() {
       }
     }
     fetchLeaderboard();
-  }, [timeRange]);
+  }, [timeRange, category]); // 添加 category 依赖
 
   // 加载更多
   const handleLoadMore = useCallback(() => {
     if (loadingMore || displayCount >= totalLoaded) return;
-    
+
     setLoadingMore(true);
     // 模拟加载延迟，提供更好的 UX 反馈
     setTimeout(() => {
@@ -61,20 +60,37 @@ export default function LeaderboardPage() {
     }, 300);
   }, [loadingMore, displayCount, totalLoaded]);
 
-  // 计算是否还有更多数据
-  const hasMore = displayCount < totalLoaded;
+  // 根据搜索词过滤数据
+  const filteredData = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return leaderboardData;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return leaderboardData.filter((user) => {
+      const username = (user.username || user.name || "").toLowerCase();
+      const walletAddress = (user.wallet_address || "").toLowerCase();
+      return username.includes(query) || walletAddress.includes(query);
+    });
+  }, [leaderboardData, searchQuery]);
+
+  // 计算是否还有更多数据（搜索时基于过滤后的数据）
+  const effectiveTotal = searchQuery.trim() ? filteredData.length : totalLoaded;
+  const hasMore = displayCount < effectiveTotal;
 
   // 根据 displayCount 切片数据
   const displayedData = useMemo(
-    () => leaderboardData.slice(0, displayCount),
-    [leaderboardData, displayCount]
+    () => filteredData.slice(0, displayCount),
+    [filteredData, displayCount]
   );
-  const topThree = useMemo(() => displayedData.slice(0, 3), [displayedData]);
-  const restRank = useMemo(() => displayedData.slice(3), [displayedData]);
-  const jsonLd = useMemo(
-    () => buildLeaderboardJsonLd(leaderboardData),
-    [leaderboardData]
+  const topThree = useMemo(
+    () => (searchQuery.trim() ? [] : displayedData.slice(0, 3)),
+    [displayedData, searchQuery]
   );
+  const restRank = useMemo(
+    () => (searchQuery.trim() ? displayedData : displayedData.slice(3)),
+    [displayedData, searchQuery]
+  );
+  const jsonLd = useMemo(() => buildLeaderboardJsonLd(leaderboardData), [leaderboardData]);
 
   // 加载状态
   if (loading && leaderboardData.length === 0) {
@@ -96,12 +112,15 @@ export default function LeaderboardPage() {
       onCategoryChange={setCategory}
       topThree={topThree}
       restRank={restRank}
+      allUsers={leaderboardData}
       jsonLd={jsonLd}
       hasMore={hasMore}
       loadingMore={loadingMore}
       onLoadMore={handleLoadMore}
       displayCount={displayCount}
-      totalCount={totalLoaded}
+      totalCount={effectiveTotal}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
     />
   );
 }

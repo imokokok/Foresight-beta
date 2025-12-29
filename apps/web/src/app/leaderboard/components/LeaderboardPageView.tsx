@@ -15,6 +15,7 @@ export type LeaderboardPageViewProps = {
   onCategoryChange: LeaderboardControlsProps["onCategoryChange"];
   topThree: LeaderboardUser[];
   restRank: LeaderboardUser[];
+  allUsers: LeaderboardUser[]; // 完整数据用于查找当前用户排名
   jsonLd: any;
   // 分页相关
   hasMore?: boolean;
@@ -22,6 +23,9 @@ export type LeaderboardPageViewProps = {
   onLoadMore?: () => void;
   displayCount?: number;
   totalCount?: number;
+  // 搜索相关
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 };
 
 export function LeaderboardPageView({
@@ -31,12 +35,15 @@ export function LeaderboardPageView({
   onCategoryChange,
   topThree,
   restRank,
+  allUsers,
   jsonLd,
   hasMore = false,
   loadingMore = false,
   onLoadMore,
   displayCount = 0,
   totalCount = 0,
+  searchQuery = "",
+  onSearchChange,
 }: LeaderboardPageViewProps) {
   return (
     <GradientPage className="w-full relative overflow-hidden font-sans selection:bg-purple-200">
@@ -59,11 +66,14 @@ export function LeaderboardPageView({
         <LeaderboardPodium users={topThree} />
         <LeaderboardMainSections
           restRank={restRank}
+          allUsers={allUsers}
           hasMore={hasMore}
           loadingMore={loadingMore}
           onLoadMore={onLoadMore}
           displayCount={displayCount}
           totalCount={totalCount}
+          searchQuery={searchQuery}
+          onSearchChange={onSearchChange}
         />
       </div>
     </GradientPage>
