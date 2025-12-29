@@ -446,8 +446,30 @@ body {
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
     transform: translateX(100%);
+    opacity: 0;
   }
+}
+
+/* 骨架屏呼吸效果 */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 2s ease-in-out infinite;
 }

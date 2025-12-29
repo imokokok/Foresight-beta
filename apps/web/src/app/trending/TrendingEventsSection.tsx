@@ -229,6 +229,73 @@ type TrendingEventsSkeletonGridProps = {
   count?: number;
 };
 
+// 单个骨架卡片组件
+function SkeletonCard({ index }: { index: number }) {
+  return (
+    <motion.div
+      variants={cardVariants}
+      className="glass-card rounded-2xl overflow-hidden relative flex flex-col h-full min-h-[250px]"
+    >
+      {/* Shimmer overlay - 交错延迟 */}
+      <div
+        className="absolute inset-0 z-20 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
+          animation: `shimmer 1.8s ease-in-out infinite`,
+          animationDelay: `${index * 0.15}s`,
+        }}
+      />
+
+      {/* 关注按钮骨架 */}
+      <div className="absolute top-3 left-3 z-10">
+        <div className="w-9 h-9 rounded-full bg-gray-200/80 animate-pulse" />
+      </div>
+
+      {/* 图片区域骨架 */}
+      <div className="relative h-40 bg-gradient-to-br from-gray-200/80 to-gray-100/80">
+        {/* 模拟图片加载的渐变效果 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-300/20 to-transparent" />
+      </div>
+
+      {/* 内容区域 */}
+      <div className="p-4 flex flex-col flex-1">
+        {/* 标题骨架 - 两行 */}
+        <div className="flex-1 min-h-[3rem] space-y-2">
+          <div className="h-4 rounded-full bg-gray-200/80 w-[90%]" />
+          <div className="h-4 rounded-full bg-gray-200/70 w-[65%]" />
+        </div>
+
+        {/* 统计信息骨架 */}
+        <div className="mt-auto space-y-3">
+          {/* 标签和数据行 */}
+          <div className="flex items-center gap-2">
+            {/* 交易量标签 */}
+            <div className="h-5 rounded-lg bg-purple-100/60 w-20" />
+            {/* 参与者 */}
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-200/80" />
+              <div className="h-3 rounded-full bg-gray-200/70 w-6" />
+            </div>
+            {/* 关注数 */}
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-gray-200/80" />
+              <div className="h-3 rounded-full bg-gray-200/70 w-6" />
+            </div>
+          </div>
+
+          {/* 选项标签骨架 */}
+          <div className="pt-2 border-t border-gray-100/60 flex flex-wrap gap-1.5">
+            <div className="h-5 rounded bg-gray-100/80 w-12" />
+            <div className="h-5 rounded bg-gray-100/70 w-10" />
+            <div className="h-5 rounded bg-gray-100/60 w-14" />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function TrendingEventsSkeletonGrid({ count = 8 }: TrendingEventsSkeletonGridProps) {
   return (
     <motion.div
@@ -238,21 +305,7 @@ function TrendingEventsSkeletonGrid({ count = 8 }: TrendingEventsSkeletonGridPro
       animate="visible"
     >
       {Array.from({ length: count }).map((_, index) => (
-        <motion.div
-          key={index}
-          variants={cardVariants}
-          className="rounded-3xl border border-gray-100 bg-white/60 shadow-sm p-4 space-y-4 overflow-hidden relative"
-        >
-          {/* Shimmer overlay */}
-          <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-          <div className="h-40 rounded-2xl bg-gray-200/80" />
-          <div className="h-4 rounded-full bg-gray-200/80 w-3/4" />
-          <div className="h-3 rounded-full bg-gray-200/80 w-5/6" />
-          <div className="flex items-center justify-between pt-2">
-            <div className="h-3 rounded-full bg-gray-200/80 w-1/3" />
-            <div className="h-8 rounded-full bg-gray-200/80 w-16" />
-          </div>
-        </motion.div>
+        <SkeletonCard key={index} index={index} />
       ))}
     </motion.div>
   );
