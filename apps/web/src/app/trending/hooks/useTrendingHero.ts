@@ -1,14 +1,70 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { FilterSortState } from "@/components/FilterSort";
 import {
   HERO_EVENTS,
   getActiveHeroSlideData,
+  getFallbackEventImage,
   type TrendingEvent,
   type TrendingCategory,
 } from "@/features/trending/trendingModel";
+
+/**
+ * 图片预加载 hook
+ * 预加载当前、下一张、上一张图片，确保切换流畅
+ */
+function useImagePreloader(images: string[], currentIndex: number, preloadCount = 2) {
+  const preloadedRef = useRef<Set<string>>(new Set());
+  const imageObjectsRef = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  useEffect(() => {
+    if (typeof window === "undefined" || images.length === 0) return;
+
+    // 计算需要预加载的索引范围
+    const indicesToPreload: number[] = [];
+    for (let offset = -preloadCount; offset <= preloadCount; offset++) {
+      const index = (currentIndex + offset + images.length) % images.length;
+      indicesToPreload.push(index);
+    }
+
+    // 预加载图片
+    indicesToPreload.forEach((index) => {
+      const src = images[index];
+      if (!src || preloadedRef.current.has(src)) return;
+
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        preloadedRef.current.add(src);
+      };
+      img.onerror = () => {
+        // 加载失败时尝试 fallback 图片
+        const fallback = getFallbackEventImage(`hero-${index}`);
+        if (!preloadedRef.current.has(fallback)) {
+          const fallbackImg = new Image();
+          fallbackImg.src = fallback;
+          imageObjectsRef.current.set(fallback, fallbackImg);
+        }
+      };
+      imageObjectsRef.current.set(src, img);
+    });
+
+    // 清理过期的预加载图片（保留最近访问的）
+    const recentImages = new Set(indicesToPreload.map((i) => images[i]));
+    imageObjectsRef.current.forEach((_, key) => {
+      if (!recentImages.has(key) && imageObjectsRef.current.size > 10) {
+        imageObjectsRef.current.delete(key);
+      }
+    });
+  }, [images, currentIndex, preloadCount]);
+
+  return {
+    isPreloaded: (src: string) => preloadedRef.current.has(src),
+    preloadedCount: preloadedRef.current.size,
+  };
+}
 
 type HeroCategories = TrendingCategory[];
 
@@ -83,6 +139,17 @@ export function useTrendingHero(
     () => getActiveHeroSlideData(heroSlideEvents, currentHeroIndex, tTrending, tEvents),
     [heroSlideEvents, currentHeroIndex, tTrending, tEvents]
   );
+
+  // 收集所有 Hero 图片 URL 用于预加载
+  const heroImages = useMemo(() => {
+    if (heroSlideEvents.length > 0) {
+      return heroSlideEvents.map((e) => e.image);
+    }
+    return HERO_EVENTS.map((e) => e.image);
+  }, [heroSlideEvents]);
+
+  // 预加载当前、前后各 2 张图片
+  useImagePreloader(heroImages, currentHeroIndex, 2);
 
   useEffect(() => {
     if (!heroSlideLength || heroSlideLength <= 1) return;
