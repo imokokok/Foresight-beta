@@ -43,6 +43,7 @@ type ForumSidebarProps = {
   // 滚动位置
   saveScrollPosition?: (position: number) => void;
   getSavedScrollPosition?: () => number;
+  onTopicClick?: (id: number) => void;
 };
 
 export const ForumSidebar = memo(function ForumSidebar({
@@ -65,6 +66,7 @@ export const ForumSidebar = memo(function ForumSidebar({
   isConnected = false,
   saveScrollPosition,
   getSavedScrollPosition,
+  onTopicClick,
 }: ForumSidebarProps) {
   // 虚拟列表容器 ref
   const parentRef = useRef<HTMLDivElement>(null);
@@ -451,7 +453,12 @@ export const ForumSidebar = memo(function ForumSidebar({
                   className="pb-2"
                 >
                   <button
-                    onClick={() => setSelectedTopicId(topic.id)}
+                    onClick={() => {
+                      setSelectedTopicId(topic.id);
+                      if (onTopicClick) {
+                        onTopicClick(topic.id);
+                      }
+                    }}
                     className={`w-full h-full text-left p-3.5 rounded-2xl transition-all duration-200 border group relative overflow-hidden bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-purple-200/50 dark:border-slate-700/50 hover:shadow-md hover:shadow-purple-200/30 ${
                       isActive
                         ? "ring-2 ring-purple-400/40 border-purple-300/60 shadow-lg shadow-purple-200/40 dark:ring-purple-500/40 dark:border-purple-500/40"

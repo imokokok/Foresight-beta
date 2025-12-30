@@ -100,6 +100,21 @@
     "releaseToRefresh": "Suelta para actualizar",
     "refreshing": "Actualizando...",
     "emptyTopics": "Sin temas",
+    "sidebar": {
+      "loadedTopics": "Temas cargados",
+      "totalTopics": "Temas totales",
+      "summaryTitle": "El foro es la sala de control de debate en vivo de Foresight",
+      "summaryBody": "Aquí se concentran las conversaciones en tiempo real, el desglose de eventos y el intercambio de estrategias alrededor de los mercados de predicción, para que tengas siempre el pulso de la comunidad antes y después de apostar.",
+      "helperPrefix": "¿Quieres ver primero los mercados activos? Ve a",
+      "helperTrending": "Tendencias",
+      "helperMiddle": "para explorar precios y volumen. Si solo quieres probar una idea, abre un hilo en el",
+      "helperForum": "Foro",
+      "helperSuffix": "y recoge comentarios tempranos.",
+      "views": "Vistas",
+      "viewHot": "Por actividad",
+      "viewNew": "Más recientes",
+      "viewTop": "Más seguidos"
+    },
     "form": {
       "subjectPlaceholder": "Nombre del tema",
       "action": {

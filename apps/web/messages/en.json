@@ -100,6 +100,21 @@
     "releaseToRefresh": "Release to refresh",
     "refreshing": "Refreshing...",
     "emptyTopics": "No topics",
+    "sidebar": {
+      "loadedTopics": "Loaded topics",
+      "totalTopics": "Total topics",
+      "summaryTitle": "The forum is Foresight's live discussion control room",
+      "summaryBody": "This is where real-time conversations, event breakdowns and strategy discussions around prediction markets happen, helping you get fresh community perspectives before and after you place trades.",
+      "helperPrefix": "Want to see live markets first? Head to",
+      "helperTrending": "Trending",
+      "helperMiddle": "to browse prices and volume. If you just want to float an idea, start a thread in the",
+      "helperForum": "Forum",
+      "helperSuffix": "and gather some early feedback.",
+      "views": "Views",
+      "viewHot": "Hot & active",
+      "viewNew": "Newest first",
+      "viewTop": "Most followed"
+    },
     "form": {
       "subjectPlaceholder": "Subject name",
       "action": {

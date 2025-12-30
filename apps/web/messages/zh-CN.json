@@ -100,6 +100,21 @@
     "pullToRefresh": "下拉刷新",
     "releaseToRefresh": "释放刷新",
     "refreshing": "刷新中...",
+    "sidebar": {
+      "loadedTopics": "当前话题",
+      "totalTopics": "全部话题",
+      "summaryTitle": "论坛是 Foresight 的「聊天小客厅」",
+      "summaryBody": "这里是慢慢聊的地方：围绕预测市场的灵感、碎碎念和认真分析都欢迎，下注前后都可以来看看大家温柔但诚实的不同视角。",
+      "helperPrefix": "想先悄悄看一眼已经在交易的市场？可以先去",
+      "helperTrending": "热门预测",
+      "helperMiddle": "逛逛价格和成交；有了新灵感但还没想好怎么下注时，也可以在",
+      "helperForum": "讨论区",
+      "helperSuffix": "先开一个轻松的小主题，听听大家怎么说，再慢慢决定。",
+      "views": "视图",
+      "viewHot": "热度优先",
+      "viewNew": "最新发布",
+      "viewTop": "讨论量优先"
+    },
     "form": {
       "subjectPlaceholder": "主体名称",
       "action": {
