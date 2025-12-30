@@ -76,8 +76,9 @@
     "title": "Community discussions",
     "sidebarTitle": "Forum",
     "sidebarSubtitle": "Community",
-    "liveDiscussion": "Live Discussion",
+    "liveDiscussion": "Live discussion",
     "followersLabel": "Followers",
+    "followersLabelShort": "Follows",
     "categoryLabel": "Category",
     "selectTopicMobile": "Select Topic",
     "topicCount": "{count} topics",
@@ -85,6 +86,7 @@
     "loginRequired": "Connect wallet to start a thread",
     "connectAndSign": "Connect & sign",
     "chatRoom": "Chat room",
+    "chatSidebarDescription": "Real-time chat and light-weight discussion around this prediction event.",
     "relatedPrediction": "Related prediction",
     "viewMarket": "View market",
     "loadingTopic": "Loading topics...",
@@ -196,7 +198,10 @@
       "walletRequired": "Please connect your wallet first",
       "walletRequiredForVote": "Connect your wallet before voting",
       "alreadyVoted": "You have already voted"
-    }
+    },
+    "roomIdLabel": "Room ID",
+    "roomIdFooter": "Chat room ID: #{id}",
+    "backToForum": "Back to forum"
   },
   "proposals": {
     "share": {

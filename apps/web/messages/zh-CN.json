@@ -78,6 +78,7 @@
     "sidebarSubtitle": "社区",
     "liveDiscussion": "实时讨论",
     "followersLabel": "关注者",
+    "followersLabelShort": "关注",
     "categoryLabel": "分类",
     "selectTopicMobile": "选择话题",
     "topicCount": "{count} 个话题",
@@ -85,6 +86,7 @@
     "loginRequired": "发帖需连接钱包",
     "connectAndSign": "连接并签名",
     "chatRoom": "聊天室",
+    "chatSidebarDescription": "围绕该预测事件进行实时聊天与轻量讨论。",
     "relatedPrediction": "关联预测",
     "viewMarket": "查看市场",
     "loadingTopic": "加载话题中...",
@@ -196,7 +198,9 @@
       "walletRequired": "请先连接钱包",
       "walletRequiredForVote": "请先连接钱包再投票",
       "alreadyVoted": "您已经投过票了"
-    }
+    },
+    "roomIdLabel": "聊天室 ID",
+    "roomIdFooter": "聊天室编号：#{id}"
   },
   "proposals": {
     "share": {

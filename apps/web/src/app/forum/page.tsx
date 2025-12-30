@@ -31,10 +31,6 @@ export default function ForumPage() {
 
   const [viewFilter, setViewFilter] = React.useState<"hot" | "new" | "top">("hot");
 
-  const handleCardClick = (id: number) => {
-    router.push(`/prediction/${id}`);
-  };
-
   const displayName = (account || user?.email || "Guest").slice(0, 12);
   const loadedTopicsCount = filtered.length;
   const totalTopicsCount =
@@ -186,7 +182,7 @@ export default function ForumPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0 z-10 rounded-2xl md:rounded-3xl overflow-hidden shadow-inner bg-gradient-to-br from-white via-purple-50/40 to-fuchsia-50/30 dark:from-slate-900 dark:via-purple-950/30 dark:to-slate-900 border border-purple-200/60 dark:border-slate-700/50">
+      <div className="flex-1 flex flex-col min-w-0 z-10">
         <div className="flex flex-col h-full">
           <div className="lg:hidden flex items-center justify-between mb-4 px-2 pt-3">
             <h1 className="text-2xl font-black text-purple-700">{tForum("sidebarTitle")}</h1>
@@ -262,36 +258,37 @@ export default function ForumPage() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                       >
-                        <button
-                          type="button"
-                          onClick={() => handleCardClick(topic.id)}
-                          className="w-full text-left bg-white/80 border border-purple-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-purple-200 transition-all flex flex-col gap-2"
+                        <Link
+                          href={`/forum/${topic.id}`}
+                          className="block w-full text-left bg-white/80 border border-purple-100 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-purple-200 transition-all"
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
-                              {topic.category || "Topic"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {topic.created_at
-                                ? new Date(topic.created_at).toLocaleDateString()
-                                : ""}
-                            </span>
-                          </div>
-                          <div className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2">
-                            {topic.title}
-                          </div>
-                          {topic.description && (
-                            <div className="text-xs text-slate-500 line-clamp-2">
-                              {topic.description}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
+                                {topic.category || "Topic"}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {topic.created_at
+                                  ? new Date(topic.created_at).toLocaleDateString()
+                                  : ""}
+                              </span>
                             </div>
-                          )}
-                          <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5" />
-                              {topic.followers_count ?? 0}
-                            </span>
+                            <div className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2">
+                              {topic.title}
+                            </div>
+                            {topic.description && (
+                              <div className="text-xs text-slate-500 line-clamp-2">
+                                {topic.description}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3.5 h-3.5" />
+                                {topic.followers_count ?? 0}
+                              </span>
+                            </div>
                           </div>
-                        </button>
+                        </Link>
                       </motion.div>
                     ))}
                   </AnimatePresence>

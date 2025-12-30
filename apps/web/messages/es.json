@@ -76,8 +76,9 @@
     "title": "Debates de la comunidad",
     "sidebarTitle": "Foro",
     "sidebarSubtitle": "Comunidad",
-    "liveDiscussion": "Discusión en vivo",
+    "liveDiscussion": "Debate en vivo",
     "followersLabel": "Seguidores",
+    "followersLabelShort": "Seguir",
     "categoryLabel": "Categoría",
     "selectTopicMobile": "Seleccionar tema",
     "topicCount": "{count} temas",
@@ -85,6 +86,7 @@
     "loginRequired": "Conecta tu billetera para iniciar un hilo",
     "connectAndSign": "Conectar y firmar",
     "chatRoom": "Sala de chat",
+    "chatSidebarDescription": "Chat en tiempo real y debate ligero alrededor de este evento de predicción.",
     "relatedPrediction": "Predicción relacionada",
     "viewMarket": "Ver mercado",
     "loadingTopic": "Cargando temas...",
@@ -196,7 +198,10 @@
       "walletRequired": "Primero conecta tu billetera",
       "walletRequiredForVote": "Conecta tu billetera antes de votar",
       "alreadyVoted": "Ya has votado"
-    }
+    },
+    "roomIdLabel": "ID de sala",
+    "roomIdFooter": "ID de sala de chat: #{id}",
+    "backToForum": "Volver al foro"
   },
   "proposals": {
     "share": {
