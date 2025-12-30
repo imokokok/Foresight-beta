@@ -33,9 +33,9 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
   const followers = prediction?.followers_count ?? 0;
 
   const displayName = useMemo(() => {
-    const base = account || user?.email || "Guest";
+    const base = account || user?.email || tForum("guestFallback");
     return base.slice(0, 12);
-  }, [account, user]);
+  }, [account, user, tForum]);
 
   return (
     <ProposalChatShell>

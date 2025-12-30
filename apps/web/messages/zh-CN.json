@@ -84,6 +84,7 @@
     "topicCount": "{count} 个话题",
     "platformDescription": "Foresight 论坛是预测市场参与者分享洞见和策略的核心社区。你可以围绕现实事件创建话题，也可以参与对现有预测的深度分析讨论。",
     "loginRequired": "发帖需连接钱包",
+    "guestFallback": "访客",
     "connectAndSign": "连接并签名",
     "chatRoom": "聊天室",
     "chatSidebarDescription": "围绕该预测事件进行实时聊天与轻量讨论。",
@@ -199,8 +200,10 @@
       "walletRequiredForVote": "请先连接钱包再投票",
       "alreadyVoted": "您已经投过票了"
     },
+    "categoryFallback": "话题",
     "roomIdLabel": "聊天室 ID",
-    "roomIdFooter": "聊天室编号：#{id}"
+    "roomIdFooter": "聊天室编号：#{id}",
+    "backToForum": "返回讨论区"
   },
   "proposals": {
     "share": {
@@ -660,7 +663,9 @@
       "proposalOriginHint": "该预测市场源自社区在提案广场中的讨论，你可以回到原始提案继续交流设计思路和后续迭代建议。",
       "viewProposal": "查看对应提案",
       "defaultDescription": "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。",
-      "defaultTitle": "Foresight 预测市场事件"
+      "defaultTitle": "Foresight 预测市场事件",
+      "yesLabel": "是",
+      "noLabel": "否"
     },
     "searchPage": {
       "metaTitle": "Foresight 全站搜索 - 预测市场与提案快速发现",

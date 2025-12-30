@@ -31,7 +31,7 @@ export default function ForumPage() {
 
   const [viewFilter, setViewFilter] = React.useState<"hot" | "new" | "top">("hot");
 
-  const displayName = (account || user?.email || "Guest").slice(0, 12);
+  const displayName = (account || user?.email || tForum("guestFallback")).slice(0, 12);
   const loadedTopicsCount = filtered.length;
   const totalTopicsCount =
     typeof total === "number" && total > 0 ? total : loadedTopicsCount || predictions.length;
@@ -81,7 +81,7 @@ export default function ForumPage() {
                   account
                     ? `https://api.dicebear.com/7.x/identicon/svg?seed=${account}`
                     : `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
-                        user?.email || "User"
+                        user?.email || tForum("guestFallback")
                       )}&backgroundColor=e9d5ff`
                 }
                 alt="Avatar"
@@ -265,7 +265,7 @@ export default function ForumPage() {
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
-                                {topic.category || "Topic"}
+                                {topic.category || tForum("categoryFallback")}
                               </span>
                               <span className="text-[10px] text-slate-400 font-medium">
                                 {topic.created_at

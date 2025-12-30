@@ -84,6 +84,7 @@
     "topicCount": "{count} topics",
     "platformDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
     "loginRequired": "Connect wallet to start a thread",
+    "guestFallback": "Guest",
     "connectAndSign": "Connect & sign",
     "chatRoom": "Chat room",
     "chatSidebarDescription": "Real-time chat and light-weight discussion around this prediction event.",
@@ -199,6 +200,7 @@
       "walletRequiredForVote": "Connect your wallet before voting",
       "alreadyVoted": "You have already voted"
     },
+    "categoryFallback": "Topic",
     "roomIdLabel": "Room ID",
     "roomIdFooter": "Chat room ID: #{id}",
     "backToForum": "Back to forum"
@@ -661,7 +663,9 @@
       "proposalOriginHint": "This prediction market originates from community discussions in the Proposals Square. You can go back to the original proposal to continue exchanging ideas and iteration suggestions.",
       "viewProposal": "View proposal",
       "defaultDescription": "On-chain prediction market event. Trade your views on a decentralized blockchain-based prediction market platform.",
-      "defaultTitle": "Foresight Prediction Market Event"
+      "defaultTitle": "Foresight Prediction Market Event",
+      "yesLabel": "Yes",
+      "noLabel": "No"
     },
     "searchPage": {
       "metaTitle": "Foresight Global Search - Discover Prediction Markets & Proposals",

@@ -84,6 +84,7 @@
     "topicCount": "{count} temas",
     "platformDescription": "El foro de Foresight es el lugar donde los participantes del mercado de predicciones comparten ideas y estrategias. Puedes crear hilos sobre eventos del mundo real o sumarte a análisis profundos de predicciones existentes.",
     "loginRequired": "Conecta tu billetera para iniciar un hilo",
+    "guestFallback": "Invitado",
     "connectAndSign": "Conectar y firmar",
     "chatRoom": "Sala de chat",
     "chatSidebarDescription": "Chat en tiempo real y debate ligero alrededor de este evento de predicción.",
@@ -199,6 +200,7 @@
       "walletRequiredForVote": "Conecta tu billetera antes de votar",
       "alreadyVoted": "Ya has votado"
     },
+    "categoryFallback": "Tema",
     "roomIdLabel": "ID de sala",
     "roomIdFooter": "ID de sala de chat: #{id}",
     "backToForum": "Volver al foro"
@@ -661,7 +663,9 @@
       "proposalOriginHint": "Este mercado de predicción surge de las discusiones de la comunidad en la Plaza de Propuestas. Puedes volver a la propuesta original para seguir intercambiando ideas y sugerencias de mejora.",
       "viewProposal": "Ver propuesta",
       "defaultDescription": "Evento de mercado de predicciones on-chain. Opera con tus opiniones en una plataforma de predicciones descentralizada basada en blockchain.",
-      "defaultTitle": "Evento del mercado de predicciones de Foresight"
+      "defaultTitle": "Evento del mercado de predicciones de Foresight",
+      "yesLabel": "Sí",
+      "noLabel": "No"
     },
     "searchPage": {
       "metaTitle": "Búsqueda global de Foresight - Descubre mercados de predicción y propuestas",

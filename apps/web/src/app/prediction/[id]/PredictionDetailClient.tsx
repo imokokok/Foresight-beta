@@ -155,6 +155,8 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   const isMultiOutcome = (prediction.outcomes?.length ?? 0) > 2;
   const yesProb = prediction.stats?.yesProbability ?? 0;
   const noProb = prediction.stats?.noProbability ?? 0;
+  const yesLabel = tMarket("detail.yesLabel");
+  const noLabel = tMarket("detail.noLabel");
   const descriptionText =
     prediction.description || prediction.criteria || tMarket("detail.defaultDescription");
 
@@ -177,6 +179,15 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
       positionSideProbPercent = Math.max(0, Math.min(100, pct));
     }
   }
+
+  const currentOutcomeRaw = String((currentPosition as any)?.outcome || "");
+  const currentOutcomeLower = currentOutcomeRaw.toLowerCase();
+  const currentOutcomeLabel =
+    currentOutcomeLower === "yes"
+      ? yesLabel
+      : currentOutcomeLower === "no"
+        ? noLabel
+        : currentOutcomeRaw;
 
   return (
     <div className="min-h-screen relative text-gray-900 font-sans pb-20">
@@ -240,7 +251,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                           : "bg-slate-500/10 text-slate-700 dark:text-slate-300"
                     }`}
                   >
-                    {(currentPosition as any).outcome}
+                    {currentOutcomeLabel}
                   </span>
                   <span>
                     {tMarket("detail.stake")}{" "}
@@ -274,7 +285,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Yes
+                    {yesLabel}
                   </span>
                   <span className="text-[var(--foreground)] normal-case font-black text-sm">
                     {Number.isFinite(yesProb) ? `${yesProb.toFixed(0)}%` : "-"}
@@ -295,7 +306,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                 <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <span className="inline-flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                    No
+                    {noLabel}
                   </span>
                   <span className="text-[var(--foreground)] normal-case font-black text-sm">
                     {Number.isFinite(noProb) ? `${noProb.toFixed(0)}%` : "-"}
