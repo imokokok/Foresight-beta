@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getDisplayName } from "@/lib/userProfiles";
-import ForumSection from "@/components/ForumSection";
 import { useTranslations } from "@/lib/i18n";
 import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
@@ -19,9 +18,6 @@ export default function ChatPanel({
   eventId,
   roomTitle,
   roomCategory,
-  isProposalRoom,
-  minHeightPx,
-  minHeightVh,
   hideHeader = false,
 }: ChatPanelProps) {
   const {
@@ -114,18 +110,8 @@ export default function ChatPanel({
     }
   };
 
-  const containerCls =
-    "flex flex-col h-full rounded-3xl text-[var(--foreground)] glass-card shadow-md shadow-brand/20 relative overflow-hidden";
-  const minH = String(
-    minHeightPx && minHeightPx > 0
-      ? `${minHeightPx}px`
-      : minHeightVh && minHeightVh > 0
-        ? `${minHeightVh}vh`
-        : "100%"
-  );
-
   return (
-    <div className={containerCls} style={{ minHeight: minH }}>
+    <div className="flex flex-col h-full rounded-3xl text-[var(--foreground)] glass-card shadow-md shadow-brand/20 relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/15 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
       <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/15 blur-3xl dark:bg-purple-500/10" />
       <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-72 w-72 rounded-full bg-fuchsia-500/12 blur-3xl dark:bg-fuchsia-500/10" />
@@ -146,14 +132,6 @@ export default function ChatPanel({
         tChat={tChat}
         badgeClass={catCls(roomCategory)}
       />
-
-      {isProposalRoom ? (
-        <div className="mx-4 mt-3 mb-4 rounded-3xl border border-[var(--card-border)] bg-[var(--card-bg)] backdrop-blur-xl shadow-sm">
-          <div className="px-4 pb-4">
-            <ForumSection eventId={eventId} />
-          </div>
-        </div>
-      ) : null}
 
       <MessagesList
         mergedMessages={filteredMessages}
