@@ -360,7 +360,7 @@
       "title": "Sala de chat",
       "withTopic": "Sala de chat · {title}",
       "youLabel": "Tú: {name}",
-      "walletDisconnected": "Billetera no conectada"
+      "walletDisconnected": "Billetera aún no conectada"
     },
     "announcement": {
       "badge": "Aviso",

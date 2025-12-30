@@ -361,11 +361,11 @@
       "title": "聊天室",
       "withTopic": "聊天室 · {title}",
       "youLabel": "你：{name}",
-      "walletDisconnected": "未连接钱包"
+      "walletDisconnected": "钱包还没连上"
     },
     "announcement": {
       "badge": "公告",
-      "empty": "暂无公告"
+      "empty": "还没有公告消息"
     },
     "empty": {
       "title": "暂无消息",

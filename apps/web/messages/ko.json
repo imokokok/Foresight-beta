@@ -526,7 +526,7 @@
       "title": "채팅방",
       "withTopic": "채팅방 · {title}",
       "youLabel": "나: {name}",
-      "walletDisconnected": "지갑 연결 안됨"
+      "walletDisconnected": "지갑이 아직 연결되지 않았어요"
     },
     "announcement": {
       "badge": "공지",

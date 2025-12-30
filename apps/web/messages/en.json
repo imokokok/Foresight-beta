@@ -361,7 +361,7 @@
       "title": "Chat room",
       "withTopic": "Chat room · {title}",
       "youLabel": "You: {name}",
-      "walletDisconnected": "Wallet not connected"
+      "walletDisconnected": "Wallet not connected yet"
     },
     "announcement": {
       "badge": "Announcement",
