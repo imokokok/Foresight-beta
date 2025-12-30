@@ -1,6 +1,5 @@
 "use client";
 import { ethers } from "ethers";
-import { t } from "./i18n";
 
 type Params = {
   providerRef: React.RefObject<any>;
@@ -17,7 +16,7 @@ export function useSiweAuth(params: Params) {
           ? (window as any).ethereum || (window as any).BinanceChain
           : null);
       if (!rawProvider) {
-        return { success: false, error: t("wallet.noWallet") };
+        return { success: false, error: "未检测到钱包，请安装钱包插件" };
       }
 
       const browserProvider = new ethers.BrowserProvider(rawProvider);
@@ -25,19 +24,30 @@ export function useSiweAuth(params: Params) {
       const signerAddress = await signer.getAddress().catch(() => null);
       const net = await browserProvider.getNetwork();
       const address = signerAddress || params.account;
-      if (!address) return { success: false, error: t("auth.connectWallet") };
+      if (!address) return { success: false, error: "请先连接钱包" };
 
       const nonceRes = await fetch("/api/siwe/nonce", { method: "GET" });
-      const nonceJson = await nonceRes.json();
+      if (!nonceRes.ok) {
+        console.error("[SIWE] Nonce API failed:", nonceRes.status, nonceRes.statusText);
+        return { success: false, error: `获取 nonce 失败 (${nonceRes.status})` };
+      }
+      const nonceJson = await nonceRes.json().catch(() => null);
       const nonce: string = nonceJson?.nonce;
-      if (!nonce) return { success: false, error: t("errors.somethingWrong") };
+      if (!nonce) {
+        console.error("[SIWE] Nonce response invalid:", nonceJson);
+        return { success: false, error: "无法获取 nonce，请刷新页面重试" };
+      }
 
       const { SiweMessage } = await import("siwe");
       const chainIdNum = Number(net?.chainId?.toString?.() || params.chainIdHex || "1");
+      
+      // 使用简单的 statement，避免翻译函数可能带来的问题
+      const statement = "Sign in to Foresight";
+      
       const message = new SiweMessage({
         domain: typeof window !== "undefined" ? window.location.host : "localhost",
         address,
-        statement: t("auth.siweStatement"),
+        statement,
         uri: typeof window !== "undefined" ? window.location.origin : "http://localhost",
         version: "1",
         chainId: Number.isFinite(chainIdNum) ? chainIdNum : 1,
@@ -48,21 +58,32 @@ export function useSiweAuth(params: Params) {
       let signature: string;
       try {
         signature = await signer.signMessage(prepared);
-      } catch {
+      } catch (signErr: any) {
+        // 用户拒绝签名
+        if (signErr?.code === 4001 || signErr?.code === "ACTION_REJECTED") {
+          return { success: false, error: "你取消了签名请求" };
+        }
         if (typeof (rawProvider as any)?.request === "function") {
           try {
             signature = await (rawProvider as any).request({
               method: "personal_sign",
               params: [prepared, address],
             });
-          } catch {
-            signature = await (rawProvider as any).request({
-              method: "personal_sign",
-              params: [address, prepared],
-            });
+          } catch (fallbackErr: any) {
+            if (fallbackErr?.code === 4001 || fallbackErr?.code === "ACTION_REJECTED") {
+              return { success: false, error: "你取消了签名请求" };
+            }
+            try {
+              signature = await (rawProvider as any).request({
+                method: "personal_sign",
+                params: [address, prepared],
+              });
+            } catch {
+              return { success: false, error: "签名失败，请重试" };
+            }
           }
         } else {
-          return { success: false, error: t("errors.somethingWrong") };
+          return { success: false, error: "签名失败，请重试" };
         }
       }
 
@@ -80,13 +101,14 @@ export function useSiweAuth(params: Params) {
       if (!verifyRes.ok || !verifyJson?.success) {
         return {
           success: false,
-          error: verifyJson?.message || t("errors.somethingWrong"),
+          error: verifyJson?.message || verifyJson?.detail || "验证失败，请重试",
         };
       }
 
       return { success: true, address };
     } catch (err: any) {
-      return { success: false, error: t("errors.somethingWrong") };
+      console.error("[SIWE] Login error:", err);
+      return { success: false, error: err?.message || "登录过程出错，请重试" };
     }
   };
 

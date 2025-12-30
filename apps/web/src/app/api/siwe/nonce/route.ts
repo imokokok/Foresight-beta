@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { SiweMessage } from "siwe";
+import { randomBytes } from "crypto";
 
 export async function GET() {
-  // 生成一次性 nonce（也可用 SiweMessage.generateNonce）
-  const nonce = (SiweMessage as any).generateNonce
-    ? (SiweMessage as any).generateNonce()
-    : Math.random().toString(36).slice(2, 10);
+  // 使用 crypto 生成安全的随机 nonce
+  const nonce = randomBytes(16).toString("hex");
 
   const res = NextResponse.json({ nonce });
   // 将 nonce 放入 HttpOnly Cookie，供校验使用

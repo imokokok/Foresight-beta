@@ -138,9 +138,10 @@ export default function CreateFlagModal({
   defaultDesc = "",
   isOfficial = false,
 }: CreateFlagModalProps) {
-  const { account } = useWallet();
+  const { account, siweLogin } = useWallet();
   const { user } = useAuth();
   const tFlags = useTranslations("flags");
+  const [siweChecked, setSiweChecked] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(defaultTitle);
@@ -160,6 +161,7 @@ export default function CreateFlagModal({
       setDeadline("");
       setWitnessId("");
       setStep(1);
+      setSiweChecked(false);
     }
   }, [isOpen, defaultTitle, defaultDesc, isOfficial]);
 
@@ -226,6 +228,18 @@ export default function CreateFlagModal({
 
     try {
       setLoading(true);
+
+      // 如果使用钱包登录，先确保 SIWE 会话已建立
+      if (account && !user && !siweChecked) {
+        const siweResult = await siweLogin();
+        setSiweChecked(true);
+        if (!siweResult.success) {
+          toast.error("验证失败", siweResult.error || "请重新签名验证钱包");
+          setLoading(false);
+          return;
+        }
+      }
+
       const payload: any = {
         title: title,
         description: desc,
