@@ -100,6 +100,34 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     headerGradient: "from-violet-500/90 to-purple-500/90",
     frameSurfaceGradient: "from-violet-50/70 via-purple-50/60 to-white/0",
   },
+  商业: {
+    chip: "bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100",
+    chipActive:
+      "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-blue-200/80 shadow-md border-transparent",
+    badge: "bg-blue-100 text-blue-800",
+    border: "border-blue-100 hover:border-blue-200",
+    softBg: "bg-gradient-to-br from-blue-50/70 to-white/0",
+    accentText: "text-blue-500",
+    activeCard: "bg-white/85 border-blue-100 shadow-md shadow-blue-100/60 scale-[1.02]",
+    accentBar: "bg-gradient-to-r from-blue-400 to-indigo-400",
+    chatGradient: "from-blue-100/70 via-indigo-50/60 to-white/0",
+    headerGradient: "from-blue-500/90 to-indigo-500/90",
+    frameSurfaceGradient: "from-blue-50/70 via-indigo-50/60 to-white/0",
+  },
+  加密货币: {
+    chip: "bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100",
+    chipActive:
+      "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-amber-200/80 shadow-md border-transparent",
+    badge: "bg-amber-100 text-amber-800",
+    border: "border-amber-100 hover:border-amber-200",
+    softBg: "bg-gradient-to-br from-amber-50/70 to-white/0",
+    accentText: "text-amber-500",
+    activeCard: "bg-white/85 border-amber-100 shadow-md shadow-amber-100/60 scale-[1.02]",
+    accentBar: "bg-gradient-to-r from-amber-400 to-yellow-400",
+    chatGradient: "from-amber-100/70 via-yellow-50/60 to-white/0",
+    headerGradient: "from-amber-500/90 to-yellow-500/90",
+    frameSurfaceGradient: "from-amber-50/70 via-yellow-50/60 to-white/0",
+  },
   更多: {
     chip: "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100",
     chipActive:

@@ -74,6 +74,13 @@
   },
   "forum": {
     "title": "社区讨论",
+    "sidebarTitle": "论坛",
+    "sidebarSubtitle": "社区",
+    "liveDiscussion": "实时讨论",
+    "followersLabel": "关注者",
+    "categoryLabel": "分类",
+    "selectTopicMobile": "选择话题",
+    "topicCount": "{count} 个话题",
     "platformDescription": "Foresight 论坛是预测市场参与者分享洞见和策略的核心社区。你可以围绕现实事件创建话题，也可以参与对现有预测的深度分析讨论。",
     "loginRequired": "发帖需连接钱包",
     "connectAndSign": "连接并签名",
@@ -86,6 +93,13 @@
     "searchPlaceholder": "搜索话题或讨论...",
     "noTopics": "暂无可用话题",
     "emptyTopics": "暂无话题",
+    "loadingMore": "加载更多...",
+    "loadMore": "加载更多",
+    "topicCountLoaded": "已加载 {loaded}/{total} 个话题",
+    "newTopics": "{count} 个新话题",
+    "pullToRefresh": "下拉刷新",
+    "releaseToRefresh": "释放刷新",
+    "refreshing": "刷新中...",
     "form": {
       "subjectPlaceholder": "主体名称",
       "action": {

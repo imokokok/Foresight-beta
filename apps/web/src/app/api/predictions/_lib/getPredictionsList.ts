@@ -7,6 +7,8 @@ export type GetPredictionsListArgs = {
   includeOutcomes: boolean;
   range?: { from: number; to: number };
   limit?: number;
+  cursor?: string; // 游标分页：上一页最后一条的 created_at
+  search?: string; // 搜索关键词
 };
 
 /**
@@ -29,6 +31,13 @@ export async function getPredictionsList(
 
   if (args.category) query = query.eq("category", args.category);
   if (args.status) query = query.eq("status", args.status);
+  if (args.search) query = query.ilike("title", `%${args.search}%`);
+  
+  // 游标分页：获取 created_at 小于游标的记录
+  if (args.cursor) {
+    query = query.lt("created_at", args.cursor);
+  }
+  
   if (args.range) query = query.range(args.range.from, args.range.to);
   else if (args.limit) query = query.limit(args.limit);
 

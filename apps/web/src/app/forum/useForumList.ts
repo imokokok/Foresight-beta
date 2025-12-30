@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useCategories } from "@/hooks/useQueries";
 import { Activity, Globe } from "lucide-react";
 import {
   normalizeCategory,
-  fetchPredictions,
   TRENDING_CATEGORIES,
 } from "@/features/trending/trendingModel";
 import { CATEGORIES } from "./forumConfig";
+import {
+  useInfinitePredictions,
+  flattenInfiniteData,
+  getTotalFromInfiniteData,
+  type PredictionItem,
+} from "./useInfinitePredictions";
+import { useRealtimePredictions } from "./useRealtimePredictions";
 
-export type PredictionItem = {
-  id: number;
-  title: string;
-  description?: string;
-  category?: string;
-  created_at?: string;
-  followers_count?: number;
-};
+export type { PredictionItem };
 
 export type ForumCategory = {
   id: string;
@@ -23,49 +22,49 @@ export type ForumCategory = {
   icon: typeof Activity;
 };
 
+const PAGE_SIZE = 20;
+
 export function useForumList() {
-  const [predictions, setPredictions] = useState<PredictionItem[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { data: categoriesData } = useCategories();
+  
+  // 滚动位置保持
+  const scrollPositionRef = useRef<number>(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchPredictions();
-        const list: PredictionItem[] = data.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          category: p.category,
-          created_at: p.created_at,
-          followers_count: p.followers_count,
-        }));
-        if (!cancelled) {
-          setPredictions(list);
-          setSelectedTopicId((prev) => prev ?? list[0]?.id ?? null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError("加载预测话题失败，请稍后重试");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  // 使用无限滚动查询
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error,
+    refetch,
+  } = useInfinitePredictions({
+    category: activeCategory === "all" ? undefined : activeCategory,
+    search: searchQuery.trim() || undefined,
+    pageSize: PAGE_SIZE,
+  });
+
+  // 展平分页数据
+  const predictions = useMemo(() => flattenInfiniteData(data), [data]);
+  const total = useMemo(() => getTotalFromInfiniteData(data), [data]);
+
+  // 当分类或搜索变化时，重置选中的话题
+  const handleSetActiveCategory = useCallback((category: string | ((prev: string) => string)) => {
+    setActiveCategory(category);
+    // 切换分类后选中第一个话题
+    setSelectedTopicId(null);
   }, []);
 
+  const handleSetSearchQuery = useCallback((query: string | ((prev: string) => string)) => {
+    setSearchQuery(query);
+    setSelectedTopicId(null);
+  }, []);
+
+  // 分类列表
   const categories: ForumCategory[] = useMemo(() => {
     if (Array.isArray(categoriesData) && categoriesData.length > 0) {
       const seen = new Set<string>();
@@ -106,46 +105,88 @@ export function useForumList() {
     return CATEGORIES as ForumCategory[];
   }, [categoriesData]);
 
-  const filtered = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return predictions.filter((p) => {
-      const cat = normalizeCategory(p.category);
-      const catOk = activeCategory === "all" || cat === activeCategory;
-      const qOk =
-        !q ||
-        String(p.title || "")
-          .toLowerCase()
-          .includes(q);
-      return catOk && qOk;
-    });
-  }, [predictions, activeCategory, searchQuery]);
+  // 服务端已经过滤，这里直接使用
+  const filtered = predictions;
 
   // 使用 Map 优化 O(1) 查找
   const predictionsMap = useMemo(() => {
     return new Map(predictions.map((p) => [p.id, p]));
   }, [predictions]);
 
+  // 当前选中的话题
   const currentTopic = useMemo(() => {
     const id = selectedTopicId;
-    if (!id && filtered.length) return filtered[0];
+    if (!id && filtered.length) {
+      // 首次加载时自动选中第一个
+      return filtered[0];
+    }
     return predictionsMap.get(id!) || filtered[0] || null;
   }, [predictionsMap, filtered, selectedTopicId]);
 
+  // 自动选中第一个话题
+  useMemo(() => {
+    if (!selectedTopicId && filtered.length > 0) {
+      setSelectedTopicId(filtered[0].id);
+    }
+  }, [filtered, selectedTopicId]);
+
   const activeCat = normalizeCategory(currentTopic?.category);
+
+  // 加载更多
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // 实时订阅新话题
+  const { newCount, resetNewCount, isConnected } = useRealtimePredictions({
+    enabled: true,
+  });
+
+  // 刷新并重置新话题计数
+  const refreshAndReset = useCallback(async () => {
+    await refetch();
+    resetNewCount();
+  }, [refetch, resetNewCount]);
+
+  // 保存滚动位置
+  const saveScrollPosition = useCallback((position: number) => {
+    scrollPositionRef.current = position;
+  }, []);
+
+  // 获取保存的滚动位置
+  const getSavedScrollPosition = useCallback(() => {
+    return scrollPositionRef.current;
+  }, []);
 
   return {
     predictions,
     categories,
     activeCategory,
-    setActiveCategory,
+    setActiveCategory: handleSetActiveCategory,
     searchQuery,
-    setSearchQuery,
+    setSearchQuery: handleSetSearchQuery,
     filtered,
-    loading,
-    error,
+    loading: isLoading,
+    loadingMore: isFetchingNextPage,
+    error: error ? (error as Error).message : null,
     selectedTopicId,
     setSelectedTopicId,
     currentTopic,
     activeCat,
+    // 无限滚动相关
+    hasNextPage: hasNextPage ?? false,
+    loadMore,
+    total,
+    refetch,
+    // 实时更新相关
+    newCount,
+    resetNewCount,
+    refreshAndReset,
+    isConnected,
+    // 滚动位置
+    saveScrollPosition,
+    getSavedScrollPosition,
   };
 }

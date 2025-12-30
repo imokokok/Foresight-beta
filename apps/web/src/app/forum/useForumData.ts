@@ -29,11 +29,24 @@ export function useForumData() {
     setSearchQuery,
     filtered,
     loading,
+    loadingMore,
     error,
     selectedTopicId,
     setSelectedTopicId,
     currentTopic,
     activeCat,
+    hasNextPage,
+    loadMore,
+    total,
+    refetch,
+    // 实时更新
+    newCount,
+    resetNewCount,
+    refreshAndReset,
+    isConnected,
+    // 滚动位置
+    saveScrollPosition,
+    getSavedScrollPosition,
   } = useForumList();
 
   // 使用 useCallback 避免每次渲染创建新函数
@@ -51,11 +64,25 @@ export function useForumData() {
     setSearchQuery,
     filtered,
     loading,
+    loadingMore,
     error,
     selectedTopicId,
     setSelectedTopicId,
     currentTopic,
     activeCat,
     displayName,
+    // 无限滚动相关
+    hasNextPage,
+    loadMore,
+    total,
+    refetch,
+    // 实时更新相关
+    newCount,
+    resetNewCount,
+    refreshAndReset,
+    isConnected,
+    // 滚动位置
+    saveScrollPosition,
+    getSavedScrollPosition,
   };
 }

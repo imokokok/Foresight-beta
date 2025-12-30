@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabase } from "@/lib/supabase";
 import { getPredictionsList } from "./_lib/getPredictionsList";
-import { buildPaginationMeta, parsePagination } from "./_lib/pagination";
+import { buildPaginationMeta, buildCursorPaginationMeta, parsePagination } from "./_lib/pagination";
 import { createPredictionFromRequest } from "./_lib/createPrediction";
 import { ApiResponses } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit");
     const page = searchParams.get("page");
     const pageSize = searchParams.get("pageSize");
+    const cursor = searchParams.get("cursor");
+    const search = searchParams.get("search");
     const includeOutcomes = (searchParams.get("includeOutcomes") || "0") !== "0";
 
     // 在缺少服务密钥时使用匿名客户端降级读取
@@ -26,10 +28,43 @@ export async function GET(request: NextRequest) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
 
-    const paging = parsePagination({ limit, page, pageSize });
+    const paging = parsePagination({ limit, page, pageSize, cursor });
+    
+    // 游标分页模式
+    if (paging.mode === "cursor") {
+      const { items, total } = await getPredictionsList(client as any, {
+        category,
+        status,
+        search: search || undefined,
+        includeOutcomes,
+        limit: paging.limit,
+        cursor: paging.cursor,
+      });
+
+      const cursorMeta = buildCursorPaginationMeta(items, paging.pageSize, total);
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: items,
+          message: "获取预测事件列表成功",
+          cursor: cursorMeta,
+          total,
+        },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+          },
+        }
+      );
+    }
+
+    // 传统分页模式
     const { items, total } = await getPredictionsList(client as any, {
       category,
       status,
+      search: search || undefined,
       includeOutcomes,
       range: paging.mode === "paged" ? paging.range : undefined,
       limit: paging.mode === "limit" ? paging.limit : undefined,

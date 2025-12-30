@@ -7,6 +7,7 @@ import {
   TrendingUp,
   MoreHorizontal,
   ArrowUpRight,
+  ChevronDown,
 } from "lucide-react";
 import ChatPanel from "@/components/ChatPanel";
 import { getCategoryStyle } from "./forumConfig";
@@ -20,6 +21,7 @@ type ForumChatFrameProps = {
   displayName: (addr: string) => string;
   loading: boolean;
   error: string | null;
+  onOpenMobileDrawer?: () => void;
 };
 
 export const ForumChatFrame = memo(function ForumChatFrame({
@@ -29,12 +31,14 @@ export const ForumChatFrame = memo(function ForumChatFrame({
   displayName,
   loading,
   error,
+  onOpenMobileDrawer,
 }: ForumChatFrameProps) {
   const style = getCategoryStyle(activeCat);
 
   return (
     <div className="flex-1 flex flex-col bg-gradient-to-br from-white/80 via-purple-50/30 to-fuchsia-50/20 dark:from-slate-900/80 dark:via-purple-950/20 dark:to-slate-900/70">
-      <header className="h-16 px-6 border-b border-purple-200/50 dark:border-slate-700/40 flex items-center justify-between sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-none relative overflow-hidden">
+      {/* 桌面端头部 */}
+      <header className="hidden md:flex h-16 px-6 border-b border-purple-200/50 dark:border-slate-700/40 items-center justify-between sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-none relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-purple-100/60 via-fuchsia-100/40 to-violet-50/30 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-transparent opacity-80" />
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex-shrink-0 w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-brand/15 shadow-inner">
@@ -50,7 +54,7 @@ export const ForumChatFrame = memo(function ForumChatFrame({
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1 bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-medium">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Discussion
+                {t("forum.liveDiscussion")}
               </span>
               <span>•</span>
               <span className="font-mono text-slate-400 dark:text-slate-500">
@@ -89,7 +93,7 @@ export const ForumChatFrame = memo(function ForumChatFrame({
 
           <div className="flex flex-col items-end">
             <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">
-              Followers
+              {t("forum.followersLabel")}
             </span>
             <span className="text-sm font-bold text-[var(--foreground)] flex items-center gap-1">
               <Users size={14} className={style.accentText} />
@@ -101,7 +105,7 @@ export const ForumChatFrame = memo(function ForumChatFrame({
 
           <div className="flex flex-col items-end">
             <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">
-              Category
+              {t("forum.categoryLabel")}
             </span>
             <span className="text-sm font-bold text-[var(--foreground)] flex items-center gap-1 min-w-0 max-w-[9rem]">
               <TrendingUp size={14} className={style.accentText} />
@@ -122,10 +126,46 @@ export const ForumChatFrame = memo(function ForumChatFrame({
         </div>
       </header>
 
-      <div className="flex-1 relative overflow-hidden flex flex-col px-4 pb-4 pt-3">
+      {/* 移动端头部 - 精简版 */}
+      <header className="md:hidden flex h-14 px-3 border-b border-purple-200/50 dark:border-slate-700/40 items-center justify-between sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+        <button
+          onClick={onOpenMobileDrawer}
+          className="flex items-center gap-2 min-w-0 flex-1 mr-2"
+        >
+          <div className="flex-shrink-0 w-8 h-8 bg-brand/10 rounded-lg flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-brand" />
+          </div>
+          <div className="flex flex-col min-w-0 flex-1">
+            <h2 className="font-semibold text-[var(--foreground)] truncate text-sm">
+              {currentTopic?.title || t("forum.chatRoom")}
+            </h2>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{t("forum.liveDiscussion")}</span>
+              <span>•</span>
+              <span className="flex items-center gap-0.5">
+                <Users size={10} />
+                {currentTopic?.followers_count ?? 0}
+              </span>
+            </div>
+          </div>
+          <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />
+        </button>
+
+        {currentTopic?.id && (
+          <Link
+            href={`/prediction/${currentTopic.id}`}
+            className="flex-shrink-0 p-2 bg-brand/10 rounded-lg text-brand"
+          >
+            <ArrowUpRight size={16} />
+          </Link>
+        )}
+      </header>
+
+      <div className="flex-1 relative overflow-hidden flex flex-col px-2 md:px-4 pb-16 md:pb-4 pt-2 md:pt-3">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 via-fuchsia-100/30 to-violet-50/40 dark:from-purple-900/25 dark:via-fuchsia-900/15 dark:to-slate-900/50 opacity-80" />
         {/* 右上角光晕 */}
-        <div className="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-fuchsia-200/50 blur-3xl dark:bg-fuchsia-600/15" />
+        <div className="pointer-events-none absolute -top-20 -right-20 w-48 md:w-64 h-48 md:h-64 rounded-full bg-fuchsia-200/50 blur-3xl dark:bg-fuchsia-600/15" />
         <div className="flex-1 flex flex-col z-10 relative">
           {currentTopic?.id ? (
             <ChatPanel
@@ -135,7 +175,7 @@ export const ForumChatFrame = memo(function ForumChatFrame({
               hideHeader={true}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-sm text-slate-500 dark:text-slate-300 backdrop-blur-md">
+            <div className="h-full flex items-center justify-center text-sm text-slate-500 dark:text-slate-300 backdrop-blur-md px-4 text-center">
               {loading
                 ? t("forum.loadingTopic")
                 : error
