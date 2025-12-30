@@ -349,9 +349,9 @@
   },
   "chat": {
     "quickPrompt": {
-      "reason": "What is the reasoning behind this prediction?",
-      "update": "Any latest updates?",
-      "opinion": "I think the probability is higher because…"
+      "reason": "What’s the data or story behind this prediction?",
+      "update": "Any fresh updates or interesting new signals?",
+      "opinion": "I feel the probability is higher because…"
     },
     "message": {
       "opBadge": "OP",
@@ -374,9 +374,9 @@
       "defaultInput": "Hi! 👋 Happy to join the discussion"
     },
     "input": {
-      "walletRequired": "Connect your wallet to send messages",
-      "connectAndSign": "Connect & sign",
-      "connectWalletCta": "Connect your wallet to join the discussion",
+      "walletRequired": "To send a message, first connect your wallet 💬",
+      "connectAndSign": "Connect & sign to join the chat",
+      "connectWalletCta": "Connect your wallet to join the conversation",
       "placeholder": "Type a message, press Enter to send, Shift+Enter for new line",
       "markdownHint": "Markdown supported",
       "enterHint": "Press Enter to send, Shift+Enter for new line",
@@ -385,11 +385,29 @@
       "send": "Send",
       "uploadImage": "Upload Image",
       "stickers": "Stickers",
-      "uploadFailed": "Image upload failed"
+      "uploadFailed": "Image didn’t upload this time. Try again in a bit."
     },
     "errors": {
-      "walletRequired": "Please connect your wallet before sending messages",
-      "sendFailed": "Failed to send message"
+      "walletRequired": "We need to connect your wallet first so your message can go through.",
+      "sendFailed": "Your message didn’t go through this time. Try again in a moment."
+    },
+    "onboarding": {
+      "title": "Share your little prediction universe",
+      "subtitle": "This is a cozy corner for honest thoughts, gentle debates and kind curiosity.",
+      "step1": {
+        "title": "Start with a simple hello",
+        "desc": "A \"Hi, I’m here!\" is more than enough. Human, messy, honest messages are very welcome."
+      },
+      "step2": {
+        "title": "Tell us what you’re sensing",
+        "desc": "Share data, headlines or just a gut feeling. Imperfect takes are part of the fun."
+      },
+      "step3": {
+        "title": "Co-create the bigger picture",
+        "desc": "Your little piece of insight plus everyone else’s perspectives makes the market much smarter."
+      },
+      "footer": "It’s okay to take your time. The world is loud; here we’re here to listen first.",
+      "cta": "Got it, let’s start chatting"
     }
   },
   "auth": {
@@ -518,33 +536,37 @@
       "cancelOrderSuccessTitle": "Order canceled",
       "cancelOrderSuccessDesc": "Your order has been canceled successfully.",
       "cancelOrderFailedTitle": "Failed to cancel order",
-      "retryLater": "Please try again later"
+      "retryLater": "Please try again later",
+      "orderSuccessTitle": "Order in the book",
+      "orderSuccessDesc": "Your view is now part of this market’s story.",
+      "orderFailedTitle": "This trade didn’t go through",
+      "orderFailedDesc": "Balances and networks glitch sometimes. Adjust a bit and try again."
     },
     "orderFlow": {
-      "marketNotLoaded": "Market data not loaded",
-      "walletRequired": "Please connect your wallet first",
-      "walletNotReady": "Wallet is not initialized",
-      "invalidAmount": "Invalid amount",
-      "invalidAmountPrecision": "Amount precision too high: up to 6 decimals supported",
-      "invalidPrice": "Invalid price (must be between 0 and 1)",
-      "switchNetwork": "Please switch to the correct network (Chain ID: {chainId})",
-      "fetchPlanFailed": "Failed to fetch execution plan",
-      "insufficientLiquidity": "Orderbook liquidity is insufficient to execute this trade",
-      "noFillableOrders": "No fillable orders",
-      "relayerNotConfigured": "Matching service is not configured, cannot execute market order",
-      "matchingInProgress": "Matching orders... (batch {count})",
-      "partialFilled": "Partially filled, remaining amount could not be executed",
-      "filled": "Filled successfully",
-      "approving": "Requesting approval...",
-      "outcomeTokenApproving": "Requesting outcome token approval...",
-      "approveThenPlace": "Approval confirmed, placing order...",
-      "orderSuccess": "Order placed successfully",
-      "orderFailedFallback": "Order placement failed",
-      "tradeFailed": "Trade failed",
-      "sellNoBalance": "Sell order failed: not enough outcome tokens to sell. Please mint tokens below first, then try again.",
-      "sellMaybeNoMint": "If you have not minted below yet, you may not have any tokens to sell. Please mint first and try again.",
-      "canceled": "Order canceled",
-      "cancelFailed": "Failed to cancel order"
+      "marketNotLoaded": "Market data is still on its way. Try again in a moment.",
+      "walletRequired": "Connect your wallet first so we can write this idea into the market.",
+      "walletNotReady": "Your wallet is still waking up. Give it a second and try again.",
+      "invalidAmount": "This amount looks a bit off. Double-check your input.",
+      "invalidAmountPrecision": "The amount is a bit too precise. Up to 6 decimals are supported.",
+      "invalidPrice": "Price must be between 0 and 1. Try nudging it into that range.",
+      "switchNetwork": "Please switch to the correct network (Chain ID: {chainId}) and we’ll continue.",
+      "fetchPlanFailed": "We couldn’t fetch a trade plan right now. A quick refresh later might help.",
+      "insufficientLiquidity": "There aren’t enough matching orders yet to complete this trade.",
+      "noFillableOrders": "No existing orders currently line up with this one.",
+      "relayerNotConfigured": "The matching helper isn’t ready yet, so market orders can’t run for now.",
+      "matchingInProgress": "Matching your trade… (batch {count}). Hang on a moment.",
+      "partialFilled": "Only part of your order filled. The rest didn’t find a match yet.",
+      "filled": "This trade has been filled.",
+      "approving": "Asking the contract for permission on your behalf…",
+      "outcomeTokenApproving": "Opening permission to use your outcome tokens for this market…",
+      "approveThenPlace": "Approval looks good. Continuing with the order now.",
+      "orderSuccess": "Order placed successfully.",
+      "orderFailedFallback": "This order didn’t go through. It’s okay to try again later.",
+      "tradeFailed": "This trade ran into an issue. We can adjust a bit and try again.",
+      "sellNoBalance": "Sell failed: not enough outcome tokens right now. You can mint some below first, then try again.",
+      "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
+      "canceled": "Order canceled.",
+      "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit."
     }
   },
   "market": {
@@ -1191,31 +1213,35 @@
       }
     },
     "toast": {
-      "walletRequiredTitle": "Wallet required",
-      "walletRequiredDesc": "Please connect your wallet before creating a Flag.",
-      "titleRequiredTitle": "Title is required",
-      "titleRequiredDesc": "Please enter a Flag title.",
-      "witnessRequiredTitle": "Missing witness info",
-      "witnessRequiredDesc": "Please fill in the witness ID or address.",
-      "createSuccessTitle": "Created",
-      "createSuccessDesc": "Your Flag has been created. Time to check in!",
-      "createFailedTitle": "Creation failed",
-      "createFailedDesc": "Please check your network connection and try again.",
-      "loadFailedTitle": "Failed to load Flags",
-      "noDataTitle": "No Flags yet",
-      "noDataDesc": "You have not created any Flags yet.",
-      "checkinFailedTitle": "Check-in failed",
-      "checkinFailedDesc": "Network error, please try again later.",
-      "checkinExpiredTitle": "Time's up!",
-      "checkinExpiredDesc": "This Flag has already finished—time to start a new challenge!",
-      "reviewFailedTitle": "Review failed",
-      "reviewFailedDesc": "Please check your network connection and try again.",
-      "settleConfirmMessage": "Settle this Flag now? Refunds will depend on completion.",
-      "settleSuccessTitle": "Settlement complete",
+      "walletRequiredTitle": "Connect your wallet first ✨",
+      "walletRequiredDesc": "Once we're linked up, we can plant this new Flag together.",
+      "titleRequiredTitle": "Give your goal a name",
+      "titleRequiredDesc": "Add a simple title like \"Evening walk\" to get started.",
+      "witnessRequiredTitle": "Missing your witness buddy",
+      "witnessRequiredDesc": "Add their ID or address so someone can cheer you on.",
+      "createSuccessTitle": "New Flag planted 🌱",
+      "createSuccessDesc": "It's now pinned to your board, waiting for your first check-in.",
+      "createFailedTitle": "Flag not created yet",
+      "createFailedDesc": "The network is a bit moody—try again in a moment.",
+      "loadFailedTitle": "Vision board didn't load quite right",
+      "noDataTitle": "Your board is still blank",
+      "noDataDesc": "Try planting a tiny, today-doable goal as your first Flag.",
+      "checkinSuccessTitle": "Check-in saved 🌟",
+      "checkinSuccessDesc": "Your effort is safely logged, and you even unlocked a new sticker!",
+      "checkinFailedTitle": "Check-in ran into a hiccup",
+      "checkinFailedDesc": "Looks like a network wobble—wait a bit and tap again.",
+      "checkinExpiredTitle": "Time's up for this Flag",
+      "checkinExpiredDesc": "This challenge has wrapped up—pat yourself on the back and start a new one ✨",
+      "reviewFailedTitle": "Review couldn't be submitted",
+      "reviewFailedDesc": "The connection flickered—give it a moment and try again.",
+      "settleConfirmMessage": "Settle this Flag now? We'll refund based on progress and gently wrap up this journey.",
+      "settleSuccessTitle": "Flag settled ✅",
       "statusLabel": "Status",
       "approvedDaysLabel": "Approved days",
-      "settleFailedTitle": "Settlement failed",
-      "retryLater": "Please try again later."
+      "settleFailedTitle": "Settlement didn't go through",
+      "retryLater": "Please try again in a little while.",
+      "checkinSuccessNoStickerDesc": "Your effort is saved—no sticker this time, but many more rolls ahead.",
+      "noStickerSuffix": "no sticker this time, but there are plenty more chances."
     },
     "modal": {
       "header": {

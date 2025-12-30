@@ -348,9 +348,9 @@
   },
   "chat": {
     "quickPrompt": {
-      "reason": "¿Cuál es la base de esta predicción?",
-      "update": "¿Hay novedades recientes?",
-      "opinion": "Creo que la probabilidad es mayor porque…"
+      "reason": "¿Qué datos o historia hay detrás de esta predicción?",
+      "update": "¿Ha habido novedades o señales interesantes últimamente?",
+      "opinion": "Siento que la probabilidad es mayor porque…"
     },
     "message": {
       "opBadge": "OP",
@@ -373,9 +373,9 @@
       "defaultInput": "¡Hola! 👋 Encantado de unirme a la conversación"
     },
     "input": {
-      "walletRequired": "Conecta tu billetera para enviar mensajes",
-      "connectAndSign": "Conectar y firmar",
-      "connectWalletCta": "Conecta tu billetera para unirte a la conversación",
+      "walletRequired": "Para enviar mensajes, conecta primero tu billetera 💬",
+      "connectAndSign": "Conectar y firmar para unirte al chat",
+      "connectWalletCta": "Conecta tu billetera y súmate a la conversación",
       "placeholder": "Escribe un mensaje, pulsa Enter para enviar, Shift+Enter para nueva línea",
       "markdownHint": "Compatible con Markdown",
       "enterHint": "Pulsa Enter para enviar, Shift+Enter para nueva línea",
@@ -384,11 +384,29 @@
       "send": "Enviar",
       "uploadImage": "Subir imagen",
       "stickers": "Stickers",
-      "uploadFailed": "Error al subir la imagen"
+      "uploadFailed": "La imagen no se subió esta vez, inténtalo de nuevo en un momento."
     },
     "errors": {
-      "walletRequired": "Conecta tu billetera antes de enviar mensajes",
-      "sendFailed": "Error al enviar el mensaje"
+      "walletRequired": "Primero tenemos que conectar tu billetera para que el mensaje llegue bien.",
+      "sendFailed": "El mensaje no salió esta vez, puedes intentarlo de nuevo en un momento."
+    },
+    "onboarding": {
+      "title": "Comparte tu pequeño universo de predicciones",
+      "subtitle": "Este es un rincón cálido para ideas honestas, debate suave y mucha curiosidad.",
+      "step1": {
+        "title": "Empieza con un hola sencillo",
+        "desc": "Un \"¡Hola, aquí estoy!\" ya es perfecto. Los mensajes humanos y un poco caóticos son bienvenidos."
+      },
+      "step2": {
+        "title": "Cuenta qué estás sintiendo",
+        "desc": "Comparte datos, titulares o solo una corazonada. Las opiniones imperfectas también hacen el juego divertido."
+      },
+      "step3": {
+        "title": "Construyamos el mapa entre todos",
+        "desc": "Tu pequeña pieza de intuición, sumada a la mirada de los demás, hace el mercado mucho más inteligente."
+      },
+      "footer": "No pasa nada si vas despacio. El mundo hace ruido; aquí queremos escucharte con calma.",
+      "cta": "Listo, empecemos a conversar"
     }
   },
   "auth": {
@@ -517,33 +535,37 @@
       "cancelOrderSuccessTitle": "Orden cancelada",
       "cancelOrderSuccessDesc": "Tu orden se canceló correctamente.",
       "cancelOrderFailedTitle": "Error al cancelar la orden",
-      "retryLater": "Inténtalo de nuevo más tarde"
+      "retryLater": "Inténtalo de nuevo más tarde",
+      "orderSuccessTitle": "Orden en el libro",
+      "orderSuccessDesc": "Tu punto de vista ya forma parte de la historia de este mercado.",
+      "orderFailedTitle": "Esta operación no se completó",
+      "orderFailedDesc": "El saldo o la red pueden estar de mal humor. Ajusta un poco y vuelve a intentarlo."
     },
     "orderFlow": {
-      "marketNotLoaded": "La información del mercado no se ha cargado",
-      "walletRequired": "Conecta primero tu billetera",
-      "walletNotReady": "La billetera no está inicializada",
-      "invalidAmount": "Cantidad no válida",
-      "invalidAmountPrecision": "Precisión de la cantidad demasiado alta: se admiten hasta 6 decimales",
-      "invalidPrice": "Precio no válido (debe estar entre 0 y 1)",
-      "switchNetwork": "Cambia a la red correcta (Chain ID: {chainId})",
-      "fetchPlanFailed": "Error al obtener el plan de ejecución",
-      "insufficientLiquidity": "La liquidez del libro de órdenes es insuficiente para ejecutar esta operación",
-      "noFillableOrders": "No hay órdenes ejecutables",
-      "relayerNotConfigured": "El servicio de casación no está configurado, no se puede ejecutar la orden de mercado",
-      "matchingInProgress": "Casando órdenes... (lote {count})",
-      "partialFilled": "Ejecución parcial, la cantidad restante no se pudo ejecutar",
-      "filled": "Operación completada con éxito",
-      "approving": "Solicitando aprobación...",
-      "outcomeTokenApproving": "Solicitando aprobación de tokens de resultado...",
-      "approveThenPlace": "Aprobación confirmada, creando orden...",
-      "orderSuccess": "Orden creada correctamente",
-      "orderFailedFallback": "Error al crear la orden",
-      "tradeFailed": "La operación ha fallado",
-      "sellNoBalance": "Error en orden de venta: no tienes suficientes tokens de resultado para vender. Primero haz mint en la sección inferior y luego inténtalo de nuevo.",
-      "sellMaybeNoMint": "Si aún no has hecho mint abajo, es posible que no tengas tokens para vender. Haz mint primero e inténtalo de nuevo.",
-      "canceled": "Orden cancelada",
-      "cancelFailed": "Error al cancelar la orden"
+      "marketNotLoaded": "La información del mercado todavía está llegando. Prueba de nuevo en un momento.",
+      "walletRequired": "Primero conecta tu billetera para poder escribir esta idea en el mercado.",
+      "walletNotReady": "Tu billetera aún se está despertando. Espera un poco y vuelve a intentarlo.",
+      "invalidAmount": "Esta cantidad no termina de encajar. Revisa un momento lo que has escrito.",
+      "invalidAmountPrecision": "La cantidad es demasiado precisa. De momento admitimos hasta 6 decimales.",
+      "invalidPrice": "El precio debe estar entre 0 y 1. Ajusta un poco dentro de ese rango.",
+      "switchNetwork": "Cambia a la red correcta (Chain ID: {chainId}) y seguimos desde ahí.",
+      "fetchPlanFailed": "Por ahora no pudimos obtener un plan de ejecución. Un pequeño refresco más tarde puede ayudar.",
+      "insufficientLiquidity": "Ahora mismo no hay suficientes órdenes al otro lado para completar esta operación.",
+      "noFillableOrders": "De momento no hay órdenes existentes que encajen con la tuya.",
+      "relayerNotConfigured": "El ayudante de casación aún no está listo, así que las órdenes de mercado no pueden ejecutarse por ahora.",
+      "matchingInProgress": "Casando tu operación… (lote {count}). Espera un momento.",
+      "partialFilled": "Solo se completó una parte de tu orden. El resto todavía no encontró pareja.",
+      "filled": "Esta operación ya se ha completado.",
+      "approving": "Pidiendo permiso al contrato en tu nombre…",
+      "outcomeTokenApproving": "Abriendo permiso para usar tus tokens de resultado en este mercado…",
+      "approveThenPlace": "La aprobación está lista. Ahora seguimos con la orden.",
+      "orderSuccess": "Orden creada correctamente.",
+      "orderFailedFallback": "Esta orden no se completó. No pasa nada, puedes intentarlo de nuevo más tarde.",
+      "tradeFailed": "Esta operación se ha encontrado con un obstáculo. Podemos ajustar un poco y volver a probar.",
+      "sellNoBalance": "Error en la venta: ahora mismo no tienes suficientes tokens de resultado. Puedes mintear algunos abajo y volver a intentarlo.",
+      "sellMaybeNoMint": "Si todavía no has minteado, es posible que no tengas tokens para vender. Mintea un poco abajo e inténtalo de nuevo.",
+      "canceled": "Orden cancelada.",
+      "cancelFailed": "Esta vez la orden no se canceló. Puedes intentarlo de nuevo dentro de un momento."
     }
   },
   "market": {
@@ -1190,31 +1212,35 @@
       }
     },
     "toast": {
-      "walletRequiredTitle": "Billetera requerida",
-      "walletRequiredDesc": "Conecta tu billetera antes de crear un Flag.",
-      "titleRequiredTitle": "El título es obligatorio",
-      "titleRequiredDesc": "Introduce un título para el Flag.",
-      "witnessRequiredTitle": "Falta información del testigo",
-      "witnessRequiredDesc": "Introduce el ID o la dirección del testigo.",
-      "createSuccessTitle": "Creado",
-      "createSuccessDesc": "Tu Flag ha sido creado. ¡Es hora de hacer check-in!",
-      "createFailedTitle": "Error al crear",
-      "createFailedDesc": "Revisa tu conexión de red e inténtalo de nuevo.",
-      "loadFailedTitle": "Error al cargar Flags",
-      "noDataTitle": "Aún no hay Flags",
-      "noDataDesc": "Todavía no has creado ningún Flag.",
-      "checkinFailedTitle": "Error en el check-in",
-      "checkinFailedDesc": "Error de red, inténtalo de nuevo más tarde.",
-      "checkinExpiredTitle": "¡Tiempo agotado!",
-      "checkinExpiredDesc": "Este Flag ya terminó; es momento de empezar un nuevo reto ✨",
-      "reviewFailedTitle": "Error en la revisión",
-      "reviewFailedDesc": "Revisa tu conexión de red e inténtalo de nuevo.",
-      "settleConfirmMessage": "¿Liquidar este Flag ahora? Los reembolsos dependerán del nivel de cumplimiento.",
-      "settleSuccessTitle": "Liquidación completada",
+      "walletRequiredTitle": "Primero conecta tu billetera ✨",
+      "walletRequiredDesc": "Cuando estemos conectados, plantamos juntos este nuevo Flag.",
+      "titleRequiredTitle": "Ponle nombre a tu meta",
+      "titleRequiredDesc": "Añade un título sencillo, por ejemplo «Paseo de tarde».",
+      "witnessRequiredTitle": "Falta tu compañero testigo",
+      "witnessRequiredDesc": "Escribe su ID o dirección para que alguien te acompañe.",
+      "createSuccessTitle": "Nuevo Flag plantado 🌱",
+      "createSuccessDesc": "Ya está en tu tablero, esperando tu primer check-in.",
+      "createFailedTitle": "El Flag no se creó todavía",
+      "createFailedDesc": "La red está un poco caprichosa, espera un momento y vuelve a intentar.",
+      "loadFailedTitle": "Tu tablero no se cargó del todo bien",
+      "noDataTitle": "Tu tablero aún está en blanco",
+      "noDataDesc": "Prueba a plantar una meta pequeña y realizable hoy como primer Flag.",
+      "checkinSuccessTitle": "Check-in guardado 🌟",
+      "checkinSuccessDesc": "Tu esfuerzo quedó registrado y además desbloqueaste un nuevo sticker.",
+      "checkinFailedTitle": "El check-in tropezó un poquito",
+      "checkinFailedDesc": "Parece un fallo de red, espera un poco y vuelve a tocar.",
+      "checkinExpiredTitle": "¡Este Flag ya llegó a meta!",
+      "checkinExpiredDesc": "El reto terminó; date un pequeño aplauso y empieza uno nuevo ✨",
+      "reviewFailedTitle": "La revisión no se pudo enviar",
+      "reviewFailedDesc": "La conexión falló un momento, espera unos segundos y prueba otra vez.",
+      "settleConfirmMessage": "¿Quieres liquidar este Flag ahora? El reembolso dependerá de tu progreso y cerraremos con cariño este viaje.",
+      "settleSuccessTitle": "Flag liquidado ✅",
       "statusLabel": "Estado",
       "approvedDaysLabel": "Días aprobados",
-      "settleFailedTitle": "Error en la liquidación",
-      "retryLater": "Inténtalo de nuevo más tarde."
+      "settleFailedTitle": "La liquidación no se completó",
+      "retryLater": "Inténtalo de nuevo dentro de un momento.",
+      "checkinSuccessNoStickerDesc": "Tu esfuerzo ya está guardado; esta vez no hubo sticker, pero vendrán muchos más.",
+      "noStickerSuffix": "esta vez no hubo sticker, pero tendrás muchas más oportunidades."
     },
     "modal": {
       "header": {

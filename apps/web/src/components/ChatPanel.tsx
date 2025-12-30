@@ -4,7 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import ForumSection from "@/components/ForumSection";
 import { useTranslations } from "@/lib/i18n";
-import type { ChatPanelProps } from "./chatPanel/types";
+import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
 import { useNameMap } from "./chatPanel/hooks/useNameMap";
@@ -82,24 +82,23 @@ export default function ChatPanel({
       const res = await fetch("/api/discussions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          proposalId: eventId, 
-          content: input, 
+        body: JSON.stringify({
+          proposalId: eventId,
+          content: input,
           userId: account,
           image_url: imageUrl,
           replyToId: replyTo?.id,
           replyToUser: replyTo?.user_id,
-          replyToContent: replyTo?.content.slice(0, 100) // 存储前100个字符作为摘要
+          replyToContent: replyTo?.content.slice(0, 100), // 存储前100个字符作为摘要
         }),
       });
       if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t);
+        throw new Error("send_failed");
       }
       setInput("");
       setReplyTo(null);
     } catch (e: any) {
-      setError(e?.message || tChat("errors.sendFailed"));
+      setError(tChat("errors.sendFailed"));
     } finally {
       setSending(false);
     }

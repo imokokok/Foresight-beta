@@ -152,7 +152,7 @@ export default function FlagsPage() {
         tFlags("toast.checkinSuccessTitle"),
         ret.sticker_earned
           ? tFlags("toast.checkinSuccessDesc")
-          : "本次打卡已记录，本次暂未抽中表情奖励，下次继续加油！"
+          : tFlags("toast.checkinSuccessNoStickerDesc")
       );
       loadFlags();
       if (ret.sticker_earned) {
@@ -258,9 +258,9 @@ export default function FlagsPage() {
         const statusText = String(ret?.status || "");
         const approvedDays = ret?.metrics?.approvedDays || 0;
         const totalDays = ret?.metrics?.totalDays || 0;
-        const desc = `${tFlags("toast.statusLabel")}: ${statusText}，${tFlags(
+        const desc = `${tFlags("toast.statusLabel")}: ${statusText}, ${tFlags(
           "toast.approvedDaysLabel"
-        )} ${approvedDays}/${totalDays}，本次暂未抽中表情奖励，下次继续加油！`;
+        )} ${approvedDays}/${totalDays}, ${tFlags("toast.noStickerSuffix")}`;
         toast.success(tFlags("toast.settleSuccessTitle"), desc);
       }
     } catch (e) {

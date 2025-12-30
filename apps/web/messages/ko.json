@@ -514,9 +514,9 @@
   },
   "chat": {
     "quickPrompt": {
-      "reason": "이 예측의 근거는 무엇인가요?",
-      "update": "최신 업데이트가 있나요?",
-      "opinion": "확률이 더 높다고 생각합니다. 왜냐하면…"
+      "reason": "이 예측 뒤에 어떤 근거나 이야기가 있나요?",
+      "update": "최근에 새 소식이나 흥미로운 신호가 있었나요?",
+      "opinion": "확률이 더 높다고 느끼는 이유는…"
     },
     "message": {
       "opBadge": "OP",
@@ -539,9 +539,9 @@
       "defaultInput": "안녕하세요! 👋 토론에 참여하게 되어 기쁩니다"
     },
     "input": {
-      "walletRequired": "메시지를 보내려면 지갑을 연결하세요",
-      "connectAndSign": "연결 및 서명",
-      "connectWalletCta": "토론에 참여하려면 지갑을 연결하세요",
+      "walletRequired": "메시지를 보내려면 지갑을 살짝 먼저 연결해 주세요 💬",
+      "connectAndSign": "지갑 연결하고 서명해서 채팅 참여하기",
+      "connectWalletCta": "지갑을 연결하면 이 대화에도 함께할 수 있어요",
       "placeholder": "메시지 입력, Enter로 전송, Shift+Enter로 줄바꿈",
       "markdownHint": "마크다운 지원",
       "enterHint": "Enter로 전송, Shift+Enter로 줄바꿈",
@@ -550,11 +550,29 @@
       "send": "전송",
       "uploadImage": "이미지 업로드",
       "stickers": "스티커",
-      "uploadFailed": "이미지 업로드 실패"
+      "uploadFailed": "이번에는 이미지 업로드가 잘 안 되었어요. 잠시 후 다시 시도해 주세요."
     },
     "errors": {
-      "walletRequired": "메시지를 보내기 전에 지갑을 연결하세요",
-      "sendFailed": "메시지 전송 실패"
+      "walletRequired": "메시지가 잘 도착하려면 먼저 지갑을 연결해야 해요.",
+      "sendFailed": "이번에는 메시지가 날아가지 못했어요. 잠시 후 다시 시도해 주세요."
+    },
+    "onboarding": {
+      "title": "나만의 작은 예측 우주를 나눠보세요",
+      "subtitle": "솔직한 생각과 부드러운 토론, 다정한 호기심을 위한 아늑한 공간입니다.",
+      "step1": {
+        "title": "가볍게 인사부터",
+        "desc": "\"안녕하세요, 왔어요!\" 정도면 충분해요. 조금 서툴고 솔직한 말일수록 더 반가워요."
+      },
+      "step2": {
+        "title": "지금 무엇을 느끼는지 말해보기",
+        "desc": "데이터나 뉴스, 그냥 직감이어도 괜찮아요. 완벽하지 않은 생각도 이 공간의 중요한 일부예요."
+      },
+      "step3": {
+        "title": "함께 더 큰 그림을 그리기",
+        "desc": "당신의 작은 조각과 다른 사람들의 시선이 모이면, 시장은 훨씬 더 똑똑해집니다."
+      },
+      "footer": "서두르지 않아도 괜찮아요. 바깥 세상은 시끄럽지만, 여기서는 당신의 속도에 맞춰 귀 기울이고 싶어요.",
+      "cta": "좋아요, 이제 같이 이야기해봐요"
     }
   },
   "prediction": {
@@ -630,33 +648,37 @@
       "cancelOrderSuccessTitle": "주문 취소됨",
       "cancelOrderSuccessDesc": "주문이 성공적으로 취소되었습니다.",
       "cancelOrderFailedTitle": "주문 취소 실패",
-      "retryLater": "나중에 다시 시도해 주세요"
+      "retryLater": "나중에 다시 시도해 주세요",
+      "orderSuccessTitle": "주문이 시장에 기록되었어요",
+      "orderSuccessDesc": "당신의 생각이 이제 이 시장의 이야기 한 줄이 되었습니다.",
+      "orderFailedTitle": "이번 거래는 끝까지 가지 못했어요",
+      "orderFailedDesc": "잔액이나 네트워크가 잠깐 예민해졌을 수 있어요. 조금만 조정해서 다시 시도해 주세요."
     },
     "orderFlow": {
-      "marketNotLoaded": "시장 데이터가 로드되지 않았습니다",
-      "walletRequired": "먼저 지갑을 연결하세요",
-      "walletNotReady": "지갑이 초기화되지 않았습니다",
-      "invalidAmount": "잘못된 금액",
-      "invalidAmountPrecision": "금액 정밀도가 너무 높습니다: 최대 6자리 소수점 지원",
-      "invalidPrice": "잘못된 가격 (0과 1 사이여야 합니다)",
-      "switchNetwork": "올바른 네트워크로 전환하세요 (체인 ID: {chainId})",
-      "fetchPlanFailed": "실행 계획 가져오기 실패",
-      "insufficientLiquidity": "호가창 유동성이 부족하여 거래를 실행할 수 없습니다",
-      "noFillableOrders": "체결 가능한 주문 없음",
-      "relayerNotConfigured": "매칭 서비스가 구성되지 않아 시장가 주문을 실행할 수 없습니다",
-      "matchingInProgress": "주문 매칭 중... (배치 {count})",
-      "partialFilled": "부분 체결됨, 나머지 금액은 실행할 수 없습니다",
-      "filled": "체결 완료",
-      "approving": "승인 요청 중...",
-      "outcomeTokenApproving": "결과 토큰 승인 요청 중...",
-      "approveThenPlace": "승인 확인됨, 주문 제출 중...",
-      "orderSuccess": "주문이 성공적으로 제출되었습니다",
-      "orderFailedFallback": "주문 제출 실패",
-      "tradeFailed": "거래 실패",
-      "sellNoBalance": "매도 주문 실패: 매도할 결과 토큰이 부족합니다. 먼저 아래에서 토큰을 발행한 후 다시 시도하세요.",
-      "sellMaybeNoMint": "아직 아래에서 발행하지 않았다면 매도할 토큰이 없을 수 있습니다. 먼저 발행 후 다시 시도하세요.",
-      "canceled": "주문 취소됨",
-      "cancelFailed": "주문 취소 실패"
+      "marketNotLoaded": "시장 데이터가 아직 오고 있어요. 잠시 뒤에 다시 시도해 주세요.",
+      "walletRequired": "이 생각을 시장에 기록하려면 먼저 지갑을 연결해 주세요.",
+      "walletNotReady": "지갑이 아직 완전히 준비되지 않았어요. 잠깐만 기다렸다가 다시 시도해 주세요.",
+      "invalidAmount": "이 금액이 조금 어색해 보여요. 한 번만 더 확인해 주세요.",
+      "invalidAmountPrecision": "금액이 너무 세밀합니다. 현재는 최대 소수점 6자리까지 지원해요.",
+      "invalidPrice": "가격은 0과 1 사이여야 해요. 그 안에서 조금만 조정해 보세요.",
+      "switchNetwork": "올바른 네트워크 (체인 ID: {chainId})로 전환하면, 그다음부터는 제가 도와드릴게요.",
+      "fetchPlanFailed": "지금은 실행 계획을 불러오지 못했어요. 잠시 후 새로고침하고 다시 시도해 주세요.",
+      "insufficientLiquidity": "지금은 반대편에 충분한 주문이 없어 이 거래를 모두 채울 수 없어요.",
+      "noFillableOrders": "현재 이 주문과 딱 맞는 상대 주문이 없는 상태예요.",
+      "relayerNotConfigured": "매칭을 도와줄 작은 도우미가 아직 준비되지 않아, 지금은 시장가 주문을 실행할 수 없어요.",
+      "matchingInProgress": "주문을 매칭하는 중이에요… (배치 {count}) 조금만 기다려 주세요.",
+      "partialFilled": "주문이 일부만 체결되었어요. 나머지는 아직 상대 주문을 찾지 못했어요.",
+      "filled": "이번 거래는 모두 체결되었어요.",
+      "approving": "대신해서 계약에 허락을 구하고 있어요…",
+      "outcomeTokenApproving": "이 시장에서 결과 토큰을 쓸 수 있도록 권한을 열어두고 있어요…",
+      "approveThenPlace": "승인이 잘 끝났어요. 이제 주문을 계속 진행할게요.",
+      "orderSuccess": "주문이 성공적으로 제출되었습니다.",
+      "orderFailedFallback": "이번 주문은 끝까지 가지 못했어요. 나중에 다시 시도해도 전혀 괜찮아요.",
+      "tradeFailed": "이번 거래는 중간에 막혔어요. 방식을 조금만 바꿔서 다시 시도해 볼 수 있어요.",
+      "sellNoBalance": "매도 주문 실패: 지금은 매도할 결과 토큰이 충분하지 않아요. 아래에서 토큰을 조금 발행한 뒤 다시 시도해 주세요.",
+      "sellMaybeNoMint": "아직 아래에서 토큰을 발행하지 않았다면, 지금은 팔 수 있는 토큰이 없을 수도 있어요. 조금 발행한 뒤 다시 한 번 시도해 주세요.",
+      "canceled": "주문이 취소되었습니다.",
+      "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요."
     }
   },
   "market": {
@@ -1350,31 +1372,35 @@
       }
     },
     "toast": {
-      "walletRequiredTitle": "지갑 필요",
-      "walletRequiredDesc": "플래그를 만들기 전에 지갑을 연결하세요.",
-      "titleRequiredTitle": "제목 필요",
-      "titleRequiredDesc": "플래그 제목을 입력하세요.",
-      "witnessRequiredTitle": "증인 정보 누락",
-      "witnessRequiredDesc": "증인 ID 또는 주소를 입력하세요.",
-      "createSuccessTitle": "생성됨",
-      "createSuccessDesc": "플래그가 생성되었습니다. 체크인할 시간입니다!",
-      "createFailedTitle": "생성 실패",
-      "createFailedDesc": "네트워크 연결을 확인하고 다시 시도하세요.",
-      "loadFailedTitle": "플래그 로드 실패",
-      "noDataTitle": "아직 플래그 없음",
-      "noDataDesc": "아직 플래그를 만들지 않았습니다.",
-      "checkinFailedTitle": "체크인 실패",
-      "checkinFailedDesc": "네트워크 오류, 나중에 다시 시도하세요.",
-      "checkinExpiredTitle": "시간 초과!",
-      "checkinExpiredDesc": "이 플래그는 이미 완료되었습니다—새 도전을 시작할 시간입니다!",
-      "reviewFailedTitle": "검토 실패",
-      "reviewFailedDesc": "네트워크 연결을 확인하고 다시 시도하세요.",
-      "settleConfirmMessage": "지금 이 플래그를 정산하시겠습니까? 환불은 완료율에 따라 달라집니다.",
-      "settleSuccessTitle": "정산 완료",
+      "walletRequiredTitle": "먼저 지갑을 연결해볼까요? ✨",
+      "walletRequiredDesc": "지갑을 연결하면, 이 새로운 플래그를 같이 심을 수 있어요.",
+      "titleRequiredTitle": "목표에 이름을 붙여주세요",
+      "titleRequiredDesc": "예: \"저녁에 10분 산책\"처럼 간단한 제목이면 충분해요.",
+      "witnessRequiredTitle": "함께할 증인 친구가 빠졌어요",
+      "witnessRequiredDesc": "응원해 줄 사람의 ID 또는 주소를 적어주세요.",
+      "createSuccessTitle": "새 플래그가 심어졌어요 🌱",
+      "createSuccessDesc": "이제 비전 보드에 자리 잡았어요. 첫 체크인을 기다리는 중이에요.",
+      "createFailedTitle": "플래그가 아직 만들어지지 않았어요",
+      "createFailedDesc": "네트워크가 잠깐 삐걱거렸어요. 잠시 후 다시 한번 시도해 주세요.",
+      "loadFailedTitle": "비전 보드를 다 불러오지 못했어요",
+      "noDataTitle": "보드가 아직 텅 비어 있어요",
+      "noDataDesc": "오늘 바로 해볼 수 있는 작은 목표 하나부터 플래그로 심어보세요.",
+      "checkinSuccessTitle": "체크인이 저장됐어요 🌟",
+      "checkinSuccessDesc": "오늘의 노력이 잘 기록됐고, 귀여운 스티커도 하나 얻었어요.",
+      "checkinFailedTitle": "체크인이 중간에 멈췄어요",
+      "checkinFailedDesc": "네트워크가 잠시 불안정했어요. 조금 있다가 다시 눌러주세요.",
+      "checkinExpiredTitle": "이 플래그의 시간이 다 되었어요",
+      "checkinExpiredDesc": "도전을 잘 완주했어요. 자신을 칭찬하고 새로운 도전을 하나 더 만들어볼까요? ✨",
+      "reviewFailedTitle": "검토를 마치지 못했어요",
+      "reviewFailedDesc": "연결이 잠깐 끊겼어요. 잠시 후 다시 시도해 주세요.",
+      "settleConfirmMessage": "이 플래그를 지금 정산할까요? 달성 정도에 따라 예치금이 돌려지고, 이 여정에 작은 마침표를 찍게 돼요.",
+      "settleSuccessTitle": "플래그 정산이 완료됐어요 ✅",
       "statusLabel": "상태",
       "approvedDaysLabel": "승인된 일수",
-      "settleFailedTitle": "정산 실패",
-      "retryLater": "나중에 다시 시도하세요."
+      "settleFailedTitle": "정산이 아직 끝나지 않았어요",
+      "retryLater": "잠시 후에 다시 시도해 주세요.",
+      "checkinSuccessNoStickerDesc": "노력은 잘 기록됐어요. 이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요.",
+      "noStickerSuffix": "이번에는 스티커가 없지만, 다음 기회가 많이 남아 있어요."
     },
     "modal": {
       "header": {

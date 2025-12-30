@@ -3,7 +3,6 @@
 import React from "react";
 import {
   X,
-  Sparkles,
   MessageSquare,
   ImageIcon,
   LayoutGrid,
@@ -19,11 +18,7 @@ export type ChatOnboardingGuideProps = {
   tChat: (key: string) => any;
 };
 
-export function ChatOnboardingGuide({
-  isOpen,
-  onClose,
-  tChat,
-}: ChatOnboardingGuideProps) {
+export function ChatOnboardingGuide({ isOpen, onClose, tChat }: ChatOnboardingGuideProps) {
   const steps = [
     {
       title: tChat("onboarding.step1.title"),
@@ -111,7 +106,9 @@ export function ChatOnboardingGuide({
                     className="flex gap-4 group"
                   >
                     <div className="flex-shrink-0 pt-1">
-                      <div className={`w-10 h-10 rounded-xl ${step.bg} flex items-center justify-center border border-white/50 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                      <div
+                        className={`w-10 h-10 rounded-xl ${step.bg} flex items-center justify-center border border-white/50 shadow-sm group-hover:scale-110 transition-transform duration-300`}
+                      >
                         <Icon className={`w-5 h-5 ${step.color}`} />
                       </div>
                     </div>
@@ -140,7 +137,7 @@ export function ChatOnboardingGuide({
                   onClick={onClose}
                   className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-2 group relative overflow-hidden"
                 >
-                  <span className="relative z-10">好的，我知道了</span>
+                  <span className="relative z-10">{tChat("onboarding.cta")}</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-brand to-brand-accent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <CheckCircle2 size={16} className="relative z-10" />
                 </button>
@@ -152,4 +149,3 @@ export function ChatOnboardingGuide({
     </AnimatePresence>
   );
 }
-

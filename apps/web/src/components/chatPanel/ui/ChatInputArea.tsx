@@ -74,10 +74,10 @@ export const ChatInputArea = memo(function ChatInputArea({
       if (result.success && result.data?.publicUrl) {
         await sendMessage(result.data.publicUrl);
       } else {
-        throw new Error(result.message || "Upload failed");
+        throw new Error("upload_failed");
       }
     } catch (err: any) {
-      setLocalError(err.message || "Image upload failed");
+      setLocalError(tChat("input.uploadFailed"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -138,7 +138,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                     </div>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setReplyTo?.(null)}
                   className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-slate-400"
                 >
@@ -216,18 +216,35 @@ export const ChatInputArea = memo(function ChatInputArea({
                 </div>
                 {showEmojis && (
                   <div className="absolute right-0 bottom-14 z-10 bg-[var(--card-bg)] backdrop-blur-md border border-[var(--card-border)] rounded-2xl shadow-xl p-3 grid grid-cols-6 gap-1 animate-in fade-in zoom-in duration-200">
-                    {["🙂", "🔥", "🚀", "💡", "🎯", "👏", "📈", "🤔", "✅", "❗", "✨", "📌", "🌈", "💎", "💯", "🎉", "👀", "🙌"].map(
-                      (emo) => (
-                        <button
-                          key={emo}
-                          className="text-base px-1 py-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
-                          type="button"
-                          onClick={() => setInput((prev) => prev + emo)}
-                        >
-                          {emo}
-                        </button>
-                      )
-                    )}
+                    {[
+                      "🙂",
+                      "🔥",
+                      "🚀",
+                      "💡",
+                      "🎯",
+                      "👏",
+                      "📈",
+                      "🤔",
+                      "✅",
+                      "❗",
+                      "✨",
+                      "📌",
+                      "🌈",
+                      "💎",
+                      "💯",
+                      "🎉",
+                      "👀",
+                      "🙌",
+                    ].map((emo) => (
+                      <button
+                        key={emo}
+                        className="text-base px-1 py-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+                        type="button"
+                        onClick={() => setInput((prev) => prev + emo)}
+                      >
+                        {emo}
+                      </button>
+                    ))}
                   </div>
                 )}
                 {showStickers && (
@@ -246,7 +263,9 @@ export const ChatInputArea = memo(function ChatInputArea({
                           {isImageUrl(s.emoji) ? (
                             <img src={s.emoji} alt={s.name} className="w-8 h-8 object-contain" />
                           ) : (
-                            <span className="text-2xl group-hover:scale-110 transition-transform">{s.emoji}</span>
+                            <span className="text-2xl group-hover:scale-110 transition-transform">
+                              {s.emoji}
+                            </span>
                           )}
                         </button>
                       ))}
@@ -254,7 +273,12 @@ export const ChatInputArea = memo(function ChatInputArea({
                   </div>
                 )}
               </div>
-              <Button onClick={() => sendMessage()} disabled={sending || uploading} size="sm" variant="primary">
+              <Button
+                onClick={() => sendMessage()}
+                disabled={sending || uploading}
+                size="sm"
+                variant="primary"
+              >
                 {sending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -267,7 +291,9 @@ export const ChatInputArea = memo(function ChatInputArea({
             </div>
           </>
         )}
-        {(error || localError) && <div className="mt-2 text-xs text-red-600 animate-pulse">{error || localError}</div>}
+        {(error || localError) && (
+          <div className="mt-2 text-xs text-red-600 animate-pulse">{error || localError}</div>
+        )}
       </div>
     </div>
   );

@@ -349,9 +349,9 @@
   },
   "chat": {
     "quickPrompt": {
-      "reason": "这条预测的依据是什么？",
-      "update": "有没有最新进展？",
-      "opinion": "我认为概率更高的理由是…"
+      "reason": "这条预测背后，有哪些依据或故事？",
+      "update": "最近有没有新的进展或好玩的信息？",
+      "opinion": "我觉得概率更高的理由可能是…"
     },
     "message": {
       "opBadge": "楼主",
@@ -374,9 +374,9 @@
       "defaultInput": "你好！👋 很高兴加入讨论"
     },
     "input": {
-      "walletRequired": "发送消息需连接钱包",
-      "connectAndSign": "连接并签名",
-      "connectWalletCta": "连接钱包后即可参与讨论",
+      "walletRequired": "想发消息，需要先把钱包连上～",
+      "connectAndSign": "连接钱包并轻轻签个名",
+      "connectWalletCta": "连接钱包后，就可以一起聊天和吐槽啦",
       "placeholder": "输入消息，按 Enter 发送，Shift+Enter 换行",
       "markdownHint": "支持 Markdown 格式",
       "enterHint": "按 Enter 发送，Shift+Enter 换行",
@@ -385,11 +385,29 @@
       "send": "发送",
       "uploadImage": "上传图片",
       "stickers": "表情包",
-      "uploadFailed": "图片上传失败"
+      "uploadFailed": "图片这次没传成功，可以稍后再试一次。"
     },
     "errors": {
-      "walletRequired": "请先连接钱包后再发送消息",
-      "sendFailed": "发送失败"
+      "walletRequired": "这边需要先连上钱包，才能把消息顺利送出去哦～",
+      "sendFailed": "这条消息暂时没飞出去，可以稍后再试试。"
+    },
+    "onboarding": {
+      "title": "聊聊你的预测小宇宙",
+      "subtitle": "这里是一块安全、友好、可以大胆吐槽和发光的角落",
+      "step1": {
+        "title": "先打个招呼",
+        "desc": "一句“我来了～”就很好。越真诚、越人话的开场，越容易遇到同频的伙伴。"
+      },
+      "step2": {
+        "title": "说说你在想什么",
+        "desc": "可以分享你看到的数据、新闻，或者单纯的直觉小情绪。这里欢迎不完美的观点。"
+      },
+      "step3": {
+        "title": "一起拼一块更大的图",
+        "desc": "把自己的一块小拼图放进来，别人的视角会帮你看见更多可能。"
+      },
+      "footer": "慢一点也没关系，世界很吵，这里想先好好听你说话。",
+      "cta": "好呀，一起开始聊天"
     }
   },
   "auth": {
@@ -518,33 +536,37 @@
       "cancelOrderSuccessTitle": "订单已取消",
       "cancelOrderSuccessDesc": "您的订单已成功取消",
       "cancelOrderFailedTitle": "取消订单失败",
-      "retryLater": "请稍后重试"
+      "retryLater": "请稍后重试",
+      "orderSuccessTitle": "下单成功",
+      "orderSuccessDesc": "你的观点已经被接住，安静地躺在这个市场里了。",
+      "orderFailedTitle": "这笔交易没有走通",
+      "orderFailedDesc": "资金和网络都有点小情绪，稍微调整一下再试试。"
     },
     "orderFlow": {
-      "marketNotLoaded": "市场信息未加载",
-      "walletRequired": "请先连接钱包",
-      "walletNotReady": "钱包未初始化",
-      "invalidAmount": "数量无效",
-      "invalidAmountPrecision": "数量精度过高：最多支持 6 位小数",
-      "invalidPrice": "价格无效 (0-1)",
-      "switchNetwork": "请切换到正确网络 (Chain ID: {chainId})",
-      "fetchPlanFailed": "获取成交计划失败",
-      "insufficientLiquidity": "当前订单簿流动性不足，无法成交",
-      "noFillableOrders": "无可成交订单",
-      "relayerNotConfigured": "撮合服务未配置，无法完成市价成交",
-      "matchingInProgress": "正在成交中... (批次 {count})",
-      "partialFilled": "部分成交，剩余数量未能成交",
-      "filled": "成交成功",
-      "approving": "正在请求授权...",
-      "outcomeTokenApproving": "请求预测代币授权...",
-      "approveThenPlace": "授权成功，正在下单...",
+      "marketNotLoaded": "市场信息还在路上，请稍等一下再试～",
+      "walletRequired": "需要先连接钱包，才能把这笔想法写进市场。",
+      "walletNotReady": "钱包还在醒来中，请稍等片刻再试一次。",
+      "invalidAmount": "这个数量不太对劲，再检查一下输入哦。",
+      "invalidAmountPrecision": "数量精度有点太细了，目前最多支持 6 位小数。",
+      "invalidPrice": "价格区间为 0-1，可以微调到这个范围内试试。",
+      "switchNetwork": "需要切到正确网络 (Chain ID: {chainId})，我们再一起继续。",
+      "fetchPlanFailed": "暂时没拿到成交计划，可以稍后再刷新试试。",
+      "insufficientLiquidity": "当前这边的挂单有点少，暂时凑不齐这笔成交。",
+      "noFillableOrders": "暂时没有可以对上你的这笔订单的挂单。",
+      "relayerNotConfigured": "撮合小助手还没就位，当前无法执行市价单。",
+      "matchingInProgress": "正在帮你撮合中… (第 {count} 批)，稍等一下。",
+      "partialFilled": "这笔单子先部分成交了，剩余数量暂时还没匹配到。",
+      "filled": "本次成交已完成。",
+      "approving": "先帮你向合约打个招呼，请求授权中…",
+      "outcomeTokenApproving": "正在为卖出开通预测代币的使用权限…",
+      "approveThenPlace": "授权已经搞定，接下来继续为你下单。",
       "orderSuccess": "下单成功！",
-      "orderFailedFallback": "下单失败",
-      "tradeFailed": "交易失败",
-      "sellNoBalance": "卖单失败：您的可卖预测代币数量不足，请先在下方完成铸币后再尝试挂卖单。",
-      "sellMaybeNoMint": "如果尚未在下方完成铸币，可能当前没有可卖的预测代币，请先铸币再试一次。",
-      "canceled": "订单已取消",
-      "cancelFailed": "取消订单失败"
+      "orderFailedFallback": "这笔下单没有走通，稍后再试试也没关系。",
+      "tradeFailed": "这次交易遇到了一点阻碍，我们可以换个方式再试一次。",
+      "sellNoBalance": "卖单失败：当前可卖的预测代币数量不足，可以先在下方完成铸币，再来挂卖单。",
+      "sellMaybeNoMint": "如果还没有在下方完成铸币，现在可能还没有可卖的预测代币，可以先铸一点再试。",
+      "canceled": "订单已取消。",
+      "cancelFailed": "订单暂时没有取消成功，可以稍后再试一次。"
     }
   },
   "market": {
@@ -1191,31 +1213,35 @@
       }
     },
     "toast": {
-      "walletRequiredTitle": "需要连接钱包",
-      "walletRequiredDesc": "请先连接钱包才能创建挑战",
-      "titleRequiredTitle": "标题不能为空",
-      "titleRequiredDesc": "请输入挑战标题",
-      "witnessRequiredTitle": "见证人信息缺失",
-      "witnessRequiredDesc": "请填写见证人 ID 或地址",
-      "createSuccessTitle": "创建成功",
-      "createSuccessDesc": "挑战已创建，快去打卡吧！",
-      "createFailedTitle": "创建失败",
-      "createFailedDesc": "请检查网络连接后重试",
-      "loadFailedTitle": "数据加载失败",
-      "noDataTitle": "暂无数据",
-      "noDataDesc": "你还没有创建任何挑战",
-      "checkinFailedTitle": "打卡失败",
-      "checkinFailedDesc": "网络错误，请稍后重试",
+      "walletRequiredTitle": "先连上钱包叭～",
+      "walletRequiredDesc": "把钱包牵上手，我们再一起种下这个挑战。",
+      "titleRequiredTitle": "先给愿望起个名字～",
+      "titleRequiredDesc": "可以写一个简单的小目标，比如「今天散步 10 分钟」。",
+      "witnessRequiredTitle": "还差一位见证人呀",
+      "witnessRequiredDesc": "填上 TA 的 ID 或地址，让这份约定有人一起守护。",
+      "createSuccessTitle": "新挑战已种下 🌱",
+      "createSuccessDesc": "它正安静躺在愿望看板里，等你来第一天打卡。",
+      "createFailedTitle": "这次没种成…",
+      "createFailedDesc": "网络有点小情绪，稍微等等或刷新一下再试试。",
+      "loadFailedTitle": "愿望看板加载出了点小状况",
+      "noDataTitle": "这里还空空的",
+      "noDataDesc": "可以先种下一个今天就能完成的小目标试试～",
+      "checkinSuccessTitle": "打卡成功！",
+      "checkinSuccessDesc": "记录已妥善收纳，还顺便抽中了一枚小表情～",
+      "checkinSuccessNoStickerDesc": "今天的努力已经记下来了，这次没抽中表情，下次还有很多机会～",
+      "checkinFailedTitle": "打卡路上有点卡",
+      "checkinFailedDesc": "网络信号有点不稳定，缓一缓再点一次就好。",
       "checkinExpiredTitle": "时间到啦",
-      "checkinExpiredDesc": "这个挑战已经完赛啦，去开启一个新的挑战吧～",
-      "reviewFailedTitle": "审核失败",
-      "reviewFailedDesc": "请检查网络连接后重试",
-      "settleConfirmMessage": "确定要结算该挑战吗？结算后将根据完成情况退还押金。",
-      "settleSuccessTitle": "结算完成",
+      "checkinExpiredDesc": "这个挑战已经完赛啦，给自己点个赞，再开一个新的～",
+      "reviewFailedTitle": "审核没走通",
+      "reviewFailedDesc": "网络有点抽风，稍等几秒再轻点一次就好。",
+      "settleConfirmMessage": "要结算这个挑战吗？结算后会按完成情况退还押金，也算给这段旅程画个句号～",
+      "settleSuccessTitle": "挑战结算完成 ✅",
       "statusLabel": "状态",
       "approvedDaysLabel": "通过天数",
-      "settleFailedTitle": "结算失败",
-      "retryLater": "请稍后重试"
+      "settleFailedTitle": "结算暂时没成功",
+      "retryLater": "稍后再试试就好～",
+      "noStickerSuffix": "本次暂未抽中表情奖励，下次继续加油！"
     },
     "modal": {
       "header": {

@@ -8,6 +8,7 @@ import { useFollowPrediction } from "@/hooks/useFollowPrediction";
 import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { toast } from "@/lib/toast";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";
@@ -387,6 +388,7 @@ export function usePredictionDetail() {
         else setOrderMsg(tTrading("orderFlow.filled"));
         setAmountInput("");
         await refreshUserOrders();
+        toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
         return;
       }
 
@@ -463,6 +465,7 @@ export function usePredictionDetail() {
         setOrderMsg(tTrading("orderFlow.orderSuccess"));
         setAmountInput("");
         await refreshUserOrders();
+        toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
       } else {
         throw new Error(json.message || tTrading("orderFlow.orderFailedFallback"));
       }
@@ -482,6 +485,7 @@ export function usePredictionDetail() {
         }
       }
       setOrderMsg(msg);
+      toast.error(tTrading("toast.orderFailedTitle"), msg || tTrading("toast.orderFailedDesc"));
     } finally {
       setIsSubmitting(false);
     }
