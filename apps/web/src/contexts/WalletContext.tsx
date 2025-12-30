@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, ReactNode, useEffect, useState, useCallback } from "react";
 import { useWalletConnection, type WalletState, type WalletType } from "../lib/useWalletConnection";
 import {
   detectWallets,
@@ -48,6 +48,10 @@ interface WalletContextType extends WalletState {
   balanceEth: string | null;
   balanceLoading: boolean;
   provider: any;
+  // SIWE 认证状态
+  isAuthenticated: boolean;
+  authAddress: string | null;
+  checkAuth: () => Promise<void>;
 }
 
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -64,11 +68,70 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     chainIdHex: walletState.chainId,
   });
 
-  const { siweLogin } = useSiweAuth({
+  const { siweLogin: siweLoginBase } = useSiweAuth({
     providerRef: currentProviderRef,
     account: walletState.account,
     chainIdHex: walletState.chainId,
   });
+
+  // SIWE 认证状态
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authAddress, setAuthAddress] = useState<string | null>(null);
+  const authCheckingRef = React.useRef(false);
+  const siweLoggingInRef = React.useRef(false);
+
+  // 检查当前认证状态（带防重复）
+  const checkAuth = useCallback(async () => {
+    // 防止重复调用
+    if (authCheckingRef.current) return;
+    authCheckingRef.current = true;
+    try {
+      const res = await fetch("/api/auth/me", { method: "GET" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.address) {
+          setIsAuthenticated(true);
+          setAuthAddress(data.address);
+          return;
+        }
+      }
+      setIsAuthenticated(false);
+      setAuthAddress(null);
+    } catch {
+      setIsAuthenticated(false);
+      setAuthAddress(null);
+    } finally {
+      authCheckingRef.current = false;
+    }
+  }, []);
+
+  // 包装 siweLogin，成功后更新状态（带防重复）
+  const siweLogin = useCallback(async () => {
+    // 如果已认证，直接返回成功
+    if (isAuthenticated && authAddress) {
+      return { success: true, address: authAddress };
+    }
+    // 防止重复调用
+    if (siweLoggingInRef.current) {
+      return { success: false, error: "正在登录中，请稍候" };
+    }
+    siweLoggingInRef.current = true;
+    try {
+      const result = await siweLoginBase();
+      if (result.success && result.address) {
+        setIsAuthenticated(true);
+        setAuthAddress(result.address);
+      }
+      return result;
+    } finally {
+      siweLoggingInRef.current = false;
+    }
+  }, [siweLoginBase, isAuthenticated, authAddress]);
+
+  // 初始化时检查认证状态（仅执行一次）
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   useEffect(() => {
     if (walletState.account && rawProvider) {
@@ -118,6 +181,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     refreshBalance: () => refreshBalance(),
     switchNetwork,
     provider: rawProvider,
+    // SIWE 认证状态
+    isAuthenticated,
+    authAddress,
+    checkAuth,
   };
 
   return <WalletContext.Provider value={contextValue}>{children}</WalletContext.Provider>;

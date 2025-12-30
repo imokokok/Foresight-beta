@@ -138,10 +138,9 @@ export default function CreateFlagModal({
   defaultDesc = "",
   isOfficial = false,
 }: CreateFlagModalProps) {
-  const { account, siweLogin } = useWallet();
+  const { account, siweLogin, isAuthenticated, checkAuth } = useWallet();
   const { user } = useAuth();
   const tFlags = useTranslations("flags");
-  const [siweChecked, setSiweChecked] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(defaultTitle);
@@ -161,9 +160,10 @@ export default function CreateFlagModal({
       setDeadline("");
       setWitnessId("");
       setStep(1);
-      setSiweChecked(false);
+      // 打开时检查认证状态
+      checkAuth();
     }
-  }, [isOpen, defaultTitle, defaultDesc, isOfficial]);
+  }, [isOpen, defaultTitle, defaultDesc, isOfficial, checkAuth]);
 
   useEffect(() => {
     if (!isOfficial || !defaultTemplateId) return;
@@ -213,6 +213,7 @@ export default function CreateFlagModal({
   }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc, tFlags]);
 
   const handleSubmit = async () => {
+    // 检查是否有钱包连接或 Supabase 用户
     if (!user && !account) {
       toast.warning(tFlags("toast.walletRequiredTitle"), tFlags("toast.walletRequiredDesc"));
       return;
@@ -229,15 +230,16 @@ export default function CreateFlagModal({
     try {
       setLoading(true);
 
-      // 如果使用钱包登录，先确保 SIWE 会话已建立
-      if (account && !user && !siweChecked) {
+      // 如果使用钱包但未通过 SIWE 认证，先进行认证
+      if (account && !isAuthenticated) {
         const siweResult = await siweLogin();
-        setSiweChecked(true);
         if (!siweResult.success) {
           toast.error("验证失败", siweResult.error || "请重新签名验证钱包");
           setLoading(false);
           return;
         }
+        // 等待一下让 cookie 生效
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const payload: any = {

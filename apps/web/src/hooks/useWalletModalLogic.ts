@@ -175,46 +175,70 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     }
     setSelectedWallet(walletType);
     try {
+      // 步骤 1: 连接钱包
       setWalletStep("connecting");
       await connectWallet(walletType as any);
+      
+      // 步骤 2: 请求权限（可选，快速跳过）
       setPermLoading(true);
       setWalletStep("permissions");
-      await requestWalletPermissions();
+      try {
+        await requestWalletPermissions();
+      } catch {
+        // 权限请求失败不阻塞流程
+      }
       setPermLoading(false);
+      
+      // 步骤 3: SIWE 签名认证
       setSiweLoading(true);
       setWalletStep("sign");
       const res = await siweLogin();
       setSiweLoading(false);
+      
       if (!res.success) {
         console.error("Sign-in with wallet failed:", res.error);
-      } else {
-        if (auth?.refreshSession) {
-          await auth.refreshSession();
-        }
-        const addrCheck = String(res.address || account || "").toLowerCase();
-        if (addrCheck) {
-          try {
-            const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
-            const d = await r.json();
-            const p = d?.profile;
-            if (!p?.username || !p?.email) {
-              setShowProfileForm(true);
-              setWalletStep("profile");
-              setUsername(String(p?.username || ""));
-              setEmail(String(p?.email || ""));
-            } else {
-              setWalletStep("completed");
-              onClose();
-            }
-          } catch {}
-        }
+        // SIWE 失败，重置状态让用户可以重试
+        setWalletStep("select");
+        setSelectedWallet(null);
+        return;
       }
-      setMultiLoading(true);
-      setWalletStep("multisig");
-      await multisigSign();
-      setMultiLoading(false);
+      
+      // SIWE 成功，刷新会话
+      if (auth?.refreshSession) {
+        await auth.refreshSession();
+      }
+      
+      // 检查用户 profile
+      const addrCheck = String(res.address || account || "").toLowerCase();
+      if (addrCheck) {
+        try {
+          const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
+          const d = await r.json();
+          const p = d?.profile;
+          if (!p?.username || !p?.email) {
+            // 需要完善 profile
+            setShowProfileForm(true);
+            setWalletStep("profile");
+            setUsername(String(p?.username || ""));
+            setEmail(String(p?.email || ""));
+            setSelectedWallet(null);
+            return;
+          }
+        } catch {}
+      }
+      
+      // 登录完成
+      setWalletStep("completed");
+      setSelectedWallet(null);
+      onClose();
+      
     } catch (error) {
       console.error("Wallet connection failed:", error);
+      // 出错时重置状态
+      setWalletStep("select");
+      setSiweLoading(false);
+      setPermLoading(false);
+      setMultiLoading(false);
     } finally {
       setSelectedWallet(null);
     }
