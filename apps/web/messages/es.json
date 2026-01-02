@@ -116,7 +116,8 @@
       "views": "Vistas",
       "viewHot": "Por número de seguidores",
       "viewNew": "Por fecha de creación",
-      "viewTop": "Por métricas combinadas"
+      "viewTop": "Por métricas combinadas",
+      "gotoMarketCta": "Explorar mercados"
     },
     "form": {
       "subjectPlaceholder": "Nombre del tema",

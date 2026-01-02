@@ -116,7 +116,8 @@
       "views": "Views",
       "viewHot": "By followers",
       "viewNew": "By creation time",
-      "viewTop": "By combined metrics"
+      "viewTop": "By combined metrics",
+      "gotoMarketCta": "Explore markets"
     },
     "form": {
       "subjectPlaceholder": "Subject name",

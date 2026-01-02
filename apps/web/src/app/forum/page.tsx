@@ -136,10 +136,11 @@ export default function ForumPage() {
 
           <button
             type="button"
+            onClick={() => router.push("/trending")}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 text-xs font-bold border border-purple-200 shadow-md shadow-purple-200/80 hover:from-purple-400 hover:to-pink-400 hover:text-white hover:shadow-lg hover:shadow-purple-300/90 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
           >
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-            {tForum("form.submit")}
+            {tForum("sidebar.gotoMarketCta")}
           </button>
         </div>
 
@@ -206,6 +207,14 @@ export default function ForumPage() {
         <div className="flex flex-col h-full">
           <div className="lg:hidden flex items-center justify-between mb-4 px-2 pt-3">
             <h1 className="text-2xl font-black text-purple-700">{tForum("sidebarTitle")}</h1>
+            <button
+              type="button"
+              onClick={() => router.push("/trending")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-sm shadow-purple-200/70 hover:from-purple-400 hover:to-pink-400 hover:text-white hover:shadow-md hover:shadow-purple-300/80 active:scale-[0.97] transition-all"
+            >
+              <Flame className="w-3.5 h-3.5" />
+              {tForum("sidebar.gotoMarketCta")}
+            </button>
           </div>
 
           <div className="flex flex-col flex-1 px-2 pb-4">

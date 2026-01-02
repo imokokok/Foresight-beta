@@ -443,7 +443,8 @@
       "views": "보기",
       "viewHot": "팔로워 수 순",
       "viewNew": "생성일 순",
-      "viewTop": "종합 지표 순"
+      "viewTop": "종합 지표 순",
+      "gotoMarketCta": "마켓 둘러보기"
     },
     "form": {
       "subjectPlaceholder": "주제 이름",

@@ -116,7 +116,8 @@
       "views": "视图",
       "viewHot": "按关注数排序",
       "viewNew": "按创建时间排序",
-      "viewTop": "综合指标排序"
+      "viewTop": "综合指标排序",
+      "gotoMarketCta": "去市场看看"
     },
     "form": {
       "subjectPlaceholder": "主体名称",
