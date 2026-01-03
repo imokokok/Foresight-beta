@@ -2,8 +2,10 @@ import { useMemo, useState, useCallback, useRef } from "react";
 import { useCategories } from "@/hooks/useQueries";
 import { Activity, Globe } from "lucide-react";
 import {
-  normalizeCategory,
+  CATEGORY_MAPPING,
+  ID_TO_CATEGORY_NAME,
   TRENDING_CATEGORIES,
+  normalizeCategoryId,
 } from "@/features/trending/trendingModel";
 import { CATEGORIES } from "./forumConfig";
 import {
@@ -29,24 +31,20 @@ export function useForumList() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { data: categoriesData } = useCategories();
-  
+
   // 滚动位置保持
   const scrollPositionRef = useRef<number>(0);
 
+  const categoryFilter =
+    activeCategory === "all" ? undefined : ID_TO_CATEGORY_NAME[activeCategory] || activeCategory;
+
   // 使用无限滚动查询
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    error,
-    refetch,
-  } = useInfinitePredictions({
-    category: activeCategory === "all" ? undefined : activeCategory,
-    search: searchQuery.trim() || undefined,
-    pageSize: PAGE_SIZE,
-  });
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error, refetch } =
+    useInfinitePredictions({
+      category: categoryFilter,
+      search: searchQuery.trim() || undefined,
+      pageSize: PAGE_SIZE,
+    });
 
   // 展平分页数据
   const predictions = useMemo(() => flattenInfiniteData(data), [data]);
@@ -75,25 +73,26 @@ export function useForumList() {
             return null;
           }
           const name = rawName === "其他" ? "更多" : rawName;
-          if (seen.has(name)) {
+          const id = normalizeCategoryId(name);
+          if (seen.has(id)) {
             return null;
           }
-          seen.add(name);
+          seen.add(id);
           return {
-            id: name,
+            id,
             name,
             icon: Activity,
           };
         })
         .filter(Boolean) as ForumCategory[];
 
-      const order = TRENDING_CATEGORIES.map((cat) => cat.name);
+      const order = TRENDING_CATEGORIES.map(
+        (cat) => CATEGORY_MAPPING[cat.name] || normalizeCategoryId(cat.name)
+      );
 
       const sortedDynamic = [...dynamic].sort((a, b) => {
-        const na = normalizeCategory(a.name);
-        const nb = normalizeCategory(b.name);
-        const ia = order.indexOf(na);
-        const ib = order.indexOf(nb);
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
         if (ia !== -1 && ib !== -1) return ia - ib;
         if (ia !== -1) return -1;
         if (ib !== -1) return 1;
@@ -130,7 +129,7 @@ export function useForumList() {
     }
   }, [filtered, selectedTopicId]);
 
-  const activeCat = normalizeCategory(currentTopic?.category);
+  const activeCat = normalizeCategoryId(currentTopic?.category);
 
   // 加载更多
   const loadMore = useCallback(() => {

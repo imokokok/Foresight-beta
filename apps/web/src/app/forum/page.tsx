@@ -11,7 +11,6 @@ import { useForumList } from "./useForumList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations, useLocale } from "@/lib/i18n";
-import { CATEGORY_MAPPING, normalizeCategory } from "@/features/trending/trendingModel";
 
 export default function ForumPage() {
   const router = useRouter();
@@ -240,14 +239,8 @@ export default function ForumPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   {categories.map((cat) => {
                     const isActive = activeCategory === cat.id;
-                    const normalizedName = normalizeCategory(cat.name);
-                    const mappedId = CATEGORY_MAPPING[cat.id] || CATEGORY_MAPPING[normalizedName];
                     const label =
-                      cat.id === "all"
-                        ? tForum("allTopics")
-                        : mappedId
-                          ? tForum(`form.category.${mappedId}`)
-                          : cat.name;
+                      cat.id === "all" ? tForum("allTopics") : tForum(`form.category.${cat.id}`);
                     return (
                       <button
                         key={cat.id}

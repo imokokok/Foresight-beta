@@ -1,19 +1,18 @@
 import { Activity, Globe } from "lucide-react";
 
-export const ALLOWED_CATEGORIES = [
-  "科技",
-  "娱乐",
-  "时政",
-  "天气",
-  "体育",
-  "商业",
-  "加密货币",
-  "更多",
+export const CATEGORIES = [
+  { id: "all", name: "All Topics", icon: Globe },
+  { id: "tech", name: "科技", icon: Activity },
+  { id: "entertainment", name: "娱乐", icon: Activity },
+  { id: "politics", name: "时政", icon: Activity },
+  { id: "weather", name: "天气", icon: Activity },
+  { id: "sports", name: "体育", icon: Activity },
+  { id: "business", name: "商业", icon: Activity },
+  { id: "crypto", name: "加密货币", icon: Activity },
+  { id: "more", name: "更多", icon: Activity },
 ] as const;
 
-export const CATEGORIES = [{ id: "all", name: "All Topics", icon: Globe }].concat(
-  ALLOWED_CATEGORIES.map((c) => ({ id: c, name: c, icon: Activity }))
-);
+export const ALLOWED_CATEGORIES = CATEGORIES.filter((c) => c.id !== "all").map((c) => c.id);
 
 export type CategoryStyle = {
   chip: string;
@@ -146,7 +145,8 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
     chip: "bg-brand-accent/15 text-brand-accent border-brand-accent/40 hover:bg-brand-accent/25 dark:bg-brand-accent/10 dark:border-brand-accent/25 dark:hover:bg-brand-accent/15",
     chipActive: "bg-brand-accent/80 text-white border-brand-accent shadow-brand",
     badge: "bg-brand-accent/15 text-brand-accent dark:bg-brand-accent/15 dark:text-fuchsia-200",
-    border: "border-brand-accent/20 hover:border-brand-accent/60 dark:border-brand-accent/15 dark:hover:border-brand-accent/35",
+    border:
+      "border-brand-accent/20 hover:border-brand-accent/60 dark:border-brand-accent/15 dark:hover:border-brand-accent/35",
     softBg:
       "bg-gradient-to-br from-brand-accent/10 via-white/0 to-white/0 dark:from-brand-accent/15 dark:via-transparent dark:to-transparent",
     accentText: "text-brand-accent",

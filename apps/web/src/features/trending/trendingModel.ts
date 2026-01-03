@@ -146,6 +146,8 @@ export const ID_TO_CATEGORY_NAME: Record<string, string> = {
   more: "更多",
 };
 
+const CATEGORY_IDS = Object.values(CATEGORY_MAPPING);
+
 export const normalizeCategory = (raw?: string): string => {
   const s = String(raw || "")
     .trim()
@@ -177,6 +179,19 @@ export const normalizeCategory = (raw?: string): string => {
     return "加密货币";
   if (["more", "更多", "other", "其他"].includes(s)) return "更多";
   return "科技";
+};
+
+export const normalizeCategoryId = (raw?: string): string => {
+  const s = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (!s) return "tech";
+  if (CATEGORY_IDS.includes(s)) return s;
+  const name = normalizeCategory(s);
+  const id = CATEGORY_MAPPING[name];
+  if (id) return id;
+  if (ID_TO_CATEGORY_NAME[s]) return s;
+  return "tech";
 };
 
 export const getFallbackEventImage = (title: string) =>

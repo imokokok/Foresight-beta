@@ -12,7 +12,7 @@ import {
   Bell,
   ChevronUp,
 } from "lucide-react";
-import { CATEGORY_MAPPING, normalizeCategory } from "@/features/trending/trendingModel";
+import { normalizeCategory } from "@/features/trending/trendingModel";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 import { TopicCardSkeletonList } from "./TopicCardSkeleton";
 import { t, useLocale } from "@/lib/i18n";
@@ -283,8 +283,7 @@ export const ForumSidebar = memo(function ForumSidebar({
             <div className="grid grid-cols-3 gap-2.5">
               {otherCategories.map((cat) => {
                 const isActive = activeCategory === cat.id;
-                const mappedId = CATEGORY_MAPPING[cat.id];
-                const label = mappedId ? t(`forum.form.category.${mappedId}`) : cat.name;
+                const label = t(`forum.form.category.${cat.id}`);
                 return (
                   <button
                     key={cat.id}
