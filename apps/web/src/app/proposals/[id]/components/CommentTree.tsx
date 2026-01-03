@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { CommentView } from "../useProposalDetail";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 
 export function CommentTree({
   comments,
@@ -99,7 +100,7 @@ function CommentNode({
                 {displayName(comment.user_id)}
               </span>
               <span className="text-[10px] text-slate-400 font-medium">
-                {new Date(comment.created_at).toLocaleString()}
+                {formatDateTime(comment.created_at)}
               </span>
               {threadAuthorId && threadAuthorId === comment.user_id && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">

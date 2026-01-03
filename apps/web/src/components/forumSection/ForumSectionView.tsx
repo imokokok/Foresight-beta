@@ -4,6 +4,7 @@ import React from "react";
 import Button from "@/components/ui/Button";
 import DatePicker from "@/components/ui/DatePicker";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 import type { CommentView, ForumSectionViewProps } from "./types";
 import { ReplyBox } from "./ReplyBox";
 
@@ -52,7 +53,7 @@ export function ForumSectionView({
         <div key={node.id} className="mt-3 pl-0" style={{ marginLeft: depth * 16 }}>
           <div className="text-sm text-gray-800">
             <span className="text-purple-700 font-medium mr-2">{displayName(node.user_id)}</span>
-            <span className="text-gray-400">{new Date(node.created_at).toLocaleString()}</span>
+            <span className="text-gray-400">{formatDateTime(node.created_at)}</span>
           </div>
           <div className="mt-1 text-gray-700 break-words">{node.content}</div>
           <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
@@ -184,7 +185,7 @@ export function ForumSectionView({
                   <div className="text-xs text-gray-400 mt-1">
                     {tForum("thread.meta.prefix")}{" "}
                     <span className="text-indigo-700 font-medium">{displayName(t.user_id)}</span>{" "}
-                    {tForum("thread.meta.in")} {new Date(t.created_at).toLocaleString()}{" "}
+                    {tForum("thread.meta.in")} {formatDateTime(t.created_at)}{" "}
                     {tForum("thread.meta.suffix")}
                   </div>
                 </div>

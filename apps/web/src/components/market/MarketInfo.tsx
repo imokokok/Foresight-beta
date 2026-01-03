@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 
 interface MarketInfoProps {
   prediction: PredictionDetail;
@@ -217,7 +218,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                   <Clock className="w-4 h-4 text-gray-400" />
                   {tMarket("rules.resolutionTimeValue").replace(
                     "{deadline}",
-                    new Date(prediction.deadline).toLocaleString()
+                    formatDateTime(prediction.deadline)
                   )}
                 </div>
               </div>

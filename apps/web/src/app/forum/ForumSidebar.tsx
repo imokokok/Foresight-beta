@@ -16,6 +16,7 @@ import { normalizeCategory } from "@/features/trending/trendingModel";
 import type { ForumCategory, PredictionItem } from "./useForumList";
 import { TopicCardSkeletonList } from "./TopicCardSkeleton";
 import { t, useLocale } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 // 话题卡片预估高度（用于虚拟列表计算）
 const TOPIC_CARD_HEIGHT = 110;
@@ -197,10 +198,7 @@ export const ForumSidebar = memo(function ForumSidebar({
     const map = new Map<number, string>();
     filtered.forEach((topic) => {
       if (topic.created_at) {
-        const date = new Date(topic.created_at);
-        if (Number.isFinite(date.getTime())) {
-          map.set(topic.id, date.toLocaleDateString(locale));
-        }
+        map.set(topic.id, formatDate(topic.created_at, locale));
       }
     });
     return map;

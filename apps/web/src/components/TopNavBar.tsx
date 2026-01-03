@@ -10,6 +10,7 @@ import MobileMenu from "./MobileMenu";
 import { useTopNavBarLogic } from "./topNavBar/useTopNavBarLogic";
 import { WalletSection } from "./topNavBar/WalletSection";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 
 export default function TopNavBar() {
   const nav = useTopNavBarLogic();
@@ -71,7 +72,7 @@ export default function TopNavBar() {
                           </div>
                         )}
                         <div className="mt-0.5 text-[10px] text-gray-400">
-                          {new Date(item.created_at).toLocaleString()}
+                          {formatDateTime(item.created_at)}
                         </div>
                       </Link>
                     ))}

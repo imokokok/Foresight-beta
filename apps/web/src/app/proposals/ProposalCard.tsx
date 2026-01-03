@@ -3,6 +3,7 @@ import { MessageCircle, Share2, MoreHorizontal } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { formatAddress } from "@/lib/cn";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 
 import type { ProposalItem } from "./proposalsListUtils";
 
@@ -69,22 +70,11 @@ function ProposalCard({ proposal, onClick }: ProposalCardProps) {
   const createdAt = new Date(proposal.created_at);
   const now = new Date();
   const diffMs = now.getTime() - createdAt.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  let timeAgo: string;
-  if (diffMinutes < 1) {
-    timeAgo = tProposals("card.timeJustNow");
-  } else if (diffMinutes < 60) {
-    timeAgo = formatTranslation(tProposals("card.timeMinutesAgo"), { count: diffMinutes });
-  } else if (diffHours < 24) {
-    timeAgo = formatTranslation(tProposals("card.timeHoursAgo"), { count: diffHours });
-  } else if (diffDays < 7) {
-    timeAgo = formatTranslation(tProposals("card.timeDaysAgo"), { count: diffDays });
-  } else {
-    timeAgo = createdAt.toLocaleDateString();
-  }
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const timeAgo =
+    !Number.isFinite(createdAt.getTime()) || diffMs > sevenDaysMs || diffMs < 0
+      ? formatDate(createdAt)
+      : formatRelativeTime(createdAt, now);
   const statusRaw = String(proposal.review_status || "").trim();
   let statusLabel = tProposals("card.statusPending");
   let statusClass = "bg-amber-50 text-amber-600 border border-amber-200";

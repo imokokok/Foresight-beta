@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Flag, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 import type { ThreadView } from "../useProposalDetail";
 
 export type ProposalMainArticleProps = {
@@ -43,7 +44,7 @@ export function ProposalMainArticle({
             )}
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-slate-400 font-medium flex-wrap">
-            <span>{new Date(thread.created_at).toLocaleString()}</span>
+            <span>{formatDateTime(thread.created_at)}</span>
             <span>•</span>
             <span>#{thread.id}</span>
           </div>

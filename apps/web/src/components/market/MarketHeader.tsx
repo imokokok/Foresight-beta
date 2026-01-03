@@ -17,6 +17,7 @@ import { FollowButton } from "@/components/ui/FollowButton";
 import type { PredictionDetail } from "@/app/prediction/[id]/usePredictionDetail";
 import Link from "next/link";
 import { useTranslations } from "@/lib/i18n";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 interface MarketHeaderProps {
   prediction: PredictionDetail;
@@ -142,7 +143,7 @@ export function MarketHeader({
                 {tMarketHeader("totalVolume")}
               </div>
               <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
-                ${volume.toLocaleString()}
+                {formatCurrency(volume)}
               </div>
             </div>
           </div>
@@ -156,7 +157,7 @@ export function MarketHeader({
                 {tMarketHeader("liquidity")}
               </div>
               <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
-                ${liquidity.toLocaleString()}
+                {formatCurrency(liquidity)}
               </div>
             </div>
           </div>
@@ -184,7 +185,7 @@ export function MarketHeader({
                 {tMarketHeader("deadline")}
               </div>
               <div className="text-lg md:text-xl font-black text-[var(--foreground)] truncate">
-                {new Date(prediction.deadline).toLocaleDateString()}
+                {formatDate(prediction.deadline)}
               </div>
             </div>
           </div>

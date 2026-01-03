@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getFallbackEventImage } from "@/features/trending/trendingModel";
+import { formatNumber } from "@/lib/format";
 
 export type Category = {
   name: string;
@@ -126,7 +127,7 @@ function HeroMetricsSummary({
           {poolSizeLabel}
         </div>
         <div className="text-2xl font-black text-gray-900 font-mono tracking-tight">
-          ${(activeFollowers * 12.5).toLocaleString()}
+          ${formatNumber(activeFollowers * 12.5, undefined, { maximumFractionDigits: 0 })}
         </div>
       </div>
       <div className="w-px h-10 bg-gray-200" />
@@ -141,7 +142,7 @@ function HeroMetricsSummary({
             ))}
           </div>
           <span className="text-lg font-black text-gray-900 font-mono">
-            +{activeFollowers.toLocaleString()}
+            +{formatNumber(activeFollowers, undefined, { maximumFractionDigits: 0 })}
           </span>
         </div>
       </div>

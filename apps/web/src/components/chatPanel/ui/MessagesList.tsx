@@ -3,6 +3,7 @@
 import React, { memo } from "react";
 import EmptyState from "@/components/EmptyState";
 import { MessageSquare } from "lucide-react";
+import { formatDate, formatTime } from "@/lib/format";
 import type { ChatMessageView } from "../types";
 
 export type MessagesListProps = {
@@ -109,7 +110,7 @@ export const MessagesList = memo(function MessagesList({
             {dateChanged && (
               <div className="flex justify-center my-2">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-full px-3 py-0.5 backdrop-blur-md">
-                  {new Date(m.created_at).toLocaleDateString()}
+                  {formatDate(m.created_at)}
                 </span>
               </div>
             )}
@@ -130,10 +131,7 @@ export const MessagesList = memo(function MessagesList({
                   <div className="flex items-baseline gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <span className="font-medium">{displayName(m.user_id)}</span>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {new Date(m.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatTime(m.created_at)}
                     </span>
                   </div>
                 )}

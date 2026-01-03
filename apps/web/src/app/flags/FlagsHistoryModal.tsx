@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Users, ShieldCheck, CheckCircle2, Clock, History, Target } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";
 import { formatAddress } from "@/lib/cn";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 type HistoryItem = {
   id: string;
@@ -63,9 +64,7 @@ export function FlagsHistoryModal({
     const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
     const daysLabel = tFlags("card.time.daysLabel");
     challengeDurationText = `${totalDays} ${daysLabel}`;
-    const format = (d: Date) =>
-      `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-    challengeRangeText = `${format(startDay)} - ${format(endDay)}`;
+    challengeRangeText = `${formatDate(startDay)} - ${formatDate(endDay)}`;
   }
 
   const successConditionText = tFlags("history.successCondition.default");
@@ -304,7 +303,7 @@ export function FlagsHistoryModal({
                                 }`}
                               />
                               <div className="text-xs font-bold text-gray-400">
-                                {new Date(item.created_at).toLocaleString()}
+                                {formatDateTime(item.created_at)}
                               </div>
                             </div>
                             {item.review_status && item.review_status !== "pending" && (

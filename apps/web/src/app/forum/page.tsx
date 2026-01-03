@@ -11,6 +11,7 @@ import { useForumList } from "./useForumList";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations, useLocale } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 export default function ForumPage() {
   const router = useRouter();
@@ -303,9 +304,7 @@ export default function ForumPage() {
                                 {topic.category || tForum("categoryFallback")}
                               </span>
                               <span className="text-[10px] text-slate-400 font-medium">
-                                {topic.created_at
-                                  ? new Date(topic.created_at).toLocaleDateString(locale)
-                                  : ""}
+                                {topic.created_at ? formatDate(topic.created_at, locale) : ""}
                               </span>
                             </div>
                             <div className="text-sm sm:text-base font-bold text-slate-800 line-clamp-2">

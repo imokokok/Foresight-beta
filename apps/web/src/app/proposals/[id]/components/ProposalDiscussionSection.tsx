@@ -2,6 +2,7 @@
 
 import { MessageCircle } from "lucide-react";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 import type { CommentView, ThreadView } from "../useProposalDetail";
 import { CommentTree } from "./CommentTree";
 import { ChatInput } from "./chat/ChatInput";
@@ -59,7 +60,7 @@ export function ProposalDiscussionSection({
             <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
               <span>{displayName(thread.user_id)}</span>
               <span>·</span>
-              <span>{new Date(thread.created_at).toLocaleString()}</span>
+              <span>{formatDateTime(thread.created_at)}</span>
             </p>
           </div>
         </div>

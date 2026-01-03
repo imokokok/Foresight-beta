@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ExternalLink, Tag, TrendingUp } from "lucide-react";
 import type { ThreadView } from "../../useProposalDetail";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 
 interface ChatSidebarProps {
   thread: ThreadView;
@@ -61,9 +62,7 @@ export function ChatSidebar({ thread, displayName, stats }: ChatSidebarProps) {
 
             <div className="flex items-center justify-between text-sm">
               <span className="text-slate-500">{tProposals("detailSidebar.createdLabel")}</span>
-              <span className="text-slate-700 font-medium">
-                {new Date(thread.created_at).toLocaleDateString()}
-              </span>
+              <span className="text-slate-700 font-medium">{formatDate(thread.created_at)}</span>
             </div>
           </div>
         </div>

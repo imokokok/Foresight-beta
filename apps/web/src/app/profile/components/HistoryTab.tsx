@@ -6,6 +6,7 @@ import { Clock, ChevronRight, History as HistoryIcon } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
 
 export function HistoryTab({ initialHistory }: { initialHistory?: any[] }) {
@@ -80,7 +81,7 @@ export function HistoryTab({ initialHistory }: { initialHistory?: any[] }) {
                     </span>
                   )}
                   <span className="text-[10px] text-gray-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {new Date(item.viewed_at).toLocaleString()}
+                    <Clock className="w-3 h-3" /> {formatDateTime(item.viewed_at)}
                   </span>
                 </div>
                 <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import type { Database } from "@/lib/database.types";
 import { useTranslations } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -151,7 +152,7 @@ export default function ReviewPage() {
                             {item.category || tProposals("review.uncategorized")}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            {new Date(item.created_at).toLocaleString()}
+                            {formatDateTime(item.created_at)}
                           </span>
                         </div>
                       </div>

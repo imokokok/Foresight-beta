@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
-
+import { formatNumber } from "@/lib/format";
 type AnimatedNumberProps = {
   value: number;
   duration?: number;
@@ -33,9 +33,9 @@ export function AnimatedNumber({
   const display = useTransform(spring, (latest) => {
     const num = Math.round(latest);
     if (formatOptions) {
-      return new Intl.NumberFormat(undefined, formatOptions).format(num);
+      return formatNumber(num, undefined, formatOptions);
     }
-    return num.toLocaleString();
+    return formatNumber(num);
   });
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export function AnimatedCounter({ value, duration = 0.6, className = "" }: Anima
         transform: displayValue !== value ? "scale(1.05)" : "scale(1)",
       }}
     >
-      {displayValue.toLocaleString()}
+      {formatNumber(displayValue)}
     </span>
   );
 }

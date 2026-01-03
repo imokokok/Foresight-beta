@@ -6,6 +6,7 @@ import { Heart, Users, Target } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { formatDate } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 
@@ -128,7 +129,7 @@ export function FollowingTab() {
                   {item.deadline && (
                     <span>
                       {formatTranslation(tProfile("following.labels.deadline"), {
-                        date: new Date(item.deadline).toLocaleDateString(),
+                        date: formatDate(item.deadline),
                       })}
                     </span>
                   )}

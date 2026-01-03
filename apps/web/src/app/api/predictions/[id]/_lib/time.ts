@@ -1,16 +1,8 @@
-export function getTimeAgo(timestamp: string): string {
-  const now = new Date();
-  const created = new Date(timestamp);
-  const diffMs = now.getTime() - created.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+import { formatRelativeTime } from "@/lib/format";
 
-  if (diffMins < 1) return "刚刚";
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 30) return `${diffDays}天前`;
-  return "超过一个月前";
+export function getTimeAgo(timestamp: string): string {
+  if (!timestamp) return "";
+  return formatRelativeTime(timestamp);
 }
 
 export function getTimeRemaining(deadline: string): string {
