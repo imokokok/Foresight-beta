@@ -1,0 +1,1 @@
+SELECT id, name, rarity FROM public.emojis ORDER BY id;

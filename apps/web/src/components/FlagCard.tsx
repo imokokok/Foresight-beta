@@ -286,7 +286,11 @@ export const FlagCard = memo(function FlagCard({
                   (() => {
                     const now = Date.now();
                     const end = new Date(flag.deadline).getTime();
-                    const canSettle = Number.isFinite(end) && end < now;
+                    const canSettle =
+                      Number.isFinite(end) &&
+                      end < now &&
+                      flag.status !== "success" &&
+                      flag.status !== "failed";
                     return canSettle ? (
                       <button
                         type="button"

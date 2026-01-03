@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { getSessionAddress } from "@/lib/serverUtils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,6 +41,15 @@ export async function POST(req: NextRequest) {
 
     if (!user_id || !sticker_id) {
       return NextResponse.json({ error: "Missing params" }, { status: 400 });
+    }
+
+    const sessionUser = await getSessionAddress(req as any);
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (sessionUser.toLowerCase() !== String(user_id).toLowerCase()) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const client = supabaseAdmin || getClient();

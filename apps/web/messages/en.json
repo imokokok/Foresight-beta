@@ -1301,6 +1301,22 @@
         }
       }
     },
+    "rules": {
+      "title": "Rules & Rewards",
+      "tiers": "Tiers",
+      "dropRates": "Drop Rates",
+      "light": "Light (1-7 days): 40% Drop",
+      "standard": "Standard (8-14 days): 70% Drop",
+      "intense": "Intense (15-30 days): 100% Drop",
+      "hardcore": "Hardcore (>30 days): 100% Drop (Higher Rarity)"
+    },
+    "settleModal": {
+      "title": "Settle Challenge",
+      "subtitle": "Review your journey and claim rewards",
+      "confirm": "Confirm Settle",
+      "cancel": "Cancel",
+      "warning": "You cannot check in after settlement. Rewards will be calculated based on your progress."
+    },
     "checkin": {
       "title": "Capturing Your Grit 📝",
       "subtitle": "Every small step forward deserves a huge high-five!",

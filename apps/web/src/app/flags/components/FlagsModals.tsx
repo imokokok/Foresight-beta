@@ -9,6 +9,7 @@ import { FlagsHistoryModal } from "../FlagsHistoryModal";
 import type { OfficialTemplate } from "../flagsConfig";
 import type { FlagsData } from "../useFlagsData";
 import { CheckinModal } from "./CheckinModal";
+import { SettleModal } from "./SettleModal";
 import { OfficialTemplatesModal } from "./OfficialTemplatesModal";
 import type { FlagItem } from "@/components/FlagCard";
 
@@ -35,7 +36,9 @@ export type FlagsPageViewUIState = {
     review_reason?: string;
   }>;
   reviewSubmittingId: string | null;
-  settlingId: number | null;
+  settleOpen: boolean;
+  settleFlag: FlagItem | null;
+  settleSubmitting: boolean;
   stickerOpen: boolean;
   earnedSticker: StickerItem | null;
   galleryOpen: boolean;
@@ -55,6 +58,8 @@ export type FlagsPageViewUIActions = {
   openHistory: (flag: FlagItem) => void;
   handleReview: (checkinId: string, action: "approve" | "reject") => void;
   settleFlag: (flag: FlagItem) => void;
+  submitSettle: () => void;
+  setSettleOpen: (open: boolean) => void;
   handleTemplateClick: (template: OfficialTemplate) => void;
   openWitnessTasks: () => void;
   setCreateOpen: (open: boolean) => void;
@@ -100,6 +105,9 @@ export function FlagsModals({
     historyLoading,
     historyItems,
     reviewSubmittingId,
+    settleOpen,
+    settleFlag,
+    settleSubmitting,
     stickerOpen,
     earnedSticker,
     galleryOpen,
@@ -124,6 +132,8 @@ export function FlagsModals({
     setCheckinNote,
     setCheckinImage,
     submitCheckin,
+    submitSettle,
+    setSettleOpen,
     handleReview,
     openWitnessTasks,
   } = uiActions;
@@ -181,6 +191,15 @@ export function FlagsModals({
         onSubmit={submitCheckin}
         onNoteChange={setCheckinNote}
         onImageChange={setCheckinImage}
+      />
+
+      <SettleModal
+        isOpen={settleOpen}
+        flag={settleFlag}
+        tFlags={tFlags}
+        submitting={settleSubmitting}
+        onClose={() => setSettleOpen(false)}
+        onConfirm={submitSettle}
       />
 
       <FlagsHistoryModal

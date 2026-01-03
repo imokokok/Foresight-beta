@@ -26,6 +26,7 @@ import {
   Heart,
   Star,
   Compass,
+  Trophy,
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import DatePicker from "@/components/ui/DatePicker";
@@ -536,6 +537,33 @@ export default function CreateFlagModal({
                             placeholder={tFlags("modal.form.targetDatePlaceholder")}
                             className="w-full"
                           />
+                        </div>
+
+                        <div className="p-5 bg-gray-50 rounded-[2rem] space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-black text-gray-700">
+                            <Trophy className="w-4 h-4 text-amber-500" />
+                            {tFlags("rules.title")}
+                          </div>
+                          <div className="space-y-2 text-xs font-bold text-gray-500">
+                            <div className="grid grid-cols-1 gap-1.5">
+                              <p className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                                {tFlags("rules.light")}
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                                {tFlags("rules.standard")}
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+                                {tFlags("rules.intense")}
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+                                {tFlags("rules.hardcore")}
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="bg-purple-50/50 p-6 rounded-[2rem] flex items-center gap-4">

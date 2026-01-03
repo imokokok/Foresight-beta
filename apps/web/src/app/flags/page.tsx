@@ -74,7 +74,9 @@ export default function FlagsPage() {
     }>
   >([]);
   const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(null);
-  const [settlingId, setSettlingId] = useState<number | null>(null);
+  const [settleOpen, setSettleOpen] = useState(false);
+  const [settleFlagData, setSettleFlagData] = useState<FlagItem | null>(null);
+  const [settleSubmitting, setSettleSubmitting] = useState(false);
   const [stickerOpen, setStickerOpen] = useState(false);
   const [earnedSticker, setEarnedSticker] = useState<StickerItem | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -231,10 +233,16 @@ export default function FlagsPage() {
     }
   };
 
-  const settleFlag = async (flag: FlagItem) => {
-    if (!confirm(tFlags("toast.settleConfirmMessage"))) return;
+  const settleFlag = (flag: FlagItem) => {
+    setSettleFlagData(flag);
+    setSettleOpen(true);
+  };
+
+  const submitSettle = async () => {
+    if (!settleFlagData) return;
     try {
-      setSettlingId(flag.id);
+      setSettleSubmitting(true);
+      const flag = settleFlagData;
       const res = await fetch(`/api/flags/${flag.id}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -243,6 +251,7 @@ export default function FlagsPage() {
       if (!res.ok) throw new Error("Settle failed");
       const ret = await res.json();
       loadFlags();
+      setSettleOpen(false);
 
       if (ret.sticker_earned) {
         if (ret.sticker) {
@@ -270,7 +279,7 @@ export default function FlagsPage() {
         String((e as any)?.message || tFlags("toast.retryLater"))
       );
     } finally {
-      setSettlingId(null);
+      setSettleSubmitting(false);
     }
   };
 
@@ -319,7 +328,9 @@ export default function FlagsPage() {
         historyLoading,
         historyItems,
         reviewSubmittingId,
-        settlingId,
+        settleOpen,
+        settleFlag: settleFlagData,
+        settleSubmitting,
         stickerOpen,
         earnedSticker,
         galleryOpen,
@@ -338,6 +349,8 @@ export default function FlagsPage() {
         openHistory,
         handleReview,
         settleFlag,
+        submitSettle,
+        setSettleOpen,
         handleTemplateClick,
         openWitnessTasks,
         setCreateOpen,
