@@ -136,15 +136,13 @@ export default function FilterSort({
     { id: "ended", label: t("filters.status.ended"), color: "bg-gray-100 text-gray-500" },
   ];
 
-  // 监听外部筛选条件变化（使用具体属性值作为依赖项，确保能正确检测变化）
   useEffect(() => {
     if (initialFilters) {
-      // 只有当值有定义时才更新，避免重置为 undefined
       if (initialFilters.category !== undefined) setActiveCategory(initialFilters.category);
       if (initialFilters.sortBy) setSortBy(initialFilters.sortBy);
       if (initialFilters.status !== undefined) setStatus(initialFilters.status);
     }
-  }, [initialFilters?.category, initialFilters?.sortBy, initialFilters?.status]);
+  }, [initialFilters]);
 
   // 更新父组件
   useEffect(() => {

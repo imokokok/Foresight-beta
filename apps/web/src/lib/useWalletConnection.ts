@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WalletInfo } from "./walletDetection";
 import {
   detectWallets,
@@ -28,6 +28,19 @@ type Params = {
 
 const LOGOUT_FLAG = "fs_wallet_logged_out";
 
+function setupEventListeners(
+  provider: any,
+  handleAccountsChanged: (accounts: string[]) => void,
+  handleChainChanged: (chainId: string | number) => void
+) {
+  const ethereum = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+  const p = provider || ethereum;
+  if (p && p.on) {
+    p.on("accountsChanged", handleAccountsChanged);
+    p.on("chainChanged", handleChainChanged);
+  }
+}
+
 export function useWalletConnection(params: Params = {}) {
   const [walletState, setWalletState] = useState<WalletState>({
     account: null,
@@ -40,6 +53,42 @@ export function useWalletConnection(params: Params = {}) {
   });
 
   const currentProviderRef = useRef<any>(null);
+  const { onAccountsChanged } = params;
+
+  const handleAccountsChanged = useCallback(
+    (accounts: string[]) => {
+      if (accounts.length > 0) {
+        setWalletState((prev) => ({
+          ...prev,
+          account: accounts[0],
+        }));
+        if (onAccountsChanged) {
+          onAccountsChanged(accounts[0]);
+        }
+      } else {
+        setWalletState((prev) => ({
+          ...prev,
+          account: null,
+          chainId: null,
+          balanceEth: null,
+          currentWalletType: null,
+        }));
+        if (onAccountsChanged) {
+          onAccountsChanged(null);
+        }
+      }
+    },
+    [onAccountsChanged]
+  );
+
+  const handleChainChanged = useCallback((chainId: string | number) => {
+    const raw = String(chainId);
+    const hex = raw.startsWith("0x") ? raw : "0x" + Number(raw || 0).toString(16);
+    setWalletState((prev) => ({
+      ...prev,
+      chainId: hex,
+    }));
+  }, []);
 
   useEffect(() => {
     let onAnnounce: any;
@@ -165,7 +214,7 @@ export function useWalletConnection(params: Params = {}) {
               currentWalletType: currentWalletType || lastWalletType,
             }));
             currentProviderRef.current = providerToUse;
-            setupEventListeners(providerToUse);
+            setupEventListeners(providerToUse, handleAccountsChanged, handleChainChanged);
             if (
               currentWalletType &&
               currentWalletType !== lastWalletType &&
@@ -173,8 +222,8 @@ export function useWalletConnection(params: Params = {}) {
             ) {
               localStorage.setItem("lastWalletType", currentWalletType);
             }
-            if (params.onAccountsChanged) {
-              params.onAccountsChanged(accounts[0]);
+            if (onAccountsChanged) {
+              onAccountsChanged(accounts[0]);
             }
           }
         }
@@ -188,48 +237,7 @@ export function useWalletConnection(params: Params = {}) {
         window.removeEventListener("eip6963:announceProvider", onAnnounce);
       }
     };
-  }, [params.onAccountsChanged]);
-
-  const handleAccountsChanged = (accounts: string[]) => {
-    if (accounts.length > 0) {
-      setWalletState((prev) => ({
-        ...prev,
-        account: accounts[0],
-      }));
-      if (params.onAccountsChanged) {
-        params.onAccountsChanged(accounts[0]);
-      }
-    } else {
-      setWalletState((prev) => ({
-        ...prev,
-        account: null,
-        chainId: null,
-        balanceEth: null,
-        currentWalletType: null,
-      }));
-      if (params.onAccountsChanged) {
-        params.onAccountsChanged(null);
-      }
-    }
-  };
-
-  const handleChainChanged = (chainId: string | number) => {
-    const raw = String(chainId);
-    const hex = raw.startsWith("0x") ? raw : "0x" + Number(raw || 0).toString(16);
-    setWalletState((prev) => ({
-      ...prev,
-      chainId: hex,
-    }));
-  };
-
-  const setupEventListeners = (provider?: any) => {
-    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : undefined;
-    const p = provider || ethereum;
-    if (p && p.on) {
-      p.on("accountsChanged", handleAccountsChanged);
-      p.on("chainChanged", handleChainChanged);
-    }
-  };
+  }, [handleAccountsChanged, handleChainChanged, onAccountsChanged]);
 
   const connectWallet = async (walletType?: WalletType) => {
     setWalletState((prev) => ({
@@ -347,14 +355,14 @@ export function useWalletConnection(params: Params = {}) {
         }
 
         currentProviderRef.current = targetProvider;
-        setupEventListeners(targetProvider);
+        setupEventListeners(targetProvider, handleAccountsChanged, handleChainChanged);
 
         if (typeof window !== "undefined") {
           sessionStorage.removeItem(LOGOUT_FLAG);
         }
 
-        if (params.onAccountsChanged) {
-          params.onAccountsChanged(accounts[0]);
+        if (onAccountsChanged) {
+          onAccountsChanged(accounts[0]);
         }
       }
     } catch (error: any) {

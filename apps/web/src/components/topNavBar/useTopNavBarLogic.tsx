@@ -177,7 +177,7 @@ export function useTopNavBarLogic() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [viewerId]);
+  }, [viewerId, tNotifications]);
 
   useEffect(() => {
     if (!viewerId || !supabase) return;
@@ -237,7 +237,7 @@ export function useTopNavBarLogic() {
     return () => {
       client.removeChannel(channel);
     };
-  }, [viewerId]);
+  }, [viewerId, tNotifications]);
 
   const handleConnectWallet = useCallback(
     async (walletType?: "metamask" | "coinbase" | "binance") => {
@@ -317,13 +317,13 @@ export function useTopNavBarLogic() {
     }
   };
 
-  const updateNetworkInfo = async () => {
+  const updateNetworkInfo = useCallback(async () => {
     await refreshBalance();
-  };
+  }, [refreshBalance]);
 
   useEffect(() => {
     updateNetworkInfo();
-  }, [account]);
+  }, [account, updateNetworkInfo]);
 
   const openOnExplorer = () => {
     if (!account) return;

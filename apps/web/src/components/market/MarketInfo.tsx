@@ -90,7 +90,7 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
     return () => {
       cancelled = true;
     };
-  }, [prediction.id]);
+  }, [prediction.id, tMarket]);
 
   return (
     <div className="bg-white border border-purple-100 rounded-3xl overflow-hidden shadow-sm relative">

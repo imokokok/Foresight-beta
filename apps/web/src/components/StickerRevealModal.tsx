@@ -90,6 +90,65 @@ export const OFFICIAL_STICKERS: StickerItem[] = [
 
 export const OFFICIAL_STICKER_IDS = new Set(OFFICIAL_STICKERS.map((s) => s.id));
 
+const getReducedMotion = () => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+};
+
+const triggerConfetti = (rarity: string) => {
+  const reduced = getReducedMotion();
+  if (reduced) return;
+
+  let duration = 1500;
+  let baseParticles = 6;
+  switch (rarity) {
+    case "legendary":
+      duration = 2600;
+      baseParticles = 18;
+      break;
+    case "epic":
+      duration = 2200;
+      baseParticles = 14;
+      break;
+    case "rare":
+      duration = 1800;
+      baseParticles = 10;
+      break;
+    default:
+      duration = 1400;
+      baseParticles = 6;
+      break;
+  }
+
+  const end = Date.now() + duration;
+
+  const frame = () => {
+    confetti({
+      particleCount: Math.round(baseParticles / 2),
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"],
+    });
+    confetti({
+      particleCount: Math.round(baseParticles / 2),
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"],
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  };
+  frame();
+};
+
 interface StickerRevealModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -125,15 +184,6 @@ export default function StickerRevealModal({
     }
   }, [isOpen, sticker, mode]);
 
-  const getReducedMotion = () => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-    try {
-      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      return false;
-    }
-  };
-
   const handleBoxClick = () => {
     if (step === "box") {
       setStep("open");
@@ -144,56 +194,6 @@ export default function StickerRevealModal({
         }
       }, 800);
     }
-  };
-
-  const triggerConfetti = (rarity: string) => {
-    const reduced = getReducedMotion();
-    if (reduced) return;
-
-    let duration = 1500;
-    let baseParticles = 6;
-    switch (rarity) {
-      case "legendary":
-        duration = 2600;
-        baseParticles = 18;
-        break;
-      case "epic":
-        duration = 2200;
-        baseParticles = 14;
-        break;
-      case "rare":
-        duration = 1800;
-        baseParticles = 10;
-        break;
-      default:
-        duration = 1400;
-        baseParticles = 6;
-        break;
-    }
-
-    const end = Date.now() + duration;
-
-    const frame = () => {
-      confetti({
-        particleCount: Math.round(baseParticles / 2),
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"],
-      });
-      confetti({
-        particleCount: Math.round(baseParticles / 2),
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: ["#a786ff", "#fd8bbc", "#eca184", "#f8deb1"],
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    };
-    frame();
   };
 
   const getRarityColor = (r: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "@/lib/i18n";
 
 interface RoleUser {
@@ -20,7 +20,7 @@ export default function RolesPage() {
   const [error, setError] = useState<string | null>(null);
   const [savingWallet, setSavingWallet] = useState<string | null>(null);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -39,11 +39,11 @@ export default function RolesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    void loadUsers();
+  }, [loadUsers]);
 
   const toggleReviewer = async (wallet: string, current: boolean) => {
     if (!wallet) return;
