@@ -1,4 +1,5 @@
 import { useTranslations } from "@/lib/i18n";
+import { formatNumber } from "@/lib/format";
 
 interface PredictionDetail {
   id: number;
@@ -140,7 +141,13 @@ export function OutcomeList({
                     <span className="font-bold text-gray-900 truncate pr-4" title={outcome.label}>
                       {outcome.label}
                     </span>
-                    <span className="font-bold text-purple-600 flex-shrink-0">{prob}%</span>
+                    <span className="font-bold text-purple-600 flex-shrink-0">
+                      {formatNumber(prob, undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
+                      %
+                    </span>
                   </div>
                   {/* Progress Bar */}
                   <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
@@ -161,7 +168,13 @@ export function OutcomeList({
                   <span className="text-xs font-bold uppercase tracking-wider">
                     {tTrading("buy")}
                   </span>
-                  <span className="text-xs opacity-70 mt-0.5">{buyPrice.toFixed(0)}¢</span>
+                  <span className="text-xs opacity-70 mt-0.5">
+                    {formatNumber(buyPrice, undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                    ¢
+                  </span>
                 </button>
                 <button
                   onClick={() => {
@@ -173,7 +186,13 @@ export function OutcomeList({
                   <span className="text-xs font-bold uppercase tracking-wider">
                     {tTrading("sell")}
                   </span>
-                  <span className="text-xs opacity-70 mt-0.5">{sellPrice.toFixed(0)}¢</span>
+                  <span className="text-xs opacity-70 mt-0.5">
+                    {formatNumber(sellPrice, undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                    ¢
+                  </span>
                 </button>
               </div>
             </div>

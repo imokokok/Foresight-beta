@@ -1,3 +1,5 @@
+import { formatCurrency, formatNumber } from "@/lib/format";
+
 export type DepthTabContentProps = {
   depthBuy: Array<{ price: string; qty: string }>;
   depthSell: Array<{ price: string; qty: string }>;
@@ -52,7 +54,9 @@ export function DepthTabContent({
                 <span className="text-right text-gray-600 relative z-10">
                   {formatAmount(row.qty)}
                 </span>
-                <span className="text-right text-gray-400 relative z-10">${total.toFixed(2)}</span>
+                <span className="text-right text-gray-400 relative z-10">
+                  {Number.isFinite(total) ? formatCurrency(total) : "-"}
+                </span>
               </div>
             );
           })}
@@ -61,7 +65,15 @@ export function DepthTabContent({
         <div className="py-2 bg-gray-50 text-center text-xs text-gray-400 font-medium border-y border-gray-100 my-1">
           Spread:{" "}
           {bestAsk && bestBid
-            ? (Number(formatPrice(bestAsk)) - Number(formatPrice(bestBid))).toFixed(2)
+            ? (() => {
+                const spread = Number(formatPrice(bestAsk)) - Number(formatPrice(bestBid));
+                return Number.isFinite(spread)
+                  ? formatNumber(spread, undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : "-";
+              })()
             : "-"}
         </div>
 
@@ -91,7 +103,9 @@ export function DepthTabContent({
                 <span className="text-right text-gray-600 relative z-10">
                   {formatAmount(row.qty)}
                 </span>
-                <span className="text-right text-gray-400 relative z-10">${total.toFixed(2)}</span>
+                <span className="text-right text-gray-400 relative z-10">
+                  {Number.isFinite(total) ? formatCurrency(total) : "-"}
+                </span>
               </div>
             );
           })}

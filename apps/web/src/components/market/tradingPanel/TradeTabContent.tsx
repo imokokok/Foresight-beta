@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
-
+import { formatCurrency, formatNumber } from "@/lib/format";
 export type TradeTabContentProps = {
   tradeSide: "buy" | "sell";
   setTradeSide: (s: "buy" | "sell") => void;
@@ -191,12 +191,15 @@ function OutcomeSelector({
         {outcomes.map((o, idx) => {
           const isSelected = tradeOutcome === idx;
           const isYes = idx === 0;
-          const chance =
+          const probSource =
             prediction?.stats &&
-            (isYes ? prediction.stats.yesProbability : prediction.stats.noProbability)
-              ? (
-                  (isYes ? prediction.stats.yesProbability : prediction.stats.noProbability) * 100
-                ).toFixed(0) + "%"
+            (isYes ? prediction.stats.yesProbability : prediction.stats.noProbability);
+          const chance =
+            probSource != null && probSource !== 0
+              ? `${formatNumber(probSource * 100, undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}%`
               : "-";
 
           return (
@@ -395,14 +398,19 @@ function TradeSummary({
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{tTrading("totalInvestment")}</span>
-          <span className="text-gray-900 font-bold text-base">${total.toFixed(2)}</span>
+          <span className="text-gray-900 font-bold text-base">{formatCurrency(total)}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{tTrading("potentialReturn")}</span>
           <span className="text-emerald-600 font-bold text-base flex items-center gap-1">
-            ${potentialReturn.toFixed(2)}
+            {formatCurrency(potentialReturn)}
             <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium">
-              +{profitPercent.toFixed(0)}%
+              +
+              {formatNumber(profitPercent, undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
+              %
             </span>
           </span>
         </div>
@@ -421,7 +429,12 @@ function TradeSummary({
             <div className="flex justify-between">
               <span>{tTrading("preview.priceTimesAmount")}</span>
               <span className="font-medium text-gray-900">
-                ${price.toFixed(2)} × {amount.toFixed(2)} = ${total.toFixed(2)}
+                {formatCurrency(price)} ×{" "}
+                {formatNumber(amount, undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                = {formatCurrency(total)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -430,14 +443,19 @@ function TradeSummary({
                   ? tTrading("preview.thisTradePay")
                   : tTrading("preview.thisTradeReceive")}
               </span>
-              <span className="font-medium text-gray-900">${total.toFixed(2)}</span>
+              <span className="font-medium text-gray-900">{formatCurrency(total)}</span>
             </div>
             <div className="flex justify-between text-[11px]">
               <span className="text-gray-400">{tTrading("preview.ifOutcomeHappens")}</span>
               <span className="font-medium text-emerald-600">
-                {tTrading("preview.positionValuePrefix")}${potentialReturn.toFixed(2)}
+                {tTrading("preview.positionValuePrefix")}
+                {formatCurrency(potentialReturn)}
                 {tTrading("preview.positionValueMiddle")}
-                {profitPercent.toFixed(0)}%
+                {formatNumber(profitPercent, undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+                %
               </span>
             </div>
           </div>
