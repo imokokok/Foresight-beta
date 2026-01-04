@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
+import { cn } from "@/lib/cn";
 import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
@@ -19,6 +20,7 @@ export default function ChatPanel({
   roomTitle,
   roomCategory,
   hideHeader = false,
+  className,
 }: ChatPanelProps) {
   const {
     account,
@@ -111,7 +113,12 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full rounded-3xl text-[var(--foreground)] glass-card shadow-md shadow-brand/20 relative overflow-hidden">
+    <div
+      className={cn(
+        "flex flex-col h-full rounded-3xl text-[var(--foreground)] glass-card shadow-md shadow-brand/20 relative overflow-hidden",
+        className
+      )}
+    >
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand/10 via-brand-accent/10 to-transparent dark:from-brand/15 dark:via-brand-accent/10 dark:to-transparent opacity-70" />
       <div className="pointer-events-none absolute -z-10 -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/15 blur-3xl dark:bg-purple-500/10" />
       <div className="pointer-events-none absolute -z-10 -bottom-24 -right-24 h-72 w-72 rounded-full bg-fuchsia-500/12 blur-3xl dark:bg-fuchsia-500/10" />

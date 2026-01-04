@@ -110,15 +110,14 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
                   </div>
                 </div>
 
-                <div className="px-2 sm:px-4 py-3 flex-1 flex flex-col min-h-[280px]">
-                  <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50/60 overflow-hidden">
-                    <ChatPanel
-                      eventId={id}
-                      roomTitle={roomTitle}
-                      roomCategory={category}
-                      hideHeader={true}
-                    />
-                  </div>
+                <div className="flex-1 flex flex-col min-h-[280px]">
+                  <ChatPanel
+                    eventId={id}
+                    roomTitle={roomTitle}
+                    roomCategory={category}
+                    hideHeader={true}
+                    className="shadow-none border-none rounded-t-none rounded-b-3xl"
+                  />
                 </div>
               </section>
 

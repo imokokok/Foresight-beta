@@ -3,6 +3,7 @@ export interface ChatPanelProps {
   roomTitle?: string;
   roomCategory?: string;
   hideHeader?: boolean;
+  className?: string;
 }
 
 export interface ChatMessageView {
