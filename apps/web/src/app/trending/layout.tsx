@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { cookies } from "next/headers";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
 import ko from "../../../messages/ko.json";
-import { defaultLocale, locales, type Locale } from "../../i18n-config";
+import { defaultLocale, type Locale } from "../../i18n-config";
+import { getServerLocale } from "@/lib/i18n-server";
+import { buildLanguageAlternates } from "@/lib/seo";
 
 type TrendingMessages = (typeof zhCN)["trending"];
 
@@ -17,10 +18,7 @@ const trendingMessages: Record<Locale, TrendingMessages> = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const store = await cookies();
-  const raw = store.get("preferred-language")?.value;
-  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
-
+  const locale = await getServerLocale();
   const trending = trendingMessages[locale] || trendingMessages[defaultLocale];
   const meta = (trending as any).meta || {};
 
@@ -36,15 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: {
-      canonical: "/trending",
-      languages: {
-        "zh-CN": "/trending",
-        "en-US": "/trending",
-        "es-ES": "/trending",
-        "ko-KR": "/trending",
-      },
-    },
+    alternates: buildLanguageAlternates("/trending"),
     openGraph: {
       title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
       description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,

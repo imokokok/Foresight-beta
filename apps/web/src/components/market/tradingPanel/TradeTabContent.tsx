@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 export type TradeTabContentProps = {
   tradeSide: "buy" | "sell";
   setTradeSide: (s: "buy" | "sell") => void;
@@ -195,12 +195,7 @@ function OutcomeSelector({
             prediction?.stats &&
             (isYes ? prediction.stats.yesProbability : prediction.stats.noProbability);
           const chance =
-            probSource != null && probSource !== 0
-              ? `${formatNumber(probSource * 100, undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })}%`
-              : "-";
+            probSource != null && probSource !== 0 ? formatPercent(probSource * 100) : "-";
 
           return (
             <button
@@ -405,12 +400,7 @@ function TradeSummary({
           <span className="text-emerald-600 font-bold text-base flex items-center gap-1">
             {formatCurrency(potentialReturn)}
             <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium">
-              +
-              {formatNumber(profitPercent, undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
-              %
+              +{formatPercent(profitPercent)}
             </span>
           </span>
         </div>
@@ -451,11 +441,7 @@ function TradeSummary({
                 {tTrading("preview.positionValuePrefix")}
                 {formatCurrency(potentialReturn)}
                 {tTrading("preview.positionValueMiddle")}
-                {formatNumber(profitPercent, undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })}
-                %
+                {formatPercent(profitPercent)}
               </span>
             </div>
           </div>

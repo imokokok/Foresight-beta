@@ -14,6 +14,7 @@ import ProgressBar from "@/components/ProgressBar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import WebVitalsReporter from "@/components/WebVitalsReporter";
 import { getServerLocale } from "@/lib/i18n-server";
+import { buildLanguageAlternates } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: {
@@ -44,14 +45,7 @@ export const metadata: Metadata = {
 
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market"),
 
-  alternates: {
-    canonical: "/trending",
-    languages: {
-      "zh-CN": "/trending",
-      "en-US": "/trending",
-      "es-ES": "/trending",
-    },
-  },
+  alternates: buildLanguageAlternates("/trending"),
 
   openGraph: {
     type: "website",

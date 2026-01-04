@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { cookies } from "next/headers";
 import zhCN from "../../../messages/zh-CN.json";
 import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
 import ko from "../../../messages/ko.json";
-import { defaultLocale, locales, type Locale } from "../../i18n-config";
+import { defaultLocale, type Locale } from "../../i18n-config";
+import { getServerLocale } from "@/lib/i18n-server";
+import { buildLanguageAlternates } from "@/lib/seo";
 
 type ForumMessages = (typeof zhCN)["forum"];
 
@@ -17,9 +18,7 @@ const forumMessages: Record<Locale, ForumMessages> = {
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const store = await cookies();
-  const raw = store.get("preferred-language")?.value;
-  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
+  const locale = await getServerLocale();
   const forum = forumMessages[locale] || forumMessages[defaultLocale];
   const meta = (forum as any).meta || {};
 
@@ -35,15 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
-    alternates: {
-      canonical: "/forum",
-      languages: {
-        "zh-CN": "/forum",
-        "en-US": "/forum",
-        "es-ES": "/forum",
-        "ko-KR": "/forum",
-      },
-    },
+    alternates: buildLanguageAlternates("/forum"),
     openGraph: {
       title: typeof meta.ogTitle === "string" ? meta.ogTitle : title,
       description: typeof meta.ogDescription === "string" ? meta.ogDescription : description,

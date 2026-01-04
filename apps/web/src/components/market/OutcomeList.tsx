@@ -1,5 +1,5 @@
 import { useTranslations } from "@/lib/i18n";
-import { formatNumber } from "@/lib/format";
+import { formatInteger, formatPercent } from "@/lib/format";
 
 interface PredictionDetail {
   id: number;
@@ -142,11 +142,7 @@ export function OutcomeList({
                       {outcome.label}
                     </span>
                     <span className="font-bold text-purple-600 flex-shrink-0">
-                      {formatNumber(prob, undefined, {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}
-                      %
+                      {formatPercent(prob)}%
                     </span>
                   </div>
                   {/* Progress Bar */}
@@ -168,13 +164,7 @@ export function OutcomeList({
                   <span className="text-xs font-bold uppercase tracking-wider">
                     {tTrading("buy")}
                   </span>
-                  <span className="text-xs opacity-70 mt-0.5">
-                    {formatNumber(buyPrice, undefined, {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                    ¢
-                  </span>
+                  <span className="text-xs opacity-70 mt-0.5">{formatInteger(buyPrice)}¢</span>
                 </button>
                 <button
                   onClick={() => {
@@ -186,13 +176,7 @@ export function OutcomeList({
                   <span className="text-xs font-bold uppercase tracking-wider">
                     {tTrading("sell")}
                   </span>
-                  <span className="text-xs opacity-70 mt-0.5">
-                    {formatNumber(sellPrice, undefined, {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                    ¢
-                  </span>
+                  <span className="text-xs opacity-70 mt-0.5">{formatInteger(sellPrice)}¢</span>
                 </button>
               </div>
             </div>

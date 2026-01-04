@@ -1,28 +1,18 @@
 import { Metadata } from "next";
 import { t } from "@/lib/i18n";
-import { cookies } from "next/headers";
-import { locales, defaultLocale, type Locale } from "../../i18n-config";
+import { defaultLocale, type Locale } from "../../i18n-config";
+import { getServerLocale } from "@/lib/i18n-server";
+import { buildLanguageAlternates } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const store = await cookies();
-  const raw = store.get("preferred-language")?.value;
-  const locale: Locale = raw && locales.includes(raw as Locale) ? (raw as Locale) : defaultLocale;
-
+  const locale = await getServerLocale();
   const title = t("market.searchPage.metaTitle", locale);
   const description = t("market.searchPage.metaDescription", locale);
 
   return {
     title,
     description,
-    alternates: {
-      canonical: "/search",
-      languages: {
-        "zh-CN": "/search",
-        "en-US": "/search",
-        "es-ES": "/search",
-        "ko-KR": "/search",
-      },
-    },
+    alternates: buildLanguageAlternates("/search"),
   };
 }
 

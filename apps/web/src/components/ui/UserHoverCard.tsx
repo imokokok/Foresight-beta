@@ -20,6 +20,7 @@ import {
 import { useTranslations } from "@/lib/i18n";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "@/lib/toast";
+import { formatCompactNumber } from "@/lib/format";
 
 // 用户预览数据类型
 export type UserPreviewData = {
@@ -39,21 +40,10 @@ export type UserPreviewData = {
 type UserHoverCardProps = {
   user: UserPreviewData;
   children: React.ReactNode;
-  /** 延迟显示时间（毫秒） */
   delay?: number;
-  /** 卡片位置 */
   position?: "top" | "bottom" | "left" | "right";
-  /** 是否禁用悬浮卡片 */
   disabled?: boolean;
 };
-
-// 格式化数字
-function formatNumber(num: number | undefined): string {
-  if (num === undefined) return "--";
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toFixed(0);
-}
 
 // 获取排名徽章样式
 function getRankBadge(rank: number | undefined) {
@@ -341,7 +331,9 @@ export function UserHoverCard({
                 <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-100 text-center hover:bg-white hover:shadow-md transition-all">
                   <TrendingUp className="w-4 h-4 text-purple-500 mx-auto mb-1.5" />
                   <div className="text-sm font-black text-gray-900 leading-none mb-1">
-                    {formatNumber(user.total_volume)}
+                    {user.total_volume === undefined
+                      ? "--"
+                      : formatCompactNumber(user.total_volume)}
                   </div>
                   <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
                     {t("volume")}

@@ -92,6 +92,65 @@ export function formatNumber(
   return fmt.format(num);
 }
 
+export function formatInteger(
+  value: number | string | null | undefined,
+  locale?: LocaleInput,
+  options?: Intl.NumberFormatOptions
+): string {
+  return formatNumber(value, locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    ...options,
+  });
+}
+
+export function formatPercent(
+  value: number | string | null | undefined,
+  locale?: LocaleInput,
+  options?: Intl.NumberFormatOptions
+): string {
+  if (value == null) {
+    const fmt = new Intl.NumberFormat(normalizeLocale(locale), {
+      style: "percent",
+      maximumFractionDigits: 0,
+      ...options,
+    });
+    return fmt.format(0);
+  }
+  const num = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(num)) {
+    const fmt = new Intl.NumberFormat(normalizeLocale(locale), {
+      style: "percent",
+      maximumFractionDigits: 0,
+      ...options,
+    });
+    return fmt.format(0);
+  }
+  const fraction = num / 100;
+  const fmt = new Intl.NumberFormat(normalizeLocale(locale), {
+    style: "percent",
+    maximumFractionDigits: 0,
+    ...options,
+  });
+  return fmt.format(fraction);
+}
+
+export function formatCompactNumber(
+  value: number | string | null | undefined,
+  locale?: LocaleInput,
+  options?: Intl.NumberFormatOptions
+): string {
+  if (value == null) return "0";
+  const num = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(num)) return "0";
+  const fmt = new Intl.NumberFormat(normalizeLocale(locale), {
+    notation: "compact",
+    maximumFractionDigits: 1,
+    ...options,
+  });
+  return fmt.format(num);
+}
+
 export function formatCurrency(
   value: number | string | null | undefined,
   locale?: LocaleInput,
