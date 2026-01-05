@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
+import { formatCurrency, formatNumber, formatPercent, formatInteger } from "@/lib/format";
 
 type MarketPlanPreview = {
   slippagePercent: number;
@@ -36,6 +36,10 @@ export type TradeTabContentProps = {
   balance: string;
   currentShares: number;
   positionStake?: number;
+  markPrice?: number;
+  markValue?: number;
+  unrealizedPnl?: number;
+  unrealizedPct?: number;
   submitOrder: () => void;
   isSubmitting: boolean;
   market: any;
@@ -77,6 +81,10 @@ export function TradeTabContent({
   balance,
   currentShares,
   positionStake,
+  markPrice,
+  markValue,
+  unrealizedPnl,
+  unrealizedPct,
   submitOrder,
   isSubmitting,
   market,
@@ -115,18 +123,31 @@ export function TradeTabContent({
 
   const currentOutcomeLabel =
     outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? tCommon("yes") : tCommon("no"));
+  const isMultiOutcome = outcomes.length > 2;
 
   return (
     <div className="space-y-6">
       <TradeSideToggle tradeSide={tradeSide} setTradeSide={setTradeSide} tTrading={tTrading} />
-      <OutcomeSelector
-        tradeOutcome={tradeOutcome}
-        setTradeOutcome={setTradeOutcome}
-        outcomes={outcomes}
-        prediction={prediction}
-        tTrading={tTrading}
-        tCommon={tCommon}
-      />
+      {isMultiOutcome ? (
+        <MultiOutcomeQuickTable
+          tradeOutcome={tradeOutcome}
+          setTradeOutcome={setTradeOutcome}
+          setTradeSide={setTradeSide}
+          outcomes={outcomes}
+          prediction={prediction}
+          tTrading={tTrading}
+          tCommon={tCommon}
+        />
+      ) : (
+        <OutcomeSelector
+          tradeOutcome={tradeOutcome}
+          setTradeOutcome={setTradeOutcome}
+          outcomes={outcomes}
+          prediction={prediction}
+          tTrading={tTrading}
+          tCommon={tCommon}
+        />
+      )}
       <div className="space-y-4 pt-2">
         <PriceInputSection
           tradeSide={tradeSide}
@@ -154,6 +175,10 @@ export function TradeTabContent({
           setAmountInput={setAmountInput}
           balance={balance}
           tTrading={tTrading}
+          tradeSide={tradeSide}
+          currentShares={currentShares}
+          orderMode={orderMode}
+          priceInput={priceInput}
         />
       </div>
       <TradeSummary
@@ -292,6 +317,109 @@ function OutcomeSelector({
   );
 }
 
+type MultiOutcomeQuickTableProps = {
+  tradeOutcome: number;
+  setTradeOutcome: (i: number) => void;
+  setTradeSide: (s: "buy" | "sell") => void;
+  outcomes: any[];
+  prediction: any;
+  tTrading: (key: string) => string;
+  tCommon: (key: string) => string;
+};
+
+function MultiOutcomeQuickTable({
+  tradeOutcome,
+  setTradeOutcome,
+  setTradeSide,
+  outcomes,
+  prediction,
+  tTrading,
+  tCommon,
+}: MultiOutcomeQuickTableProps) {
+  const rawOutcomes = outcomes || [];
+  const stats = prediction?.stats;
+  const items =
+    rawOutcomes.length > 0 ? rawOutcomes : [{ label: tCommon("yes") }, { label: tCommon("no") }];
+
+  const displayItems = items.map((outcome: any, idx: number) => {
+    let prob = 0;
+    if (outcome.probability !== undefined) {
+      prob = Number(outcome.probability);
+    } else if (items.length === 2 && stats) {
+      if (idx === 0) prob = stats.yesProbability || 0;
+      else prob = stats.noProbability || 0;
+    }
+    if (!Number.isFinite(prob)) prob = 0;
+    const buyPrice = prob;
+    const sellPrice = 100 - prob;
+    return { outcome, idx, prob, buyPrice, sellPrice };
+  });
+
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+        {tTrading("selectOutcome")}
+      </label>
+      <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 bg-white">
+        {displayItems.map(({ outcome, idx, prob, buyPrice, sellPrice }) => {
+          const isSelected = tradeOutcome === idx;
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setTradeOutcome(idx)}
+              className={`w-full px-3 py-2.5 text-left text-xs flex items-center justify-between gap-3 transition-colors ${
+                isSelected ? "bg-purple-50/60" : "hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex h-2 w-2 rounded-full bg-purple-400" />
+                <span className="font-medium text-gray-800 truncate">
+                  {outcome.label || (idx === 0 ? tCommon("yes") : tCommon("no"))}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-[11px] font-semibold text-purple-600">
+                    {formatPercent(prob)}{" "}
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {formatInteger(buyPrice)}¢ / {formatInteger(sellPrice)}¢
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTradeOutcome(idx);
+                      setTradeSide("buy");
+                    }}
+                    className="px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  >
+                    {tTrading("buy")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTradeOutcome(idx);
+                      setTradeSide("sell");
+                    }}
+                    className="px-2 py-0.5 rounded-full text-[11px] font-semibold border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  >
+                    {tTrading("sell")}
+                  </button>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 type PriceInputSectionProps = {
   tradeSide: "buy" | "sell";
   orderMode: "limit" | "best";
@@ -394,15 +522,41 @@ function PriceInputSection({
           </span>
         </div>
       ) : (
-        <div className="relative group">
-          <input
-            type="number"
-            value={priceInput}
-            onChange={(e) => setPriceInput(e.target.value)}
-            placeholder="0.00"
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
-          />
-          <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
+        <div className="space-y-1">
+          <div className="relative group">
+            <input
+              type="number"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              placeholder="0.00"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
+            />
+            <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
+          </div>
+          <div className="flex justify-end gap-2 text-[10px] text-gray-500">
+            <button
+              type="button"
+              onClick={() => {
+                const current = parseFloat(priceInput || "0") || 0;
+                const next = Math.max(0.01, current - 0.01);
+                setPriceInput(next.toFixed(2));
+              }}
+              className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+            >
+              -0.01
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const current = parseFloat(priceInput || "0") || 0;
+                const next = Math.min(0.99, current + 0.01);
+                setPriceInput(next.toFixed(2));
+              }}
+              className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+            >
+              +0.01
+            </button>
+          </div>
         </div>
       )}
 
@@ -519,6 +673,10 @@ type AmountInputSectionProps = {
   setAmountInput: (v: string) => void;
   balance: string;
   tTrading: (key: string) => string;
+  tradeSide: "buy" | "sell";
+  currentShares: number;
+  orderMode: "limit" | "best";
+  priceInput: string;
 };
 
 function AmountInputSection({
@@ -526,7 +684,26 @@ function AmountInputSection({
   setAmountInput,
   balance,
   tTrading,
+  tradeSide,
+  currentShares,
+  orderMode,
+  priceInput,
 }: AmountInputSectionProps) {
+  let usdcAvailable = 0;
+  if (tradeSide === "buy") {
+    const digits = balance.replace(/[^0-9.]/g, "");
+    if (digits) {
+      const parsed = parseFloat(digits);
+      if (!isNaN(parsed) && parsed > 0) {
+        usdcAvailable = parsed;
+      }
+    }
+  }
+  const priceValue = parseFloat(priceInput || "0") || 0;
+  const showSellButtons = tradeSide === "sell" && currentShares > 0;
+  const showBuyMax =
+    tradeSide === "buy" && orderMode === "limit" && usdcAvailable > 0 && priceValue > 0;
+
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs font-medium text-gray-500">
@@ -545,6 +722,45 @@ function AmountInputSection({
         placeholder="0"
         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
       />
+      {(showSellButtons || showBuyMax) && (
+        <div className="flex justify-end gap-2 pt-1 text-[11px] text-gray-500">
+          {showSellButtons && (
+            <>
+              <button
+                onClick={() => setAmountInput((currentShares * 0.25).toFixed(4))}
+                className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+              >
+                25%
+              </button>
+              <button
+                onClick={() => setAmountInput((currentShares * 0.5).toFixed(4))}
+                className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+              >
+                50%
+              </button>
+              <button
+                onClick={() => setAmountInput(currentShares.toFixed(4))}
+                className="px-2 py-0.5 rounded-full border border-purple-400 bg-purple-50 text-purple-700 font-semibold"
+              >
+                MAX
+              </button>
+            </>
+          )}
+          {showBuyMax && (
+            <button
+              onClick={() => {
+                const maxShares = usdcAvailable / priceValue;
+                if (maxShares > 0) {
+                  setAmountInput(maxShares.toFixed(4));
+                }
+              }}
+              className="px-2 py-0.5 rounded-full border border-purple-400 bg-purple-50 text-purple-700 font-semibold"
+            >
+              MAX
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -563,6 +779,10 @@ type TradeSummaryProps = {
   marketPlanLoading: boolean;
   currentShares: number;
   positionStake?: number;
+  markPrice?: number;
+  markValue?: number;
+  unrealizedPnl?: number;
+  unrealizedPct?: number;
 };
 
 function TradeSummary({
@@ -579,6 +799,10 @@ function TradeSummary({
   marketPlanLoading,
   currentShares,
   positionStake,
+  markPrice,
+  markValue,
+  unrealizedPnl,
+  unrealizedPct,
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
   const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
@@ -600,7 +824,7 @@ function TradeSummary({
   }
   const afterSharesRaw = currentShares + deltaShares;
   const afterShares = afterSharesRaw > 0 ? afterSharesRaw : 0;
-  const hasPositionView = currentShares > 0 || deltaShares !== 0;
+  const hasPosition = currentShares > 0;
   const deltaPrefix = deltaShares > 0 ? "+" : deltaShares < 0 ? "−" : "";
 
   let stakeAfter = stakeBefore;
@@ -612,6 +836,7 @@ function TradeSummary({
     }
   }
   const avgAfter = stakeAfter > 0 && afterShares > 0 ? stakeAfter / afterShares : 0;
+  const showImpact = total > 0 && (hasPosition || deltaShares !== 0);
 
   return (
     <div className="bg-gray-50 rounded-xl p-4 space-y-4 text-sm border border-gray-100">
@@ -716,79 +941,123 @@ function TradeSummary({
                 )}
               </div>
             )}
-            {hasPositionView && (
-              <div className="pt-2 mt-2 border-t border-dashed border-gray-200 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-gray-500">
-                    {tTrading("preview.positionImpactTitle")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.currentPositionShares")}</span>
-                  <span className="font-medium text-gray-900">
-                    {formatNumber(currentShares, undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {tTrading("sharesUnit")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.thisTradeDeltaShares")}</span>
-                  <span
-                    className={`font-medium ${
-                      deltaShares === 0
-                        ? "text-gray-900"
-                        : tradeSide === "buy"
-                          ? "text-emerald-600"
-                          : "text-rose-600"
-                    }`}
-                  >
-                    {deltaPrefix}
-                    {formatNumber(Math.abs(deltaShares), undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {tTrading("sharesUnit")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.afterTradeShares")}</span>
-                  <span className="font-bold text-gray-900">
-                    {formatNumber(afterShares, undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    {tTrading("sharesUnit")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.currentStake")}</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(stakeBefore)}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.afterTradeStake")}</span>
-                  <span className="font-bold text-gray-900">{formatCurrency(stakeAfter)}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.currentAvgPrice")}</span>
-                  <span className="font-medium text-gray-900">
-                    {avgBefore > 0 ? formatCurrency(avgBefore) : "-"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] text-gray-500">
-                  <span>{tTrading("preview.afterTradeAvgPrice")}</span>
-                  <span className="font-bold text-gray-900">
-                    {avgAfter > 0 ? formatCurrency(avgAfter) : "-"}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className="text-xs text-gray-400">{tTrading("preview.empty")}</div>
         )}
       </div>
+      {hasPosition && (
+        <div className="mt-3 border-t border-dashed border-gray-200 pt-2 space-y-1.5 text-[11px] text-gray-500">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-gray-500">
+              {tTrading("preview.positionImpactTitle")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.currentPositionShares")}</span>
+            <span className="font-medium text-gray-900">
+              {formatNumber(currentShares, undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{" "}
+              {tTrading("sharesUnit")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.currentStake")}</span>
+            <span className="font-medium text-gray-900">{formatCurrency(stakeBefore)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.currentAvgPrice")}</span>
+            <span className="font-medium text-gray-900">
+              {avgBefore > 0 ? formatCurrency(avgBefore) : "-"}
+            </span>
+          </div>
+          {(() => {
+            const priceOk = typeof markPrice === "number" && markPrice > 0;
+            const pnlValue = typeof unrealizedPnl === "number" ? unrealizedPnl : 0;
+            const pnlPct = typeof unrealizedPct === "number" ? unrealizedPct : 0;
+            const hasMarkPnl = priceOk && stakeBefore > 0 && currentShares > 0;
+            const pnlPositive = pnlValue > 0;
+            const pnlNegative = pnlValue < 0;
+            if (!hasMarkPnl) return null;
+            return (
+              <>
+                <div className="flex justify-between">
+                  <span>Mark price</span>
+                  <span className="font-medium text-gray-900">
+                    {formatCurrency(markPrice as number)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>PnL (mark)</span>
+                  <span
+                    className={`font-bold ${
+                      pnlNegative
+                        ? "text-rose-600"
+                        : pnlPositive
+                          ? "text-emerald-600"
+                          : "text-gray-900"
+                    }`}
+                  >
+                    {pnlPositive ? "+" : ""}
+                    {formatCurrency(pnlValue)}
+                    {stakeBefore > 0 && (
+                      <span className="ml-1 text-[10px]">
+                        ({pnlPct > 0 ? "+" : ""}
+                        {formatPercent(Math.abs(pnlPct))})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+      {showImpact && (
+        <div className="mt-2 space-y-1.5 text-[11px] text-gray-500">
+          <div className="flex justify-between">
+            <span>{tTrading("preview.thisTradeDeltaShares")}</span>
+            <span
+              className={`font-medium ${
+                deltaShares === 0
+                  ? "text-gray-900"
+                  : tradeSide === "buy"
+                    ? "text-emerald-600"
+                    : "text-rose-600"
+              }`}
+            >
+              {deltaPrefix}
+              {formatNumber(Math.abs(deltaShares), undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{" "}
+              {tTrading("sharesUnit")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.afterTradeShares")}</span>
+            <span className="font-bold text-gray-900">
+              {formatNumber(afterShares, undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{" "}
+              {tTrading("sharesUnit")}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.afterTradeStake")}</span>
+            <span className="font-bold text-gray-900">{formatCurrency(stakeAfter)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>{tTrading("preview.afterTradeAvgPrice")}</span>
+            <span className="font-bold text-gray-900">
+              {avgAfter > 0 ? formatCurrency(avgAfter) : "-"}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

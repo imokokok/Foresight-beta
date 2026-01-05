@@ -250,44 +250,55 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                 {tMarket("detail.priceHint")}
               </p>
               {account && currentPosition && !portfolioLoading && (
-                <div className="mt-3 inline-flex items-center text-[11px] text-slate-500 dark:text-slate-400 gap-2 rounded-full bg-[var(--card-bg)] px-2.5 py-1 border border-[var(--card-border)] backdrop-blur-md">
-                  <span className="text-slate-400 dark:text-slate-500">
-                    {tMarket("detail.myPosition")}
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
-                      String((currentPosition as any).outcome || "").toLowerCase() === "yes"
-                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                        : String((currentPosition as any).outcome || "").toLowerCase() === "no"
-                          ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
-                          : "bg-slate-500/10 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    {currentOutcomeLabel}
-                  </span>
-                  <span>
-                    {tMarket("detail.stake")}{" "}
-                    <span className="font-semibold text-[var(--foreground)]">
-                      ${Number((currentPosition as any).stake || 0).toFixed(2)}
-                    </span>
-                  </span>
-                  <span>
-                    {tMarket("detail.pnl")}{" "}
-                    <span
-                      className={`font-semibold ${
-                        String((currentPosition as any).pnl || "").startsWith("+")
-                          ? "text-emerald-600"
-                          : "text-rose-600"
-                      }`}
-                    >
-                      {(currentPosition as any).pnl}
-                    </span>
-                  </span>
-                  {positionSideProbPercent !== null && (
-                    <span className="text-slate-400 dark:text-slate-500">
-                      {tMarket("detail.implied")} {positionSideProbPercent.toFixed(1)}%
-                    </span>
-                  )}
+                <div className="mt-3 max-w-md">
+                  <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--card-border)] px-3 py-2.5 text-[11px] text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-sm">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 dark:text-slate-500">
+                          {tMarket("detail.myPosition")}
+                        </span>
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                            String((currentPosition as any).outcome || "").toLowerCase() === "yes"
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                              : String((currentPosition as any).outcome || "").toLowerCase() ===
+                                  "no"
+                                ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                : "bg-slate-500/10 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {currentOutcomeLabel}
+                        </span>
+                      </div>
+                      <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
+                        <span>
+                          {tMarket("detail.stake")}{" "}
+                          <span className="font-semibold text-[var(--foreground)]">
+                            ${Number((currentPosition as any).stake || 0).toFixed(2)}
+                          </span>
+                        </span>
+                        {positionSideProbPercent !== null && (
+                          <span className="text-slate-400 dark:text-slate-500">
+                            {tMarket("detail.implied")} {positionSideProbPercent.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                        {tMarket("detail.pnl")}
+                      </span>
+                      <span
+                        className={`text-sm font-semibold ${
+                          String((currentPosition as any).pnl || "").startsWith("+")
+                            ? "text-emerald-600"
+                            : "text-rose-600"
+                        }`}
+                      >
+                        {(currentPosition as any).pnl}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

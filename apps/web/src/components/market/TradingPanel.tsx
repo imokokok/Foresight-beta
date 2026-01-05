@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { formatUnits } from "ethers";
 import { useTranslations } from "@/lib/i18n";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import { TradeTabContent } from "./tradingPanel/TradeTabContent";
 import { DepthTabContent } from "./tradingPanel/DepthTabContent";
 import { HistoryTabContent, OrdersTabContent } from "./tradingPanel/OrdersHistoryTabs";
@@ -172,6 +173,7 @@ export function TradingPanel(props: TradingPanelProps) {
   const isManageTab = activeTab === "orders" || activeTab === "history";
 
   let currentShares = 0;
+  let stakeBefore = typeof positionStake === "number" && positionStake > 0 ? positionStake : 0;
   if (shareBalance) {
     try {
       const raw = BigInt(shareBalance);
@@ -182,6 +184,27 @@ export function TradingPanel(props: TradingPanelProps) {
       currentShares = 0;
     }
   }
+
+  let markPrice = 0;
+  const bidDec = decodePrice(bestBid);
+  const askDec = decodePrice(bestAsk);
+  if (bidDec > 0 && askDec > 0) {
+    markPrice = (bidDec + askDec) / 2;
+  } else if (bidDec > 0) {
+    markPrice = bidDec;
+  } else if (askDec > 0) {
+    markPrice = askDec;
+  }
+
+  let markValue = 0;
+  let unrealizedPnl = 0;
+  let unrealizedPct = 0;
+  if (currentShares > 0 && markPrice > 0 && stakeBefore > 0) {
+    markValue = currentShares * markPrice;
+    unrealizedPnl = markValue - stakeBefore;
+    unrealizedPct = (unrealizedPnl / stakeBefore) * 100;
+  }
+  const hasPositionCard = currentShares > 0 && markPrice > 0 && stakeBefore > 0;
 
   const handleEditOrder = (o: any) => {
     try {
@@ -249,6 +272,58 @@ export function TradingPanel(props: TradingPanelProps) {
           </div>
         </div>
       </div>
+
+      {hasPositionCard && (
+        <div className="px-4 pt-3">
+          <div className="bg-white border border-purple-100 rounded-2xl px-3 py-2.5 flex items-center justify-between shadow-sm">
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold text-gray-500">
+                {tTrading("preview.positionImpactTitle")}
+              </span>
+              <span className="text-xs text-gray-500">
+                {formatNumber(currentShares, undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                {tTrading("sharesUnit")} · {formatCurrency(markValue)}
+              </span>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <div className="text-right">
+                <span
+                  className={`block text-sm font-bold ${
+                    unrealizedPnl < 0
+                      ? "text-rose-600"
+                      : unrealizedPnl > 0
+                        ? "text-emerald-600"
+                        : "text-gray-900"
+                  }`}
+                >
+                  {unrealizedPnl > 0 ? "+" : ""}
+                  {formatCurrency(unrealizedPnl)}
+                </span>
+                <span className="block text-[11px] text-gray-400">
+                  {unrealizedPct > 0 ? "+" : ""}
+                  {formatPercent(Math.abs(unrealizedPct))}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentShares <= 0) return;
+                  setActiveTab("trade");
+                  setTradeSide("sell");
+                  setOrderMode("best");
+                  setAmountInput(currentShares.toFixed(4));
+                }}
+                className="px-2 py-1 rounded-full border border-rose-100 bg-rose-50 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 hover:border-rose-200 transition-colors"
+              >
+                {tTrading("sell")} MAX
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex border-b border-gray-100 bg-gray-50/50 p-1 mx-2 mt-3 rounded-xl gap-1">
         <button
@@ -321,6 +396,10 @@ export function TradingPanel(props: TradingPanelProps) {
             balance={balance}
             currentShares={currentShares}
             positionStake={positionStake}
+            markPrice={markPrice}
+            markValue={markValue}
+            unrealizedPnl={unrealizedPnl}
+            unrealizedPct={unrealizedPct}
             submitOrder={submitOrder}
             isSubmitting={isSubmitting}
             market={market}

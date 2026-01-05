@@ -287,7 +287,7 @@ export function ProfilePageView({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {activeTab === "predictions" && <PredictionsTab />}
+                {activeTab === "predictions" && <PredictionsTab address={account} />}
                 {activeTab === "history" && <HistoryTab initialHistory={history} />}
                 {activeTab === "following" && <FollowingTab />}
                 {activeTab === "followers" && account && <FollowersTab address={account} />}

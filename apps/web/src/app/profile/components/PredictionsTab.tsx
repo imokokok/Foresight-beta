@@ -4,12 +4,14 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, Users, Wallet, Trophy, Activity } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
-import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
 
-export function PredictionsTab() {
-  const { account } = useWallet();
+type PredictionsTabProps = {
+  address: string | null | undefined;
+};
+
+export function PredictionsTab({ address }: PredictionsTabProps) {
   const [predictions, setPredictions] = useState<any[]>([]);
   const [portfolioStats, setPortfolioStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -18,14 +20,14 @@ export function PredictionsTab() {
   const tProfile = useTranslations("profile");
 
   useEffect(() => {
-    if (!account) {
+    if (!address) {
       setLoading(false);
       return;
     }
 
     const fetchPortfolio = async () => {
       try {
-        const res = await fetch(`/api/user-portfolio?address=${account}`);
+        const res = await fetch(`/api/user-portfolio?address=${address}`);
         if (!res.ok) {
           try {
             const errorBody = await res.json();
@@ -48,7 +50,7 @@ export function PredictionsTab() {
     };
 
     fetchPortfolio();
-  }, [account, tProfile]);
+  }, [address, tProfile]);
 
   const totalInvested = portfolioStats?.total_invested ?? 0;
   const realizedPnl = portfolioStats?.realized_pnl ?? 0;
