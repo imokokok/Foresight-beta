@@ -115,6 +115,7 @@ export function TradeTabContent({
     priceNum = Number(priceInput) || 0;
     amountNum = Number(amountInput) || 0;
   }
+  const requestedAmount = Number(amountInput) || 0;
   const total =
     isMarketOrder && marketPlanPreview ? marketPlanPreview.totalCost || 0 : priceNum * amountNum;
   const potentialReturn = tradeSide === "buy" ? amountNum * 1 : 0;
@@ -124,6 +125,13 @@ export function TradeTabContent({
   const currentOutcomeLabel =
     outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? tCommon("yes") : tCommon("no"));
   const isMultiOutcome = outcomes.length > 2;
+
+  let feeRate = 0;
+  if (market && typeof market.fee_bps === "number" && market.fee_bps >= 0) {
+    feeRate = market.fee_bps / 10000;
+  } else {
+    feeRate = 0.004;
+  }
 
   return (
     <div className="space-y-6">
@@ -188,12 +196,19 @@ export function TradeTabContent({
         tradeSide={tradeSide}
         price={priceNum}
         amount={amountNum}
+        requestedAmount={requestedAmount}
         outcomeLabel={currentOutcomeLabel}
         tTrading={tTrading}
         orderMode={orderMode}
         marketPlanPreview={marketPlanPreview}
         marketPlanLoading={marketPlanLoading}
         currentShares={currentShares}
+        feeRate={feeRate}
+        positionStake={positionStake}
+        markPrice={markPrice}
+        markValue={markValue}
+        unrealizedPnl={unrealizedPnl}
+        unrealizedPct={unrealizedPct}
       />
       <TradeSubmitSection
         tradeSide={tradeSide}
@@ -772,6 +787,7 @@ type TradeSummaryProps = {
   tradeSide: "buy" | "sell";
   price: number;
   amount: number;
+  requestedAmount: number;
   outcomeLabel: string;
   tTrading: (key: string) => string;
   orderMode: "limit" | "best";
@@ -783,6 +799,7 @@ type TradeSummaryProps = {
   markValue?: number;
   unrealizedPnl?: number;
   unrealizedPct?: number;
+  feeRate: number;
 };
 
 function TradeSummary({
@@ -792,6 +809,7 @@ function TradeSummary({
   tradeSide,
   price,
   amount,
+  requestedAmount,
   outcomeLabel,
   tTrading,
   orderMode,
@@ -803,9 +821,9 @@ function TradeSummary({
   markValue,
   unrealizedPnl,
   unrealizedPct,
+  feeRate,
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
-  const feeRate = 0.004;
   const estimatedFee = hasInput ? total * feeRate : 0;
   const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
   const sideColor =
@@ -839,6 +857,16 @@ function TradeSummary({
   }
   const avgAfter = stakeAfter > 0 && afterShares > 0 ? stakeAfter / afterShares : 0;
   const showImpact = total > 0 && (hasPosition || deltaShares !== 0);
+
+  let requestedShares = 0;
+  if (orderMode === "best" && requestedAmount > 0) {
+    requestedShares = requestedAmount;
+  }
+  let fillPercent = 0;
+  if (orderMode === "best" && marketPlanPreview && requestedShares > 0) {
+    fillPercent = (marketPlanPreview.filledAmount / requestedShares) * 100;
+    if (!Number.isFinite(fillPercent)) fillPercent = 0;
+  }
 
   return (
     <div className="bg-gray-50 rounded-xl p-4 space-y-4 text-sm border border-gray-100">
@@ -934,11 +962,24 @@ function TradeSummary({
                     <div className="flex justify-between">
                       <span>{tTrading("preview.estimatedFilledAmount")}</span>
                       <span className="font-medium text-gray-900">
-                        {formatNumber(marketPlanPreview.filledAmount, undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        {tTrading("sharesUnit")}
+                        {requestedShares > 0
+                          ? (() => {
+                              const filled = marketPlanPreview.filledAmount;
+                              const filledStr = formatNumber(filled, undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              });
+                              const reqStr = formatNumber(requestedShares, undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              });
+                              const pctStr = formatPercent(fillPercent);
+                              return `${filledStr} / ${reqStr} ${tTrading("sharesUnit")} (${pctStr})`;
+                            })()
+                          : `${formatNumber(marketPlanPreview.filledAmount, undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })} ${tTrading("sharesUnit")}`}
                       </span>
                     </div>
                     {marketPlanPreview.partialFill && (
