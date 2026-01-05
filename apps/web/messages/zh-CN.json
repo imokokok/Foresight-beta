@@ -583,6 +583,7 @@
       "priceTimesAmount": "价格 × 数量",
       "thisTradePay": "本次预计支付",
       "thisTradeReceive": "本次预计收到",
+      "feeEstimated": "预计撮合手续费（按 Taker 0.4% 计算）",
       "ifOutcomeHappens": "若该结局发生",
       "positionValuePrefix": "头寸价值约 ",
       "positionValueMiddle": "，收益率 ",
@@ -690,7 +691,9 @@
     },
     "about": {
       "title": "关于此市场",
-      "referenceSource": "参考来源"
+      "referenceSource": "参考来源",
+      "feeTitle": "关于手续费",
+      "feeBody": "在 Foresight 上参与交易时，撮合层会对每笔成交收取 0.4% 的 Taker 手续费，用于覆盖基础设施成本并持续改进产品体验。所有费用都透明展示在下单预览中，不会额外收取隐性费用。"
     },
     "rules": {
       "criteriaTitle": "裁决标准",

@@ -163,6 +163,12 @@ export function MarketInfo({ prediction }: MarketInfoProps) {
                 </a>
               </div>
             )}
+            <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100 flex flex-col gap-2">
+              <div className="text-xs font-semibold text-amber-500 mb-1.5 uppercase tracking-wider flex items-center gap-1">
+                <Scale className="w-3 h-3" /> {tMarket("about.feeTitle")}
+              </div>
+              <p className="text-sm text-amber-800 leading-relaxed">{tMarket("about.feeBody")}</p>
+            </div>
           </div>
         )}
 

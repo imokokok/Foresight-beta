@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./OffchainMarketBase.sol";
+import "../MarketFactory.sol";
 
 /**
  * @notice Off-chain settlement market for binary outcomes (YES/NO).
@@ -21,10 +22,11 @@ contract OffchainBinaryMarket is OffchainMarketBase {
         uint256 _resolutionTime,
         bytes calldata data
     ) external override initializer {
-        if (feeBps != 0) revert FeeNotSupported();
         address outcome1155 = abi.decode(data, (address));
         _initCommon(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, 2);
+
+        address feeRecipient = MarketFactory(_factory).feeTo();
+        _setFeeConfig(feeBps, feeRecipient);
     }
 }
-
 

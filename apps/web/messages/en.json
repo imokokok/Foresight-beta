@@ -583,6 +583,7 @@
       "priceTimesAmount": "Price × Quantity",
       "thisTradePay": "This trade will pay",
       "thisTradeReceive": "This trade will receive",
+      "feeEstimated": "Est. matching fee (Taker 0.4%)",
       "ifOutcomeHappens": "If this outcome happens",
       "positionValuePrefix": "Position value about ",
       "positionValueMiddle": ", return ",
@@ -690,7 +691,9 @@
     },
     "about": {
       "title": "About this market",
-      "referenceSource": "Reference source"
+      "referenceSource": "Reference source",
+      "feeTitle": "About fees",
+      "feeBody": "When you trade on Foresight, the matching layer charges a 0.4% taker fee on executed volume to cover infrastructure costs and keep improving the product. All fees are shown transparently in the order preview, with no hidden or extra charges."
     },
     "rules": {
       "criteriaTitle": "Resolution criteria",

@@ -805,6 +805,8 @@ function TradeSummary({
   unrealizedPct,
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
+  const feeRate = 0.004;
+  const estimatedFee = hasInput ? total * feeRate : 0;
   const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
   const sideColor =
     tradeSide === "buy"
@@ -844,6 +846,13 @@ function TradeSummary({
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{tTrading("totalInvestment")}</span>
           <span className="text-gray-900 font-bold text-base">{formatCurrency(total)}</span>
+        </div>
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-gray-500">{tTrading("preview.feeEstimated")}</span>
+          <span className="text-gray-700 font-medium">
+            {formatCurrency(estimatedFee)}{" "}
+            <span className="ml-1 text-[11px] text-gray-400">({formatPercent(feeRate * 100)})</span>
+          </span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{tTrading("potentialReturn")}</span>

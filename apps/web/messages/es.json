@@ -583,6 +583,7 @@
       "priceTimesAmount": "Precio × Cantidad",
       "thisTradePay": "Esta operación pagará",
       "thisTradeReceive": "Esta operación recibirá",
+      "feeEstimated": "Comisión estimada de casación (Taker 0,4%)",
       "ifOutcomeHappens": "Si se cumple este resultado",
       "positionValuePrefix": "Valor de la posición aprox. ",
       "positionValueMiddle": ", rentabilidad ",
@@ -690,7 +691,9 @@
     },
     "about": {
       "title": "Sobre este mercado",
-      "referenceSource": "Fuente de referencia"
+      "referenceSource": "Fuente de referencia",
+      "feeTitle": "Sobre las comisiones",
+      "feeBody": "Cuando operas en Foresight, la capa de casación cobra una comisión de taker del 0,4% sobre el volumen ejecutado para cubrir costes de infraestructura y seguir mejorando el producto. Todas las comisiones se muestran de forma transparente en la vista previa de la orden, sin cargos ocultos ni adicionales."
     },
     "rules": {
       "criteriaTitle": "Criterios de resolución",

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "./OffchainMarketBase.sol";
+import "../MarketFactory.sol";
 
 /**
  * @notice Off-chain settlement market for multi outcomes (2..8).
@@ -20,10 +21,11 @@ contract OffchainMultiMarket8 is OffchainMarketBase {
         uint256 _resolutionTime,
         bytes calldata data
     ) external override initializer {
-        if (feeBps != 0) revert FeeNotSupported();
         (address outcome1155, uint8 oc) = abi.decode(data, (address, uint8));
         _initCommon(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, oc);
+
+        address feeRecipient = MarketFactory(_factory).feeTo();
+        _setFeeConfig(feeBps, feeRecipient);
     }
 }
-
 

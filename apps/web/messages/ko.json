@@ -720,6 +720,7 @@
       "priceTimesAmount": "가격 × 수량",
       "thisTradePay": "이 거래에서 지불할 금액",
       "thisTradeReceive": "이 거래에서 받을 금액",
+      "feeEstimated": "예상 매칭 수수료 (Taker 0.4%)",
       "ifOutcomeHappens": "이 결과가 발생하면",
       "positionValuePrefix": "포지션 가치 약 ",
       "positionValueMiddle": ", 수익 ",
@@ -827,7 +828,9 @@
     },
     "about": {
       "title": "이 시장에 대해",
-      "referenceSource": "참조 소스"
+      "referenceSource": "참조 소스",
+      "feeTitle": "수수료 안내",
+      "feeBody": "Foresight에서 거래할 때, 매칭 레이어는 체결된 거래 금액의 0.4%에 해당하는 Taker 수수료를 부과하여 인프라 비용을 충당하고 제품 경험을 꾸준히 개선합니다. 모든 수수료는 주문 미리보기에서 투명하게 표시되며, 숨겨진 추가 비용은 없습니다."
     },
     "rules": {
       "criteriaTitle": "해결 기준",

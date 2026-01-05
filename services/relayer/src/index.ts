@@ -36,19 +36,9 @@ import {
 } from "./middleware/index.js";
 
 // 🚀 Phase 2: 导入集群和高可用模块
-import { 
-  initClusterManager, 
-  closeClusterManager, 
-  getClusterManager 
-} from "./cluster/index.js";
-import { 
-  initDatabasePool, 
-  closeDatabasePool 
-} from "./database/index.js";
-import { 
-  initChainReconciler, 
-  closeChainReconciler 
-} from "./reconciliation/index.js";
+import { initClusterManager, closeClusterManager, getClusterManager } from "./cluster/index.js";
+import { initDatabasePool, closeDatabasePool } from "./database/index.js";
+import { initChainReconciler, closeChainReconciler } from "./reconciliation/index.js";
 
 // 环境变量校验与读取
 const EnvSchema = z.object({
@@ -122,37 +112,48 @@ export const app = express();
 // 🚀 初始化撮合引擎和 WebSocket 服务器
 const matchingEngine = new MatchingEngine({
   makerFeeBps: Number(process.env.MAKER_FEE_BPS || "0"),
-  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "50"),
+  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "40"),
   maxMarketLongExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_LONG_EXPOSURE_USDC || "0"),
   maxMarketShortExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC || "0"),
 });
 
-const wsServer = new MarketWebSocketServer(
-  Number(process.env.WS_PORT || "3006")
-);
+const wsServer = new MarketWebSocketServer(Number(process.env.WS_PORT || "3006"));
 
 // 🚀 连接撮合引擎事件到 WebSocket
 matchingEngine.on("market_event", (event) => {
   wsServer.handleMarketEvent(event);
 });
 
-matchingEngine.on("trade", (trade: { marketKey: string; outcomeIndex: number; amount: bigint; price: bigint; maker: string; taker: string }) => {
-  // 🚀 Phase 1: 结构化日志 + 指标
-  matchingLogger.info("Trade executed", {
-    marketKey: trade.marketKey,
-    outcomeIndex: trade.outcomeIndex,
-    amount: trade.amount.toString(),
-    price: trade.price.toString(),
-    maker: trade.maker,
-    taker: trade.taker,
-  });
-  
-  // 记录指标
-  matchesTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) });
-  const volumeBigInt = trade.amount * trade.price / 1_000_000_000_000_000_000n;
-  const volume = Number(volumeBigInt) / 1000000;
-  matchedVolumeTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) }, volume);
-});
+matchingEngine.on(
+  "trade",
+  (trade: {
+    marketKey: string;
+    outcomeIndex: number;
+    amount: bigint;
+    price: bigint;
+    maker: string;
+    taker: string;
+  }) => {
+    // 🚀 Phase 1: 结构化日志 + 指标
+    matchingLogger.info("Trade executed", {
+      marketKey: trade.marketKey,
+      outcomeIndex: trade.outcomeIndex,
+      amount: trade.amount.toString(),
+      price: trade.price.toString(),
+      maker: trade.maker,
+      taker: trade.taker,
+    });
+
+    // 记录指标
+    matchesTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) });
+    const volumeBigInt = (trade.amount * trade.price) / 1_000_000_000_000_000_000n;
+    const volume = Number(volumeBigInt) / 1000000;
+    matchedVolumeTotal.inc(
+      { market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) },
+      volume
+    );
+  }
+);
 
 // 🚀 连接结算事件
 matchingEngine.on("settlement_event", (event) => {
@@ -292,10 +293,13 @@ app.post("/orderbook/orders", limitOrders, async (req, res) => {
 app.post("/v2/orders", limitOrders, async (req, res) => {
   try {
     const body = req.body || {};
-    
+
     // 构建订单输入
     const orderInput: OrderInput = {
-      marketKey: body.marketKey || body.market_key || `${body.chainId}:${body.eventId || body.event_id || 'unknown'}`,
+      marketKey:
+        body.marketKey ||
+        body.market_key ||
+        `${body.chainId}:${body.eventId || body.event_id || "unknown"}`,
       maker: String(body.order?.maker || ""),
       outcomeIndex: Number(body.order?.outcomeIndex || 0),
       isBuy: Boolean(body.order?.isBuy),
@@ -320,10 +324,7 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
       });
     }
 
-    const filledAmount = result.matches.reduce<bigint>(
-      (acc, m) => acc + m.matchedAmount,
-      0n
-    );
+    const filledAmount = result.matches.reduce<bigint>((acc, m) => acc + m.matchedAmount, 0n);
 
     let status: string;
     if (orderInput.tif === "FOK") {
@@ -351,7 +352,7 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
       data: {
         orderId: orderInput.salt,
         matchesCount: result.matches.length,
-        matches: result.matches.map(m => ({
+        matches: result.matches.map((m) => ({
           matchId: m.id,
           matchedAmount: m.matchedAmount.toString(),
           matchedPrice: m.matchedPrice.toString(),
@@ -391,7 +392,7 @@ app.get("/v2/depth", async (req, res) => {
     }
 
     const snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
-    
+
     if (!snapshot) {
       return res.json({
         success: true,
@@ -405,12 +406,12 @@ app.get("/v2/depth", async (req, res) => {
       data: {
         marketKey: snapshot.marketKey,
         outcomeIndex: snapshot.outcomeIndex,
-        bids: snapshot.bids.map(l => ({
+        bids: snapshot.bids.map((l) => ({
           price: l.price.toString(),
           qty: l.totalQuantity.toString(),
           count: l.orderCount,
         })),
-        asks: snapshot.asks.map(l => ({
+        asks: snapshot.asks.map((l) => ({
           price: l.price.toString(),
           qty: l.totalQuantity.toString(),
           count: l.orderCount,
@@ -440,7 +441,7 @@ app.get("/v2/stats", async (req, res) => {
     }
 
     const stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
-    
+
     if (!stats) {
       return res.json({
         success: true,
@@ -507,7 +508,7 @@ app.get("/v2/ws-info", (req, res) => {
 app.post("/v2/register-settler", async (req, res) => {
   try {
     const { marketKey, chainId, marketAddress } = req.body;
-    
+
     // 验证必要参数
     if (!marketKey || !chainId || !marketAddress) {
       return res.status(400).json({
@@ -567,7 +568,7 @@ app.get("/v2/operator-status", async (req, res) => {
   try {
     const marketKey = String(req.query.marketKey || "");
     const settler = matchingEngine.getSettler(marketKey);
-    
+
     if (!settler) {
       return res.status(404).json({
         success: false,
@@ -962,7 +963,7 @@ async function startAutoIngestLoop() {
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, async () => {
     logger.info("Relayer server starting", { port: PORT });
-    
+
     // 🚀 Phase 1: 初始化 Redis
     const redisEnabled = process.env.REDIS_ENABLED !== "false";
     if (redisEnabled) {
@@ -997,19 +998,19 @@ if (process.env.NODE_ENV !== "test") {
           enableLeaderElection: true,
           enablePubSub: true,
         });
-        
+
         // 监听 Leader 事件
         cluster.on("became_leader", () => {
           logger.info("This node became the leader, starting matching engine");
           // 可以在这里添加 Leader 专属逻辑
         });
-        
+
         cluster.on("lost_leadership", () => {
           logger.warn("This node lost leadership");
           // 可以在这里添加 Follower 逻辑
         });
-        
-        logger.info("Cluster manager initialized", { 
+
+        logger.info("Cluster manager initialized", {
           nodeId: cluster.getNodeId(),
           isLeader: cluster.isLeader(),
         });
@@ -1037,18 +1038,24 @@ if (process.env.NODE_ENV !== "test") {
 
     // 🚀 Phase 1: 注册健康检查器
     healthService.registerHealthCheck("supabase", createSupabaseHealthChecker(supabaseAdmin));
-    healthService.registerHealthCheck("matching_engine", createMatchingEngineHealthChecker(matchingEngine));
-    
+    healthService.registerHealthCheck(
+      "matching_engine",
+      createMatchingEngineHealthChecker(matchingEngine)
+    );
+
     if (redisEnabled) {
       healthService.registerHealthCheck("redis", createRedisHealthChecker(getRedisClient()));
     }
-    
+
     if (provider) {
       healthService.registerHealthCheck("rpc", createRpcHealthChecker(provider));
     }
-    
-    healthService.registerReadinessCheck("orderbook", createOrderbookReadinessChecker(matchingEngine));
-    
+
+    healthService.registerReadinessCheck(
+      "orderbook",
+      createOrderbookReadinessChecker(matchingEngine)
+    );
+
     // 🚀 启动 WebSocket 服务器
     try {
       wsServer.start();
@@ -1067,9 +1074,9 @@ if (process.env.NODE_ENV !== "test") {
 
     // 启动自动交易摄入
     startAutoIngestLoop().catch((e: any) => logger.warn("Auto-ingest failed to start", {}, e));
-    
-    logger.info("Relayer server started successfully", { 
-      port: PORT, 
+
+    logger.info("Relayer server started successfully", {
+      port: PORT,
       wsPort: process.env.WS_PORT || 3006,
       redisEnabled,
       clusterEnabled,
@@ -1081,14 +1088,14 @@ if (process.env.NODE_ENV !== "test") {
 // 🚀 Phase 1 & 2: 优雅关闭 (增加 Redis、集群、对账服务关闭)
 async function gracefulShutdown(signal: string) {
   logger.info("Graceful shutdown initiated", { signal });
-  
+
   try {
     // 停止接收新请求的时间
     const shutdownTimeout = setTimeout(() => {
       logger.error("Shutdown timeout, forcing exit");
       process.exit(1);
     }, 30000);
-    
+
     // 🚀 Phase 2: 关闭链上对账服务
     try {
       await closeChainReconciler();
@@ -1096,7 +1103,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to stop chain reconciler", {}, e);
     }
-    
+
     // 🚀 Phase 2: 关闭集群管理器
     try {
       await closeClusterManager();
@@ -1104,7 +1111,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to stop cluster manager", {}, e);
     }
-    
+
     // 关闭订单簿快照服务
     try {
       const snapshotService = getOrderbookSnapshotService();
@@ -1113,7 +1120,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to stop snapshot service", {}, e);
     }
-    
+
     // 关闭撮合引擎
     try {
       await matchingEngine.shutdown();
@@ -1121,7 +1128,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to stop matching engine", {}, e);
     }
-    
+
     // 关闭 WebSocket
     try {
       wsServer.stop();
@@ -1129,7 +1136,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to stop WebSocket server", {}, e);
     }
-    
+
     // 关闭 Redis
     try {
       await closeRedis();
@@ -1137,7 +1144,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to close Redis", {}, e);
     }
-    
+
     // 🚀 Phase 2: 关闭数据库连接池
     try {
       await closeDatabasePool();
@@ -1145,7 +1152,7 @@ async function gracefulShutdown(signal: string) {
     } catch (e: any) {
       logger.error("Failed to close database pool", {}, e);
     }
-    
+
     clearTimeout(shutdownTimeout);
     logger.info("Graceful shutdown completed");
     process.exit(0);

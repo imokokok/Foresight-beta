@@ -7,45 +7,45 @@
 
 export interface Order {
   id: string;
-  marketKey: string;           // 市场标识: chainId:eventId
-  maker: string;               // 订单创建者地址
-  outcomeIndex: number;        // 结果索引 (0=Yes, 1=No)
-  isBuy: boolean;              // 买/卖方向
-  price: bigint;               // 价格 (6 decimals, max 1_000_000 = 1 USDC)
-  amount: bigint;              // 订单总量 (18 decimals)
-  remainingAmount: bigint;     // 剩余未成交量
-  salt: string;                // 唯一盐值
-  expiry: number;              // 过期时间戳 (0=永不过期)
-  signature: string;           // EIP-712 签名
-  chainId: number;             // 链 ID
-  verifyingContract: string;   // 验证合约地址
-  sequence: bigint;            // 排序序号 (时间优先)
-  status: OrderStatus;         // 订单状态
-  createdAt: number;           // 创建时间戳
+  marketKey: string; // 市场标识: chainId:eventId
+  maker: string; // 订单创建者地址
+  outcomeIndex: number; // 结果索引 (0=Yes, 1=No)
+  isBuy: boolean; // 买/卖方向
+  price: bigint; // 价格 (6 decimals, max 1_000_000 = 1 USDC)
+  amount: bigint; // 订单总量 (18 decimals)
+  remainingAmount: bigint; // 剩余未成交量
+  salt: string; // 唯一盐值
+  expiry: number; // 过期时间戳 (0=永不过期)
+  signature: string; // EIP-712 签名
+  chainId: number; // 链 ID
+  verifyingContract: string; // 验证合约地址
+  sequence: bigint; // 排序序号 (时间优先)
+  status: OrderStatus; // 订单状态
+  createdAt: number; // 创建时间戳
   tif?: "IOC" | "FOK";
   postOnly?: boolean;
 }
 
-export type OrderStatus = 
-  | "pending"           // 等待验证
-  | "open"              // 活跃挂单
-  | "partially_filled"  // 部分成交
-  | "filled"            // 完全成交
-  | "canceled"          // 已取消
-  | "expired"           // 已过期
-  | "rejected";         // 被拒绝
+export type OrderStatus =
+  | "pending" // 等待验证
+  | "open" // 活跃挂单
+  | "partially_filled" // 部分成交
+  | "filled" // 完全成交
+  | "canceled" // 已取消
+  | "expired" // 已过期
+  | "rejected"; // 被拒绝
 
 // ============ 撮合相关类型 ============
 
 export interface Match {
-  id: string;                  // 撮合 ID
-  makerOrder: Order;           // Maker 订单
-  takerOrder: Order;           // Taker 订单
-  matchedAmount: bigint;       // 成交数量
-  matchedPrice: bigint;        // 成交价格 (Maker 价格)
-  makerFee: bigint;            // Maker 手续费
-  takerFee: bigint;            // Taker 手续费
-  timestamp: number;           // 撮合时间
+  id: string; // 撮合 ID
+  makerOrder: Order; // Maker 订单
+  takerOrder: Order; // Taker 订单
+  matchedAmount: bigint; // 成交数量
+  matchedPrice: bigint; // 成交价格 (Maker 价格)
+  makerFee: bigint; // Maker 手续费
+  takerFee: bigint; // Taker 手续费
+  timestamp: number; // 撮合时间
 }
 
 export interface MatchResult {
@@ -61,14 +61,14 @@ export interface PriceLevel {
   price: bigint;
   totalQuantity: bigint;
   orderCount: number;
-  orders: Order[];             // 按时间优先排序
+  orders: Order[]; // 按时间优先排序
 }
 
 export interface DepthSnapshot {
   marketKey: string;
   outcomeIndex: number;
-  bids: PriceLevel[];          // 买盘 (价格降序)
-  asks: PriceLevel[];          // 卖盘 (价格升序)
+  bids: PriceLevel[]; // 买盘 (价格降序)
+  asks: PriceLevel[]; // 卖盘 (价格升序)
   timestamp: number;
 }
 
@@ -78,8 +78,8 @@ export interface OrderBookStats {
   bestBid: bigint | null;
   bestAsk: bigint | null;
   spread: bigint | null;
-  bidDepth: bigint;            // 买盘总深度
-  askDepth: bigint;            // 卖盘总深度
+  bidDepth: bigint; // 买盘总深度
+  askDepth: bigint; // 卖盘总深度
   lastTradePrice: bigint | null;
   volume24h: bigint;
 }
@@ -93,19 +93,19 @@ export interface Trade {
   outcomeIndex: number;
   maker: string;
   taker: string;
-  isBuyerMaker: boolean;       // Maker 是否是买方
+  isBuyerMaker: boolean; // Maker 是否是买方
   price: bigint;
   amount: bigint;
   makerFee: bigint;
   takerFee: bigint;
-  txHash?: string;             // 链上结算交易哈希
+  txHash?: string; // 链上结算交易哈希
   blockNumber?: number;
   timestamp: number;
 }
 
 // ============ 事件类型 (用于 WebSocket 推送) ============
 
-export type MarketEvent = 
+export type MarketEvent =
   | { type: "order_placed"; order: Order }
   | { type: "order_canceled"; orderId: string; marketKey: string }
   | { type: "order_updated"; order: Order }
@@ -135,7 +135,7 @@ export interface MatchingEngineConfig {
 
 export const DEFAULT_CONFIG: MatchingEngineConfig = {
   makerFeeBps: 0,
-  takerFeeBps: 50,
+  takerFeeBps: 40,
   maxOrdersPerMarket: 10000,
   maxOrdersPerUser: 100,
   minOrderAmount: 1_000_000_000_000n,

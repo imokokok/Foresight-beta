@@ -70,6 +70,8 @@ abstract contract OffchainMarketBase is
     address public oracle;
     uint256 public resolutionTime;
     OutcomeToken1155 public outcomeToken;
+    uint256 public feeBps;
+    address public feeRecipient;
 
     // Packed storage slot (1 + 1 + 1 + 1 = 4 bytes, fits in 1 slot)
     uint8 public outcomeCount;
@@ -280,6 +282,11 @@ abstract contract OffchainMarketBase is
         emit Initialized(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, oc);
     }
 
+    function _setFeeConfig(uint256 _feeBps, address _feeRecipient) internal {
+        feeBps = _feeBps;
+        feeRecipient = _feeRecipient;
+    }
+
     function domainSeparatorV4() external view returns (bytes32) {
         return _domainSeparatorV4();
     }
@@ -393,6 +400,15 @@ abstract contract OffchainMarketBase is
             cost6 = (fillAmount * o.price) / SHARE_SCALE;
         }
 
+        uint256 fee;
+        address recipient = feeRecipient;
+        uint256 bps = feeBps;
+        if (recipient != address(0) && bps != 0) {
+            unchecked {
+                fee = (cost6 * bps) / 10000;
+            }
+        }
+
         // --- Flash loan protection ---
         _checkFlashLoanProtection(msg.sender, cost6);
         _checkFlashLoanProtection(o.maker, cost6);
@@ -407,15 +423,27 @@ abstract contract OffchainMarketBase is
 
         if (o.isBuy) {
             if (!_outcomeToken.isApprovedForAll(msg.sender, address(this))) revert NotApproved1155();
-            _collateral.safeTransferFrom(o.maker, msg.sender, cost6);
+            if (fee > 0 && recipient != address(0)) {
+                uint256 net = cost6 - fee;
+                _collateral.safeTransferFrom(o.maker, recipient, fee);
+                _collateral.safeTransferFrom(o.maker, msg.sender, net);
+            } else {
+                _collateral.safeTransferFrom(o.maker, msg.sender, cost6);
+            }
             _outcomeToken.safeTransferFrom(msg.sender, o.maker, tokenId, fillAmount, "");
         } else {
             if (!_outcomeToken.isApprovedForAll(o.maker, address(this))) revert NotApproved1155();
-            _collateral.safeTransferFrom(msg.sender, o.maker, cost6);
+            if (fee > 0 && recipient != address(0)) {
+                uint256 net = cost6 - fee;
+                _collateral.safeTransferFrom(msg.sender, recipient, fee);
+                _collateral.safeTransferFrom(msg.sender, o.maker, net);
+            } else {
+                _collateral.safeTransferFrom(msg.sender, o.maker, cost6);
+            }
             _outcomeToken.safeTransferFrom(o.maker, msg.sender, tokenId, fillAmount, "");
         }
 
-        emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, 0, o.salt);
+        emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, fee, o.salt);
     }
 
     // ═══════════════════════════════════════════════════════════════════════

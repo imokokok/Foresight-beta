@@ -18,7 +18,7 @@ describe("MatchingEngine", () => {
   beforeEach(() => {
     engine = new MatchingEngine({
       makerFeeBps: 0,
-      takerFeeBps: 50,
+      takerFeeBps: 40,
       minOrderAmount: 1_000_000_000_000n, // 1e12
       maxOrderAmount: 1_000_000_000_000_000_000_000n, // 1e21
     });
@@ -112,7 +112,7 @@ describe("MatchingEngine", () => {
     it("should reject order with price not aligned to tick size", async () => {
       const engineWithTick = new MatchingEngine({
         makerFeeBps: 0,
-        takerFeeBps: 50,
+        takerFeeBps: 40,
         minOrderAmount: 1_000_000_000_000n,
         maxOrderAmount: 1_000_000_000_000_000_000_000n,
         minPrice: 0n,
@@ -368,10 +368,7 @@ describe("MatchingEngine", () => {
 
       const result = await engine.submitOrder(fokOrder);
       expect(result.success).toBe(true);
-      const totalMatched = result.matches.reduce(
-        (acc, m) => acc + m.matchedAmount,
-        0n
-      );
+      const totalMatched = result.matches.reduce((acc, m) => acc + m.matchedAmount, 0n);
       expect(totalMatched).toBe(2_000_000_000_000_000_000n);
       expect(result.remainingOrder).toBeNull();
       expect(book.getOrderCount()).toBe(0);
@@ -419,7 +416,7 @@ describe("MatchingEngine", () => {
     it("should reject buy order when market long exposure exceeds limit", async () => {
       const engineWithLimit = new MatchingEngine({
         makerFeeBps: 0,
-        takerFeeBps: 50,
+        takerFeeBps: 40,
         minOrderAmount: 1_000_000_000_000n,
         maxOrderAmount: 1_000_000_000_000_000_000_000n,
         maxMarketLongExposureUsdc: 1,
@@ -464,7 +461,7 @@ describe("MatchingEngine", () => {
     it("should reject sell order when market short exposure exceeds limit", async () => {
       const engineWithLimit = new MatchingEngine({
         makerFeeBps: 0,
-        takerFeeBps: 50,
+        takerFeeBps: 40,
         minOrderAmount: 1_000_000_000_000n,
         maxOrderAmount: 1_000_000_000_000_000_000_000n,
         maxMarketShortExposureUsdc: 1,
@@ -532,7 +529,7 @@ describe("OrderBook", () => {
     it("should remove orders correctly", () => {
       const order = createTestOrder({ id: "order-1" });
       orderBook.addOrder(order);
-      
+
       const removed = orderBook.removeOrder("order-1");
       expect(removed).not.toBeNull();
       expect(removed?.id).toBe("order-1");
@@ -546,24 +543,30 @@ describe("OrderBook", () => {
 
     it("should get best bid correctly", () => {
       // Add multiple buy orders at different prices
-      orderBook.addOrder(createTestOrder({
-        id: "bid-1",
-        isBuy: true,
-        price: 400000n,
-        sequence: 1n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "bid-2",
-        isBuy: true,
-        price: 500000n, // Best bid
-        sequence: 2n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "bid-3",
-        isBuy: true,
-        price: 450000n,
-        sequence: 3n,
-      }));
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-1",
+          isBuy: true,
+          price: 400000n,
+          sequence: 1n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-2",
+          isBuy: true,
+          price: 500000n, // Best bid
+          sequence: 2n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-3",
+          isBuy: true,
+          price: 450000n,
+          sequence: 3n,
+        })
+      );
 
       const bestBid = orderBook.getBestBid();
       expect(bestBid).not.toBeNull();
@@ -572,24 +575,30 @@ describe("OrderBook", () => {
 
     it("should get best ask correctly", () => {
       // Add multiple sell orders at different prices
-      orderBook.addOrder(createTestOrder({
-        id: "ask-1",
-        isBuy: false,
-        price: 600000n,
-        sequence: 1n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "ask-2",
-        isBuy: false,
-        price: 500000n, // Best ask
-        sequence: 2n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "ask-3",
-        isBuy: false,
-        price: 550000n,
-        sequence: 3n,
-      }));
+      orderBook.addOrder(
+        createTestOrder({
+          id: "ask-1",
+          isBuy: false,
+          price: 600000n,
+          sequence: 1n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "ask-2",
+          isBuy: false,
+          price: 500000n, // Best ask
+          sequence: 2n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "ask-3",
+          isBuy: false,
+          price: 550000n,
+          sequence: 3n,
+        })
+      );
 
       const bestAsk = orderBook.getBestAsk();
       expect(bestAsk).not.toBeNull();
@@ -597,16 +606,20 @@ describe("OrderBook", () => {
     });
 
     it("should calculate spread correctly", () => {
-      orderBook.addOrder(createTestOrder({
-        id: "bid-1",
-        isBuy: true,
-        price: 450000n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "ask-1",
-        isBuy: false,
-        price: 550000n,
-      }));
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-1",
+          isBuy: true,
+          price: 450000n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "ask-1",
+          isBuy: false,
+          price: 550000n,
+        })
+      );
 
       const stats = orderBook.getStats();
       expect(stats.bestBid).toBe(450000n);
@@ -618,38 +631,46 @@ describe("OrderBook", () => {
   describe("Depth Snapshot", () => {
     it("should return correct depth snapshot", () => {
       // Add bids
-      orderBook.addOrder(createTestOrder({
-        id: "bid-1",
-        isBuy: true,
-        price: 450000n,
-        remainingAmount: 1_000_000_000_000_000_000n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "bid-2",
-        isBuy: true,
-        price: 450000n, // Same price
-        remainingAmount: 2_000_000_000_000_000_000n,
-      }));
-      orderBook.addOrder(createTestOrder({
-        id: "bid-3",
-        isBuy: true,
-        price: 400000n,
-        remainingAmount: 1_000_000_000_000_000_000n,
-      }));
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-1",
+          isBuy: true,
+          price: 450000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-2",
+          isBuy: true,
+          price: 450000n, // Same price
+          remainingAmount: 2_000_000_000_000_000_000n,
+        })
+      );
+      orderBook.addOrder(
+        createTestOrder({
+          id: "bid-3",
+          isBuy: true,
+          price: 400000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
 
       // Add asks
-      orderBook.addOrder(createTestOrder({
-        id: "ask-1",
-        isBuy: false,
-        price: 550000n,
-        remainingAmount: 1_000_000_000_000_000_000n,
-      }));
+      orderBook.addOrder(
+        createTestOrder({
+          id: "ask-1",
+          isBuy: false,
+          price: 550000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
 
       const snapshot = orderBook.getDepthSnapshot(10);
-      
+
       expect(snapshot.bids.length).toBe(2); // 2 price levels
       expect(snapshot.asks.length).toBe(1);
-      
+
       // First bid level should be highest price with combined quantity
       expect(snapshot.bids[0].price).toBe(450000n);
       expect(snapshot.bids[0].totalQuantity).toBe(3_000_000_000_000_000_000n);
