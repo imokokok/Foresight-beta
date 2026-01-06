@@ -60,7 +60,7 @@
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@react-spring/web": "^10.0.3",
     "@safe-global/safe-contracts": "^1.4.1-2",
-    "@supabase/supabase-js": "^2.75.1",
+    "@supabase/supabase-js": "^2.89.0",
     "@tanstack/react-query": "^5.90.5",
     "@use-gesture/react": "^10.3.1",
     "abdk-libraries-solidity": "^3.2.0",

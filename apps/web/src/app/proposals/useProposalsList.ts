@@ -8,13 +8,15 @@ import {
   type ProposalItem,
   type CategoryOption,
   type ProposalFilter,
+  PROPOSALS_EVENT_ID,
 } from "./proposalsListUtils";
 import { useCategories } from "@/hooks/useQueries";
 import { normalizeId } from "@/lib/ids";
 import { reactQueryFeedback } from "@/lib/apiWithFeedback";
+import { t } from "@/lib/i18n";
 
 const fetchProposals = async (): Promise<ProposalItem[]> => {
-  const res = await fetch("/api/forum?eventId=0");
+  const res = await fetch(`/api/forum?eventId=${PROPOSALS_EVENT_ID}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.message);
   return data.threads || [];
@@ -29,9 +31,9 @@ export function useProposalsList(account: string | null | undefined, connectWall
   const [pendingVoteId, setPendingVoteId] = useState<number | null>(null);
 
   const voteFeedback = reactQueryFeedback({
-    loadingMessage: "Submitting vote...",
-    successMessage: "Vote recorded",
-    errorMessage: "Vote failed",
+    loadingMessage: t("common.loading"),
+    successMessage: t("common.success"),
+    errorMessage: t("forum.errors.voteFailed"),
   });
 
   const { data: proposals = [], isLoading } = useQuery<ProposalItem[]>({
@@ -42,7 +44,7 @@ export function useProposalsList(account: string | null | undefined, connectWall
   const { data: userVotesData } = useQuery<any[]>({
     queryKey: ["proposalUserVotes", account],
     queryFn: async () => {
-      const res = await fetch("/api/forum/user-votes?eventId=0");
+      const res = await fetch(`/api/forum/user-votes?eventId=${PROPOSALS_EVENT_ID}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to load votes");
       return Array.isArray(data.votes) ? data.votes : [];
@@ -67,20 +69,20 @@ export function useProposalsList(account: string | null | undefined, connectWall
     mutationFn: async ({ id, type }: { id: number; type: "up" | "down" }) => {
       if (!account) {
         connectWallet();
-        throw new Error("Please connect wallet");
+        throw new Error(t("forum.errors.walletRequiredForVote"));
       }
       const res = await fetch("/api/forum/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventId: 0,
+          eventId: PROPOSALS_EVENT_ID,
           type: "thread",
           id,
           dir: type,
           walletAddress: account,
         }),
       });
-      if (!res.ok) throw new Error("Vote failed");
+      if (!res.ok) throw new Error(t("forum.errors.voteFailed"));
       return res.json();
     },
     onMutate: ({ id }) => {

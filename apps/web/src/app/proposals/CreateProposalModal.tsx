@@ -12,6 +12,7 @@ import {
 import { useWallet } from "@/contexts/WalletContext";
 import { useCategories } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
+import { PROPOSALS_EVENT_ID } from "./proposalsListUtils";
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -63,7 +64,7 @@ export default function CreateProposalModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventId: 0,
+          eventId: PROPOSALS_EVENT_ID,
           title: form.title,
           content: form.content,
           category: form.category,

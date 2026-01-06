@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { TRENDING_CATEGORIES } from "@/features/trending/trendingModel";
 
+export const PROPOSALS_EVENT_ID = 0;
+
 export type ProposalFilter = "hot" | "new" | "top";
 
 export type ProposalComment = {

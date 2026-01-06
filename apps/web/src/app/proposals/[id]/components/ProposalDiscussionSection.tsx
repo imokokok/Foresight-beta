@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
@@ -36,6 +37,27 @@ export function ProposalDiscussionSection({
 }: ProposalDiscussionSectionProps) {
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
+
+  const [filterMode, setFilterMode] = useState<"time" | "hot" | "author">("time");
+
+  const comments = useMemo(() => {
+    const list = (thread.comments || []) as CommentView[];
+    if (list.length === 0) return list;
+    if (filterMode === "author") {
+      return list.filter((c) => c.user_id === thread.user_id);
+    }
+    if (filterMode === "hot") {
+      return [...list].sort((a, b) => {
+        const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+        const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    }
+    return [...list].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [thread.comments, thread.user_id, filterMode]);
 
   return (
     <section className="flex flex-col h-full">
@@ -81,19 +103,34 @@ export function ProposalDiscussionSection({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              className="px-2 py-1 rounded-full bg-slate-900 text-white font-semibold"
+              onClick={() => setFilterMode("time")}
+              className={`px-2 py-1 rounded-full font-semibold ${
+                filterMode === "time"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
             >
               {tProposals("discussion.filterByTime")}
             </button>
             <button
               type="button"
-              className="px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              onClick={() => setFilterMode("hot")}
+              className={`px-2 py-1 rounded-full font-semibold ${
+                filterMode === "hot"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
             >
               {tProposals("discussion.filterByHot")}
             </button>
             <button
               type="button"
-              className="px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              onClick={() => setFilterMode("author")}
+              className={`px-2 py-1 rounded-full font-semibold ${
+                filterMode === "author"
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+              }`}
             >
               {tProposals("discussion.filterOnlyAuthor")}
             </button>
@@ -107,7 +144,7 @@ export function ProposalDiscussionSection({
 
         <div className="space-y-4 pt-1 flex-1 overflow-y-auto">
           <CommentTree
-            comments={(thread.comments || []) as CommentView[]}
+            comments={comments}
             userVoteTypes={userVoteTypes}
             onVote={(id, dir) => vote("comment", id, dir)}
             onReply={(id, text) => postComment(text, id)}

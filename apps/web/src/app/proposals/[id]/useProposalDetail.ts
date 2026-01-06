@@ -4,7 +4,7 @@ import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 import { toast } from "@/lib/toast";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
 import { t } from "@/lib/i18n";
-import type { ProposalItem, ProposalComment } from "../proposalsListUtils";
+import { PROPOSALS_EVENT_ID, type ProposalItem, type ProposalComment } from "../proposalsListUtils";
 
 export type CommentView = ProposalComment;
 
@@ -34,9 +34,7 @@ export function useProposalDetail(id: string) {
     try {
       setLoading(true);
       setError(null);
-      // Currently fetching all threads for eventId=0.
-      // Ideally API should support /api/forum/thread/[id] or similar.
-      const res = await fetch("/api/forum?eventId=0");
+      const res = await fetch(`/api/forum?eventId=${PROPOSALS_EVENT_ID}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load proposal");
@@ -77,7 +75,7 @@ export function useProposalDetail(id: string) {
       return;
     }
     try {
-      const res = await fetch(`/api/forum/user-votes?eventId=0`);
+      const res = await fetch(`/api/forum/user-votes?eventId=${PROPOSALS_EVENT_ID}`);
       const data = await res.json();
       if (res.ok && Array.isArray(data.votes)) {
         const set = new Set<string>();
@@ -173,7 +171,7 @@ export function useProposalDetail(id: string) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventId: 0,
+          eventId: PROPOSALS_EVENT_ID,
           threadId: thread.id,
           content,
           walletAddress: account,
