@@ -2,9 +2,17 @@ const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 
 // 使用service key创建admin客户端
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+
 const supabaseAdmin = createClient(
-  'https://qhllkgbddesrbhvjzfud.supabase.co', 
-  'sb_secret_VnrRa68cNTWbwvmkYQjXJw_lM5LI68r',
+  SUPABASE_URL,
+  SUPABASE_SERVICE_KEY,
   {
     auth: {
       autoRefreshToken: false,
@@ -19,7 +27,6 @@ async function executeSQL() {
     
     // 读取SQL文件
     const sql = fs.readFileSync('create-table-final.sql', 'utf8');
-    console.log('SQL内容:', sql);
     
     // 方法1: 尝试使用PostgreSQL客户端
     console.log('\n方法1: 尝试使用pg客户端...');
@@ -27,7 +34,10 @@ async function executeSQL() {
       const { Client } = require('pg');
       
       // 从DATABASE_URL解析连接信息
-      const databaseUrl = 'postgresql://postgres.qhllkgbddesrbhvjzfud:Foresight2024!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
+      const databaseUrl = process.env.SUPABASE_DB_URL || process.env.SUPABASE_CONNECTION_STRING;
+      if (!databaseUrl) {
+        throw new Error('Missing SUPABASE_CONNECTION_STRING or SUPABASE_DB_URL');
+      }
       
       const client = new Client({
         connectionString: databaseUrl,

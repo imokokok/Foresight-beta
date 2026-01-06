@@ -72,6 +72,8 @@ abstract contract OffchainMarketBase is
     OutcomeToken1155 public outcomeToken;
     uint256 public feeBps;
     address public feeRecipient;
+    uint256 public lpFeeBps;
+    address public lpFeeRecipient;
 
     // Packed storage slot (1 + 1 + 1 + 1 = 4 bytes, fits in 1 slot)
     uint8 public outcomeCount;
@@ -285,6 +287,16 @@ abstract contract OffchainMarketBase is
     function _setFeeConfig(uint256 _feeBps, address _feeRecipient) internal {
         feeBps = _feeBps;
         feeRecipient = _feeRecipient;
+        lpFeeBps = 0;
+        lpFeeRecipient = address(0);
+    }
+
+    function _setFeeConfig(uint256 _feeBps, address _feeRecipient, uint256 _lpFeeBps, address _lpFeeRecipient) internal {
+        if (_lpFeeBps > _feeBps) revert FeeNotSupported();
+        feeBps = _feeBps;
+        feeRecipient = _feeRecipient;
+        lpFeeBps = _lpFeeBps;
+        lpFeeRecipient = _lpFeeRecipient;
     }
 
     function domainSeparatorV4() external view returns (bytes32) {
@@ -400,15 +412,6 @@ abstract contract OffchainMarketBase is
             cost6 = (fillAmount * o.price) / SHARE_SCALE;
         }
 
-        uint256 fee;
-        address recipient = feeRecipient;
-        uint256 bps = feeBps;
-        if (recipient != address(0) && bps != 0) {
-            unchecked {
-                fee = (cost6 * bps) / 10000;
-            }
-        }
-
         // --- Flash loan protection ---
         _checkFlashLoanProtection(msg.sender, cost6);
         _checkFlashLoanProtection(o.maker, cost6);
@@ -423,27 +426,15 @@ abstract contract OffchainMarketBase is
 
         if (o.isBuy) {
             if (!_outcomeToken.isApprovedForAll(msg.sender, address(this))) revert NotApproved1155();
-            if (fee > 0 && recipient != address(0)) {
-                uint256 net = cost6 - fee;
-                _collateral.safeTransferFrom(o.maker, recipient, fee);
-                _collateral.safeTransferFrom(o.maker, msg.sender, net);
-            } else {
-                _collateral.safeTransferFrom(o.maker, msg.sender, cost6);
-            }
+            _collateral.safeTransferFrom(o.maker, msg.sender, cost6);
             _outcomeToken.safeTransferFrom(msg.sender, o.maker, tokenId, fillAmount, "");
         } else {
             if (!_outcomeToken.isApprovedForAll(o.maker, address(this))) revert NotApproved1155();
-            if (fee > 0 && recipient != address(0)) {
-                uint256 net = cost6 - fee;
-                _collateral.safeTransferFrom(msg.sender, recipient, fee);
-                _collateral.safeTransferFrom(msg.sender, o.maker, net);
-            } else {
-                _collateral.safeTransferFrom(msg.sender, o.maker, cost6);
-            }
+            _collateral.safeTransferFrom(msg.sender, o.maker, cost6);
             _outcomeToken.safeTransferFrom(o.maker, msg.sender, tokenId, fillAmount, "");
         }
 
-        emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, fee, o.salt);
+        emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, 0, o.salt);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -498,17 +489,31 @@ abstract contract OffchainMarketBase is
         unchecked {
             payout6 = (amount18 * USDC_SCALE) / SHARE_SCALE;
         }
-        uint256 fee;
-        address recipient = feeRecipient;
-        uint256 bps = feeBps;
-        if (recipient != address(0) && bps != 0) {
+
+        uint256 totalBps = feeBps;
+        uint256 lpBps = lpFeeBps;
+        address protocolRecipient = feeRecipient;
+        address lpRecipient = lpFeeRecipient;
+
+        uint256 lpFee;
+        if (lpRecipient != address(0) && lpBps != 0) {
             unchecked {
-                fee = (payout6 * bps) / 10000;
+                lpFee = (payout6 * lpBps) / 10000;
             }
         }
-        if (fee > 0 && recipient != address(0)) {
-            collateral.safeTransfer(recipient, fee);
-            collateral.safeTransfer(msg.sender, payout6 - fee);
+
+        uint256 protocolFee;
+        if (protocolRecipient != address(0) && totalBps > lpBps) {
+            unchecked {
+                protocolFee = (payout6 * (totalBps - lpBps)) / 10000;
+            }
+        }
+
+        uint256 totalFee = lpFee + protocolFee;
+        if (totalFee > 0) {
+            if (lpFee > 0) collateral.safeTransfer(lpRecipient, lpFee);
+            if (protocolFee > 0) collateral.safeTransfer(protocolRecipient, protocolFee);
+            collateral.safeTransfer(msg.sender, payout6 - totalFee);
         } else {
             collateral.safeTransfer(msg.sender, payout6);
         }

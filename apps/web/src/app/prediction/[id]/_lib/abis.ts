@@ -1,7 +1,20 @@
 export const erc20Abi = [
   "function decimals() view returns (uint8)",
+  "function balanceOf(address owner) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 value) returns (bool)",
+] as const;
+
+export const lpFeeStakingAbi = [
+  "function stakingToken() view returns (address)",
+  "function rewardToken() view returns (address)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address user) view returns (uint256)",
+  "function earned(address user) view returns (uint256)",
+  "function stake(uint256 amount) external",
+  "function withdraw(uint256 amount) external",
+  "function getReward() external",
+  "function exit() external",
 ] as const;
 
 export const marketAbi = [

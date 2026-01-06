@@ -1506,6 +1506,7 @@
       "tabs": {
         "overview": "Resumen",
         "predictions": "Mis predicciones",
+        "makerEarnings": "Ganancias de maker",
         "history": "Historial de navegación",
         "following": "Siguiendo"
       },
@@ -1583,6 +1584,35 @@
       "labels": {
         "followers": "{count} seguidores",
         "deadline": "Finaliza el {date}"
+      }
+    },
+    "makerEarnings": {
+      "title": "Ganancias de maker",
+      "subtitle": "Recompensas y saldo pendiente para reclamar",
+      "cards": {
+        "pendingReward": "Recompensa pendiente (USDC)",
+        "stakedForesight": "Foresight en stake",
+        "walletForesight": "Foresight en billetera"
+      },
+      "actions": {
+        "refresh": "Actualizar",
+        "claim": "Reclamar recompensas",
+        "claimed": "Reclamado",
+        "viewOnExplorer": "Explorer"
+      },
+      "hints": {
+        "notConfigured": "La dirección de LPFeeStaking no está configurada",
+        "viewOnly": "Solo lectura. Para reclamar necesitas la misma billetera"
+      },
+      "empty": {
+        "noAddress": "No se encontró la dirección",
+        "connectWallet": "Conecta la billetera para ver las ganancias de maker"
+      },
+      "errors": {
+        "loadFailed": "No se pudieron cargar las ganancias de maker",
+        "notConfigured": "La dirección del contrato no está configurada",
+        "notYourWallet": "La billetera conectada no coincide con esta dirección",
+        "claimFailed": "Falló el reclamo, inténtalo de nuevo"
       }
     },
     "followers": {

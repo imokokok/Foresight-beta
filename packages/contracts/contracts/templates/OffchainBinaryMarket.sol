@@ -25,8 +25,7 @@ contract OffchainBinaryMarket is OffchainMarketBase {
         address outcome1155 = abi.decode(data, (address));
         _initCommon(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, 2);
 
-        address feeRecipient = MarketFactory(_factory).feeTo();
-        _setFeeConfig(feeBps, feeRecipient);
+        MarketFactory mf = MarketFactory(_factory);
+        _setFeeConfig(feeBps, mf.feeTo(), mf.lpFeeBps(), mf.lpFeeTo());
     }
 }
-

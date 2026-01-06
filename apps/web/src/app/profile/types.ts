@@ -1,6 +1,6 @@
 import type React from "react";
 
-export type TabType = "predictions" | "history" | "following" | "followers";
+export type TabType = "predictions" | "history" | "following" | "followers" | "makerEarnings";
 
 export type PortfolioStats = {
   total_invested: number;

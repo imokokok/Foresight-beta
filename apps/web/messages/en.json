@@ -693,7 +693,7 @@
       "title": "About this market",
       "referenceSource": "Reference source",
       "feeTitle": "About fees",
-      "feeBody": "When you trade on Foresight, the matching layer charges a 0.4% taker fee on executed volume to cover infrastructure costs and keep improving the product. All fees are shown transparently in the order preview, with no hidden or extra charges."
+      "feeBody": "On Foresight, day-to-day trading carries little to no extra fees. Only when a market is resolved and you redeem winning positions do we charge a 2% fee on the redeemed amount, which is used for the protocol and market-making incentives, with no hidden or additional charges."
     },
     "rules": {
       "criteriaTitle": "Resolution criteria",
@@ -1506,6 +1506,7 @@
       "tabs": {
         "overview": "Overview",
         "predictions": "My predictions",
+        "makerEarnings": "Maker earnings",
         "history": "Browsing history",
         "following": "Following"
       },
@@ -1583,6 +1584,35 @@
       "labels": {
         "followers": "{count} followers",
         "deadline": "Ends on {date}"
+      }
+    },
+    "makerEarnings": {
+      "title": "Maker earnings",
+      "subtitle": "Rewards and pending claimable balance",
+      "cards": {
+        "pendingReward": "Pending reward (USDC)",
+        "stakedForesight": "Staked Foresight",
+        "walletForesight": "Wallet Foresight"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "claim": "Claim rewards",
+        "claimed": "Claimed",
+        "viewOnExplorer": "Explorer"
+      },
+      "hints": {
+        "notConfigured": "LPFeeStaking address is not configured",
+        "viewOnly": "View-only. Claim requires the same wallet address"
+      },
+      "empty": {
+        "noAddress": "Address not found",
+        "connectWallet": "Connect wallet to view maker earnings"
+      },
+      "errors": {
+        "loadFailed": "Failed to load maker earnings",
+        "notConfigured": "Contract address is not configured",
+        "notYourWallet": "Connected wallet does not match this address",
+        "claimFailed": "Claim failed, please try again"
       }
     },
     "followers": {

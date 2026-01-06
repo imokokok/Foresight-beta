@@ -693,7 +693,7 @@
       "title": "关于此市场",
       "referenceSource": "参考来源",
       "feeTitle": "关于手续费",
-      "feeBody": "在 Foresight 上参与交易时，撮合层会对每笔成交收取 0.4% 的 Taker 手续费，用于覆盖基础设施成本并持续改进产品体验。所有费用都透明展示在下单预览中，不会额外收取隐性费用。"
+      "feeBody": "在 Foresight 上参与交易时，日常买卖几乎不收取额外手续费。仅当市场结算且你持有的获胜头寸获得兑付时，我们会对赎回金额收取 2% 的赢家手续费，用于协议与做市激励，不会额外收取隐性费用。"
     },
     "rules": {
       "criteriaTitle": "裁决标准",
@@ -1506,6 +1506,7 @@
       "tabs": {
         "overview": "总览",
         "predictions": "我的预测",
+        "makerEarnings": "做市收益",
         "history": "浏览历史",
         "following": "我的关注"
       },
@@ -1583,6 +1584,35 @@
       "labels": {
         "followers": "{count} 人关注",
         "deadline": "{date} 截止"
+      }
+    },
+    "makerEarnings": {
+      "title": "做市收益",
+      "subtitle": "展示质押分润与待领取奖励",
+      "cards": {
+        "pendingReward": "待领取奖励（USDC）",
+        "stakedForesight": "已质押 Foresight",
+        "walletForesight": "钱包 Foresight"
+      },
+      "actions": {
+        "refresh": "刷新",
+        "claim": "领取收益",
+        "claimed": "领取成功",
+        "viewOnExplorer": "浏览器查看"
+      },
+      "hints": {
+        "notConfigured": "未配置 LPFeeStaking 合约地址",
+        "viewOnly": "仅展示数据，领取需使用该地址的钱包"
+      },
+      "empty": {
+        "noAddress": "未找到用户地址",
+        "connectWallet": "连接钱包后可查看做市收益"
+      },
+      "errors": {
+        "loadFailed": "无法加载做市收益数据",
+        "notConfigured": "未配置合约地址",
+        "notYourWallet": "当前连接钱包与该地址不一致",
+        "claimFailed": "领取失败，请稍后重试"
       }
     },
     "followers": {

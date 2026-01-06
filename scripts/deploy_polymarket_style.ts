@@ -25,7 +25,9 @@ async function main() {
     env.COLLATERAL_TOKEN_ADDRESS ||
     (chainId === 137 ? env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON : "") ||
     (chainId === 80002 ? env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY : "") ||
-    (chainId === 11155111 ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA : "") ||
+    (chainId === 11155111
+      ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA
+      : "") ||
     (chainId === 1337
       ? env.USDC_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST
       : "") ||
@@ -66,6 +68,11 @@ async function main() {
   const marketFactoryAddress = await marketFactory.getAddress();
   console.log(`MarketFactory deployed to: ${marketFactoryAddress}`);
 
+  const feeBpsWinner = 200;
+  const feeToAddress = process.env.MARKET_FEE_TO || deployerAddress;
+  await marketFactory.setFee(feeBpsWinner, feeToAddress);
+  console.log(`MarketFactory fee set to ${feeBpsWinner} bps, feeTo=${feeToAddress}`);
+
   // 4. Deploy Offchain templates
   const OffchainBinaryMarket = await hre.ethers.getContractFactory("OffchainBinaryMarket");
   const offchainBinaryImpl = await OffchainBinaryMarket.deploy();
@@ -82,14 +89,25 @@ async function main() {
   // 5. Register templates
   const templateIdBinary = hre.ethers.id("OFFCHAIN_BINARY_V1");
   const templateIdMulti = hre.ethers.id("OFFCHAIN_MULTI8_V1");
-  await marketFactory.registerTemplate(templateIdBinary, offchainBinaryImplAddress, "Offchain Binary v1");
-  await marketFactory.registerTemplate(templateIdMulti, offchainMultiImplAddress, "Offchain Multi(<=8) v1");
+  await marketFactory.registerTemplate(
+    templateIdBinary,
+    offchainBinaryImplAddress,
+    "Offchain Binary v1"
+  );
+  await marketFactory.registerTemplate(
+    templateIdMulti,
+    offchainMultiImplAddress,
+    "Offchain Multi(<=8) v1"
+  );
   console.log("Templates registered");
 
   // 6. Create example binary market (feeBps ignored by market; keep 0 per requirement)
   const feeBps = 0;
   const resolutionTime = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-  const initDataBinary = hre.ethers.AbiCoder.defaultAbiCoder().encode(["address"], [outcomeToken1155Address]);
+  const initDataBinary = hre.ethers.AbiCoder.defaultAbiCoder().encode(
+    ["address"],
+    [outcomeToken1155Address]
+  );
 
   const txBinary = await marketFactory.createMarket(
     templateIdBinary,
@@ -102,10 +120,15 @@ async function main() {
   const receiptBinary = await txBinary.wait();
   const marketCreatedEventBinary = receiptBinary.logs
     .map((l: any) => {
-      try { return marketFactory.interface.parseLog(l); } catch { return null; }
+      try {
+        return marketFactory.interface.parseLog(l);
+      } catch {
+        return null;
+      }
     })
     .find((e: any) => e && e.name === "MarketCreated");
-  const binaryMarketAddress = marketCreatedEventBinary?.args?.market ?? marketCreatedEventBinary?.args?.[1];
+  const binaryMarketAddress =
+    marketCreatedEventBinary?.args?.market ?? marketCreatedEventBinary?.args?.[1];
   console.log("New OffchainBinaryMarket created at:", binaryMarketAddress);
 
   // 7. Grant MINTER_ROLE to created market

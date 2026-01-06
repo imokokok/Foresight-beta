@@ -24,8 +24,7 @@ contract OffchainMultiMarket8 is OffchainMarketBase {
         (address outcome1155, uint8 oc) = abi.decode(data, (address, uint8));
         _initCommon(_marketId, _factory, _creator, _collateralToken, _oracle, _resolutionTime, outcome1155, oc);
 
-        address feeRecipient = MarketFactory(_factory).feeTo();
-        _setFeeConfig(feeBps, feeRecipient);
+        MarketFactory mf = MarketFactory(_factory);
+        _setFeeConfig(feeBps, mf.feeTo(), mf.lpFeeBps(), mf.lpFeeTo());
     }
 }
-

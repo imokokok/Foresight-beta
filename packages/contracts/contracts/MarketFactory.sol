@@ -63,6 +63,8 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     // Actually not packed due to solidity's default padding, but grouped logically
     uint256 public feeBps;
     address public feeTo;
+    uint256 public lpFeeBps;
+    address public lpFeeTo;
 
     // ═══════════════════════════════════════════════════════════════════════
     // EVENTS
@@ -117,6 +119,12 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         feeBps = newFeeBps;
         feeTo = newFeeTo;
         emit FeeChanged(newFeeBps, newFeeTo);
+    }
+
+    function setFeeSplit(uint256 newLpFeeBps, address newLpFeeTo) external onlyRole(ADMIN_ROLE) {
+        if (newLpFeeBps > feeBps) revert FeeTooHigh();
+        lpFeeBps = newLpFeeBps;
+        lpFeeTo = newLpFeeTo;
     }
 
     function setDefaultOracle(address newOracle) external onlyRole(ADMIN_ROLE) {

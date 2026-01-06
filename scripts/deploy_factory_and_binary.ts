@@ -14,7 +14,9 @@ async function main() {
     env.COLLATERAL_TOKEN_ADDRESS ||
     (chainId === 137 ? env.USDC_ADDRESS_POLYGON || env.NEXT_PUBLIC_USDC_ADDRESS_POLYGON : "") ||
     (chainId === 80002 ? env.USDC_ADDRESS_AMOY || env.NEXT_PUBLIC_USDC_ADDRESS_AMOY : "") ||
-    (chainId === 11155111 ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA : "") ||
+    (chainId === 11155111
+      ? env.USDC_ADDRESS_SEPOLIA || env.NEXT_PUBLIC_USDC_ADDRESS_SEPOLIA
+      : "") ||
     (chainId === 1337
       ? env.USDC_ADDRESS_LOCALHOST || env.NEXT_PUBLIC_USDC_ADDRESS_LOCALHOST
       : "") ||
@@ -63,6 +65,38 @@ async function main() {
   const mfAddress = await mf.getAddress();
   console.log("MarketFactory:", mfAddress);
 
+  const protocolFeeTo = env.PROTOCOL_FEE_TO || deployerAddress;
+  const totalFeeBps = env.PROTOCOL_TOTAL_FEE_BPS ? Number(env.PROTOCOL_TOTAL_FEE_BPS) : 80;
+  const lpFeeBps = env.LP_FEE_BPS ? Number(env.LP_FEE_BPS) : 40;
+  if (!Number.isFinite(totalFeeBps) || totalFeeBps < 0 || totalFeeBps > 10000) {
+    throw new Error("Invalid PROTOCOL_TOTAL_FEE_BPS");
+  }
+  if (!Number.isFinite(lpFeeBps) || lpFeeBps < 0 || lpFeeBps > totalFeeBps) {
+    throw new Error("Invalid LP_FEE_BPS");
+  }
+
+  const Foresight = await hre.ethers.getContractFactory("Foresight");
+  const foresight = await Foresight.deploy(deployerAddress);
+  await foresight.waitForDeployment();
+  const foresightAddress = await foresight.getAddress();
+  console.log("Foresight (maker points):", foresightAddress);
+
+  const foresightMinter = env.FORESIGHT_MINTER || deployerAddress;
+  const minterRole = await foresight.MINTER_ROLE();
+  await (await foresight.grantRole(minterRole, foresightMinter)).wait();
+  console.log("Foresight minter:", foresightMinter);
+
+  const LPFeeStaking = await hre.ethers.getContractFactory("LPFeeStaking");
+  const lpStaking = await LPFeeStaking.deploy(deployerAddress, foresightAddress, collateral);
+  await lpStaking.waitForDeployment();
+  const lpStakingAddress = await lpStaking.getAddress();
+  console.log("LPFeeStaking:", lpStakingAddress);
+
+  const lpFeeTo = env.LP_FEE_TO || lpStakingAddress;
+  await (await mf.setFee(totalFeeBps, protocolFeeTo)).wait();
+  await (await mf.setFeeSplit(lpFeeBps, lpFeeTo)).wait();
+  console.log("Fee config:", { totalFeeBps, protocolFeeTo, lpFeeBps, lpFeeTo });
+
   // Register OFFCHAIN_BINARY template
   const templateId = hre.ethers.id("OFFCHAIN_BINARY_V1");
   const txReg = await mf.registerTemplate(templateId, binaryImplAddress, "Offchain Binary v1");
@@ -70,7 +104,7 @@ async function main() {
   console.log("Registered OFFCHAIN_BINARY template");
 
   const oracle = umaAdapterAddress;
-  const feeBps = 0; // per requirement: no trading fee
+  const feeBps = 0; // use factory default
   const now = Math.floor(Date.now() / 1000);
   const resolutionTime = env.MARKET_RESOLUTION_TS
     ? Number(env.MARKET_RESOLUTION_TS)
@@ -79,13 +113,13 @@ async function main() {
   // template-specific params: outcome1155 address for OffchainBinaryMarket
   const outcome1155Addr = process.env.OUTCOME1155_ADDRESS;
   if (!outcome1155Addr) {
-    console.error("Missing OUTCOME1155_ADDRESS env for CLOBMarket");
+    console.error("Missing OUTCOME1155_ADDRESS env for OffchainBinaryMarket");
     return;
   }
   const data = new hre.ethers.AbiCoder().encode(["address"], [outcome1155Addr]);
 
   // Create market
-  const txCreate = await mf.createMarket(
+  const txCreate = await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
     templateId,
     collateral,
     oracle,

@@ -111,8 +111,8 @@ export const app = express();
 
 // 🚀 初始化撮合引擎和 WebSocket 服务器
 const matchingEngine = new MatchingEngine({
-  makerFeeBps: Number(process.env.MAKER_FEE_BPS || "100"),
-  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "20"),
+  makerFeeBps: Number(process.env.MAKER_FEE_BPS || "0"),
+  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "0"),
   maxMarketLongExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_LONG_EXPOSURE_USDC || "0"),
   maxMarketShortExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC || "0"),
 });

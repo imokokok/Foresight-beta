@@ -26,6 +26,7 @@ import { PredictionsTab } from "./PredictionsTab";
 import { HistoryTab } from "./HistoryTab";
 import { FollowingTab } from "./FollowingTab";
 import { FollowersTab } from "./FollowersTab";
+import { MakerEarningsTab } from "./MakerEarningsTab";
 
 export type ProfilePageViewProps = {
   account: string | null | undefined;
@@ -291,6 +292,9 @@ export function ProfilePageView({
                 {activeTab === "history" && <HistoryTab initialHistory={history} />}
                 {activeTab === "following" && <FollowingTab />}
                 {activeTab === "followers" && account && <FollowersTab address={account} />}
+                {activeTab === "makerEarnings" && (
+                  <MakerEarningsTab address={account} isOwnProfile={isOwnProfile} />
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

@@ -144,6 +144,7 @@
       "tabs": {
         "overview": "개요",
         "predictions": "내 예측",
+        "makerEarnings": "메이커 수익",
         "history": "열람 기록",
         "following": "팔로잉"
       },
@@ -1728,6 +1729,7 @@
       "tabs": {
         "overview": "개요",
         "predictions": "내 예측",
+        "makerEarnings": "메이커 수익",
         "history": "열람 기록",
         "following": "팔로잉"
       },
@@ -1818,6 +1820,35 @@
       "labels": {
         "followers": "{count}명 팔로워",
         "deadline": "{date} 종료"
+      }
+    },
+    "makerEarnings": {
+      "title": "메이커 수익",
+      "subtitle": "보상 및 청구 대기 잔액",
+      "cards": {
+        "pendingReward": "대기 보상 (USDC)",
+        "stakedForesight": "스테이킹된 Foresight",
+        "walletForesight": "지갑 Foresight"
+      },
+      "actions": {
+        "refresh": "새로고침",
+        "claim": "보상 청구",
+        "claimed": "청구 완료",
+        "viewOnExplorer": "익스플로러"
+      },
+      "hints": {
+        "notConfigured": "LPFeeStaking 주소가 설정되지 않았습니다",
+        "viewOnly": "보기 전용. 청구는 동일 지갑 주소가 필요합니다"
+      },
+      "empty": {
+        "noAddress": "주소를 찾을 수 없습니다",
+        "connectWallet": "메이커 수익을 보려면 지갑을 연결하세요"
+      },
+      "errors": {
+        "loadFailed": "메이커 수익을 불러오지 못했습니다",
+        "notConfigured": "컨트랙트 주소가 설정되지 않았습니다",
+        "notYourWallet": "연결된 지갑이 이 주소와 일치하지 않습니다",
+        "claimFailed": "청구에 실패했습니다. 다시 시도해 주세요"
       }
     },
     "followers": {

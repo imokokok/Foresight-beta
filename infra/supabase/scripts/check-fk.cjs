@@ -1,7 +1,10 @@
 const { Client } = require('pg');
 
-// 直接复用项目中的 Supabase 连接串（与 supabase-direct.cjs 保持一致）
-const databaseUrl = 'postgresql://postgres.qhllkgbddesrbhvjzfud:Foresight2024!@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
+const databaseUrl = process.env.SUPABASE_DB_URL || process.env.SUPABASE_CONNECTION_STRING || '';
+
+if (!databaseUrl) {
+  throw new Error('Missing SUPABASE_CONNECTION_STRING or SUPABASE_DB_URL');
+}
 
 async function main() {
   const client = new Client({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } });
