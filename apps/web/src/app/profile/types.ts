@@ -9,6 +9,36 @@ export type PortfolioStats = {
   realized_pnl?: number;
 };
 
+export type ProfilePosition = {
+  id: string | number;
+  title?: string;
+  image_url?: string | null;
+  outcome?: string;
+  stake?: number | string;
+  pnl?: string;
+  status?: string;
+  stats?: {
+    yesProbability?: number;
+    noProbability?: number;
+    totalAmount?: number;
+    participantCount?: number;
+  };
+};
+
+export type ProfileHistoryItem = {
+  id: string | number;
+  title?: string;
+  image_url?: string | null;
+  category?: string | null;
+  viewed_at?: string | number;
+};
+
+export type ProfileUserSummary = {
+  wallet_address: string;
+  username: string;
+  avatar: string;
+};
+
 export type TabConfig = {
   id: TabType;
   label: string;

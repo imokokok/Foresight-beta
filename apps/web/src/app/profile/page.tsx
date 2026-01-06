@@ -18,13 +18,21 @@ export default function ProfilePage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("predictions");
 
-  const { history, username, portfolioStats, positionsCount, followingCount } =
-    useProfileAggregates({
-      account,
-      user,
-      profile: profileCtx?.profile,
-      tProfile,
-    });
+  const {
+    history,
+    username,
+    positions,
+    portfolioStats,
+    positionsCount,
+    historyLoading,
+    portfolioLoading,
+    portfolioError,
+  } = useProfileAggregates({
+    account,
+    user,
+    profile: profileCtx?.profile,
+    tProfile,
+  });
 
   const tabs: TabConfig[] = [
     { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
@@ -44,8 +52,11 @@ export default function ProfilePage() {
       tabs={tabs}
       historyCount={history.length}
       positionsCount={positionsCount}
-      followingCount={followingCount}
       portfolioStats={portfolioStats}
+      positions={positions}
+      historyLoading={historyLoading}
+      portfolioLoading={portfolioLoading}
+      portfolioError={portfolioError}
       disconnect={disconnect}
       history={history}
       isOwnProfile={true}

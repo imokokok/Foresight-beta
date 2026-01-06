@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
@@ -12,20 +11,30 @@ import {
   Target,
   Users,
   Zap,
+  Heart,
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
 import { formatAddress } from "@/lib/cn";
 import { useWallet } from "@/contexts/WalletContext";
-import { useState, useEffect, useCallback } from "react";
-import type { PortfolioStats, TabConfig, TabType } from "../types";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  PortfolioStats,
+  ProfileHistoryItem,
+  ProfilePosition,
+  TabConfig,
+  TabType,
+} from "../types";
 import { SidebarStatCard } from "./ProfileUI";
 import { PredictionsTab } from "./PredictionsTab";
 import { HistoryTab } from "./HistoryTab";
 import { FollowingTab } from "./FollowingTab";
 import { FollowersTab } from "./FollowersTab";
 import { MakerEarningsTab } from "./MakerEarningsTab";
+import EmptyState from "@/components/EmptyState";
+import WalletModal from "@/components/WalletModal";
 
 export type ProfilePageViewProps = {
   account: string | null | undefined;
@@ -36,10 +45,13 @@ export type ProfilePageViewProps = {
   tabs: TabConfig[];
   historyCount: number;
   positionsCount: number;
-  followingCount: number;
   portfolioStats: PortfolioStats | null;
-  disconnect: () => void;
-  history: any[];
+  positions: ProfilePosition[];
+  historyLoading: boolean;
+  portfolioLoading: boolean;
+  portfolioError: boolean;
+  disconnect: () => void | Promise<void>;
+  history: ProfileHistoryItem[];
   isOwnProfile?: boolean;
 };
 
@@ -52,70 +64,137 @@ export function ProfilePageView({
   tabs,
   historyCount,
   positionsCount,
-  followingCount: initialFollowingCount,
   portfolioStats,
+  positions,
+  historyLoading,
+  portfolioLoading,
+  portfolioError,
   disconnect,
   history,
   isOwnProfile = true,
 }: ProfilePageViewProps) {
   const { account: myAccount } = useWallet();
-  const [isFollowed, setIsFollowed] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
+  const queryClient = useQueryClient();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
 
-  // 获取关注状态和粉丝数
-  const fetchFollowData = useCallback(async () => {
-    if (!account) return;
+  const safeProfileAddress = useMemo(() => (account ? encodeURIComponent(account) : ""), [account]);
 
-    try {
-      const countRes = await fetch(`/api/user-follows/counts?address=${account}`);
-      const countData = await countRes.json();
-      setFollowersCount(countData.followersCount || 0);
+  const safeMyAccount = useMemo(
+    () => (myAccount ? encodeURIComponent(myAccount) : ""),
+    [myAccount]
+  );
 
-      if (myAccount && !isOwnProfile) {
-        const statusRes = await fetch(
-          `/api/user-follows/user?targetAddress=${account}&followerAddress=${myAccount}`
-        );
-        const statusData = await statusRes.json();
-        setIsFollowed(!!statusData.followed);
-      }
-    } catch (error) {
-      console.error("Failed to fetch follow data:", error);
-    }
-  }, [account, myAccount, isOwnProfile]);
+  const countsQuery = useQuery({
+    queryKey: ["profile", "follows", "counts", account],
+    queryFn: async () => {
+      const res = await fetch(`/api/user-follows/counts?address=${safeProfileAddress}`);
+      if (!res.ok) throw new Error("Failed to fetch follow counts");
+      const data = await res.json().catch(() => ({}));
+      return {
+        followersCount: Number(data.followersCount || 0),
+        followingCount: Number(data.followingCount || 0),
+      };
+    },
+    enabled: !!account,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchFollowData();
-  }, [fetchFollowData]);
+  const followStatusQuery = useQuery({
+    queryKey: ["profile", "follows", "status", account, myAccount],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/user-follows/user?targetAddress=${safeProfileAddress}&followerAddress=${safeMyAccount}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch follow status");
+      const data = await res.json().catch(() => ({}));
+      return Boolean(data.followed);
+    },
+    enabled: !!account && !!myAccount && !isOwnProfile,
+    staleTime: 30 * 1000,
+  });
 
-  // 处理关注/取消关注
-  const handleFollowToggle = async () => {
-    if (!myAccount) {
-      toast.error(tProfile("wallet.connectFirst"));
-      return;
-    }
-
-    setIsFollowLoading(true);
-    try {
+  const followMutation = useMutation({
+    mutationFn: async () => {
       const res = await fetch("/api/user-follows/user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetAddress: account }),
       });
+      if (!res.ok) throw new Error("Failed to toggle follow");
+      return res.json() as Promise<{ success: boolean; followed: boolean }>;
+    },
+    onMutate: async () => {
+      if (!account || !myAccount || isOwnProfile) return;
 
-      const data = await res.json();
-      if (data.success) {
-        setIsFollowed(data.followed);
-        setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
-        toast.success(
-          data.followed ? tProfile("follow.followSuccess") : tProfile("follow.unfollowSuccess")
-        );
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: ["profile", "follows", "status", account, myAccount],
+        }),
+        queryClient.cancelQueries({ queryKey: ["profile", "follows", "counts", account] }),
+      ]);
+
+      const prevFollowed = queryClient.getQueryData<boolean>([
+        "profile",
+        "follows",
+        "status",
+        account,
+        myAccount,
+      ]);
+      const prevCounts = queryClient.getQueryData<{
+        followersCount: number;
+        followingCount: number;
+      }>(["profile", "follows", "counts", account]);
+
+      const nextFollowed = !(prevFollowed ?? false);
+      queryClient.setQueryData(["profile", "follows", "status", account, myAccount], nextFollowed);
+
+      if (prevCounts) {
+        queryClient.setQueryData(["profile", "follows", "counts", account], {
+          ...prevCounts,
+          followersCount: Math.max(0, prevCounts.followersCount + (nextFollowed ? 1 : -1)),
+        });
       }
-    } catch (error) {
+
+      return { prevFollowed, prevCounts };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (!account || !myAccount || !ctx) return;
+      queryClient.setQueryData(
+        ["profile", "follows", "status", account, myAccount],
+        ctx.prevFollowed
+      );
+      queryClient.setQueryData(["profile", "follows", "counts", account], ctx.prevCounts);
       toast.error(tProfile("follow.failed"));
-    } finally {
-      setIsFollowLoading(false);
+    },
+    onSuccess: (data) => {
+      if (!data?.success) return;
+      toast.success(
+        data.followed ? tProfile("follow.followSuccess") : tProfile("follow.unfollowSuccess")
+      );
+    },
+    onSettled: async () => {
+      if (!account) return;
+      await queryClient.invalidateQueries({ queryKey: ["profile", "follows", "counts", account] });
+      if (myAccount && !isOwnProfile) {
+        await queryClient.invalidateQueries({
+          queryKey: ["profile", "follows", "status", account, myAccount],
+        });
+      }
+    },
+  });
+
+  const followersCount = countsQuery.data?.followersCount ?? 0;
+  const followingCount = countsQuery.data?.followingCount ?? 0;
+  const isFollowed = followStatusQuery.data ?? false;
+  const isFollowLoading = followMutation.isPending || followStatusQuery.isFetching;
+
+  const handleFollowToggle = async () => {
+    if (!account) return;
+    if (!myAccount) {
+      toast.error(tProfile("wallet.connectFirst"));
+      return;
     }
+    await followMutation.mutateAsync();
   };
   return (
     <GradientPage className="lg:h-screen lg:overflow-hidden pt-20 pb-4 lg:pt-0 lg:pb-0">
@@ -179,13 +258,32 @@ export function ProfilePageView({
                   </span>
                 </button>
 
-                <div className="grid grid-cols-3 gap-2.5 w-full mb-8">
+                {isOwnProfile && !account && (
+                  <button
+                    type="button"
+                    onClick={() => setWalletModalOpen(true)}
+                    className="w-full py-3.5 rounded-2xl font-black text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 mb-2 bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    {tProfile("disconnected.actionConnect")}
+                  </button>
+                )}
+
+                <div className="grid grid-cols-2 gap-2.5 w-full mb-8">
                   <div className="cursor-pointer" onClick={() => setActiveTab("predictions")}>
                     <SidebarStatCard
                       value={positionsCount}
                       label={tProfile("sidebar.stats.predictions")}
                       icon={Target}
                       color="violet"
+                    />
+                  </div>
+                  <div className="cursor-pointer" onClick={() => setActiveTab("following")}>
+                    <SidebarStatCard
+                      value={followingCount}
+                      label={tProfile("sidebar.tabs.following")}
+                      icon={Heart}
+                      color="amber"
                     />
                   </div>
                   <div className="cursor-pointer" onClick={() => setActiveTab("followers")}>
@@ -283,18 +381,46 @@ export function ProfilePageView({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {activeTab === "predictions" && <PredictionsTab address={account} />}
-                {activeTab === "history" && <HistoryTab initialHistory={history} />}
-                {activeTab === "following" && <FollowingTab />}
-                {activeTab === "followers" && account && <FollowersTab address={account} />}
-                {activeTab === "makerEarnings" && (
-                  <MakerEarningsTab address={account} isOwnProfile={isOwnProfile} />
+                {isOwnProfile && !account ? (
+                  <div className="lg:h-full flex items-center justify-center">
+                    <EmptyState
+                      icon={Wallet}
+                      title={tProfile("disconnected.title")}
+                      description={tProfile("disconnected.description")}
+                      action={{
+                        label: tProfile("disconnected.actionConnect"),
+                        onClick: () => setWalletModalOpen(true),
+                      }}
+                      className="relative"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {activeTab === "predictions" && (
+                      <PredictionsTab
+                        address={account}
+                        positions={positions}
+                        portfolioStats={portfolioStats}
+                        loading={portfolioLoading}
+                        error={portfolioError}
+                      />
+                    )}
+                    {activeTab === "history" && (
+                      <HistoryTab history={history} loading={historyLoading} />
+                    )}
+                    {activeTab === "following" && <FollowingTab address={account} />}
+                    {activeTab === "followers" && account && <FollowersTab address={account} />}
+                    {activeTab === "makerEarnings" && (
+                      <MakerEarningsTab address={account} isOwnProfile={isOwnProfile} />
+                    )}
+                  </>
                 )}
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
       </div>
+      <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </GradientPage>
   );
 }

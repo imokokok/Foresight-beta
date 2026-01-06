@@ -13,7 +13,7 @@ export type SidebarStatCardProps = {
   value: React.ReactNode;
   label: React.ReactNode;
   icon: LucideIcon;
-  color: "violet" | "emerald" | "cyan";
+  color: "violet" | "emerald" | "cyan" | "amber";
 };
 
 const COLOR_MAP = {
@@ -34,6 +34,12 @@ const COLOR_MAP = {
     bg: "bg-cyan-50/40",
     icon: "text-cyan-500",
     glow: "group-hover:bg-cyan-400/10",
+  },
+  amber: {
+    text: "text-amber-600",
+    bg: "bg-amber-50/40",
+    icon: "text-amber-500",
+    glow: "group-hover:bg-amber-400/10",
   },
 };
 

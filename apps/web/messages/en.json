@@ -1506,6 +1506,11 @@
       "anonymous": "Anonymous user",
       "walletDisconnected": "Wallet not connected"
     },
+    "disconnected": {
+      "title": "Wallet not connected",
+      "description": "Connect your wallet to view your predictions, history, and follows.",
+      "actionConnect": "Connect wallet"
+    },
     "sidebar": {
       "tabs": {
         "overview": "Overview",

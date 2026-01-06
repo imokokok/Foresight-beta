@@ -142,6 +142,11 @@
       "anonymous": "익명 사용자",
       "walletDisconnected": "지갑 연결 안됨"
     },
+    "disconnected": {
+      "title": "지갑이 연결되지 않았어요",
+      "description": "지갑을 연결하면 내 예측, 기록, 팔로잉을 볼 수 있어요.",
+      "actionConnect": "지갑 연결"
+    },
     "sidebar": {
       "tabs": {
         "overview": "개요",

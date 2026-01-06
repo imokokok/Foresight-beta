@@ -1507,6 +1507,11 @@
       "anonymous": "匿名用户",
       "walletDisconnected": "未连接钱包"
     },
+    "disconnected": {
+      "title": "未连接钱包",
+      "description": "连接钱包后即可查看你的预测、历史与关注，并展示个人数据。",
+      "actionConnect": "连接钱包"
+    },
     "sidebar": {
       "tabs": {
         "overview": "总览",

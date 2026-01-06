@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
-import type { PortfolioStats } from "../types";
-import { MOCK_HISTORY } from "../mock";
+import { useQueries } from "@tanstack/react-query";
+import type { PortfolioStats, ProfileHistoryItem, ProfilePosition } from "../types";
 
 /**
  * 🚀 优化后的 Profile 数据聚合 Hook
@@ -22,15 +21,15 @@ export function useProfileAggregates(args: {
 }) {
   const { account, user, profile, tProfile } = args;
 
-  // 🚀 并行请求所有数据
   const results = useQueries({
     queries: [
       {
         queryKey: ["profile", "info", account],
         queryFn: async () => {
           if (!account) return null;
-          const res = await fetch(`/api/user-profiles?address=${account}`);
-          const data = await res.json();
+          const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(account)}`);
+          if (!res.ok) throw new Error("Failed to fetch profile");
+          const data = await res.json().catch(() => ({}));
           return data.profile || null;
         },
         enabled: !!account,
@@ -40,22 +39,25 @@ export function useProfileAggregates(args: {
         queryKey: ["profile", "history", account],
         queryFn: async () => {
           if (!account) return [];
-          const res = await fetch(`/api/history?address=${account}`);
-          const data = await res.json();
+          const res = await fetch(`/api/history?address=${encodeURIComponent(account)}`);
+          if (!res.ok) throw new Error("Failed to fetch history");
+          const data = await res.json().catch(() => ({}));
           return data.history || [];
         },
         enabled: !!account,
-        staleTime: 2 * 60 * 1000, // 2分钟
-        placeholderData: [...MOCK_HISTORY],
+        staleTime: 2 * 60 * 1000,
       },
       {
         queryKey: ["profile", "portfolio", account],
         queryFn: async () => {
           if (!account) return null;
-          const res = await fetch(`/api/user-portfolio?address=${account}`);
-          const data = await res.json();
+          const res = await fetch(`/api/user-portfolio?address=${encodeURIComponent(account)}`);
+          if (!res.ok) throw new Error("Failed to fetch portfolio");
+          const data = await res.json().catch(() => ({}));
+          const positions = Array.isArray(data.positions) ? data.positions : [];
           return {
-            positionsCount: Array.isArray(data.positions) ? data.positions.length : 0,
+            positions,
+            positionsCount: positions.length,
             stats: data.stats
               ? {
                   total_invested: Number(data.stats.total_invested || 0),
@@ -72,30 +74,17 @@ export function useProfileAggregates(args: {
         enabled: !!account,
         staleTime: 2 * 60 * 1000,
       },
-      {
-        queryKey: ["profile", "following", account],
-        queryFn: async () => {
-          if (!account) return 0;
-          const res = await fetch(`/api/following?address=${account}`);
-          const data = await res.json();
-          return Array.isArray(data.following) ? data.following.length : 0;
-        },
-        enabled: !!account,
-        staleTime: 2 * 60 * 1000,
-      },
     ],
   });
 
-  const [infoQuery, historyQuery, portfolioQuery, followingQuery] = results;
+  const [infoQuery, historyQuery, portfolioQuery] = results;
 
-  // 提取数据
   const info = infoQuery.data;
-  const history = historyQuery.data || [...MOCK_HISTORY];
+  const history = (historyQuery.data || []) as ProfileHistoryItem[];
+  const positions = (portfolioQuery.data?.positions || []) as ProfilePosition[];
   const portfolioStats: PortfolioStats | null = portfolioQuery.data?.stats || null;
   const positionsCount = portfolioQuery.data?.positionsCount || 0;
-  const followingCount = followingQuery.data || 0;
 
-  // 🚀 useMemo 避免每次渲染都计算
   const username = useMemo(() => {
     if (!account) {
       return tProfile("username.anonymous");
@@ -116,9 +105,7 @@ export function useProfileAggregates(args: {
     return `User ${account.slice(0, 4)}`;
   }, [account, user, profile, info, tProfile]);
 
-  // 提供 setHistory 用于兼容性（实际应该用 mutation）
   const setHistory = (newHistory: any[] | ((prev: any[]) => any[])) => {
-    // 在实际场景中，应该使用 useMutation 来更新
     console.warn("setHistory is deprecated, use mutation instead");
   };
 
@@ -126,12 +113,14 @@ export function useProfileAggregates(args: {
     history,
     setHistory,
     username,
+    positions,
     portfolioStats,
     positionsCount,
-    followingCount,
-    // 🚀 新增：加载状态
     isLoading: results.some((r) => r.isLoading),
-    // 🚀 新增：刷新函数
+    historyLoading: historyQuery.isLoading,
+    portfolioLoading: portfolioQuery.isLoading,
+    historyError: historyQuery.isError,
+    portfolioError: portfolioQuery.isError,
     refetch: () => results.forEach((r) => r.refetch()),
   };
 }

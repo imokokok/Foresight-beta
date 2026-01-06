@@ -1,46 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Clock, ChevronRight, History as HistoryIcon } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
-import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
+import type { ProfileHistoryItem } from "../types";
 
-export function HistoryTab({ initialHistory }: { initialHistory?: any[] }) {
-  const { account } = useWallet();
-  const [history, setHistory] = useState<any[]>(initialHistory || []);
-  const [loading, setLoading] = useState(!initialHistory);
+export function HistoryTab({
+  history,
+  loading,
+}: {
+  history: ProfileHistoryItem[];
+  loading: boolean;
+}) {
   const tProfile = useTranslations("profile");
   const { locale } = useLocale();
-
-  useEffect(() => {
-    if (!account) {
-      setLoading(false);
-      return;
-    }
-    if (initialHistory && initialHistory.length > 0) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`/api/history?address=${account}`);
-        if (!res.ok) throw new Error("Failed to fetch history");
-        const data = await res.json();
-        setHistory(data.history || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHistory();
-  }, [account, initialHistory]);
 
   if (loading) return <CenteredSpinner />;
 

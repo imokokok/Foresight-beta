@@ -24,13 +24,21 @@ export default function UserProfilePage({ params }: Props) {
 
   const isOwnProfile = myAccount?.toLowerCase() === address?.toLowerCase();
 
-  const { history, username, portfolioStats, positionsCount, followingCount } =
-    useProfileAggregates({
-      account: address,
-      user: isOwnProfile ? authUser : null,
-      profile: null,
-      tProfile,
-    });
+  const {
+    history,
+    username,
+    positions,
+    portfolioStats,
+    positionsCount,
+    historyLoading,
+    portfolioLoading,
+    portfolioError,
+  } = useProfileAggregates({
+    account: address,
+    user: isOwnProfile ? authUser : null,
+    profile: null,
+    tProfile,
+  });
 
   const tabs: TabConfig[] = [
     { id: "predictions", label: tProfile("sidebar.tabs.predictions"), icon: TrendingUp },
@@ -49,8 +57,11 @@ export default function UserProfilePage({ params }: Props) {
       tabs={tabs}
       historyCount={history.length}
       positionsCount={positionsCount}
-      followingCount={followingCount}
       portfolioStats={portfolioStats}
+      positions={positions}
+      historyLoading={historyLoading}
+      portfolioLoading={portfolioLoading}
+      portfolioError={portfolioError}
       disconnect={isOwnProfile ? disconnect : () => {}}
       history={history}
       isOwnProfile={isOwnProfile}

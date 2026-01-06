@@ -1506,6 +1506,11 @@
       "anonymous": "Usuario anónimo",
       "walletDisconnected": "Billetera no conectada"
     },
+    "disconnected": {
+      "title": "Billetera no conectada",
+      "description": "Conecta tu billetera para ver tus predicciones, historial y seguimientos.",
+      "actionConnect": "Conectar billetera"
+    },
     "sidebar": {
       "tabs": {
         "overview": "Resumen",

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Heart, Users, Target } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/EmptyState";
-import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
@@ -12,39 +12,50 @@ import { UserHoverCard } from "@/components/ui/UserHoverCard";
 
 type TabType = "events" | "users";
 
-export function FollowingTab() {
-  const { account } = useWallet();
+export function FollowingTab({ address }: { address: string | null | undefined }) {
   const [activeTab, setActiveTab] = useState<TabType>("events");
-  const [events, setEvents] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
+  const tCommon = useTranslations("common");
   const { locale } = useLocale();
 
-  const fetchData = useCallback(async () => {
-    if (!account) return;
-    setLoading(true);
-    try {
-      if (activeTab === "events") {
-        const res = await fetch(`/api/following?address=${account}`);
-        const data = await res.json();
-        setEvents(data.following || []);
-      } else {
-        const res = await fetch(`/api/user-follows/following-users?address=${account}`);
-        const data = await res.json();
-        setUsers(data.users || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [account, activeTab]);
+  const safeAddress = useMemo(() => (address ? encodeURIComponent(address) : ""), [address]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const eventsQuery = useQuery({
+    queryKey: ["profile", "following", "events", address],
+    queryFn: async () => {
+      const res = await fetch(`/api/following?address=${safeAddress}`);
+      if (!res.ok) throw new Error("Failed to fetch following events");
+      const data = await res.json().catch(() => ({}));
+      return Array.isArray(data.following) ? data.following : [];
+    },
+    enabled: !!address,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["profile", "following", "users", address],
+    queryFn: async () => {
+      const res = await fetch(`/api/user-follows/following-users?address=${safeAddress}`);
+      if (!res.ok) throw new Error("Failed to fetch following users");
+      const data = await res.json().catch(() => ({}));
+      return Array.isArray(data.users) ? data.users : [];
+    },
+    enabled: !!address,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  if (!address) {
+    return (
+      <EmptyState
+        icon={activeTab === "events" ? Target : Users}
+        title={tProfile("following.empty.title")}
+        description={tProfile("following.empty.description")}
+      />
+    );
+  }
+
+  const loading = activeTab === "events" ? eventsQuery.isLoading : usersQuery.isLoading;
 
   const renderTabs = () => (
     <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-2xl w-fit">
@@ -82,6 +93,27 @@ export function FollowingTab() {
     );
   }
 
+  const activeQuery = activeTab === "events" ? eventsQuery : usersQuery;
+  if (activeQuery.isError) {
+    return (
+      <div>
+        {renderTabs()}
+        <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+          <div className="text-sm font-bold text-gray-700">{tCommon("loadFailed")}</div>
+          <button
+            type="button"
+            onClick={() => activeQuery.refetch()}
+            className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+          >
+            {tCommon("retry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const events = eventsQuery.data || [];
+  const users = usersQuery.data || [];
   const currentData = activeTab === "events" ? events : users;
 
   if (currentData.length === 0) {
@@ -103,7 +135,7 @@ export function FollowingTab() {
 
       {activeTab === "events" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {events.map((item) => (
+          {events.map((item: any) => (
             <Link href={`/prediction/${item.id}`} key={item.id}>
               <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group h-full flex flex-col">
                 <div className="flex justify-between items-start mb-4">
@@ -141,7 +173,7 @@ export function FollowingTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {users.map((user) => (
+          {users.map((user: any) => (
             <UserHoverCard key={user.wallet_address} user={user}>
               <div className="bg-white rounded-[2rem] p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex items-center gap-4">
                 <div className="relative">

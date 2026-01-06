@@ -1,34 +1,48 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Users, Heart } from "lucide-react";
+"use client";
+
+import React from "react";
+import { Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/EmptyState";
 import { useTranslations } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
+import type { ProfileUserSummary } from "../types";
 
 export function FollowersTab({ address }: { address: string }) {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const tProfile = useTranslations("profile");
+  const tCommon = useTranslations("common");
+  const safeAddress = encodeURIComponent(address);
 
-  const fetchData = useCallback(async () => {
-    if (!address) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/user-follows/followers-users?address=${address}`);
-      const data = await res.json();
-      setUsers(data.users || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [address]);
+  const query = useQuery<ProfileUserSummary[]>({
+    queryKey: ["profile", "followers", address],
+    queryFn: async () => {
+      const res = await fetch(`/api/user-follows/followers-users?address=${safeAddress}`);
+      if (!res.ok) throw new Error("Failed to fetch followers");
+      const data = await res.json().catch(() => ({}));
+      return Array.isArray(data.users) ? (data.users as ProfileUserSummary[]) : [];
+    },
+    enabled: !!address,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  if (query.isLoading) return <CenteredSpinner />;
+  if (query.isError) {
+    return (
+      <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-sm">
+        <div className="text-sm font-bold text-gray-700">{tCommon("loadFailed")}</div>
+        <button
+          type="button"
+          onClick={() => query.refetch()}
+          className="mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700"
+        >
+          {tCommon("retry")}
+        </button>
+      </div>
+    );
+  }
 
-  if (loading) return <CenteredSpinner />;
+  const users = query.data || [];
 
   if (users.length === 0) {
     return (

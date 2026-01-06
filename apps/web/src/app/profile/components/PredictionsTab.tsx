@@ -1,65 +1,53 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { TrendingUp, Users, Wallet, Trophy, Activity } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
+import type { PortfolioStats, ProfilePosition } from "../types";
 
 type PredictionsTabProps = {
   address: string | null | undefined;
+  positions: ProfilePosition[];
+  portfolioStats: PortfolioStats | null;
+  loading: boolean;
+  error: boolean;
 };
 
-export function PredictionsTab({ address }: PredictionsTabProps) {
-  const [predictions, setPredictions] = useState<any[]>([]);
-  const [portfolioStats, setPortfolioStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function PredictionsTab({
+  address,
+  positions,
+  portfolioStats,
+  loading,
+  error,
+}: PredictionsTabProps) {
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
-
-  useEffect(() => {
-    if (!address) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchPortfolio = async () => {
-      try {
-        const res = await fetch(`/api/user-portfolio?address=${address}`);
-        if (!res.ok) {
-          try {
-            const errorBody = await res.json();
-            console.warn("Failed to fetch portfolio", res.status, errorBody);
-          } catch {
-            console.warn("Failed to fetch portfolio", res.status);
-          }
-          setError(tProfile("predictions.errors.loadFailed"));
-          return;
-        }
-        const data = await res.json();
-        setPredictions(data.positions || []);
-        setPortfolioStats(data.stats);
-      } catch (err) {
-        console.warn("Failed to fetch portfolio", err);
-        setError(tProfile("predictions.errors.loadFailed"));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPortfolio();
-  }, [address, tProfile]);
 
   const totalInvested = portfolioStats?.total_invested ?? 0;
   const realizedPnl = portfolioStats?.realized_pnl ?? 0;
   const winRate = portfolioStats?.win_rate ?? "0%";
   const activeCount = portfolioStats?.active_count ?? 0;
-  const positionsCount = predictions.length;
+  const positionsCount = positions.length;
 
   if (loading) return <CenteredSpinner />;
-  if (error) return <div className="text-center py-20 text-red-500">{error}</div>;
+  if (!address) {
+    return (
+      <EmptyState
+        icon={TrendingUp}
+        title={tProfile("predictions.empty.title")}
+        description={tProfile("predictions.empty.description")}
+      />
+    );
+  }
+  if (error)
+    return (
+      <div className="text-center py-20 text-red-500">
+        {tProfile("predictions.errors.loadFailed")}
+      </div>
+    );
 
   return (
     <div className="space-y-8">
@@ -141,11 +129,7 @@ export function PredictionsTab({ address }: PredictionsTabProps) {
           {tProfile("predictions.header")}
         </h3>
 
-        {loading ? (
-          <CenteredSpinner />
-        ) : error ? (
-          <div className="text-center py-20 text-red-500">{error}</div>
-        ) : predictions.length === 0 ? (
+        {positions.length === 0 ? (
           <EmptyState
             icon={TrendingUp}
             title={tProfile("predictions.empty.title")}
@@ -153,7 +137,7 @@ export function PredictionsTab({ address }: PredictionsTabProps) {
           />
         ) : (
           <div className="grid gap-4">
-            {predictions.map((pred) => {
+            {positions.map((pred) => {
               const yesProb =
                 typeof pred.stats?.yesProbability === "number" ? pred.stats.yesProbability : 0.5;
               const noProb =
@@ -172,13 +156,18 @@ export function PredictionsTab({ address }: PredictionsTabProps) {
                 <Link href={`/prediction/${pred.id}`} key={pred.id}>
                   <div className="bg-white rounded-[1.5rem] p-4 border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
                     <img
-                      src={pred.image_url}
+                      src={
+                        pred.image_url ||
+                        `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                          String(pred.id)
+                        )}`
+                      }
                       alt={pred.title || tProfile("predictions.alt.cover")}
                       className="w-12 h-12 rounded-xl bg-gray-100 object-cover"
                     />
                     <div className="flex-1">
                       <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-purple-600 transition-colors">
-                        {tEvents(pred.title)}
+                        {tEvents(pred.title || "")}
                       </h4>
                       <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                         <span
