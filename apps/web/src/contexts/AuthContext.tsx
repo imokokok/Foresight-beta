@@ -44,36 +44,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    // 初始化会话
     if (!supabase) {
       setLoading(false);
       return;
     }
-    const hasRemember =
-      typeof document !== "undefined" &&
-      document.cookie.split(";").some((s) => s.trim().startsWith("fs_remember=1"));
-    if (!hasRemember) {
-      setUser(null);
+    (supabase as any).auth.getSession().then(({ data, error }: any) => {
+      if (!mounted) return;
+      if (error) {
+        setError(error.message);
+      }
+      const sessUser = data?.session?.user || null;
+      setUser(
+        sessUser
+          ? {
+              id: sessUser.id,
+              email: sessUser.email ?? null,
+              user_metadata: sessUser.user_metadata,
+            }
+          : null
+      );
       setLoading(false);
-    } else {
-      (supabase as any).auth.getSession().then(({ data, error }: any) => {
-        if (!mounted) return;
-        if (error) {
-          setError(error.message);
-        }
-        const sessUser = data?.session?.user || null;
-        setUser(
-          sessUser
-            ? {
-                id: sessUser.id,
-                email: sessUser.email ?? null,
-                user_metadata: sessUser.user_metadata,
-              }
-            : null
-        );
-        setLoading(false);
-      });
-    }
+    });
 
     // 监听会话变化
     const { data: sub } = (supabase as any).auth.onAuthStateChange((_event: any, session: any) => {

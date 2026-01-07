@@ -12,11 +12,7 @@ type Params = {
 export function useSiweAuth(params: Params) {
   const siweLogin = async (): Promise<{ success: boolean; address?: string; error?: string }> => {
     try {
-      const rawProvider =
-        params.providerRef.current ||
-        (typeof window !== "undefined"
-          ? (window as any).ethereum || (window as any).BinanceChain
-          : null);
+      const rawProvider = params.providerRef.current;
       if (!rawProvider) {
         return { success: false, error: t("errors.wallet.notDetected") };
       }

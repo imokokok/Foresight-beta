@@ -219,7 +219,5 @@ export function detectWallets(): WalletInfo[] {
 
 export function getActiveRawProvider(providerRef: RefObject<any>): any {
   if (providerRef.current) return providerRef.current;
-  if (typeof window === "undefined") return null;
-  const w: any = window as any;
-  return w.ethereum || w.BinanceChain || null;
+  return null;
 }

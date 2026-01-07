@@ -196,9 +196,7 @@ export function useWalletConnection(params: Params = {}) {
           }
         }
 
-        const providerToUse =
-          targetProvider ||
-          (typeof window !== "undefined" ? ethereum || (window as any).BinanceChain || null : null);
+        const providerToUse = targetProvider;
 
         if (providerToUse) {
           let accounts: string[] = [];
@@ -316,8 +314,10 @@ export function useWalletConnection(params: Params = {}) {
           } else {
             throw new Error(t("errors.wallet.okxNotInstalled"));
           }
-        } else {
+        } else if (!walletType) {
           targetProvider = ethereum || (window as any).BinanceChain;
+        } else {
+          throw new Error(t("errors.wallet.walletNotInitialized"));
         }
       }
 
