@@ -190,7 +190,8 @@ export default function FlagsPage() {
       const data = await res.json().catch(() => ({}) as any);
       const items = Array.isArray(data?.items) ? data.items : [];
       setHistoryItems(items);
-    } catch {
+    } catch (e) {
+      toast.error(tFlags("toast.loadFailedTitle"), tFlags("toast.retryLater"));
     } finally {
       setHistoryLoading(false);
     }

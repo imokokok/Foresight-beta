@@ -32,6 +32,7 @@ export type FlagItem = {
 interface FlagCardProps {
   flag: FlagItem;
   isMine?: boolean;
+  isWitnessTask?: boolean;
   onCheckin?: () => void;
   onViewHistory?: () => void;
   onSettle?: () => void;
@@ -40,6 +41,7 @@ interface FlagCardProps {
 export const FlagCard = memo(function FlagCard({
   flag,
   isMine,
+  isWitnessTask,
   onCheckin,
   onViewHistory,
   onSettle,
@@ -168,13 +170,19 @@ export const FlagCard = memo(function FlagCard({
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
 
             {/* Tag */}
-            <div className="absolute top-4 left-4 z-10">
+            <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
               <div
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/90 backdrop-blur-sm shadow-sm ${s.color} transform -rotate-2 group-hover:rotate-0 transition-transform`}
               >
                 <StatusIcon className="w-3.5 h-3.5" />
                 <span>{s.label}</span>
               </div>
+              {isWitnessTask && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-900/90 text-[9px] font-black text-amber-50 shadow-sm uppercase tracking-wider transform -rotate-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{tFlags("history.labels.currentWitnessTask")}</span>
+                </div>
+              )}
             </div>
 
             <div className="absolute bottom-[-10px] right-[-10px] opacity-25 rotate-12 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "@/lib/toast";
 import type { FlagItem } from "@/components/FlagCard";
 import type { StickerItem } from "@/components/StickerRevealModal";
@@ -14,11 +14,14 @@ export function useFlagsData(account: string | null | undefined, tFlags: (key: s
   const [flags, setFlags] = useState<FlagItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterMine, setFilterMine] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "success">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "success" | "witnessRequests"
+  >("all");
   const [dbStickers, setDbStickers] = useState<StickerItem[]>([]);
   const [collectedStickers, setCollectedStickers] = useState<string[]>([]);
 
   const viewerId = String(account || "").toLowerCase();
+  const noDataToastShownRef = useRef(false);
 
   const loadFlags = useCallback(async () => {
     try {
@@ -43,8 +46,9 @@ export function useFlagsData(account: string | null | undefined, tFlags: (key: s
 
       setFlags(list as FlagItem[]);
 
-      if (list.length === 0) {
+      if (list.length === 0 && !noDataToastShownRef.current) {
         toast.info(tFlags("toast.noDataTitle"), tFlags("toast.noDataDesc"));
+        noDataToastShownRef.current = true;
       }
     } catch (e) {
       console.error(e);
@@ -89,22 +93,35 @@ export function useFlagsData(account: string | null | undefined, tFlags: (key: s
     }
   }, [account, loadFlags, loadCollectedStickers]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const rawStatus = window.localStorage.getItem("fs_flags_status_filter");
+      if (
+        rawStatus === "all" ||
+        rawStatus === "active" ||
+        rawStatus === "success" ||
+        rawStatus === "witnessRequests"
+      ) {
+        setStatusFilter(rawStatus);
+      }
+      const rawMine = window.localStorage.getItem("fs_flags_filter_mine");
+      if (rawMine === "1") setFilterMine(true);
+      if (rawMine === "0") setFilterMine(false);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("fs_flags_status_filter", statusFilter);
+      window.localStorage.setItem("fs_flags_filter_mine", filterMine ? "1" : "0");
+    } catch {}
+  }, [statusFilter, filterMine]);
+
   const activeFlags = useMemo(() => flags.filter((f) => f.status === "active"), [flags]);
 
   const completedFlags = useMemo(() => flags.filter((f) => f.status === "success"), [flags]);
-
-  const filteredFlags = useMemo(
-    () =>
-      flags
-        .filter((f) => (statusFilter === "all" ? true : f.status === statusFilter))
-        .filter((f) => {
-          if (!filterMine) return true;
-          if (!account) return false;
-          return String(f.user_id || "").toLowerCase() === String(account).toLowerCase();
-        })
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    [flags, statusFilter, filterMine, account]
-  );
 
   const witnessFlags = useMemo(
     () =>
@@ -131,6 +148,23 @@ export function useFlagsData(account: string | null | undefined, tFlags: (key: s
         : [],
     [flags, viewerId]
   );
+
+  const filteredFlags = useMemo(() => {
+    if (statusFilter === "witnessRequests") {
+      return pendingReviewFlagsForViewer
+        .slice()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    return flags
+      .filter((f) => (statusFilter === "all" ? true : f.status === statusFilter))
+      .filter((f) => {
+        if (!filterMine) return true;
+        if (!account) return false;
+        return String(f.user_id || "").toLowerCase() === String(account).toLowerCase();
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [flags, statusFilter, filterMine, account, pendingReviewFlagsForViewer]);
 
   const invitesCount = pendingReviewFlagsForViewer.length;
 

@@ -7,6 +7,7 @@ export type FlagsMainContentProps = {
   loading: boolean;
   filteredFlags: FlagItem[];
   account: string | null | undefined;
+  viewerId: string;
   onCreate: () => void;
   onCheckin: (flag: FlagItem) => void;
   onOpenHistory: (flag: FlagItem) => void;
@@ -49,6 +50,7 @@ function FlagsCreateCard({ tFlags, onCreate }: FlagsCreateCardProps) {
 type FlagsListContainerProps = {
   filteredFlags: FlagItem[];
   account: string | null | undefined;
+  viewerId: string;
   onCheckin: (flag: FlagItem) => void;
   onOpenHistory: (flag: FlagItem) => void;
   onSettle: (flag: FlagItem) => void;
@@ -57,6 +59,7 @@ type FlagsListContainerProps = {
 function FlagsListContainer({
   filteredFlags,
   account,
+  viewerId,
   onCheckin,
   onOpenHistory,
   onSettle,
@@ -79,6 +82,12 @@ function FlagsListContainer({
               Boolean(account) &&
               String(flag.user_id || "").toLowerCase() === String(account || "").toLowerCase()
             }
+            isWitnessTask={
+              Boolean(viewerId) &&
+              flag.status === "pending_review" &&
+              flag.verification_type === "witness" &&
+              String(flag.witness_id || "").toLowerCase() === viewerId.toLowerCase()
+            }
             onCheckin={() => onCheckin(flag)}
             onViewHistory={() => onOpenHistory(flag)}
             onSettle={() => onSettle(flag)}
@@ -94,6 +103,7 @@ export function FlagsMainContent({
   loading,
   filteredFlags,
   account,
+  viewerId,
   onCreate,
   onCheckin,
   onOpenHistory,
@@ -112,6 +122,7 @@ export function FlagsMainContent({
           <FlagsListContainer
             filteredFlags={filteredFlags}
             account={account}
+            viewerId={viewerId}
             onCheckin={onCheckin}
             onOpenHistory={onOpenHistory}
             onSettle={onSettle}

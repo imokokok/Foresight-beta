@@ -85,6 +85,7 @@ export function FlagsPageView({
             loading={loading}
             filteredFlags={filteredFlags}
             account={account}
+            viewerId={viewerId}
             onCreate={handleCreateClick}
             onCheckin={openCheckin}
             onOpenHistory={openHistory}

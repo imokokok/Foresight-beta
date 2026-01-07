@@ -10,8 +10,8 @@ export type FlagsPageHeaderProps = {
   inviteNotice: { id: number; title: string } | null;
   viewerId: string;
   flags: FlagItem[];
-  statusFilter: "all" | "active" | "success";
-  setStatusFilter: (value: "all" | "active" | "success") => void;
+  statusFilter: "all" | "active" | "success" | "witnessRequests";
+  setStatusFilter: (value: "all" | "active" | "success" | "witnessRequests") => void;
   witnessFlags: FlagItem[];
   collectedCount: number;
   onOpenGallery: () => void;
@@ -155,8 +155,8 @@ function FlagsGalleryButton({ tFlags, collectedCount, onOpenGallery }: FlagsGall
 
 type FlagsFilterTabsProps = {
   tFlags: (key: string) => string;
-  statusFilter: "all" | "active" | "success";
-  setStatusFilter: (value: "all" | "active" | "success") => void;
+  statusFilter: "all" | "active" | "success" | "witnessRequests";
+  setStatusFilter: (value: "all" | "active" | "success" | "witnessRequests") => void;
 };
 
 function FlagsFilterTabs({ tFlags, statusFilter, setStatusFilter }: FlagsFilterTabsProps) {
@@ -166,10 +166,13 @@ function FlagsFilterTabs({ tFlags, statusFilter, setStatusFilter }: FlagsFilterT
         { id: "all", label: tFlags("filters.all") },
         { id: "active", label: tFlags("filters.active") },
         { id: "success", label: tFlags("filters.success") },
+        { id: "witnessRequests", label: tFlags("filters.witnessRequests") },
       ].map((tab) => (
         <button
           key={tab.id}
-          onClick={() => setStatusFilter(tab.id as "all" | "active" | "success")}
+          onClick={() =>
+            setStatusFilter(tab.id as "all" | "active" | "success" | "witnessRequests")
+          }
           className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
             statusFilter === tab.id
               ? "bg-white text-gray-900 shadow-sm"
@@ -211,8 +214,8 @@ function WitnessRequestsButton({
 type FlagsHeaderRightSectionProps = {
   tFlags: (key: string) => string;
   collectedCount: number;
-  statusFilter: "all" | "active" | "success";
-  setStatusFilter: (value: "all" | "active" | "success") => void;
+  statusFilter: "all" | "active" | "success" | "witnessRequests";
+  setStatusFilter: (value: "all" | "active" | "success" | "witnessRequests") => void;
   witnessFlags: FlagItem[];
   onOpenGallery: () => void;
   onOpenHistory: (flag: FlagItem) => void;
