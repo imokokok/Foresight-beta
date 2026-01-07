@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase";
+import type { PredictionRow } from "./types";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import {
   isAdminProfile,
@@ -11,12 +13,12 @@ import {
 } from "./validators";
 
 export type CreatePredictionResult = {
-  newPrediction: any;
+  newPrediction: PredictionRow;
 };
 
 export async function createPredictionFromRequest(
   request: NextRequest,
-  client: SupabaseClient
+  client: SupabaseClient<Database>
 ): Promise<CreatePredictionResult> {
   const body = await request.json();
 

@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
     }
 
     const paging = parsePagination({ limit, page, pageSize, cursor });
-    
+
     // 游标分页模式
     if (paging.mode === "cursor") {
-      const { items, total } = await getPredictionsList(client as any, {
+      const { items, total } = await getPredictionsList(client, {
         category,
         status,
         search: search || undefined,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 传统分页模式
-    const { items, total } = await getPredictionsList(client as any, {
+    const { items, total } = await getPredictionsList(client, {
       category,
       status,
       search: search || undefined,
@@ -87,9 +87,9 @@ export async function GET(request: NextRequest) {
         },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logApiError("GET /api/predictions", error);
-    const detail = error?.message || String(error);
+    const detail = error instanceof Error ? error.message : String(error);
     return ApiResponses.internalError("Failed to fetch prediction list", detail);
   }
 }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
 
-    const { newPrediction } = await createPredictionFromRequest(request, client as any);
+    const { newPrediction } = await createPredictionFromRequest(request, client);
 
     return NextResponse.json(
       {
@@ -112,14 +112,35 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logApiError("POST /api/predictions", error);
-    const status = typeof error?.status === "number" ? error.status : 500;
-    const message = error?.message || "Failed to create prediction";
+    const isErrorObject = typeof error === "object" && error !== null;
+
+    const baseMessage = error instanceof Error ? error.message : "Failed to create prediction";
+
+    let status = 500;
+    let missingFields: string[] | undefined;
+    let duplicateEvents: unknown;
+
+    if (isErrorObject) {
+      const rawStatus = (error as { status?: unknown }).status;
+      if (typeof rawStatus === "number") {
+        status = rawStatus;
+      }
+
+      const rawMissing = (error as { missingFields?: unknown }).missingFields;
+      if (Array.isArray(rawMissing)) {
+        missingFields = rawMissing.filter((field): field is string => typeof field === "string");
+      }
+
+      duplicateEvents = (error as { duplicateEvents?: unknown }).duplicateEvents;
+    }
+
+    const message = baseMessage || "Failed to create prediction";
     const details = {
       error: error instanceof Error ? error.message : String(error),
-      missingFields: (error as any)?.missingFields,
-      duplicateEvents: (error as any)?.duplicateEvents,
+      missingFields,
+      duplicateEvents,
     };
     if (status === 400) {
       return ApiResponses.invalidParameters(message);

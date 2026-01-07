@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase";
 import type { PredictionRow, EventFollowRow, PredictionListItem } from "./types";
 
 export type GetPredictionsListArgs = {
@@ -18,7 +19,7 @@ export type GetPredictionsListArgs = {
  * - 减少数据处理中的冗余计算
  */
 export async function getPredictionsList(
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   args: GetPredictionsListArgs
 ): Promise<{ items: PredictionListItem[]; total: number }> {
   let selectExpr = "*";
