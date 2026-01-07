@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { logClientErrorToApi } from "@/lib/errorReporting";
 
 export default function GlobalError({
   error,
@@ -13,7 +14,6 @@ export default function GlobalError({
   useEffect(() => {
     console.error("Global Error:", error);
 
-    // 发送到 Sentry（严重错误）
     Sentry.captureException(error, {
       level: "fatal",
       tags: {
@@ -27,22 +27,7 @@ export default function GlobalError({
       },
     });
 
-    // 发送到错误日志 API（作为备份）
-    if (typeof window !== "undefined") {
-      fetch("/api/error-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          error: error.message,
-          stack: error.stack,
-          digest: error.digest,
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-        }),
-      }).catch(() => {
-        // 静默失败，避免无限循环
-      });
-    }
+    logClientErrorToApi(error, { silent: true });
   }, [error]);
 
   return (

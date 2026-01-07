@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { getPendingReviewCountForWitness } from "@/lib/flagRewards";
 
 type NotificationItem = {
   id: string;
@@ -75,17 +76,10 @@ export async function GET(req: NextRequest) {
       read_at: r?.read_at ? String(r.read_at) : null,
     }));
 
-    let pendingReviewCount = 0;
-    try {
-      const { data: flags } = await client
-        .from("flags")
-        .select("id,status,verification_type,witness_id")
-        .eq("witness_id", viewer)
-        .eq("status", "pending_review")
-        .eq("verification_type", "witness");
-      const list = Array.isArray(flags) ? flags : [];
-      pendingReviewCount = list.length;
-    } catch {}
+    const pendingReviewCount = await getPendingReviewCountForWitness({
+      client,
+      witnessId: viewer,
+    });
 
     const syntheticItems: NotificationItem[] =
       pendingReviewCount > 0

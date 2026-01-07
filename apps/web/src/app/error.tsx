@@ -5,6 +5,7 @@ import { AlertCircle, RefreshCcw, Home } from "lucide-react";
 import Link from "next/link";
 import * as Sentry from "@sentry/nextjs";
 import { useTranslations } from "@/lib/i18n";
+import { logClientErrorToApi } from "@/lib/errorReporting";
 
 export default function Error({
   error,
@@ -15,10 +16,8 @@ export default function Error({
 }) {
   const tErrors = useTranslations("errors");
   useEffect(() => {
-    // 记录错误到监控服务
     console.error("Application Error:", error);
 
-    // 发送到 Sentry
     Sentry.captureException(error, {
       tags: {
         errorBoundary: "page",
@@ -32,22 +31,7 @@ export default function Error({
       },
     });
 
-    // 发送到错误日志 API（作为备份）
-    if (typeof window !== "undefined") {
-      fetch("/api/error-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          error: error.message,
-          stack: error.stack,
-          digest: error.digest,
-          url: window.location.href,
-          userAgent: navigator.userAgent,
-        }),
-      }).catch((err) => {
-        console.error("Failed to log error:", err);
-      });
-    }
+    logClientErrorToApi(error, { silent: false });
   }, [error]);
 
   return (

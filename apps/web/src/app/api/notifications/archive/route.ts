@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
-import { getSessionAddress, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
-
-function parseIds(raw: unknown) {
-  if (!Array.isArray(raw)) return [];
-  const ids: number[] = [];
-  for (const x of raw) {
-    const n = typeof x === "number" ? x : typeof x === "string" ? Number(x) : NaN;
-    if (Number.isFinite(n) && n > 0) ids.push(n);
-  }
-  return Array.from(new Set(ids));
-}
+import {
+  getSessionAddress,
+  normalizeAddress,
+  parseRequestBody,
+  parseNumericIds,
+} from "@/lib/serverUtils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const body = await parseRequestBody(req);
     const archiveAll = body?.all === true || String(body?.all || "") === "true";
-    const ids = parseIds((body as any)?.ids);
+    const ids = parseNumericIds((body as any)?.ids);
     const now = new Date().toISOString();
 
     if (archiveAll) {

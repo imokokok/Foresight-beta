@@ -116,6 +116,16 @@ export async function parseRequestBody(req: Request): Promise<Record<string, unk
   }
 }
 
+export function parseNumericIds(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+  const ids: number[] = [];
+  for (const x of raw) {
+    const n = typeof x === "number" ? x : typeof x === "string" ? Number(x) : NaN;
+    if (Number.isFinite(n) && n > 0) ids.push(n);
+  }
+  return Array.from(new Set(ids));
+}
+
 export function logApiError(scope: string, error: unknown) {
   try {
     console.error(scope, error);

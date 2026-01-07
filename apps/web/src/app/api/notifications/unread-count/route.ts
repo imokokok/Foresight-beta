@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { getPendingReviewCountForWitness } from "@/lib/flagRewards";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,16 +21,10 @@ export async function GET(req: NextRequest) {
 
     if (unreadDb.error) return ApiResponses.databaseError("Query failed", unreadDb.error.message);
 
-    let pendingReviewCount = 0;
-    try {
-      const { data: flags } = await client
-        .from("flags")
-        .select("id")
-        .eq("witness_id", viewer)
-        .eq("status", "pending_review")
-        .eq("verification_type", "witness");
-      pendingReviewCount = Array.isArray(flags) ? flags.length : 0;
-    } catch {}
+    const pendingReviewCount = await getPendingReviewCountForWitness({
+      client,
+      witnessId: viewer,
+    });
 
     const dbCount = Number(unreadDb.count || 0);
     const count = dbCount + pendingReviewCount;
