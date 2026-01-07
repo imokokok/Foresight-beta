@@ -17,8 +17,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const flagId = normalizeId(id);
     if (!flagId) return NextResponse.json({ message: "flagId is required" }, { status: 400 });
     const body = await parseRequestBody(req as any);
-    const minDays = Math.max(1, Number(body?.min_days || 10));
-    const threshold = Math.min(1, Math.max(0, Number(body?.threshold || 0.8)));
+    const rawMinDays = (body as any)?.min_days;
+    const parsedMinDays =
+      typeof rawMinDays === "number"
+        ? rawMinDays
+        : typeof rawMinDays === "string"
+          ? Number(rawMinDays)
+          : NaN;
+    const minDays = Math.max(1, Number.isFinite(parsedMinDays) ? parsedMinDays : 10);
+
+    const rawThreshold = (body as any)?.threshold;
+    const parsedThreshold =
+      typeof rawThreshold === "number"
+        ? rawThreshold
+        : typeof rawThreshold === "string"
+          ? Number(rawThreshold)
+          : NaN;
+    const safeThreshold = Number.isFinite(parsedThreshold) ? parsedThreshold : 0.8;
+    const threshold = Math.min(1, Math.max(0, safeThreshold));
 
     const client = getClient() as any;
     if (!client) return NextResponse.json({ message: "Service not configured" }, { status: 500 });

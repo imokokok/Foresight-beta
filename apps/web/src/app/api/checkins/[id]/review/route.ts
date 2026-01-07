@@ -13,19 +13,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const checkinId = normalizeId(id);
-    if (!checkinId) return NextResponse.json({ message: "checkinId is required" }, { status: 400 });
+    if (!checkinId) {
+      return NextResponse.json({ message: "checkinId is required" }, { status: 400 });
+    }
     const body = await parseRequestBody(req as any);
-    const actionRaw = String(body?.action || "")
-      .trim()
-      .toLowerCase();
+    const rawAction =
+      typeof (body as any)?.action === "string" ? (body as any).action.trim().toLowerCase() : "";
     const action =
-      actionRaw === "approve" ? "approved" : actionRaw === "reject" ? "rejected" : null;
-    const reason = String(body?.reason || "").trim() || null;
-    if (!action)
+      rawAction === "approve" ? "approved" : rawAction === "reject" ? "rejected" : null;
+    const rawReason = (body as any)?.reason;
+    const reason =
+      typeof rawReason === "string" && rawReason.trim().length > 0 ? rawReason.trim() : null;
+    if (!action) {
       return NextResponse.json(
         { message: "action must be 'approve' or 'reject'" },
         { status: 400 }
       );
+    }
 
     const reviewer_id = await getSessionAddress(req);
     if (!reviewer_id)

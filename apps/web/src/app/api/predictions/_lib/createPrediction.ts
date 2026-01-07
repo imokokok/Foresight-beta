@@ -20,11 +20,11 @@ export async function createPredictionFromRequest(
   request: NextRequest,
   client: SupabaseClient<Database>
 ): Promise<CreatePredictionResult> {
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}) as Record<string, unknown>);
 
   const { walletAddress } = await resolveAndVerifyWalletAddress(request, body);
 
-  assertRequiredFields(body, [
+  assertRequiredFields(body as Record<string, unknown>, [
     "title",
     "description",
     "category",
@@ -32,7 +32,7 @@ export async function createPredictionFromRequest(
     "minStake",
     "criteria",
   ]);
-  assertPositiveNumber(body.minStake, "minStake");
+  assertPositiveNumber((body as Record<string, unknown>).minStake, "minStake");
 
   const { data: prof, error: profErr } = await (client as any)
     .from("user_profiles")
@@ -51,7 +51,7 @@ export async function createPredictionFromRequest(
   const { data: existingPredictions, error: checkError } = await (client as any)
     .from("predictions")
     .select("id, title, description, category, deadline, status")
-    .eq("title", body.title);
+    .eq("title", (body as Record<string, unknown>).title);
 
   if (checkError) {
     const err = new Error("Failed to check prediction");
@@ -74,8 +74,8 @@ export async function createPredictionFromRequest(
     throw err;
   }
 
-  const imageUrl = resolveImageUrl(body, buildDiceBearUrl);
-  const { type, outcomes } = assertValidOutcomes(body);
+  const imageUrl = resolveImageUrl(body as Record<string, unknown>, buildDiceBearUrl);
+  const { type, outcomes } = assertValidOutcomes(body as Record<string, unknown>);
 
   const nextId = await getNextPredictionId(client);
 
@@ -83,13 +83,13 @@ export async function createPredictionFromRequest(
     .from("predictions")
     .insert({
       id: nextId,
-      title: body.title,
-      description: body.description,
-      category: body.category,
-      deadline: body.deadline,
-      min_stake: body.minStake,
-      criteria: body.criteria,
-      reference_url: body.reference_url || "",
+      title: (body as Record<string, unknown>).title,
+      description: (body as Record<string, unknown>).description,
+      category: (body as Record<string, unknown>).category,
+      deadline: (body as Record<string, unknown>).deadline,
+      min_stake: (body as Record<string, unknown>).minStake,
+      criteria: (body as Record<string, unknown>).criteria,
+      reference_url: (body as Record<string, unknown>).reference_url || "",
       image_url: imageUrl,
       status: "active",
       type: type === "multi" ? "multi" : "binary",

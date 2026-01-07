@@ -9,10 +9,12 @@ type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const action = String(body.action || "");
-    const reason = String(body.reason || "");
-    const patch = body.patch || {};
+    const body = await req.json().catch(() => ({}) as Record<string, unknown>);
+    const rawAction = (body as Record<string, unknown>).action;
+    const action = typeof rawAction === "string" ? rawAction.trim() : "";
+    const rawReason = (body as Record<string, unknown>).reason;
+    const reason = typeof rawReason === "string" ? rawReason : "";
+    const patch = (body as Record<string, unknown>).patch;
     if (!action) {
       return ApiResponses.invalidParameters("action_required");
     }
@@ -25,13 +27,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!Number.isFinite(threadId)) {
       return ApiResponses.invalidParameters("invalid_id");
     }
-    if (
-      action !== "resubmit" &&
-      action !== "approve" &&
-      action !== "reject" &&
-      action !== "needs_changes" &&
-      action !== "edit_metadata"
-    ) {
+    const allowedActions = new Set([
+      "resubmit",
+      "approve",
+      "reject",
+      "needs_changes",
+      "edit_metadata",
+    ]);
+    if (!allowedActions.has(action)) {
       return ApiResponses.invalidParameters("invalid_action");
     }
     if (action === "resubmit") {
@@ -124,10 +127,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         "action_verb",
         "target_value",
       ];
+      const safePatch = patch as Record<string, unknown>;
       for (const key of allowedKeys) {
-        if (key in patch) {
-          const value = patch[key];
-          (updatePayload as Record<string, unknown>)[key] = value as unknown;
+        if (Object.prototype.hasOwnProperty.call(safePatch, key)) {
+          const value = safePatch[key];
+          if (value !== undefined) {
+            (updatePayload as Record<string, unknown>)[key] = value as unknown;
+          }
         }
       }
     }

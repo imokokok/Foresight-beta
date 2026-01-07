@@ -21,9 +21,11 @@ export async function GET(req: NextRequest) {
       return ApiResponses.internalError("Supabase not configured");
     }
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") || "pending_review";
-    const limitParam = Number(searchParams.get("limit") || 50);
-    const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(200, limitParam)) : 50;
+    const rawStatus = searchParams.get("status");
+    const status = rawStatus && rawStatus.trim().length > 0 ? rawStatus : "pending_review";
+    const rawLimit = searchParams.get("limit");
+    const parsedLimit = rawLimit !== null ? Number(rawLimit) : 50;
+    const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(200, parsedLimit)) : 50;
     const { data, error } = await client
       .from("forum_threads")
       .select("*")

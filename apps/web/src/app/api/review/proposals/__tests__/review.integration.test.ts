@@ -47,6 +47,14 @@ vi.mock("@/lib/reviewAuth", () => {
   };
 });
 
+vi.mock("@/lib/serverUtils", () => {
+  return {
+    getSessionAddress: vi.fn(),
+    normalizeAddress: (addr: string) => addr.toLowerCase(),
+    logApiError: vi.fn(),
+  };
+});
+
 describe("POST /api/review/proposals/[id] - 审核员操作", () => {
   const baseUrl = "http://localhost:3000/api/review/proposals/1";
   const mockedGetReviewerSession = getReviewerSession as unknown as ReturnType<typeof vi.fn>;
@@ -230,5 +238,55 @@ describe("POST /api/review/proposals/[id] - 审核员操作", () => {
     expect(data.item.review_status).toBe("needs_changes");
     expect(data.item.reviewed_by).toBe("reviewer-3");
     expect(data.item.review_reason).toBe("please update details");
+  });
+
+  it("应该拒绝无效的 id", async () => {
+    const request = createMockNextRequest({
+      method: "POST",
+      url: "http://localhost:3000/api/review/proposals/not-a-number",
+      body: {
+        action: "approve",
+        reason: "ok",
+      },
+    });
+
+    const response = await reviewProposal(request, {
+      params: Promise.resolve({ id: "not-a-number" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBeDefined();
+    expect(data.error.code).toBe(ApiErrorCode.INVALID_PARAMETERS);
+    expect(data.error.message).toBe("invalid_id");
+  });
+
+  it("应该允许编辑元数据而不改变审核状态", async () => {
+    (mockedGetReviewerSession as any).mockResolvedValue({
+      ok: true,
+      reason: "ok",
+      userId: "reviewer-4",
+    });
+
+    const request = createMockNextRequest({
+      method: "POST",
+      url: baseUrl,
+      body: {
+        action: "edit_metadata",
+        patch: {
+          title_preview: "new title",
+          criteria_preview: "new criteria",
+        },
+      },
+    });
+
+    const response = await reviewProposal(request, { params: Promise.resolve({ id: "1" }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.item).toBeDefined();
+    expect(data.item.review_status).toBe("pending_review");
+    expect(data.item.title_preview).toBe("new title");
+    expect(data.item.criteria_preview).toBe("new criteria");
   });
 });

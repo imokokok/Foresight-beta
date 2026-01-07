@@ -28,8 +28,13 @@ export async function resolveAndVerifyWalletAddress(
   return { walletAddress, sessionAddress: sessAddr };
 }
 
-export function assertRequiredFields(body: any, requiredFields: string[]) {
-  const missingFields = requiredFields.filter((field) => !body[field]);
+export function assertRequiredFields(body: Record<string, unknown>, requiredFields: string[]) {
+  const missingFields = requiredFields.filter((field) => {
+    const value = body[field];
+    if (value === undefined || value === null) return true;
+    if (typeof value === "string") return value.trim().length === 0;
+    return false;
+  });
   if (missingFields.length > 0) {
     const err = new Error("Missing required fields");
     (err as any).status = 400;
