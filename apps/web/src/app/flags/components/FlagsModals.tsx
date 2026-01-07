@@ -34,6 +34,7 @@ export type FlagsPageViewUIState = {
     review_status?: string;
     reviewer_id?: string;
     review_reason?: string;
+    reviewed_at?: string;
   }>;
   reviewSubmittingId: string | null;
   settleOpen: boolean;

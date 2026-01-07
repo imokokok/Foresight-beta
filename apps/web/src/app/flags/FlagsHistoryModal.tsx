@@ -15,6 +15,7 @@ type HistoryItem = {
   review_status?: string;
   reviewer_id?: string;
   review_reason?: string;
+  reviewed_at?: string;
 };
 
 type FlagsHistoryModalProps = {
@@ -333,6 +334,29 @@ export function FlagsHistoryModal({
                                 alt="Proof"
                                 className="w-full object-cover max-h-64 hover:scale-105 transition-transform duration-500"
                               />
+                            </div>
+                          )}
+
+                          {item.review_status && item.review_status !== "pending" && (
+                            <div className="mt-4 pt-4 border-t border-gray-100 space-y-1.5 text-[11px] text-gray-500">
+                              {item.review_reason && (
+                                <div className="flex items-start gap-2">
+                                  <Target className="w-3 h-3 mt-[2px]" />
+                                  <span>{item.review_reason}</span>
+                                </div>
+                              )}
+                              {(item.reviewer_id || item.reviewed_at) && (
+                                <div className="flex items-center gap-2">
+                                  <ShieldCheck className="w-3 h-3" />
+                                  <span>
+                                    {item.reviewer_id ? formatAddress(item.reviewer_id) : null}
+                                    {item.reviewer_id && item.reviewed_at ? " · " : null}
+                                    {item.reviewed_at
+                                      ? formatDateTime(item.reviewed_at, locale)
+                                      : null}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
 

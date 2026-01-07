@@ -454,7 +454,8 @@
       "hintAutoMarket": "힌트: 승인된 제안만 예측 시장을 자동 생성하는 데 사용됩니다",
       "loadFailed": "로드 실패. 이 페이지에 접근할 권한이 없을 수 있습니다.",
       "alertReasonRequired": "이유를 입력하세요",
-      "alertSubmitFailed": "제출 실패"
+      "alertSubmitFailed": "제출 실패",
+      "reviewedByLine": "{reviewer} 검토 · {time}"
     },
     "discussion": {
       "badge": "제안 채팅",

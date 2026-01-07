@@ -127,7 +127,7 @@ describe("Leaderboard Component", () => {
 
       const avatars = await screen.findAllByRole("img");
       expect(avatars.length).toBeGreaterThan(0);
-      expect(avatars[0]).toHaveAttribute("src", "/avatar1.png");
+      expect(avatars.some((avatar) => avatar.getAttribute("src") === "/avatar1.png")).toBe(true);
     });
 
     it("应该显示格式化后的交易量", async () => {

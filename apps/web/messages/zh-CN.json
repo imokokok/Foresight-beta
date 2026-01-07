@@ -383,7 +383,8 @@
       "hintAutoMarket": "提示: 只有通过的提案才会参与自动生成预测市场",
       "loadFailed": "加载失败，可能没有权限访问",
       "alertReasonRequired": "请填写原因",
-      "alertSubmitFailed": "提交失败"
+      "alertSubmitFailed": "提交失败",
+      "reviewedByLine": "由 {reviewer} 审核 · {time}"
     },
     "discussion": {
       "badge": "提案聊天室",

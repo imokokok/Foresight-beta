@@ -4,8 +4,9 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, AlertCircle, Clock, Edit2, Save, X } from "lucide-react";
 import type { Database } from "@/lib/database.types";
-import { useTranslations, useLocale } from "@/lib/i18n";
+import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
+import { formatAddress } from "@/lib/cn";
 
 type Thread = Database["public"]["Tables"]["forum_threads"]["Row"];
 
@@ -277,6 +278,16 @@ export default function ReviewPage() {
                       <div>{selected.review_status || "pending_review"}</div>
                     </div>
                   </div>
+                  {selected.reviewed_by && selected.reviewed_at && (
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      <span>
+                        {formatTranslation(tProposals("review.reviewedByLine"), {
+                          reviewer: formatAddress(selected.reviewed_by),
+                          time: formatDateTime(selected.reviewed_at, locale),
+                        })}
+                      </span>
+                    </div>
+                  )}
                   <div className="py-2">
                     {editing ? (
                       <div className="border rounded-xl p-4 bg-slate-50 space-y-3">

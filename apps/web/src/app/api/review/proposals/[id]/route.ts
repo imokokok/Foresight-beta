@@ -25,6 +25,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!Number.isFinite(threadId)) {
       return ApiResponses.invalidParameters("invalid_id");
     }
+    if (
+      action !== "resubmit" &&
+      action !== "approve" &&
+      action !== "reject" &&
+      action !== "needs_changes" &&
+      action !== "edit_metadata"
+    ) {
+      return ApiResponses.invalidParameters("invalid_action");
+    }
     if (action === "resubmit") {
       const sessAddr = await getSessionAddress(req);
       const walletAddress = normalizeAddress(String(sessAddr || ""));

@@ -383,7 +383,8 @@
       "hintAutoMarket": "Hint: Only approved proposals will be used to auto-generate prediction markets",
       "loadFailed": "Failed to load. You may not have permission to access this page.",
       "alertReasonRequired": "Please enter a reason",
-      "alertSubmitFailed": "Submission failed"
+      "alertSubmitFailed": "Submission failed",
+      "reviewedByLine": "Reviewed by {reviewer} · {time}"
     },
     "discussion": {
       "badge": "Proposal Chat",

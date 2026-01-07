@@ -383,7 +383,8 @@
       "hintAutoMarket": "Aviso: Solo las propuestas aprobadas se usarán para generar automáticamente mercados de predicción",
       "loadFailed": "Error al cargar. Es posible que no tengas permiso para acceder a esta página.",
       "alertReasonRequired": "Introduce un motivo",
-      "alertSubmitFailed": "Error al enviar"
+      "alertSubmitFailed": "Error al enviar",
+      "reviewedByLine": "Revisado por {reviewer} · {time}"
     },
     "discussion": {
       "badge": "Chat de la propuesta",

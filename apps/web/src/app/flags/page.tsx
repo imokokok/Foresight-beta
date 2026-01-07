@@ -71,6 +71,7 @@ export default function FlagsPage() {
       review_status?: string;
       reviewer_id?: string;
       review_reason?: string;
+      reviewed_at?: string;
     }>
   >([]);
   const [reviewSubmittingId, setReviewSubmittingId] = useState<string | null>(null);
