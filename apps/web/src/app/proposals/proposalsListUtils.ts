@@ -12,6 +12,15 @@ import {
 import { TRENDING_CATEGORIES } from "@/features/trending/trendingModel";
 
 export const PROPOSALS_EVENT_ID = 0;
+export const PROPOSAL_DETAIL_STALE_MS = 15000;
+export const PROPOSAL_USER_VOTES_STALE_MS = 30000;
+
+export const proposalsQueryKeys = {
+  list: () => ["proposals"] as const,
+  detail: (id: number | null | undefined) => ["proposalDetail", id ?? null] as const,
+  userVotes: (walletAddress: string | null | undefined) =>
+    ["proposalUserVotes", walletAddress ?? null] as const,
+};
 
 export type ProposalFilter = "hot" | "new" | "top";
 
@@ -43,6 +52,26 @@ export type ProposalItem = {
   review_reason?: string | null;
   userVote?: "up" | "down";
 };
+
+export type ProposalUserVoteRow = {
+  content_type?: string | null;
+  content_id?: string | number | null;
+  vote_type?: string | null;
+};
+
+export async function fetchProposalsList(): Promise<ProposalItem[]> {
+  const res = await fetch(`/api/forum?eventId=${PROPOSALS_EVENT_ID}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message);
+  return data?.threads || [];
+}
+
+export async function fetchProposalUserVotes(): Promise<ProposalUserVoteRow[]> {
+  const res = await fetch(`/api/forum/user-votes?eventId=${PROPOSALS_EVENT_ID}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || "Failed to load votes");
+  return Array.isArray(data?.votes) ? (data.votes as ProposalUserVoteRow[]) : [];
+}
 
 export type CategoryOption = {
   id: string;

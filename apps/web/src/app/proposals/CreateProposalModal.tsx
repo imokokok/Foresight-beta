@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useCategories } from "@/hooks/useQueries";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, t } from "@/lib/i18n";
 import { PROPOSALS_EVENT_ID } from "./proposalsListUtils";
+import { toast, handleApiError } from "@/lib/toast";
 
 interface CreateProposalModalProps {
   isOpen: boolean;
@@ -53,6 +54,7 @@ export default function CreateProposalModal({
 
   const handleSubmit = async () => {
     if (!account) {
+      toast.warning(t("forum.errors.walletRequired"));
       connectWallet();
       return;
     }
@@ -72,13 +74,23 @@ export default function CreateProposalModal({
         }),
       });
 
-      if (res.ok) {
-        setForm({ title: "", content: "", category: "General", deadline: "" });
-        onSuccess();
-        onClose();
+      if (!res.ok) {
+        let errorPayload: unknown = null;
+        try {
+          errorPayload = await res.json();
+        } catch {
+          errorPayload = { status: res.status };
+        }
+        handleApiError(errorPayload, "errors.somethingWrong");
+        return;
       }
+
+      toast.success(t("common.success"));
+      setForm({ title: "", content: "", category: "General", deadline: "" });
+      onSuccess();
+      onClose();
     } catch (e) {
-      console.error(e);
+      handleApiError(e, "errors.somethingWrong");
     } finally {
       setLoading(false);
     }

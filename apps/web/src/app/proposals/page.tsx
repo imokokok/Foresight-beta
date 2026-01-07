@@ -1,7 +1,5 @@
 "use client";
-import React, { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useState } from "react";
 import ProposalsPageView from "./ProposalsPageView";
 import { useProposalsList } from "./useProposalsList";
 import { useWallet } from "@/contexts/WalletContext";
@@ -43,33 +41,56 @@ function buildProposalsJsonLd(tProposals: (key: string) => string, locale: strin
   };
 }
 
+function useRollingInspiration(inspirationsCount: number) {
+  const [inspirationIndex, setInspirationIndex] = useState(0);
+  const [isRolling, setIsRolling] = useState(false);
+  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const isRollingRef = React.useRef(false);
+  const inspirationsCountRef = React.useRef(inspirationsCount);
+
+  const rollInspiration = React.useCallback(() => {
+    const count = inspirationsCountRef.current;
+    if (isRollingRef.current || count <= 0) return;
+    isRollingRef.current = true;
+    setIsRolling(true);
+    let tick = 0;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setInspirationIndex(Math.floor(Math.random() * count));
+      tick += 1;
+      if (tick > 10) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        isRollingRef.current = false;
+        setIsRolling(false);
+      }
+    }, 100);
+  }, []);
+
+  useEffect(() => {
+    inspirationsCountRef.current = inspirationsCount;
+  }, [inspirationsCount]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  return { inspirationIndex, isRolling, rollInspiration };
+}
+
 export default function ProposalsPage() {
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const { account, connectWallet } = useWallet();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const router = useRouter();
-  const listState = useProposalsList(account, connectWallet);
+  const listState = useProposalsList(account, () => void connectWallet());
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
+  const { inspirationIndex, isRolling, rollInspiration } =
+    useRollingInspiration(INSPIRATIONS_COUNT);
 
-  const [inspirationIndex, setInspirationIndex] = useState(0);
-  const [isRolling, setIsRolling] = useState(false);
-
-  const rollInspiration = () => {
-    setIsRolling(true);
-    let count = 0;
-    const interval = setInterval(() => {
-      setInspirationIndex(Math.floor(Math.random() * INSPIRATIONS_COUNT));
-      count += 1;
-      if (count > 10) {
-        clearInterval(interval);
-        setIsRolling(false);
-      }
-    }, 100);
-  };
-
-  const jsonLd = buildProposalsJsonLd(tProposals, locale);
+  const jsonLd = useMemo(() => buildProposalsJsonLd(tProposals, locale), [tProposals, locale]);
 
   return (
     <ProposalsPageView
@@ -83,8 +104,6 @@ export default function ProposalsPage() {
       isRolling={isRolling}
       rollInspiration={rollInspiration}
       jsonLd={jsonLd}
-      router={router}
-      queryClient={queryClient}
     />
   );
 }

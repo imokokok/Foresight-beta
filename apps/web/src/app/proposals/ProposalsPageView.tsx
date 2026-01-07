@@ -4,19 +4,18 @@ import ProposalsLeftSidebar from "./ProposalsLeftSidebar";
 import ProposalsMainContent from "./ProposalsMainContent";
 import ProposalsRightSidebar from "./ProposalsRightSidebar";
 import type { UseProposalsListReturn } from "./useProposalsList";
+import type { AuthUser } from "@/contexts/AuthContext";
 
 type ProposalsPageViewProps = UseProposalsListReturn & {
   account: string | null | undefined;
-  user: { id?: string | null; email?: string | null } | null;
-  connectWallet: () => void;
+  user: AuthUser;
+  connectWallet: () => void | Promise<void>;
   isCreateModalOpen: boolean;
   setCreateModalOpen: (open: boolean) => void;
   inspiration: number;
   isRolling: boolean;
   rollInspiration: () => void;
   jsonLd: unknown;
-  router: { push: (href: string) => void };
-  queryClient: { invalidateQueries: (options: { queryKey: unknown[] }) => void };
 };
 
 export default function ProposalsPageView({
@@ -29,8 +28,6 @@ export default function ProposalsPageView({
   isRolling,
   rollInspiration,
   jsonLd,
-  router,
-  queryClient,
   filter,
   setFilter,
   category,
@@ -41,6 +38,7 @@ export default function ProposalsPageView({
   sortedProposals,
   categories,
   isLoading,
+  onProposalCreated,
 }: ProposalsPageViewProps) {
   return (
     <>
@@ -76,7 +74,6 @@ export default function ProposalsPageView({
           setCategory={setCategory}
           sortedProposals={sortedProposals}
           isLoading={isLoading}
-          router={router}
         />
 
         <ProposalsRightSidebar
@@ -88,10 +85,7 @@ export default function ProposalsPageView({
         <CreateProposalModal
           isOpen={isCreateModalOpen}
           onClose={() => setCreateModalOpen(false)}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["proposals"] });
-            setFilter("new");
-          }}
+          onSuccess={onProposalCreated}
         />
       </GradientPage>
     </>

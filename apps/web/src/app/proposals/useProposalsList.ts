@@ -5,56 +5,32 @@ import {
   filterProposals,
   sortProposals,
   buildProposalCategories,
+  fetchProposalsList,
+  fetchProposalUserVotes,
   type ProposalItem,
   type CategoryOption,
   type ProposalFilter,
   PROPOSALS_EVENT_ID,
+  PROPOSAL_USER_VOTES_STALE_MS,
+  proposalsQueryKeys,
+  type ProposalUserVoteRow,
 } from "./proposalsListUtils";
 import { useCategories } from "@/hooks/useQueries";
 import { normalizeId } from "@/lib/ids";
 import { reactQueryFeedback } from "@/lib/apiWithFeedback";
 import { t } from "@/lib/i18n";
 
-const fetchProposals = async (): Promise<ProposalItem[]> => {
-  const res = await fetch(`/api/forum?eventId=${PROPOSALS_EVENT_ID}`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message);
-  return data.threads || [];
-};
-
-export function useProposalsList(account: string | null | undefined, connectWallet: () => void) {
-  const queryClient = useQueryClient();
-  const { data: categoriesData } = useCategories();
-  const [filter, setFilter] = useState<ProposalFilter>("hot");
-  const [category, setCategory] = useState("All");
-  const [search, setSearch] = useState("");
-  const [pendingVoteId, setPendingVoteId] = useState<number | null>(null);
-
-  const voteFeedback = reactQueryFeedback({
-    loadingMessage: t("common.loading"),
-    successMessage: t("common.success"),
-    errorMessage: t("forum.errors.voteFailed"),
-  });
-
-  const { data: proposals = [], isLoading } = useQuery<ProposalItem[]>({
-    queryKey: ["proposals"],
-    queryFn: fetchProposals,
-  });
-
-  const { data: userVotesData } = useQuery<any[]>({
-    queryKey: ["proposalUserVotes", account],
-    queryFn: async () => {
-      const res = await fetch(`/api/forum/user-votes?eventId=${PROPOSALS_EVENT_ID}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to load votes");
-      return Array.isArray(data.votes) ? data.votes : [];
-    },
-    enabled: !!account,
+function useProposalUserVotes(walletAddress: string | null | undefined) {
+  const { data: userVotesData } = useQuery<ProposalUserVoteRow[]>({
+    queryKey: proposalsQueryKeys.userVotes(walletAddress),
+    queryFn: fetchProposalUserVotes,
+    enabled: !!walletAddress,
+    staleTime: PROPOSAL_USER_VOTES_STALE_MS,
   });
 
   const userVotesMap: Record<number, "up" | "down"> = React.useMemo(() => {
     const map: Record<number, "up" | "down"> = {};
-    (userVotesData || []).forEach((v: any) => {
+    (userVotesData || []).forEach((v) => {
       if (v?.content_type === "thread" && v?.content_id != null) {
         const idNum = normalizeId(v.content_id);
         if (idNum != null) {
@@ -65,10 +41,26 @@ export function useProposalsList(account: string | null | undefined, connectWall
     return map;
   }, [userVotesData]);
 
+  return { userVotesMap };
+}
+
+function useProposalVoteMutation(options: {
+  walletAddress: string | null | undefined;
+  onRequireWallet: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [pendingVoteId, setPendingVoteId] = useState<number | null>(null);
+
+  const voteFeedback = reactQueryFeedback({
+    loadingMessage: t("common.loading"),
+    successMessage: t("common.success"),
+    errorMessage: t("forum.errors.voteFailed"),
+  });
+
   const voteMutation = useMutation({
     mutationFn: async ({ id, type }: { id: number; type: "up" | "down" }) => {
-      if (!account) {
-        connectWallet();
+      if (!options.walletAddress) {
+        options.onRequireWallet();
         throw new Error(t("forum.errors.walletRequiredForVote"));
       }
       const res = await fetch("/api/forum/vote", {
@@ -79,7 +71,7 @@ export function useProposalsList(account: string | null | undefined, connectWall
           type: "thread",
           id,
           dir: type,
-          walletAddress: account,
+          walletAddress: options.walletAddress,
         }),
       });
       if (!res.ok) throw new Error(t("forum.errors.voteFailed"));
@@ -91,7 +83,7 @@ export function useProposalsList(account: string | null | undefined, connectWall
     },
     onSuccess: () => {
       voteFeedback.onSuccess();
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: proposalsQueryKeys.list() });
     },
     onError: (error) => {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -102,28 +94,30 @@ export function useProposalsList(account: string | null | undefined, connectWall
     },
   });
 
-  const proposalsWithUserVote = React.useMemo(
-    () => buildProposalsWithUserVotes(proposals, userVotesMap),
-    [proposals, userVotesMap]
-  );
+  return { voteMutation, pendingVoteId };
+}
 
-  const filteredProposals = React.useMemo(
-    () =>
-      filterProposals(proposalsWithUserVote, {
-        category,
-        search,
-      }),
-    [proposalsWithUserVote, category, search]
-  );
+export function useProposalsListCore() {
+  const queryClient = useQueryClient();
+  const { data: categoriesData } = useCategories();
+  const [filter, setFilter] = useState<ProposalFilter>("hot");
+  const [category, setCategory] = useState("All");
+  const [search, setSearch] = useState("");
 
-  const sortedProposals = React.useMemo(
-    () => sortProposals(filteredProposals, filter),
-    [filteredProposals, filter]
-  );
+  const { data: proposals = [], isLoading } = useQuery<ProposalItem[]>({
+    queryKey: proposalsQueryKeys.list(),
+    queryFn: fetchProposalsList,
+  });
+
   const categories: CategoryOption[] = React.useMemo(
     () => buildProposalCategories(categoriesData),
     [categoriesData]
   );
+
+  const onProposalCreated = React.useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: proposalsQueryKeys.list() });
+    setFilter("new");
+  }, [queryClient]);
 
   return {
     filter,
@@ -133,9 +127,45 @@ export function useProposalsList(account: string | null | undefined, connectWall
     search,
     setSearch,
     proposals,
-    sortedProposals,
     categories,
     isLoading,
+    onProposalCreated,
+  };
+}
+
+export function useProposalsList(
+  walletAddress: string | null | undefined,
+  onRequireWallet: () => void
+) {
+  const core = useProposalsListCore();
+  const { userVotesMap } = useProposalUserVotes(walletAddress);
+  const { voteMutation, pendingVoteId } = useProposalVoteMutation({
+    walletAddress,
+    onRequireWallet,
+  });
+
+  const proposalsWithUserVote = React.useMemo(
+    () => buildProposalsWithUserVotes(core.proposals, userVotesMap),
+    [core.proposals, userVotesMap]
+  );
+
+  const filteredProposals = React.useMemo(
+    () =>
+      filterProposals(proposalsWithUserVote, {
+        category: core.category,
+        search: core.search,
+      }),
+    [proposalsWithUserVote, core.category, core.search]
+  );
+
+  const sortedProposals = React.useMemo(
+    () => sortProposals(filteredProposals, core.filter),
+    [filteredProposals, core.filter]
+  );
+
+  return {
+    ...core,
+    sortedProposals,
     voteMutation,
     pendingVoteId,
   };

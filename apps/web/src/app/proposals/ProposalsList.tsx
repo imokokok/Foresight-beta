@@ -2,17 +2,17 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, MessageCircle } from "lucide-react";
 import { useInView } from "react-intersection-observer";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "@/lib/i18n";
 import ProposalCard from "./ProposalCard";
 import type { ProposalItem } from "./proposalsListUtils";
 
 type ProposalsListProps = {
   account: string | null | undefined;
-  connectWallet: () => void;
+  connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;
   sortedProposals: ProposalItem[];
   isLoading: boolean;
-  router: { push: (href: string) => void };
 };
 
 const PAGE_SIZE = 20;
@@ -23,9 +23,9 @@ export default function ProposalsList({
   setCreateModalOpen,
   sortedProposals,
   isLoading,
-  router,
 }: ProposalsListProps) {
   const tProposals = useTranslations("proposals");
+  const router = useRouter();
   const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
@@ -95,7 +95,7 @@ export default function ProposalsList({
   return (
     <div className="flex flex-col gap-4 pb-20">
       <AnimatePresence mode="popLayout">
-        {visibleProposals.map((proposal: any) => (
+        {visibleProposals.map((proposal) => (
           <motion.div
             key={proposal.id}
             layout

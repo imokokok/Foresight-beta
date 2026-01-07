@@ -5,7 +5,7 @@ import type { ProposalItem, CategoryOption } from "./proposalsListUtils";
 
 type ProposalsMainContentProps = {
   account: string | null | undefined;
-  connectWallet: () => void;
+  connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;
   search: string;
   setSearch: (value: string) => void;
@@ -14,7 +14,6 @@ type ProposalsMainContentProps = {
   setCategory: (value: string) => void;
   sortedProposals: ProposalItem[];
   isLoading: boolean;
-  router: { push: (href: string) => void };
 };
 
 export default function ProposalsMainContent({
@@ -28,7 +27,6 @@ export default function ProposalsMainContent({
   setCategory,
   sortedProposals,
   isLoading,
-  router,
 }: ProposalsMainContentProps) {
   const tProposals = useTranslations("proposals");
 
@@ -97,7 +95,6 @@ export default function ProposalsMainContent({
           setCreateModalOpen={setCreateModalOpen}
           sortedProposals={sortedProposals}
           isLoading={isLoading}
-          router={router}
         />
       </div>
     </div>
