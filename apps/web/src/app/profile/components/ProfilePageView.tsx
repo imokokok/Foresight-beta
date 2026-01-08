@@ -187,7 +187,7 @@ export function ProfilePageView({
                   <div className="w-full h-full rounded-full bg-white p-1 flex items-center justify-center overflow-hidden">
                     <img
                       src={buildDiceBearUrl(account || "User")}
-                      alt="Avatar"
+                      alt={tProfile("avatarAlt")}
                       className="w-full h-full object-cover rounded-full bg-gray-50"
                     />
                   </div>

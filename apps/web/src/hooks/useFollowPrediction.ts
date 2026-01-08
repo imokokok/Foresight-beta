@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "@/lib/i18n";
 import { getFollowStatus, toggleFollowPrediction } from "@/lib/follows";
 
 export interface UseFollowPredictionResult {
@@ -13,6 +14,7 @@ export function useFollowPrediction(
   predictionId?: number,
   walletAddress?: string
 ): UseFollowPredictionResult {
+  const tErrors = useTranslations("errors");
   const [following, setFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -32,7 +34,7 @@ export function useFollowPrediction(
         setFollowError(null);
       } catch (e: any) {
         if (cancelled) return;
-        setFollowError(e?.message || "获取关注状态失败");
+        setFollowError(tErrors("loadFailed"));
       }
     };
 
@@ -57,7 +59,7 @@ export function useFollowPrediction(
         return next < 0 ? 0 : next;
       });
     } catch (e: any) {
-      setFollowError(e?.message || "更新关注状态失败");
+      setFollowError(tErrors("followActionFailed"));
     } finally {
       setFollowLoading(false);
     }

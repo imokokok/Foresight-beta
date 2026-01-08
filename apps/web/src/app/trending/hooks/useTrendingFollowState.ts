@@ -58,9 +58,7 @@ export function useTrendingFollowState(
       try {
         await toggleFollowPrediction(wasFollowing, normalizedId, accountNorm);
       } catch (err) {
-        const message =
-          err instanceof Error && err.message ? err.message : tErrors("followActionFailed");
-        setFollowError(message);
+        setFollowError(tErrors("followActionFailed"));
         setTimeout(() => setFollowError(null), 3000);
         setFollowedEvents((prev) => {
           const next = new Set(prev);

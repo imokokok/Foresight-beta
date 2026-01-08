@@ -154,6 +154,7 @@
     "confirmArchiveAll": "현재 모든 알림을 비울까요? 목록에서 더 이상 보이지 않습니다."
   },
   "profile": {
+    "avatarAlt": "프로필 아바타",
     "username": {
       "anonymous": "익명 사용자",
       "walletDisconnected": "지갑 연결 안됨"
@@ -1827,7 +1828,8 @@
       "labels": {
         "stake": "스테이크",
         "participants": "{count}명 참가자",
-        "yourSideProbability": "선택한 측의 시장 확률"
+        "yourSideProbability": "선택한 측의 시장 확률",
+        "volumePrefix": "거래량 $"
       }
     },
     "history": {

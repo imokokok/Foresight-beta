@@ -182,7 +182,10 @@ export function PredictionsTab({
                       <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-1">
                         <span className="flex items-center gap-1">
                           <TrendingUp className="w-3 h-3 text-purple-500" />
-                          <span>成交 ${Number(pred.stats?.totalAmount || 0).toFixed(2)}</span>
+                          <span>
+                            {tProfile("predictions.labels.volumePrefix")}
+                            {Number(pred.stats?.totalAmount || 0).toFixed(2)}
+                          </span>
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3 text-gray-400" />

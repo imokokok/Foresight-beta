@@ -1504,6 +1504,7 @@
     }
   },
   "profile": {
+    "avatarAlt": "Profile avatar",
     "username": {
       "anonymous": "Anonymous user",
       "walletDisconnected": "Wallet not connected"
@@ -1568,7 +1569,8 @@
       "labels": {
         "stake": "Stake",
         "participants": "{count} participants",
-        "yourSideProbability": "Market probability of your chosen side"
+        "yourSideProbability": "Market probability of your chosen side",
+        "volumePrefix": "Volume $"
       }
     },
     "history": {

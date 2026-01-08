@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { logClientErrorToApi } from "@/lib/errorReporting";
+import { useTranslations, useLocale } from "@/lib/i18n";
 
 export default function GlobalError({
   error,
@@ -11,6 +12,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const tErrors = useTranslations("errors");
+  const { locale } = useLocale();
   useEffect(() => {
     console.error("Global Error:", error);
 
@@ -31,7 +34,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="zh-CN">
+    <html lang={locale}>
       <body>
         <div
           style={{
@@ -71,7 +74,7 @@ export default function GlobalError({
                 color: "#333",
               }}
             >
-              应用崩溃了
+              {tErrors("errorOccurred")}
             </h2>
             <p
               style={{
@@ -79,7 +82,7 @@ export default function GlobalError({
                 marginBottom: "30px",
               }}
             >
-              发生了严重错误，请刷新页面重试
+              {tErrors("unknownError")}
             </p>
             {process.env.NODE_ENV === "development" && (
               <div
@@ -111,7 +114,7 @@ export default function GlobalError({
                 cursor: "pointer",
               }}
             >
-              刷新页面
+              {tErrors("refreshPage")}
             </button>
           </div>
         </div>

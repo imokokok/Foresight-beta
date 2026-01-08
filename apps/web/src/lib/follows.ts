@@ -38,7 +38,7 @@ export async function getFollowStatus(
   const res = await fetch(`/api/follows?${qs}`, { method: "GET", cache: "no-store" });
   if (!res.ok) {
     const errBody = await parseJson<ApiErrorBody>(res);
-    throw new Error(errBody?.message || `获取关注状态失败: ${res.status}`);
+    throw new Error(errBody?.message || `Failed to fetch follow status: ${res.status}`);
   }
   const data = await parseJson<FollowStatus & ApiErrorBody>(res);
   return { following: !!data.following, followersCount: Number(data.followersCount ?? 0) };
@@ -56,7 +56,7 @@ export async function followPrediction(predictionId: number, walletAddress: stri
   });
   if (!res.ok) {
     const errBody = await parseJson<ApiErrorBody>(res);
-    throw new Error(errBody?.message || `关注失败: ${res.status}`);
+    throw new Error(errBody?.message || `Failed to follow prediction: ${res.status}`);
   }
 }
 
@@ -75,7 +75,7 @@ export async function unfollowPrediction(
   });
   if (!res.ok) {
     const errBody = await parseJson<ApiErrorBody>(res);
-    throw new Error(errBody?.message || `取消关注失败: ${res.status}`);
+    throw new Error(errBody?.message || `Failed to unfollow prediction: ${res.status}`);
   }
 }
 
@@ -102,7 +102,7 @@ export async function getFollowersCountsBatch(eventIds: number[]): Promise<Recor
   });
   if (!res.ok) {
     const errBody = await parseJson<ApiErrorBody>(res);
-    throw new Error(errBody?.message || `批量计数查询失败: ${res.status}`);
+    throw new Error(errBody?.message || `Failed to fetch follower counts: ${res.status}`);
   }
   const data = await parseJson<{ counts?: Record<string, number> } & ApiErrorBody>(res);
   const counts: Record<number, number> = {};

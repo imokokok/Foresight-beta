@@ -1504,6 +1504,7 @@
     }
   },
   "profile": {
+    "avatarAlt": "Avatar de perfil",
     "username": {
       "anonymous": "Usuario anónimo",
       "walletDisconnected": "Billetera no conectada"
@@ -1568,7 +1569,8 @@
       "labels": {
         "stake": "Apuesta",
         "participants": "{count} participantes",
-        "yourSideProbability": "Probabilidad de mercado de tu lado elegido"
+        "yourSideProbability": "Probabilidad de mercado de tu lado elegido",
+        "volumePrefix": "Volumen $"
       }
     },
     "history": {

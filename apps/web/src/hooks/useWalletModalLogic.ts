@@ -356,7 +356,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         setCodePreview(null);
       }
     } catch (e: any) {
-      setProfileError(String(e?.message || e || tWalletModal("errors.otpSendFailed")));
+      setProfileError(tWalletModal("errors.otpSendFailed"));
     } finally {
       setEmailLoading(false);
     }
@@ -373,7 +373,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       });
       setEmailVerified(true);
     } catch (e: any) {
-      setProfileError(String(e?.message || e || tWalletModal("errors.otpVerifyFailed")));
+      setProfileError(tWalletModal("errors.otpVerifyFailed"));
     } finally {
       setEmailLoading(false);
     }
