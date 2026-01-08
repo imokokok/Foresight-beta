@@ -1775,6 +1775,21 @@
   },
   "stickerGallery": {
     "title": "Sticker Collection",
+    "filters": {
+      "all": "All",
+      "unlocked": "Unlocked",
+      "locked": "Locked",
+      "rarityAll": "All rarities"
+    },
+    "search": {
+      "placeholder": "Search by name or description..."
+    },
+    "stats": {
+      "visible": "Showing {current}/{total}"
+    },
+    "sidebar": {
+      "placeholder": "Tap any unlocked sticker on the left to see details"
+    },
     "rarity": {
       "legendary": "Legendary",
       "epic": "Epic",

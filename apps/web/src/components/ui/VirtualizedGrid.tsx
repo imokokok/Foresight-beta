@@ -110,7 +110,7 @@ export function VirtualizedGrid<T>({
   return (
     <div
       ref={parentRef}
-      className="overflow-auto"
+      className="overflow-auto scrollbar-hide"
       style={{ height: containerHeight }}
     >
       <div
@@ -141,9 +141,7 @@ export function VirtualizedGrid<T>({
                 {rowItems.map((item, indexInRow) => {
                   const globalIndex = rowStart + indexInRow;
                   return (
-                    <div key={getItemKey(item, globalIndex)}>
-                      {renderItem(item, globalIndex)}
-                    </div>
+                    <div key={getItemKey(item, globalIndex)}>{renderItem(item, globalIndex)}</div>
                   );
                 })}
               </div>
@@ -205,4 +203,3 @@ export function VirtualizedGridSkeleton({
 }
 
 export default VirtualizedGrid;
-

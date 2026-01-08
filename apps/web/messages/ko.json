@@ -1340,6 +1340,21 @@
   },
   "stickerGallery": {
     "title": "스티커 컬렉션",
+    "filters": {
+      "all": "전체",
+      "unlocked": "해제됨",
+      "locked": "잠김",
+      "rarityAll": "모든 등급"
+    },
+    "search": {
+      "placeholder": "이름 또는 설명으로 검색..."
+    },
+    "stats": {
+      "visible": "{current}/{total}개 표시 중"
+    },
+    "sidebar": {
+      "placeholder": "왼쪽의 해제된 스티커를 눌러 상세 정보를 확인하세요"
+    },
     "rarity": {
       "legendary": "전설",
       "epic": "영웅",

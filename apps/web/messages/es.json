@@ -1776,6 +1776,21 @@
   },
   "stickerGallery": {
     "title": "Colección de stickers",
+    "filters": {
+      "all": "Todos",
+      "unlocked": "Desbloqueados",
+      "locked": "Bloqueados",
+      "rarityAll": "Todas las rarezas"
+    },
+    "search": {
+      "placeholder": "Buscar por nombre o descripción..."
+    },
+    "stats": {
+      "visible": "Mostrando {current}/{total}"
+    },
+    "sidebar": {
+      "placeholder": "Toca cualquier sticker desbloqueado a la izquierda para ver detalles"
+    },
     "rarity": {
       "legendary": "Legendario",
       "epic": "Épico",

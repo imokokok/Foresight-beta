@@ -6,7 +6,7 @@ import { useTranslations } from "@/lib/i18n";
 
 export interface StickerItem {
   id: string;
-  emoji: string; // This can be an emoji char OR an image URL
+  emoji: string;
   name: string;
   rarity: "common" | "rare" | "epic" | "legendary";
   desc: string;
@@ -14,10 +14,33 @@ export interface StickerItem {
   image_url?: string;
 }
 
-// Helper to check if string is an image URL
 export const isImageUrl = (str: string | undefined | null) => {
   if (!str) return false;
   return str.startsWith("http") || str.startsWith("/");
+};
+
+const resolveCdnUrl = (raw: string | undefined | null) => {
+  if (!raw) return null;
+  if (!raw.startsWith("http")) return raw;
+  const base = process.env.NEXT_PUBLIC_EMOJI_CDN_BASE;
+  if (!base) return raw;
+  try {
+    const url = new URL(raw);
+    const normalizedBase = base.replace(/\/+$/, "");
+    const path = url.pathname.replace(/^\/+/, "");
+    return `${normalizedBase}/${path}`;
+  } catch {
+    return raw;
+  }
+};
+
+export const resolveStickerImage = (sticker: StickerItem) => {
+  const raw = sticker.image_url || (isImageUrl(sticker.emoji) ? sticker.emoji : null);
+  const src = resolveCdnUrl(raw);
+  if (!src) return null;
+  return {
+    src,
+  };
 };
 
 // 模拟官方表情包池 (现在 emoji 字段可以是 URL)
@@ -340,11 +363,13 @@ export default function StickerRevealModal({
                       transition={{ duration: 3, repeat: Infinity }}
                       className={`w-32 h-32 mx-auto rounded-3xl ${currentSticker.color} flex items-center justify-center shadow-inner mb-6 overflow-hidden`}
                     >
-                      {isImageUrl(currentSticker.emoji) ? (
+                      {resolveStickerImage(currentSticker) ? (
                         <img
-                          src={currentSticker.emoji}
+                          src={resolveStickerImage(currentSticker)!.src}
                           alt={getStickerName(currentSticker)}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <span className="text-6xl">{currentSticker.emoji}</span>

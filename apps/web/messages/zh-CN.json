@@ -1775,6 +1775,21 @@
   },
   "stickerGallery": {
     "title": "表情包图鉴",
+    "filters": {
+      "all": "全部",
+      "unlocked": "已解锁",
+      "locked": "未解锁",
+      "rarityAll": "全部稀有度"
+    },
+    "search": {
+      "placeholder": "按名称或描述搜索..."
+    },
+    "stats": {
+      "visible": "当前显示 {current}/{total} 个"
+    },
+    "sidebar": {
+      "placeholder": "点一下左侧任意已解锁表情包查看详情"
+    },
     "rarity": {
       "legendary": "传说",
       "epic": "史诗",
