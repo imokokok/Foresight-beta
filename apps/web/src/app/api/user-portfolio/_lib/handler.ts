@@ -1,12 +1,14 @@
 import { getClient } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { normalizeAddress } from "@/lib/serverUtils";
 import { groupBets, buildPortfolioResponse } from "./compute";
 import { fetchPredictionsMeta, fetchPredictionsStats, fetchUserBets } from "./queries";
 
 export async function handleUserPortfolioGet(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const address = searchParams.get("address");
+    const rawAddress = searchParams.get("address");
+    const address = normalizeAddress(String(rawAddress || ""));
 
     if (!address) {
       return ApiResponses.badRequest("Wallet address is required");

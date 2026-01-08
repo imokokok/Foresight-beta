@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
@@ -41,7 +42,11 @@ export async function POST(req: NextRequest) {
         .eq("following_address", target);
 
       if (delError) return ApiResponses.databaseError("Failed to unfollow", delError.message);
-      return NextResponse.json({ success: true, followed: false });
+      return NextResponse.json({
+        success: true,
+        data: { followed: false },
+        followed: false,
+      });
     } else {
       const { error: insError } = await (client as any).from("user_follows").insert({
         follower_address: follower,
@@ -49,7 +54,11 @@ export async function POST(req: NextRequest) {
       });
 
       if (insError) return ApiResponses.databaseError("Failed to follow", insError.message);
-      return NextResponse.json({ success: true, followed: true });
+      return NextResponse.json({
+        success: true,
+        data: { followed: true },
+        followed: true,
+      });
     }
   } catch (error: any) {
     return ApiResponses.internalError(error.message);
@@ -78,7 +87,13 @@ export async function GET(req: NextRequest) {
 
     if (error) return ApiResponses.databaseError("Query failed", error.message);
 
-    return NextResponse.json({ followed: !!data });
+    const followed = !!data;
+
+    return NextResponse.json({
+      success: true,
+      data: { followed },
+      followed,
+    });
   } catch (error: any) {
     return ApiResponses.internalError(error.message);
   }

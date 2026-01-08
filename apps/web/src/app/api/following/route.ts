@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import { logApiError } from "@/lib/serverUtils";
+import { logApiError, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
 // GET /api/following?address=0x...
@@ -12,7 +12,8 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const address = searchParams.get("address");
+    const rawAddress = searchParams.get("address");
+    const address = normalizeAddress(String(rawAddress || ""));
 
     if (!address) {
       return ApiResponses.badRequest("Address is required");

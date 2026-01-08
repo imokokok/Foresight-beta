@@ -8,7 +8,7 @@ import ProposalCard from "./ProposalCard";
 import type { ProposalItem } from "./proposalsListUtils";
 
 type ProposalsListProps = {
-  account: string | null | undefined;
+  account: string | null;
   connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;
   sortedProposals: ProposalItem[];

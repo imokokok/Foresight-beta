@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
   getEmailOtpShared,
@@ -9,7 +9,7 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest) {
   try {
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     // 清理使用过的记录
     store.delete(email);
 
-    return NextResponse.json({ success: true, message: "验证成功" });
+    return successResponse({ ok: true }, "验证成功");
   } catch (e: any) {
     const detail = String(e?.message || e);
     logApiError("POST /api/email-otp/verify unhandled error", e);

@@ -2,29 +2,18 @@
 
 import React from "react";
 import { Users } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import EmptyState from "@/components/EmptyState";
 import { useTranslations } from "@/lib/i18n";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
 import type { ProfileUserSummary } from "../types";
+import { useFollowersUsers } from "@/hooks/useQueries";
 
 export function FollowersTab({ address }: { address: string }) {
   const tProfile = useTranslations("profile");
   const tCommon = useTranslations("common");
-  const safeAddress = encodeURIComponent(address);
 
-  const query = useQuery<ProfileUserSummary[]>({
-    queryKey: ["profile", "followers", address],
-    queryFn: async () => {
-      const res = await fetch(`/api/user-follows/followers-users?address=${safeAddress}`);
-      if (!res.ok) throw new Error("Failed to fetch followers");
-      const data = await res.json().catch(() => ({}));
-      return Array.isArray(data.users) ? (data.users as ProfileUserSummary[]) : [];
-    },
-    enabled: !!address,
-    staleTime: 2 * 60 * 1000,
-  });
+  const query = useFollowersUsers(address);
 
   if (query.isLoading) return <CenteredSpinner />;
   if (query.isError) {

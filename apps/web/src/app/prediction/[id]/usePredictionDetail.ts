@@ -9,6 +9,7 @@ import { createOrderDomain } from "@/lib/orderVerification";
 import { ORDER_TYPES } from "@/types/market";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { normalizeAddress } from "@/lib/cn";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";
@@ -94,8 +95,10 @@ export function usePredictionDetail() {
   useEffect(() => {
     if (!account || !predictionId) return;
 
+    const accountNorm = normalizeAddress(account);
+
     // 避免同一用户对同一事件重复记录（在当前 mount 周期内）
-    const recordKey = `${account}:${predictionId}`;
+    const recordKey = `${accountNorm}:${predictionId}`;
     if (viewRecordedRef.current === recordKey) return;
     viewRecordedRef.current = recordKey;
 
@@ -105,7 +108,7 @@ export function usePredictionDetail() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         eventId: predictionId,
-        walletAddress: account,
+        walletAddress: accountNorm,
       }),
     }).catch((err) => {
       // 静默失败，不影响用户体验

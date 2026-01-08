@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import type { UserProfile } from "@/lib/supabase";
+import { useUserProfileInfo } from "@/hooks/useQueries";
 
 interface UserProfileContextValue {
   profile: UserProfile | null;
@@ -23,44 +24,40 @@ interface UserProfileContextValue {
 export const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const { account } = useWallet();
+  const { normalizedAccount } = useWallet();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = useCallback(async () => {
-    const addr = String(account || "").toLowerCase();
-    if (!addr) {
+  const address = normalizedAccount || null;
+  const profileQuery = useUserProfileInfo(address);
+
+  useEffect(() => {
+    if (!address) {
       setProfile(null);
       setError(null);
       return;
     }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-      const p = data?.profile ?? null;
-      setProfile(p);
-    } catch (e: any) {
+    if (profileQuery.isError) {
+      const e = profileQuery.error as any;
       setError(e?.message || String(e));
       setProfile(null);
-    } finally {
-      setLoading(false);
+      return;
     }
-  }, [account]);
+    if (profileQuery.data) {
+      setProfile(profileQuery.data.profile ?? null);
+      setError(null);
+    }
+  }, [address, profileQuery.data, profileQuery.isError, profileQuery.error]);
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+  const refreshProfile = useCallback(async () => {
+    await profileQuery.refetch();
+  }, [profileQuery]);
 
   const value: UserProfileContextValue = {
     profile,
-    loading,
+    loading: profileQuery.isLoading || profileQuery.isFetching,
     error,
-    refreshProfile: fetchProfile,
+    refreshProfile,
     isAdmin: !!profile?.is_admin,
     isReviewer: !!profile?.is_reviewer,
   };

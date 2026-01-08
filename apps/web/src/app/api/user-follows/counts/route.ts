@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeAddress } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 /**
  * 获取用户的粉丝数和关注数
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         .eq("follower_address", address),
     ]);
 
-    return NextResponse.json({
+    return successResponse({
       followersCount: followersResult.count || 0,
       followingCount: followingResult.count || 0,
     });

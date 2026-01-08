@@ -19,8 +19,9 @@ import { useCategories } from "@/hooks/useQueries";
 import { normalizeId } from "@/lib/ids";
 import { reactQueryFeedback } from "@/lib/apiWithFeedback";
 import { t } from "@/lib/i18n";
+import { normalizeAddress } from "@/lib/cn";
 
-function useProposalUserVotes(walletAddress: string | null | undefined) {
+function useProposalUserVotes(walletAddress: string | null) {
   const { data: userVotesData } = useQuery<ProposalUserVoteRow[]>({
     queryKey: proposalsQueryKeys.userVotes(walletAddress),
     queryFn: fetchProposalUserVotes,
@@ -45,7 +46,7 @@ function useProposalUserVotes(walletAddress: string | null | undefined) {
 }
 
 function useProposalVoteMutation(options: {
-  walletAddress: string | null | undefined;
+  walletAddress: string | null;
   onRequireWallet: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -133,14 +134,12 @@ export function useProposalsListCore() {
   };
 }
 
-export function useProposalsList(
-  walletAddress: string | null | undefined,
-  onRequireWallet: () => void
-) {
+export function useProposalsList(walletAddress: string | null, onRequireWallet: () => void) {
   const core = useProposalsListCore();
-  const { userVotesMap } = useProposalUserVotes(walletAddress);
+  const normalizedWalletAddress = walletAddress ? normalizeAddress(walletAddress) : null;
+  const { userVotesMap } = useProposalUserVotes(normalizedWalletAddress);
   const { voteMutation, pendingVoteId } = useProposalVoteMutation({
-    walletAddress,
+    walletAddress: normalizedWalletAddress,
     onRequireWallet,
   });
 

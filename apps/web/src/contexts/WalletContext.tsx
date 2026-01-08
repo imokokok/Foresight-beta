@@ -19,7 +19,7 @@ import { useSiweAuth } from "../lib/useSiweAuth";
 import { requestWalletPermissions as requestWalletPermissionsImpl } from "../lib/walletPermissions";
 import { multisigSign as multisigSignImpl } from "../lib/walletMultisig";
 import { switchNetwork as switchNetworkImpl } from "../lib/walletNetwork";
-import { formatAddress } from "../lib/cn";
+import { formatAddress, normalizeAddress } from "../lib/cn";
 import { t } from "../lib/i18n";
 
 declare global {
@@ -56,6 +56,7 @@ interface WalletContextType extends WalletState {
   balanceEth: string | null;
   balanceLoading: boolean;
   provider: any;
+  normalizedAccount: string | null;
   // SIWE 认证状态
   isAuthenticated: boolean;
   authAddress: string | null;
@@ -144,6 +145,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [walletState.account, walletState.chainId, rawProvider, refreshBalance]);
 
+  const normalizedAccount = walletState.account ? normalizeAddress(walletState.account) : null;
+
   const requestWalletPermissions = async (): Promise<{ success: boolean; error?: string }> => {
     return requestWalletPermissionsImpl(rawProvider);
   };
@@ -186,6 +189,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     refreshBalance: () => refreshBalance(),
     switchNetwork,
     provider: rawProvider,
+    normalizedAccount,
     // SIWE 认证状态
     isAuthenticated,
     authAddress,

@@ -19,7 +19,7 @@ import { toast } from "@/lib/toast";
 import { formatAddress } from "@/lib/cn";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
   PortfolioStats,
   ProfileHistoryItem,
@@ -35,9 +35,16 @@ import { FollowersTab } from "./FollowersTab";
 import { MakerEarningsTab } from "./MakerEarningsTab";
 import EmptyState from "@/components/EmptyState";
 import WalletModal from "@/components/WalletModal";
+import {
+  QueryKeys,
+  fetcher,
+  type UserFollowToggleResult,
+  useUserFollowCounts,
+  useUserFollowStatus,
+} from "@/hooks/useQueries";
 
 export type ProfilePageViewProps = {
-  account: string | null | undefined;
+  account: string | null;
   username: string;
   tProfile: (key: string) => string;
   activeTab: TabType;
@@ -77,79 +84,42 @@ export function ProfilePageView({
   const queryClient = useQueryClient();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
-  const safeProfileAddress = useMemo(() => (account ? encodeURIComponent(account) : ""), [account]);
-
-  const safeMyAccount = useMemo(
-    () => (myAccount ? encodeURIComponent(myAccount) : ""),
-    [myAccount]
-  );
-
-  const countsQuery = useQuery({
-    queryKey: ["profile", "follows", "counts", account],
-    queryFn: async () => {
-      const res = await fetch(`/api/user-follows/counts?address=${safeProfileAddress}`);
-      if (!res.ok) throw new Error("Failed to fetch follow counts");
-      const data = await res.json().catch(() => ({}));
-      return {
-        followersCount: Number(data.followersCount || 0),
-        followingCount: Number(data.followingCount || 0),
-      };
-    },
-    enabled: !!account,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const followStatusQuery = useQuery({
-    queryKey: ["profile", "follows", "status", account, myAccount],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/user-follows/user?targetAddress=${safeProfileAddress}&followerAddress=${safeMyAccount}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch follow status");
-      const data = await res.json().catch(() => ({}));
-      return Boolean(data.followed);
-    },
-    enabled: !!account && !!myAccount && !isOwnProfile,
-    staleTime: 30 * 1000,
-  });
+  const countsQuery = useUserFollowCounts(account || null);
+  const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
 
   const followMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/user-follows/user", {
+      return fetcher<UserFollowToggleResult>("/api/user-follows/user", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetAddress: account }),
       });
-      if (!res.ok) throw new Error("Failed to toggle follow");
-      return res.json() as Promise<{ success: boolean; followed: boolean }>;
     },
     onMutate: async () => {
       if (!account || !myAccount || isOwnProfile) return;
 
       await Promise.all([
         queryClient.cancelQueries({
-          queryKey: ["profile", "follows", "status", account, myAccount],
+          queryKey: QueryKeys.userFollowStatus(account || "", myAccount || ""),
         }),
-        queryClient.cancelQueries({ queryKey: ["profile", "follows", "counts", account] }),
+        queryClient.cancelQueries({ queryKey: QueryKeys.userFollowCounts(account || "") }),
       ]);
 
       const prevFollowed = queryClient.getQueryData<boolean>([
-        "profile",
-        "follows",
-        "status",
-        account,
-        myAccount,
+        ...QueryKeys.userFollowStatus(account || "", myAccount || ""),
       ]);
       const prevCounts = queryClient.getQueryData<{
         followersCount: number;
         followingCount: number;
-      }>(["profile", "follows", "counts", account]);
+      }>(QueryKeys.userFollowCounts(account || ""));
 
       const nextFollowed = !(prevFollowed ?? false);
-      queryClient.setQueryData(["profile", "follows", "status", account, myAccount], nextFollowed);
+      queryClient.setQueryData(
+        QueryKeys.userFollowStatus(account || "", myAccount || ""),
+        nextFollowed
+      );
 
       if (prevCounts) {
-        queryClient.setQueryData(["profile", "follows", "counts", account], {
+        queryClient.setQueryData(QueryKeys.userFollowCounts(account || ""), {
           ...prevCounts,
           followersCount: Math.max(0, prevCounts.followersCount + (nextFollowed ? 1 : -1)),
         });
@@ -160,24 +130,26 @@ export function ProfilePageView({
     onError: (_err, _vars, ctx) => {
       if (!account || !myAccount || !ctx) return;
       queryClient.setQueryData(
-        ["profile", "follows", "status", account, myAccount],
+        QueryKeys.userFollowStatus(account || "", myAccount || ""),
         ctx.prevFollowed
       );
-      queryClient.setQueryData(["profile", "follows", "counts", account], ctx.prevCounts);
+      queryClient.setQueryData(QueryKeys.userFollowCounts(account || ""), ctx.prevCounts);
       toast.error(tProfile("follow.failed"));
     },
     onSuccess: (data) => {
-      if (!data?.success) return;
+      if (!data) return;
       toast.success(
         data.followed ? tProfile("follow.followSuccess") : tProfile("follow.unfollowSuccess")
       );
     },
     onSettled: async () => {
       if (!account) return;
-      await queryClient.invalidateQueries({ queryKey: ["profile", "follows", "counts", account] });
+      await queryClient.invalidateQueries({
+        queryKey: QueryKeys.userFollowCounts(account || ""),
+      });
       if (myAccount && !isOwnProfile) {
         await queryClient.invalidateQueries({
-          queryKey: ["profile", "follows", "status", account, myAccount],
+          queryKey: QueryKeys.userFollowStatus(account || "", myAccount || ""),
         });
       }
     },

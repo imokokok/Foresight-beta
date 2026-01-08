@@ -4,7 +4,7 @@ import ProposalsList from "./ProposalsList";
 import type { ProposalItem, CategoryOption } from "./proposalsListUtils";
 
 type ProposalsMainContentProps = {
-  account: string | null | undefined;
+  account: string | null;
   connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;
   search: string;

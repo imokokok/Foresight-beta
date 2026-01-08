@@ -21,6 +21,13 @@ import { useTranslations } from "@/lib/i18n";
 import { useWallet } from "@/contexts/WalletContext";
 import { toast } from "@/lib/toast";
 import { formatCompactNumber } from "@/lib/format";
+import {
+  fetcher,
+  type UserFollowToggleResult,
+  useUserFollowCounts,
+  useUserFollowStatus,
+} from "@/hooks/useQueries";
+import { normalizeAddress } from "@/lib/cn";
 
 // 用户预览数据类型
 export type UserPreviewData = {
@@ -83,30 +90,24 @@ export function UserHoverCard({
     user.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${user.wallet_address}`;
   const profileUrl = `/profile/${user.wallet_address}`;
   const rankBadge = getRankBadge(user.rank);
-  const isOwnProfile = myAccount?.toLowerCase() === user.wallet_address?.toLowerCase();
+  const myAccountNorm = myAccount ? normalizeAddress(myAccount) : null;
+  const userAddressNorm = user.wallet_address ? normalizeAddress(user.wallet_address) : null;
+  const isOwnProfile = myAccountNorm && userAddressNorm && myAccountNorm === userAddressNorm;
 
-  // 获取关注状态和粉丝数
-  const fetchFollowData = useCallback(async () => {
-    if (!user.wallet_address) return;
+  const followCountsQuery = useUserFollowCounts(userAddressNorm);
+  const followStatusQuery = useUserFollowStatus(userAddressNorm, myAccountNorm);
 
-    try {
-      // 获取粉丝数
-      const countRes = await fetch(`/api/user-follows/counts?address=${user.wallet_address}`);
-      const countData = await countRes.json();
-      setFollowersCount(countData.followersCount || 0);
-
-      // 获取当前用户是否关注了该用户
-      if (myAccount && !isOwnProfile) {
-        const statusRes = await fetch(
-          `/api/user-follows/user?targetAddress=${user.wallet_address}&followerAddress=${myAccount}`
-        );
-        const statusData = await statusRes.json();
-        setIsFollowed(!!statusData.followed);
-      }
-    } catch (error) {
-      console.error("Failed to fetch follow data:", error);
+  useEffect(() => {
+    if (followCountsQuery.data) {
+      setFollowersCount(followCountsQuery.data.followersCount);
     }
-  }, [user.wallet_address, myAccount, isOwnProfile]);
+  }, [followCountsQuery.data]);
+
+  useEffect(() => {
+    if (!isOwnProfile && typeof followStatusQuery.data === "boolean") {
+      setIsFollowed(followStatusQuery.data);
+    }
+  }, [followStatusQuery.data, isOwnProfile]);
 
   // 处理关注/取消关注
   const handleFollowToggle = async (e: React.MouseEvent) => {
@@ -120,26 +121,28 @@ export function UserHoverCard({
 
     setIsFollowLoading(true);
     try {
-      const res = await fetch("/api/user-follows/user", {
+      const data = await fetcher<UserFollowToggleResult>("/api/user-follows/user", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetAddress: user.wallet_address }),
+        body: JSON.stringify({ targetAddress: userAddressNorm || user.wallet_address }),
       });
 
-      const data = await res.json();
-      if (data.success) {
-        setIsFollowed(data.followed);
-        setFollowersCount((prev) => (data.followed ? prev + 1 : prev - 1));
-        toast.success(
-          data.followed
-            ? t("followSuccess") || "Followed successfully"
-            : t("unfollowSuccess") || "Unfollowed"
-        );
-      } else {
-        toast.error(data.message || "Operation failed");
-      }
-    } catch (error) {
-      toast.error("Unexpected error");
+      const followed = Boolean(data?.followed);
+      setIsFollowed(followed);
+      setFollowersCount((prev) => (followed ? prev + 1 : Math.max(0, prev - 1)));
+      toast.success(
+        followed
+          ? t("followSuccess") || "Followed successfully"
+          : t("unfollowSuccess") || "Unfollowed"
+      );
+    } catch (error: any) {
+      const message =
+        (error &&
+          typeof error === "object" &&
+          error !== null &&
+          typeof (error as any).message === "string" &&
+          (error as any).message) ||
+        "Operation failed";
+      toast.error(message);
     } finally {
       setIsFollowLoading(false);
     }
@@ -148,13 +151,6 @@ export function UserHoverCard({
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // 当卡片打开时获取数据
-  useEffect(() => {
-    if (isOpen) {
-      fetchFollowData();
-    }
-  }, [isOpen, fetchFollowData]);
 
   const calculatePosition = useCallback(() => {
     if (!containerRef.current) return;

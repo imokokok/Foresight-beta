@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { normalizeAddress } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 /**
  * 获取我的粉丝列表（关注我的人）
@@ -23,16 +23,13 @@ export async function GET(req: NextRequest) {
       .select("follower_address")
       .eq("following_address", address);
 
-    if (followError) {
+    if (followError)
       return ApiResponses.databaseError("Failed to fetch followers", followError.message);
-    }
 
     const followRows = (followData ?? []) as { follower_address: string }[];
     const followerAddresses = followRows.map((f) => f.follower_address);
 
-    if (followerAddresses.length === 0) {
-      return NextResponse.json({ users: [] });
-    }
+    if (followerAddresses.length === 0) return successResponse({ users: [] });
 
     // 获取这些粉丝的资料
     const { data: profiles, error: profileError } = await client
@@ -40,9 +37,8 @@ export async function GET(req: NextRequest) {
       .select("wallet_address, username, created_at")
       .in("wallet_address", followerAddresses);
 
-    if (profileError) {
+    if (profileError)
       return ApiResponses.databaseError("Failed to fetch profiles", profileError.message);
-    }
 
     const profileRows = (profiles ?? []) as { wallet_address: string; username: string | null }[];
 
@@ -52,7 +48,7 @@ export async function GET(req: NextRequest) {
       avatar: `https://api.dicebear.com/7.x/identicon/svg?seed=${p.wallet_address}`,
     }));
 
-    return NextResponse.json({ users });
+    return successResponse({ users });
   } catch (error: any) {
     return ApiResponses.internalError(error.message);
   }

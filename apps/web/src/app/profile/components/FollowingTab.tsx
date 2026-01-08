@@ -9,43 +9,45 @@ import { useTranslations, formatTranslation, useLocale } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { CenteredSpinner } from "./ProfileUI";
 import { UserHoverCard } from "@/components/ui/UserHoverCard";
+import { useFollowingUsers } from "@/hooks/useQueries";
+import { normalizeAddress } from "@/lib/cn";
 
 type TabType = "events" | "users";
 
-export function FollowingTab({ address }: { address: string | null | undefined }) {
+export function FollowingTab({ address }: { address: string | null }) {
   const [activeTab, setActiveTab] = useState<TabType>("events");
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
   const tCommon = useTranslations("common");
   const { locale } = useLocale();
 
-  const safeAddress = useMemo(() => (address ? encodeURIComponent(address) : ""), [address]);
+  const normalizedAddress = useMemo(() => (address ? normalizeAddress(address) : null), [address]);
+  const safeAddress = useMemo(
+    () => (normalizedAddress ? encodeURIComponent(normalizedAddress) : ""),
+    [normalizedAddress]
+  );
 
   const eventsQuery = useQuery({
-    queryKey: ["profile", "following", "events", address],
+    queryKey: ["profile", "following", "events", normalizedAddress],
     queryFn: async () => {
       const res = await fetch(`/api/following?address=${safeAddress}`);
-      if (!res.ok) throw new Error("Failed to fetch following events");
       const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const payload =
+          data && typeof data === "object"
+            ? { status: res.status, ...data }
+            : { status: res.status };
+        throw payload;
+      }
       return Array.isArray(data.following) ? data.following : [];
     },
-    enabled: !!address,
+    enabled: !!normalizedAddress,
     staleTime: 2 * 60 * 1000,
   });
 
-  const usersQuery = useQuery({
-    queryKey: ["profile", "following", "users", address],
-    queryFn: async () => {
-      const res = await fetch(`/api/user-follows/following-users?address=${safeAddress}`);
-      if (!res.ok) throw new Error("Failed to fetch following users");
-      const data = await res.json().catch(() => ({}));
-      return Array.isArray(data.users) ? data.users : [];
-    },
-    enabled: !!address,
-    staleTime: 2 * 60 * 1000,
-  });
+  const usersQuery = useFollowingUsers(normalizedAddress);
 
-  if (!address) {
+  if (!normalizedAddress) {
     return (
       <EmptyState
         icon={activeTab === "events" ? Target : Users}

@@ -18,3 +18,8 @@ export function formatAddress(
   if (s.length <= prefixLen + suffixLen + 3) return s;
   return `${s.slice(0, prefixLen)}...${s.slice(-suffixLen)}`;
 }
+
+export function normalizeAddress(addr: string): string {
+  const a = String(addr || "");
+  return a.startsWith("0x") ? a.toLowerCase() : a;
+}

@@ -10,6 +10,7 @@ import {
   createHeartParticles,
 } from "@/features/trending/trendingAnimations";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
+import { normalizeAddress } from "@/lib/cn";
 
 export function useTrendingFollowState(
   accountNorm: string | undefined,
@@ -85,7 +86,7 @@ export function useTrendingFollowState(
     if (!accountNorm) return;
     (async () => {
       try {
-        const res = await fetch(`/api/user-follows?address=${accountNorm}`);
+        const res = await fetch(`/api/user-follows?address=${encodeURIComponent(accountNorm)}`);
         if (!res.ok) return;
         const data = (await res.json()) as {
           follows?: Array<{ id: number | string }>;
@@ -130,7 +131,9 @@ export function useTrendingFollowState(
           const eid = Number(row.event_id);
           const uid = String(row.user_id || "");
           if (!Number.isFinite(eid)) return;
-          if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
+          const uidNorm = normalizeAddress(uid);
+          const isCurrentUser = !!accountNorm && uidNorm === accountNorm;
+          if (!isCurrentUser) {
             queryClient.setQueryData(
               ["predictions"],
               (
@@ -152,7 +155,7 @@ export function useTrendingFollowState(
                 )
             );
           }
-          if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
+          if (isCurrentUser) {
             setFollowedEvents((prev) => {
               const s = new Set(prev);
               s.add(eid);
@@ -176,7 +179,9 @@ export function useTrendingFollowState(
           const eid = Number(row.event_id);
           const uid = String(row.user_id || "");
           if (!Number.isFinite(eid)) return;
-          if (!accountNorm || (uid || "").toLowerCase() !== accountNorm) {
+          const uidNorm = normalizeAddress(uid);
+          const isCurrentUser = !!accountNorm && uidNorm === accountNorm;
+          if (!isCurrentUser) {
             queryClient.setQueryData(
               ["predictions"],
               (
@@ -198,7 +203,7 @@ export function useTrendingFollowState(
                 )
             );
           }
-          if (accountNorm && (uid || "").toLowerCase() === accountNorm) {
+          if (isCurrentUser) {
             setFollowedEvents((prev) => {
               const s = new Set(prev);
               s.delete(eid);

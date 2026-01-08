@@ -180,8 +180,12 @@ export function useProposalDetail(id: string) {
           body: JSON.stringify({ type, id: contentId, dir }),
         });
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message || "Vote failed");
+          const data = await res.json().catch(() => ({}));
+          const payload =
+            data && typeof data === "object"
+              ? { status: res.status, ...data }
+              : { status: res.status };
+          throw payload;
         }
       } catch (e: any) {
         handleApiError(e, "forum.errors.voteFailed");
@@ -208,8 +212,12 @@ export function useProposalDetail(id: string) {
           }),
         });
         if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message || t("forum.errors.commentFailed"));
+          const data = await res.json().catch(() => ({}));
+          const payload =
+            data && typeof data === "object"
+              ? { status: res.status, ...data }
+              : { status: res.status };
+          throw payload;
         }
         toast.success(t("forum.reply.commentPosted"));
         refresh();
@@ -235,7 +243,11 @@ export function useProposalDetail(id: string) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.message || "Resubmit failed");
+        const payload =
+          data && typeof data === "object"
+            ? { status: res.status, ...data }
+            : { status: res.status };
+        throw payload;
       }
       toast.success(t("proposals.detail.resubmitSuccess"));
       refresh();

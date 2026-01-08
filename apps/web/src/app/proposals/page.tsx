@@ -84,7 +84,7 @@ export default function ProposalsPage() {
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const { account, connectWallet } = useWallet();
   const { user } = useAuth();
-  const listState = useProposalsList(account, () => void connectWallet());
+  const listState = useProposalsList(account ?? null, () => void connectWallet());
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
   const { inspirationIndex, isRolling, rollInspiration } =

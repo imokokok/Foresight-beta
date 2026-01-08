@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import {
   getEmailOtpShared,
   normalizeAddress,
@@ -8,7 +8,7 @@ import {
   parseRequestBody,
   logApiError,
 } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function isValidEmail(email: string) {
   return /.+@.+\..+/.test(email);
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         sentAt: Date.now(),
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
-      return NextResponse.json({ success: true, message: "验证码已发送", expiresInSec: 900 });
+      return successResponse({ expiresInSec: 900 }, "验证码已发送");
     } catch (err: unknown) {
       const errMessage = err instanceof Error ? err.message : String(err);
       try {
@@ -132,12 +132,13 @@ export async function POST(req: NextRequest) {
       } as LogItem);
       if (logs.length > 1000) logs.splice(0, logs.length - 1000);
       if (process.env.NODE_ENV !== "production") {
-        return NextResponse.json({
-          success: true,
-          message: "开发环境：邮件发送失败，已直接返回验证码",
-          codePreview: code,
-          expiresInSec: 300,
-        });
+        return successResponse(
+          {
+            codePreview: code,
+            expiresInSec: 300,
+          },
+          "开发环境：邮件发送失败，已直接返回验证码"
+        );
       }
       return ApiResponses.internalError("邮件发送失败", errMessage);
     }

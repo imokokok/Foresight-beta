@@ -14,6 +14,7 @@ import { useTrendingList } from "./useTrendingList";
 import { useTrendingFollowState } from "./useTrendingFollowState";
 import { useTrendingAdminEvents } from "./useTrendingAdminEvents";
 import { useTrendingHero } from "./useTrendingHero";
+import { normalizeAddress } from "@/lib/cn";
 import { useCategoryCounts } from "./useCategoryCounts";
 
 type ScrollToSectionOptions = {
@@ -67,7 +68,7 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { account, siweLogin } = useWallet();
   const profileCtx = useUserProfileOptional();
-  const accountNorm = account?.toLowerCase();
+  const accountNorm = account ? normalizeAddress(account) : undefined;
 
   const categoryCounts = useCategoryCounts();
 

@@ -5,6 +5,12 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
+import {
+  fetcher,
+  type EmailOtpRequestResult,
+  type EmailOtpVerifyResult,
+  type UserProfileInfoResponse,
+} from "@/hooks/useQueries";
 
 export type WalletStep =
   | "select"
@@ -29,6 +35,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     requestWalletPermissions,
     multisigSign,
     account,
+    normalizedAccount,
   } = useWallet();
   const auth = useAuthOptional();
   const userProfile = useUserProfileOptional();
@@ -101,50 +108,59 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   useEffect(() => {
     if (!isOpen) return;
     if (user) {
-      const addr = String(account || "").toLowerCase();
-      if (addr) {
-        if (showProfileForm) return;
-
-        setProfileLoading(true);
-        fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`)
-          .then((r) => r.json())
-          .then((data) => {
-            const p = data?.profile;
-            if (!p?.username || !p?.email) {
-              setShowProfileForm(true);
-              setUsername(String(p?.username || ""));
-              setEmail(String(p?.email || ""));
-            } else {
-              onClose();
-            }
-          })
-          .catch(() => {})
-          .finally(() => setProfileLoading(false));
-      } else {
+      const addr = normalizedAccount || "";
+      if (!addr) {
         setProfileLoading(false);
+        return;
       }
+      if (showProfileForm) return;
+
+      setProfileLoading(true);
+      (async () => {
+        try {
+          const data = await fetcher<UserProfileInfoResponse>(
+            `/api/user-profiles?address=${encodeURIComponent(addr)}`
+          );
+          const p = data?.profile;
+          if (!p?.username || !p?.email) {
+            setShowProfileForm(true);
+            setWalletStep("profile");
+            setUsername(String(p?.username || ""));
+            setEmail(String(p?.email || ""));
+          } else {
+            onClose();
+          }
+        } catch {
+        } finally {
+          setProfileLoading(false);
+        }
+      })();
     }
-  }, [user, isOpen, onClose, account, showProfileForm]);
+  }, [user, isOpen, onClose, normalizedAccount, showProfileForm]);
 
   useEffect(() => {
     if (!isOpen) return;
     if (!showProfileForm) return;
-    const addr = String(account || "").toLowerCase();
+    const addr = normalizedAccount || "";
     if (!addr) return;
     setProfileLoading(true);
     setProfileError(null);
-    fetch(`/api/user-profiles?address=${encodeURIComponent(addr)}`)
-      .then((r) => r.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const data = await fetcher<UserProfileInfoResponse>(
+          `/api/user-profiles?address=${encodeURIComponent(addr)}`
+        );
         const p = data?.profile;
         if (p) {
           setUsername(String(p.username || ""));
           setEmail(String(p.email || ""));
         }
-      })
-      .catch(() => {})
-      .finally(() => setProfileLoading(false));
-  }, [isOpen, showProfileForm, account]);
+      } catch {
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+  }, [isOpen, showProfileForm, normalizedAccount]);
 
   const installMap: Record<string, { name: string; url: string }> = {
     metamask: { name: "MetaMask", url: "https://metamask.io/download/" },
@@ -211,7 +227,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         try {
           const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
           const d = await r.json();
-          const p = d?.profile;
+          const p = d?.data?.profile;
           if (!p?.username || !p?.email) {
             setShowProfileForm(true);
             setWalletStep("profile");
@@ -303,26 +319,20 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         return;
       }
 
-      const resp = await fetch("/api/user-profiles", {
+      await fetcher<{ ok: boolean }>("/api/user-profiles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: addr, username, email, rememberMe }),
       });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || tWalletModal("errors.submitFailed")));
-      } else {
-        if (auth?.refreshSession) {
-          await auth.refreshSession();
-        }
-        if (userProfile?.refreshProfile) {
-          await userProfile.refreshProfile();
-        }
-        setWalletStep("completed");
-        onClose();
+      if (auth?.refreshSession) {
+        await auth.refreshSession();
       }
+      if (userProfile?.refreshProfile) {
+        await userProfile.refreshProfile();
+      }
+      setWalletStep("completed");
+      onClose();
     } catch (e: any) {
-      setProfileError(String(e?.message || e));
+      setProfileError(String(e?.message || e || tWalletModal("errors.submitFailed")));
     } finally {
       setProfileLoading(false);
     }
@@ -333,26 +343,20 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     setEmailLoading(true);
     try {
       const addr = String(account || "").toLowerCase();
-      const resp = await fetch("/api/email-otp/request", {
+      const data = await fetcher<EmailOtpRequestResult>("/api/email-otp/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: addr, email }),
       });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || tWalletModal("errors.otpSendFailed")));
+      setOtpRequested(true);
+      setEmailVerified(false);
+      if (data?.codePreview) {
+        setOtp(String(data.codePreview || ""));
+        setCodePreview(String(data.codePreview || ""));
       } else {
-        setOtpRequested(true);
-        setEmailVerified(false);
-        if (json?.codePreview) {
-          setOtp(String(json.codePreview || ""));
-          setCodePreview(String(json.codePreview || ""));
-        } else {
-          setCodePreview(null);
-        }
+        setCodePreview(null);
       }
     } catch (e: any) {
-      setProfileError(String(e?.message || e));
+      setProfileError(String(e?.message || e || tWalletModal("errors.otpSendFailed")));
     } finally {
       setEmailLoading(false);
     }
@@ -363,19 +367,13 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     setEmailLoading(true);
     try {
       const addr = String(account || "").toLowerCase();
-      const resp = await fetch("/api/email-otp/verify", {
+      await fetcher<EmailOtpVerifyResult>("/api/email-otp/verify", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ walletAddress: addr, email, code: otp }),
       });
-      const json = await resp.json();
-      if (!resp.ok || !json?.success) {
-        setProfileError(String(json?.message || tWalletModal("errors.otpVerifyFailed")));
-      } else {
-        setEmailVerified(true);
-      }
+      setEmailVerified(true);
     } catch (e: any) {
-      setProfileError(String(e?.message || e));
+      setProfileError(String(e?.message || e || tWalletModal("errors.otpVerifyFailed")));
     } finally {
       setEmailLoading(false);
     }

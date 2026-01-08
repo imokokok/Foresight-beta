@@ -1,3 +1,5 @@
+import { normalizeAddress } from "@/lib/cn";
+
 export interface FollowStatus {
   following: boolean;
   followersCount: number;
@@ -31,7 +33,7 @@ export async function getFollowStatus(
   predictionId: number,
   walletAddress?: string
 ): Promise<FollowStatus> {
-  const addr = walletAddress ? walletAddress.toLowerCase() : undefined;
+  const addr = walletAddress ? normalizeAddress(walletAddress) : undefined;
   const qs = buildQuery({ predictionId, walletAddress: addr });
   const res = await fetch(`/api/follows?${qs}`, { method: "GET", cache: "no-store" });
   if (!res.ok) {
@@ -45,7 +47,7 @@ export async function getFollowStatus(
 export async function followPrediction(predictionId: number, walletAddress: string): Promise<void> {
   const params = new URLSearchParams({
     predictionId: String(predictionId),
-    walletAddress: walletAddress.toLowerCase(),
+    walletAddress: normalizeAddress(walletAddress),
   });
   const res = await fetch("/api/follows", {
     method: "POST",
@@ -64,7 +66,7 @@ export async function unfollowPrediction(
 ): Promise<void> {
   const params = new URLSearchParams({
     predictionId: String(predictionId),
-    walletAddress: walletAddress.toLowerCase(),
+    walletAddress: normalizeAddress(walletAddress),
   });
   const res = await fetch("/api/follows", {
     method: "DELETE",

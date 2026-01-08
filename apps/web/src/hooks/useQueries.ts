@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { normalizeAddress } from "@/lib/cn";
 import type { ApiResponse } from "@/types/api";
 import type { Prediction as TrendingPrediction } from "@/features/trending/trendingModel";
+import type { UserProfile } from "@/lib/supabase";
+import type {
+  PortfolioStats,
+  ProfileHistoryItem,
+  ProfilePosition,
+  ProfileUserSummary,
+} from "@/app/profile/types";
 
 /**
  * Query Keys 常量
@@ -13,8 +21,14 @@ export const QueryKeys = {
   categories: ["categories"] as const,
 
   userProfile: (address: string) => ["userProfile", address] as const,
+  userHistory: (address: string) => ["userHistory", address] as const,
   userPortfolio: (address: string) => ["userPortfolio", address] as const,
   userFollows: (address: string) => ["userFollows", address] as const,
+  userFollowCounts: (address: string) => ["profile", "follows", "counts", address] as const,
+  userFollowStatus: (target: string, follower: string | null | undefined) =>
+    ["profile", "follows", "status", target, follower] as const,
+  profileFollowersUsers: (address: string) => ["profile", "followers", address] as const,
+  profileFollowingUsers: (address: string) => ["profile", "following", "users", address] as const,
 
   orders: (params: {
     chainId?: number;
@@ -34,7 +48,11 @@ export const QueryKeys = {
   market: (contract: string, chainId: number) => ["market", contract, chainId] as const,
 } as const;
 
-async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
+export type UserFollowToggleResult = {
+  followed: boolean;
+};
+
+export async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -103,6 +121,15 @@ async function fetcher<T>(url: string, options?: RequestInit): Promise<T> {
   return data.data;
 }
 
+export type EmailOtpRequestResult = {
+  expiresInSec: number;
+  codePreview?: string;
+};
+
+export type EmailOtpVerifyResult = {
+  ok: boolean;
+};
+
 export function useCategories() {
   return useQuery({
     queryKey: QueryKeys.categories,
@@ -146,14 +173,140 @@ export function usePrediction(id: number, options?: { includeOutcomes?: boolean 
   });
 }
 
+export type UserProfileInfoResponse = {
+  profile: UserProfile | null;
+  profiles: UserProfile[];
+};
+
+export function useUserProfileInfo(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery<UserProfileInfoResponse | null>({
+    queryKey: QueryKeys.userProfile(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<UserProfileInfoResponse>(`/api/user-profiles?address=${encodeURIComponent(norm)}`)
+        : Promise.resolve(null),
+    enabled: !!norm,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUserHistory(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery<ProfileHistoryItem[]>({
+    queryKey: QueryKeys.userHistory(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<ProfileHistoryItem[]>(`/api/history?address=${encodeURIComponent(norm)}`)
+        : Promise.resolve([]),
+    enabled: !!norm,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useUserFollowCounts(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery({
+    queryKey: QueryKeys.userFollowCounts(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<{
+            followersCount: number;
+            followingCount: number;
+          }>(`/api/user-follows/counts?address=${encodeURIComponent(norm)}`)
+        : Promise.resolve({
+            followersCount: 0,
+            followingCount: 0,
+          }),
+    enabled: !!norm,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useUserFollowStatus(target?: string | null, follower?: string | null) {
+  const targetNorm = target ? normalizeAddress(target) : null;
+  const followerNorm = follower ? normalizeAddress(follower) : null;
+  return useQuery({
+    queryKey: QueryKeys.userFollowStatus(targetNorm || "", followerNorm || ""),
+    queryFn: () =>
+      targetNorm && followerNorm && targetNorm !== followerNorm
+        ? fetcher<{ followed: boolean }>(
+            `/api/user-follows/user?targetAddress=${encodeURIComponent(
+              targetNorm
+            )}&followerAddress=${encodeURIComponent(followerNorm)}`
+          ).then((res) => Boolean(res.followed))
+        : Promise.resolve(false),
+    enabled: !!targetNorm && !!followerNorm && targetNorm !== followerNorm,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useFollowersUsers(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery<ProfileUserSummary[]>({
+    queryKey: QueryKeys.profileFollowersUsers(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<{ users: ProfileUserSummary[] }>(
+            `/api/user-follows/followers-users?address=${encodeURIComponent(norm)}`
+          ).then((res) => (Array.isArray(res.users) ? res.users : []))
+        : Promise.resolve([]),
+    enabled: !!norm,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useFollowingUsers(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery<ProfileUserSummary[]>({
+    queryKey: QueryKeys.profileFollowingUsers(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<{ users: ProfileUserSummary[] }>(
+            `/api/user-follows/following-users?address=${encodeURIComponent(norm)}`
+          ).then((res) => (Array.isArray(res.users) ? res.users : []))
+        : Promise.resolve([]),
+    enabled: !!norm,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 /**
  * 获取用户投资组合
  */
-export function useUserPortfolio(address?: string) {
-  return useQuery({
-    queryKey: QueryKeys.userPortfolio(address || ""),
-    queryFn: () => fetcher<any>(`/api/user-portfolio?address=${address}`),
-    enabled: !!address,
+export function useUserPortfolio(address?: string | null) {
+  const norm = address ? normalizeAddress(address) : null;
+  return useQuery<{
+    positions?: ProfilePosition[];
+    stats?: {
+      total_invested?: number;
+      active_count?: number;
+      win_rate?: string;
+      realized_pnl?: number;
+    };
+  }>({
+    queryKey: QueryKeys.userPortfolio(norm || ""),
+    queryFn: () =>
+      norm
+        ? fetcher<{
+            positions?: ProfilePosition[];
+            stats?: {
+              total_invested?: number;
+              active_count?: number;
+              win_rate?: string;
+              realized_pnl?: number;
+            };
+          }>(`/api/user-portfolio?address=${encodeURIComponent(norm)}`)
+        : Promise.resolve({
+            positions: [],
+            stats: {
+              total_invested: 0,
+              active_count: 0,
+              win_rate: "0%",
+              realized_pnl: 0,
+            },
+          }),
+    enabled: !!norm,
     staleTime: 2 * 60 * 1000, // 2分钟
   });
 }

@@ -7,7 +7,7 @@ import type { UseProposalsListReturn } from "./useProposalsList";
 import type { AuthUser } from "@/contexts/AuthContext";
 
 type ProposalsPageViewProps = UseProposalsListReturn & {
-  account: string | null | undefined;
+  account: string | null;
   user: AuthUser;
   connectWallet: () => void | Promise<void>;
   isCreateModalOpen: boolean;

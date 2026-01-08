@@ -8,7 +8,7 @@ import {
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr);
@@ -27,7 +27,12 @@ function isValidUsername(name: string) {
 export async function GET(req: NextRequest) {
   try {
     const client = (supabaseAdmin || supabase) as any;
-    if (!client) return NextResponse.json({ profile: null, profiles: [] });
+    if (!client) {
+      return successResponse<{ profile: any | null; profiles: any[] }>(
+        { profile: null, profiles: [] },
+        "Supabase client not initialized"
+      );
+    }
     const { searchParams } = new URL(req.url);
     let address = normalizeAddress(String(searchParams.get("address") || ""));
     const addressesStr = String(searchParams.get("addresses") || "");
@@ -41,30 +46,41 @@ export async function GET(req: NextRequest) {
         .from("user_profiles")
         .select("wallet_address, username, email, is_admin")
         .in("wallet_address", list);
-      if (error) return NextResponse.json({ profiles: [], error: error.message }, { status: 200 });
+      if (error) {
+        return ApiResponses.databaseError("Failed to fetch profiles", error.message);
+      }
       const rows = (data || []).map((p: Database["public"]["Tables"]["user_profiles"]["Row"]) => ({
         ...p,
         is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || ""),
       }));
-      return NextResponse.json({ profiles: rows }, { status: 200 });
+      return successResponse(
+        {
+          profile: null,
+          profiles: rows,
+        },
+        "Profiles fetched successfully"
+      );
     }
 
     if (!address) {
       const sess = await getSessionAddress(req);
       address = normalizeAddress(String(sess || ""));
     }
-    if (!address)
-      return NextResponse.json(
+    if (!address) {
+      const emptyProfile = {
+        wallet_address: "",
+        username: "",
+        email: "",
+        is_admin: false,
+      };
+      return successResponse(
         {
-          profile: {
-            wallet_address: "",
-            username: "",
-            email: "",
-            is_admin: false,
-          },
+          profile: emptyProfile,
+          profiles: [],
         },
-        { status: 200 }
+        "Anonymous profile"
       );
+    }
     const { data: rawData, error } = await client
       .from("user_profiles")
       .select("wallet_address, username, email, is_admin")
@@ -80,7 +96,13 @@ export async function GET(req: NextRequest) {
         email: "",
         is_admin: isAdminAddress(address),
       };
-      return NextResponse.json({ profile: fallback }, { status: 200 });
+      return successResponse(
+        {
+          profile: fallback,
+          profiles: [],
+        },
+        "Profile not found, using fallback"
+      );
     }
     const profile = data
       ? { ...data, is_admin: !!data?.is_admin || isAdminAddress(address) }
@@ -90,9 +112,16 @@ export async function GET(req: NextRequest) {
           email: "",
           is_admin: isAdminAddress(address),
         };
-    return NextResponse.json({ profile }, { status: 200 });
+    return successResponse(
+      {
+        profile,
+        profiles: [],
+      },
+      "Profile fetched successfully"
+    );
   } catch (e: any) {
-    return NextResponse.json({ profile: null, error: String(e?.message || e) }, { status: 200 });
+    logApiError("GET /api/user-profiles unhandled error", e);
+    return ApiResponses.internalError("Failed to fetch profile", String(e?.message || e));
   }
 }
 
@@ -154,7 +183,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = NextResponse.json({ success: true });
+    const res = successResponse({ ok: true }, "Profile saved successfully");
     if (remember) {
       res.cookies.set("fs_remember", "1", {
         httpOnly: true,

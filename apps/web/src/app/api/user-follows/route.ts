@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { normalizeAddress } from "@/lib/serverUtils";
 
 function isMissingRelation(error?: { message?: string }) {
   if (!error?.message) return false;
@@ -32,7 +33,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ follows: [], total: 0 });
     }
     const { searchParams } = new URL(request.url);
-    const address = searchParams.get("address");
+    const rawAddress = searchParams.get("address") || "";
+    const address = normalizeAddress(rawAddress);
 
     if (!address) {
       return ApiResponses.badRequest("缺少用户地址参数");

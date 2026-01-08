@@ -7,7 +7,7 @@ import type { AuthUser } from "@/contexts/AuthContext";
 import type { ProposalFilter, ProposalItem } from "./proposalsListUtils";
 
 type ProposalsLeftSidebarProps = {
-  account: string | null | undefined;
+  account: string | null;
   user: AuthUser;
   connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;

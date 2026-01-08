@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 // POST /api/history  body: { eventId: number, walletAddress: string }
 // GET /api/history?address=0x...
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
       }))
       .filter((item: any) => item.id); // 过滤掉关联查询为空的记录（例如事件已被删除）
 
-    return NextResponse.json({ history });
+    return successResponse(history, "History fetched successfully");
   } catch (error: any) {
     return ApiResponses.internalError("Failed to fetch history", error.message);
   }

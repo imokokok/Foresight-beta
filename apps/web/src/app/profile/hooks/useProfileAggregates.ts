@@ -1,7 +1,7 @@
-"use client";
-
 import { useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useUserPortfolio, useUserProfileInfo, useUserHistory } from "@/hooks/useQueries";
+import type { AuthUser } from "@/contexts/AuthContext";
+import type { UserProfile } from "@/lib/supabase";
 import type { PortfolioStats, ProfileHistoryItem, ProfilePosition } from "../types";
 
 /**
@@ -14,80 +14,35 @@ import type { PortfolioStats, ProfileHistoryItem, ProfilePosition } from "../typ
  * - 更好的错误处理
  */
 export function useProfileAggregates(args: {
-  account: string | null | undefined;
-  user: any;
-  profile: any;
+  account: string | null;
+  user: AuthUser | null;
+  profile: UserProfile | null | undefined;
   tProfile: (key: string) => string;
 }) {
   const { account, user, profile, tProfile } = args;
 
-  const results = useQueries({
-    queries: [
-      {
-        queryKey: ["profile", "info", account],
-        queryFn: async () => {
-          if (!account) return null;
-          const res = await fetch(`/api/user-profiles?address=${encodeURIComponent(account)}`);
-          if (!res.ok) throw new Error("Failed to fetch profile");
-          const data = await res.json().catch(() => ({}));
-          return data.profile || null;
-        },
-        enabled: !!account,
-        staleTime: 5 * 60 * 1000,
-      },
-      {
-        queryKey: ["profile", "history", account],
-        queryFn: async () => {
-          if (!account) return [];
-          const res = await fetch(`/api/history?address=${encodeURIComponent(account)}`);
-          if (!res.ok) throw new Error("Failed to fetch history");
-          const data = await res.json().catch(() => ({}));
-          return data.history || [];
-        },
-        enabled: !!account,
-        staleTime: 2 * 60 * 1000,
-      },
-      {
-        queryKey: ["profile", "portfolio", account],
-        queryFn: async () => {
-          if (!account) return null;
-          const res = await fetch(`/api/user-portfolio?address=${encodeURIComponent(account)}`);
-          if (!res.ok) throw new Error("Failed to fetch portfolio");
-          const json = await res.json().catch(() => ({}));
-          const payload =
-            json && typeof json === "object" && "data" in json ? (json as any).data : json;
-          const positions = Array.isArray((payload as any)?.positions)
-            ? (payload as any).positions
-            : [];
-          return {
-            positions,
-            positionsCount: positions.length,
-            stats: (payload as any)?.stats
-              ? {
-                  total_invested: Number((payload as any).stats.total_invested || 0),
-                  active_count: Number((payload as any).stats.active_count || 0),
-                  win_rate: String((payload as any).stats.win_rate || "0%"),
-                  realized_pnl:
-                    (payload as any).stats.realized_pnl != null
-                      ? Number((payload as any).stats.realized_pnl || 0)
-                      : undefined,
-                }
-              : null,
-          };
-        },
-        enabled: !!account,
-        staleTime: 2 * 60 * 1000,
-      },
-    ],
-  });
+  const infoQuery = useUserProfileInfo(account);
+  const historyQuery = useUserHistory(account);
+  const portfolioQuery = useUserPortfolio(account);
 
-  const [infoQuery, historyQuery, portfolioQuery] = results;
-
-  const info = infoQuery.data;
-  const history = (historyQuery.data || []) as ProfileHistoryItem[];
-  const positions = (portfolioQuery.data?.positions || []) as ProfilePosition[];
-  const portfolioStats: PortfolioStats | null = portfolioQuery.data?.stats || null;
-  const positionsCount = portfolioQuery.data?.positionsCount || 0;
+  const info = infoQuery.data?.profile || null;
+  const history = historyQuery.data || [];
+  const rawPortfolio = portfolioQuery.data;
+  const positions = Array.isArray(rawPortfolio?.positions)
+    ? (rawPortfolio?.positions as ProfilePosition[])
+    : [];
+  const portfolioStats: PortfolioStats | null = rawPortfolio?.stats
+    ? {
+        total_invested: Number(rawPortfolio.stats.total_invested || 0),
+        active_count: Number(rawPortfolio.stats.active_count || 0),
+        win_rate: String(rawPortfolio.stats.win_rate || "0%"),
+        realized_pnl:
+          rawPortfolio.stats.realized_pnl != null
+            ? Number(rawPortfolio.stats.realized_pnl || 0)
+            : undefined,
+      }
+    : null;
+  const positionsCount = positions.length;
 
   const username = useMemo(() => {
     if (!account) {
@@ -109,7 +64,7 @@ export function useProfileAggregates(args: {
     return `User ${account.slice(0, 4)}`;
   }, [account, user, profile, info, tProfile]);
 
-  const setHistory = (newHistory: any[] | ((prev: any[]) => any[])) => {
+  const setHistory = (_newHistory: any[] | ((prev: any[]) => any[])) => {
     console.warn("setHistory is deprecated, use mutation instead");
   };
 
@@ -120,11 +75,15 @@ export function useProfileAggregates(args: {
     positions,
     portfolioStats,
     positionsCount,
-    isLoading: results.some((r) => r.isLoading),
+    isLoading: infoQuery.isLoading || historyQuery.isLoading || portfolioQuery.isLoading,
     historyLoading: historyQuery.isLoading,
     portfolioLoading: portfolioQuery.isLoading,
     historyError: historyQuery.isError,
     portfolioError: portfolioQuery.isError,
-    refetch: () => results.forEach((r) => r.refetch()),
+    refetch: () => {
+      infoQuery.refetch();
+      historyQuery.refetch();
+      portfolioQuery.refetch();
+    },
   };
 }

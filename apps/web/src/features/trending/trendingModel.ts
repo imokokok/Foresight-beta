@@ -1,6 +1,7 @@
 import { type FilterSortState } from "@/components/FilterSort";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { normalizeId, isValidId } from "@/lib/ids";
+import { normalizeAddress } from "@/lib/cn";
 
 export type HeroEvent = {
   id: string;
@@ -218,10 +219,11 @@ export type UpdatePredictionPayload = {
 };
 
 export const updatePrediction = async (id: number, payload: UpdatePredictionPayload) => {
+  const normalized = { ...payload, walletAddress: normalizeAddress(payload.walletAddress) };
   const res = await fetch(`/api/predictions/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(normalized),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.success) {
@@ -234,7 +236,7 @@ export const deletePrediction = async (id: number, walletAddress: string) => {
   const res = await fetch(`/api/predictions/${id}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ walletAddress }),
+    body: JSON.stringify({ walletAddress: normalizeAddress(walletAddress) }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.success) {

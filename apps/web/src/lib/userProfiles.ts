@@ -10,7 +10,24 @@ export async function fetchUsernamesByAddresses(
   try {
     const res = await fetch(`/api/user-profiles?addresses=${encodeURIComponent(list.join(","))}`);
     const data = await res.json().catch(() => ({}));
-    const arr = Array.isArray(data?.profiles) ? data.profiles : [];
+    if (!res.ok) {
+      const message =
+        (data &&
+          typeof data === "object" &&
+          data !== null &&
+          typeof (data as any).error?.message === "string" &&
+          (data as any).error.message) ||
+        (data &&
+          typeof data === "object" &&
+          data !== null &&
+          typeof (data as any).message === "string" &&
+          (data as any).message) ||
+        `Request failed with status ${res.status}`;
+      throw new Error(message);
+    }
+    const arr = Array.isArray((data as any)?.data?.profiles)
+      ? ((data as any).data.profiles as any[])
+      : [];
     const next: Record<string, string> = {};
     arr.forEach((p: any) => {
       if (p?.wallet_address && p?.username) {
@@ -19,7 +36,8 @@ export async function fetchUsernamesByAddresses(
       }
     });
     return next;
-  } catch {
+  } catch (e) {
+    console.error("fetchUsernamesByAddresses error", e);
     return {};
   }
 }
