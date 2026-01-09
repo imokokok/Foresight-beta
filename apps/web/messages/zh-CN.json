@@ -1,6 +1,10 @@
 {
   "common": {
     "appName": "Foresight",
+    "brand": {
+      "taglinePrimary": "你的洞见，",
+      "taglineSecondary": "世界的前瞻"
+    },
     "welcome": "欢迎",
     "loading": "加载中...",
     "error": "错误",
@@ -72,6 +76,52 @@
     "admin": "管理员中心",
     "myFollows": "我的关注",
     "backToTop": "返回顶部"
+  },
+  "seo": {
+    "root": {
+      "titleDefault": "Foresight - 去中心化预测市场平台",
+      "description": "基于区块链的去中心化预测市场平台，参与各种事件预测，赢取收益。安全、透明、公平。",
+      "keywords": [
+        "预测市场",
+        "区块链",
+        "Web3",
+        "DeFi",
+        "去中心化",
+        "Polygon",
+        "智能合约",
+        "加密货币",
+        "预言机",
+        "prediction market",
+        "crypto",
+        "blockchain",
+        "mercado de predicción"
+      ],
+      "openGraphTitle": "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
+      "openGraphDescription": "参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market.",
+      "twitterTitle": "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
+      "twitterDescription": "参与各种事件预测，赢取收益。Trade on real-world events and earn rewards."
+    },
+    "terms": {
+      "title": "Foresight 服务条款 - 使用协议与风险提示",
+      "description": "阅读 Foresight 服务条款，了解平台使用规则、适用资格、风险披露以及责任限制等关键信息。",
+      "openGraphTitle": "Foresight 服务条款 - 使用协议与风险提示",
+      "openGraphDescription": "了解使用 Foresight 平台前的重要条款，包括风险披露、责任限制与使用规范。",
+      "twitterTitle": "Foresight 服务条款 - 使用协议与风险提示",
+      "twitterDescription": "在开始使用 Foresight 预测市场平台前，请先阅读服务条款与风险提示。"
+    },
+    "privacy": {
+      "title": "Foresight 隐私政策 - 数据收集与使用说明",
+      "description": "查看 Foresight 隐私政策，了解我们如何收集、使用和保护你的个人信息与使用数据。"
+    },
+    "prediction": {
+      "notFoundTitle": "未找到预测事件",
+      "notFoundDescription": "你请求的预测市场事件不存在或已被移除。",
+      "fallbackTitle": "Foresight 预测市场事件",
+      "fallbackDescription": "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。",
+      "breadcrumbHome": "首页",
+      "breadcrumbTrending": "热门预测",
+      "keywordsBase": ["预测市场", "prediction market", "区块链", "加密货币", "Foresight"]
+    }
   },
   "forum": {
     "title": "社区讨论",
@@ -477,16 +527,17 @@
   },
   "auth": {
     "login": "登录",
-    "logout": "退出",
+    "logout": "退出登录",
     "register": "注册",
     "connectWallet": "连接钱包",
     "disconnectWallet": "断开连接",
     "signMessage": "签名消息",
     "welcome": "欢迎来到 Foresight",
-    "signToConnect": "签名以连接",
-    "siweStatement": "欢迎使用 Foresight，请签名以连接钱包。",
+    "signToConnect": "签名连接",
+    "siweStatement": "欢迎来到 Foresight！签名以连接你的钱包。",
     "loggedIn": "已登录",
-    "noEmail": "未绑定邮箱"
+    "noEmail": "无邮箱",
+    "supabaseNotConfigured": "Supabase 未配置"
   },
   "wallet": {
     "connected": "已连接",
@@ -808,6 +859,9 @@
     "tryAgain": "重试",
     "goHome": "返回首页",
     "contactSupport": "联系技术支持",
+    "debugInfo": "调试信息",
+    "noErrorMessage": "无错误信息",
+    "digestLabel": "摘要",
     "followActionFailed": "关注操作失败，请稍后重试",
     "componentLoadFailed": "组件加载失败",
     "errorOccurred": "发生了错误",

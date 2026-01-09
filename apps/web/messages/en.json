@@ -1,6 +1,10 @@
 {
   "common": {
     "appName": "Foresight",
+    "brand": {
+      "taglinePrimary": "Your Insight,",
+      "taglineSecondary": "The World's Foresight"
+    },
     "welcome": "Welcome",
     "loading": "Loading...",
     "error": "Error",
@@ -72,6 +76,48 @@
     "admin": "Admin Center",
     "myFollows": "My follows",
     "backToTop": "Back to top"
+  },
+  "seo": {
+    "root": {
+      "titleDefault": "Foresight - Decentralized Prediction Market",
+      "description": "A decentralized prediction market to trade on real-world events in a secure, transparent and fair way.",
+      "keywords": [
+        "prediction market",
+        "crypto",
+        "blockchain",
+        "Web3",
+        "DeFi",
+        "Polygon",
+        "smart contract",
+        "oracle",
+        "mercado de predicción"
+      ],
+      "openGraphTitle": "Foresight - Decentralized Prediction Market",
+      "openGraphDescription": "Trade on real-world events in a secure, transparent and fair way.",
+      "twitterTitle": "Foresight - Decentralized Prediction Market",
+      "twitterDescription": "Trade on real-world events and earn rewards."
+    },
+    "terms": {
+      "title": "Foresight Terms of Service - Agreement & Risk Disclosures",
+      "description": "Read the Foresight terms to understand platform rules, eligibility requirements, risk disclosures, and liability limits.",
+      "openGraphTitle": "Foresight Terms of Service - Agreement & Risk Disclosures",
+      "openGraphDescription": "Key terms before using Foresight, including risk disclosures, liability limits, and usage rules.",
+      "twitterTitle": "Foresight Terms of Service - Agreement & Risk Disclosures",
+      "twitterDescription": "Please review the terms of service and risk disclosures before using Foresight."
+    },
+    "privacy": {
+      "title": "Foresight Privacy Policy - Data Collection & Usage",
+      "description": "Learn how Foresight collects, uses, and protects your personal information and usage data."
+    },
+    "prediction": {
+      "notFoundTitle": "Prediction Not Found",
+      "notFoundDescription": "The requested prediction market event could not be found.",
+      "fallbackTitle": "Foresight Prediction Event",
+      "fallbackDescription": "On-chain prediction market event. Trade on real-world events with a secure and transparent decentralized platform.",
+      "breadcrumbHome": "Home",
+      "breadcrumbTrending": "Trending",
+      "keywordsBase": ["prediction market", "blockchain", "crypto", "Foresight"]
+    }
   },
   "forum": {
     "title": "Community discussions",
@@ -486,7 +532,8 @@
     "signToConnect": "Sign to connect",
     "siweStatement": "Welcome to Foresight! Sign to connect your wallet.",
     "loggedIn": "Logged in",
-    "noEmail": "No email"
+    "noEmail": "No email",
+    "supabaseNotConfigured": "Supabase is not configured"
   },
   "wallet": {
     "connected": "Connected",
@@ -808,6 +855,9 @@
     "tryAgain": "Try again",
     "goHome": "Back to home",
     "contactSupport": "Contact support",
+    "debugInfo": "Debug info",
+    "noErrorMessage": "No error message",
+    "digestLabel": "Digest",
     "followActionFailed": "Follow action failed, please try again later",
     "componentLoadFailed": "Component failed to load",
     "errorOccurred": "An error occurred",

@@ -21,19 +21,18 @@ export function useOrderbookDepthPolling(args: {
   const [bestAsk, setBestAsk] = useState<string>("");
 
   // 构建 marketKey
-  const marketKey = market && predictionIdRaw 
-    ? buildMarketKey(market.chain_id, predictionIdRaw) 
-    : undefined;
+  const marketKey =
+    market && predictionIdRaw ? buildMarketKey(market.chain_id, predictionIdRaw) : undefined;
 
   // 🚀 使用 WebSocket 获取实时深度
   const { depth: wsDepth, status: wsStatus } = useOrderBookDepth(marketKey, tradeOutcome);
 
   // 当 WebSocket 数据更新时，同步到状态
   useEffect(() => {
-    if (wsStatus === "connected" && wsDepth.bids.length > 0 || wsDepth.asks.length > 0) {
+    if (wsStatus === "connected" && (wsDepth.bids.length > 0 || wsDepth.asks.length > 0)) {
       // WebSocket 数据格式: { price, qty, count }
-      setDepthBuy(wsDepth.bids.map(b => ({ price: b.price, qty: b.qty })));
-      setDepthSell(wsDepth.asks.map(a => ({ price: a.price, qty: a.qty })));
+      setDepthBuy(wsDepth.bids.map((b) => ({ price: b.price, qty: b.qty })));
+      setDepthSell(wsDepth.asks.map((a) => ({ price: a.price, qty: a.qty })));
       setBestBid(wsDepth.bids[0]?.price || "");
       setBestAsk(wsDepth.asks[0]?.price || "");
     }
@@ -67,7 +66,7 @@ export function useOrderbookDepthPolling(args: {
     // 轮询间隔：WebSocket 断开时 2 秒，否则 5 秒 (作为备份)
     const interval = wsStatus === "disconnected" ? 2000 : 5000;
     const timer = setInterval(fetchDepth, interval);
-    
+
     return () => clearInterval(timer);
   }, [market, tradeOutcome, predictionIdRaw, wsStatus]);
 

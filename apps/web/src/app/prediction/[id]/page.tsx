@@ -1,6 +1,12 @@
 import PredictionDetailClient from "./PredictionDetailClient";
 import { getClient } from "@/lib/supabase";
 import { Metadata, ResolvingMetadata } from "next";
+import zhCN from "../../../../messages/zh-CN.json";
+import en from "../../../../messages/en.json";
+import es from "../../../../messages/es.json";
+import ko from "../../../../messages/ko.json";
+import { defaultLocale, type Locale } from "../../../i18n-config";
+import { getServerLocale } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,14 +25,39 @@ async function getPrediction(id: string) {
   return data;
 }
 
-function buildPredictionJsonLd(id: string, prediction: any, relatedProposalId: number | null) {
+type SeoMessages = (typeof zhCN)["seo"]["prediction"];
+
+const seoMessages: Record<Locale, SeoMessages> = {
+  "zh-CN": zhCN.seo.prediction,
+  en: en.seo.prediction as SeoMessages,
+  es: es.seo.prediction as SeoMessages,
+  ko: ko.seo.prediction as SeoMessages,
+};
+
+const openGraphLocaleByLocale: Record<Locale, string> = {
+  "zh-CN": "zh_CN",
+  en: "en_US",
+  es: "es_ES",
+  ko: "ko_KR",
+};
+
+function buildPredictionJsonLd(
+  id: string,
+  prediction: any,
+  relatedProposalId: number | null,
+  options: {
+    locale: Locale;
+    breadcrumbHome: string;
+    breadcrumbTrending: string;
+    fallbackTitle: string;
+    fallbackDescription: string;
+  }
+) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
   const url = `${baseUrl}/prediction/${id}`;
-  const title = prediction.title || "Foresight 预测市场事件";
+  const title = prediction.title || options.fallbackTitle;
   const rawDescription =
-    prediction.description ||
-    prediction.criteria ||
-    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+    prediction.description || prediction.criteria || options.fallbackDescription;
   const description =
     rawDescription.length > 240 ? rawDescription.slice(0, 237) + "..." : rawDescription;
   const imageUrl = prediction.image_url || baseUrl + "/og-image.png";
@@ -44,7 +75,7 @@ function buildPredictionJsonLd(id: string, prediction: any, relatedProposalId: n
     description,
     url,
     image: imageUrl,
-    inLanguage: "zh-CN",
+    inLanguage: options.locale,
     eventStatus,
     ...(createdTime ? { startDate: createdTime } : {}),
     ...(deadline ? { endDate: deadline } : {}),
@@ -68,13 +99,13 @@ function buildPredictionJsonLd(id: string, prediction: any, relatedProposalId: n
           {
             "@type": "ListItem",
             position: 1,
-            name: "首页",
+            name: options.breadcrumbHome,
             item: baseUrl + "/",
           },
           {
             "@type": "ListItem",
             position: 2,
-            name: "热门预测",
+            name: options.breadcrumbTrending,
             item: baseUrl + "/trending",
           },
           {
@@ -117,6 +148,8 @@ export async function generateMetadata(
   { params, searchParams }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const seo = seoMessages[locale] || seoMessages[defaultLocale];
   const resolvedParams = await params;
   const id = resolvedParams.id;
 
@@ -124,28 +157,23 @@ export async function generateMetadata(
 
   if (!prediction) {
     return {
-      title: "Prediction Not Found",
-      description: "The requested prediction market event could not be found.",
+      title: seo.notFoundTitle,
+      description: seo.notFoundDescription,
     };
   }
 
   const previousImages = (await parent).openGraph?.images || [];
   const imageUrl = prediction.image_url || "/og-image.png";
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market";
-  const title = prediction.title || "Foresight 预测市场事件";
-  const rawDescription =
-    prediction.description ||
-    prediction.criteria ||
-    "链上预测市场事件，参与交易观点，基于区块链的去中心化预测市场平台。";
+  const title = prediction.title || seo.fallbackTitle;
+  const rawDescription = prediction.description || prediction.criteria || seo.fallbackDescription;
   const description =
     rawDescription.length > 160 ? rawDescription.slice(0, 157) + "..." : rawDescription;
-  const keywords: string[] = [];
+  const keywords: string[] = Array.isArray(seo.keywordsBase) ? [...seo.keywordsBase] : [];
 
   if (prediction.category) {
     keywords.push(String(prediction.category));
   }
-
-  keywords.push("预测市场", "prediction market", "区块链", "加密货币", "Foresight");
 
   const createdTime = (prediction.created_at as string | undefined) || undefined;
   const updatedTime = (prediction.updated_at as string | undefined) || createdTime || undefined;
@@ -164,7 +192,7 @@ export async function generateMetadata(
       url: `${baseUrl}/prediction/${id}`,
       images: [imageUrl, ...previousImages],
       type: "article",
-      locale: "zh_CN",
+      locale: openGraphLocaleByLocale[locale] || openGraphLocaleByLocale[defaultLocale],
       ...(createdTime ? { publishedTime: createdTime } : {}),
       ...(updatedTime ? { modifiedTime: updatedTime } : {}),
       ...(deadline ? { expirationTime: deadline } : {}),
@@ -179,6 +207,8 @@ export async function generateMetadata(
 }
 
 export default async function Page({ params }: Props) {
+  const locale = await getServerLocale();
+  const seo = seoMessages[locale] || seoMessages[defaultLocale];
   const resolvedParams = await params;
   const id = resolvedParams.id;
   const prediction = await getPrediction(id);
@@ -189,7 +219,15 @@ export default async function Page({ params }: Props) {
     relatedProposalId = await getRelatedProposalId(idNum);
   }
 
-  const jsonLd = prediction ? buildPredictionJsonLd(id, prediction, relatedProposalId) : null;
+  const jsonLd = prediction
+    ? buildPredictionJsonLd(id, prediction, relatedProposalId, {
+        locale,
+        breadcrumbHome: seo.breadcrumbHome,
+        breadcrumbTrending: seo.breadcrumbTrending,
+        fallbackTitle: seo.fallbackTitle,
+        fallbackDescription: seo.fallbackDescription,
+      })
+    : null;
 
   return (
     <>

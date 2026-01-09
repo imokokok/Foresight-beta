@@ -65,7 +65,7 @@ export async function createThread(payload: {
       criteriaPreview: payload.criteriaPreview,
     }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error("");
 }
 
 export async function createComment(input: {
@@ -86,7 +86,7 @@ export async function createComment(input: {
       parentId: input.parentId,
     }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error("");
 }
 
 export async function sendVote(input: {
@@ -100,7 +100,6 @@ export async function sendVote(input: {
     body: JSON.stringify(input),
   });
   if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || "Vote failed");
+    throw new Error("");
   }
 }

@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import React, { Suspense } from "react";
 import "./globals.css";
 import "./nprogress.css";
+import zhCN from "../../messages/zh-CN.json";
+import en from "../../messages/en.json";
+import es from "../../messages/es.json";
+import ko from "../../messages/ko.json";
+import { defaultLocale, type Locale } from "../i18n-config";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProfileProvider } from "@/contexts/UserProfileContext";
@@ -16,87 +21,103 @@ import WebVitalsReporter from "@/components/WebVitalsReporter";
 import { getServerLocale } from "@/lib/i18n-server";
 import { buildLanguageAlternates } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Foresight - 去中心化预测市场平台",
-    template: "%s | Foresight",
-  },
-  description:
-    "基于区块链的去中心化预测市场平台，参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market to trade on real-world events in a secure, transparent and fair way.",
-  keywords: [
-    "预测市场",
-    "区块链",
-    "Web3",
-    "DeFi",
-    "去中心化",
-    "Polygon",
-    "智能合约",
-    "加密货币",
-    "预言机",
-    "prediction market",
-    "crypto",
-    "blockchain",
-    "mercado de predicción",
-  ],
-  authors: [{ name: "Foresight Team" }],
-  creator: "Foresight",
-  publisher: "Foresight",
-  applicationName: "Foresight",
+type SeoMessages = (typeof zhCN)["seo"];
 
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market"),
+const seoMessages: Record<Locale, SeoMessages> = {
+  "zh-CN": zhCN.seo,
+  en: en.seo as SeoMessages,
+  es: es.seo as SeoMessages,
+  ko: ko.seo as SeoMessages,
+};
 
-  alternates: buildLanguageAlternates("/trending"),
+const openGraphLocaleByLocale: Record<Locale, string> = {
+  "zh-CN": "zh_CN",
+  en: "en_US",
+  es: "es_ES",
+  ko: "ko_KR",
+};
 
-  openGraph: {
-    type: "website",
-    locale: "zh_CN",
-    alternateLocale: ["en_US", "es_ES"],
-    url: "/trending",
-    title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
-    description:
-      "参与各种事件预测，赢取收益。安全、透明、公平。A blockchain-based decentralized prediction market.",
-    siteName: "Foresight",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Foresight Preview",
-      },
-    ],
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale();
+  const seo = seoMessages[locale] || seoMessages[defaultLocale];
+  const root = (seo as any).root || {};
 
-  twitter: {
-    card: "summary_large_image",
-    title: "Foresight - 去中心化预测市场 / Decentralized Prediction Market",
-    description: "参与各种事件预测，赢取收益。Trade on real-world events and earn rewards.",
-    images: ["/twitter-image.png"],
-    creator: "@ForesightMarket",
-  },
+  const titleDefault =
+    typeof root.titleDefault === "string"
+      ? root.titleDefault
+      : "Foresight - Decentralized Prediction Market";
+  const description =
+    typeof root.description === "string"
+      ? root.description
+      : "A decentralized prediction market to trade on real-world events in a secure, transparent and fair way.";
 
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+  const keywords = Array.isArray(root.keywords) ? (root.keywords as string[]) : [];
+  const openGraphTitle =
+    typeof root.openGraphTitle === "string" ? root.openGraphTitle : titleDefault;
+  const openGraphDescription =
+    typeof root.openGraphDescription === "string" ? root.openGraphDescription : description;
+  const twitterTitle = typeof root.twitterTitle === "string" ? root.twitterTitle : titleDefault;
+  const twitterDescription =
+    typeof root.twitterDescription === "string" ? root.twitterDescription : description;
+
+  return {
+    title: {
+      default: titleDefault,
+      template: "%s | Foresight",
+    },
+    description,
+    keywords,
+    authors: [{ name: "Foresight Team" }],
+    creator: "Foresight",
+    publisher: "Foresight",
+    applicationName: "Foresight",
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://foresight.market"),
+    alternates: buildLanguageAlternates("/trending"),
+    openGraph: {
+      type: "website",
+      locale: openGraphLocaleByLocale[locale] || openGraphLocaleByLocale[defaultLocale],
+      alternateLocale: ["en_US", "es_ES"],
+      url: "/trending",
+      title: openGraphTitle,
+      description: openGraphDescription,
+      siteName: "Foresight",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: "Foresight Preview",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: twitterTitle,
+      description: twitterDescription,
+      images: ["/twitter-image.png"],
+      creator: "@ForesightMarket",
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-
-  icons: {
-    icon: [{ url: "/favicon.ico" }, { url: "/icon.png", type: "image/png", sizes: "32x32" }],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
-  },
-
-  manifest: "/manifest.json",
-
-  verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
-  },
-};
+    icons: {
+      icon: [{ url: "/favicon.ico" }, { url: "/icon.png", type: "image/png", sizes: "32x32" }],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+    manifest: "/manifest.json",
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

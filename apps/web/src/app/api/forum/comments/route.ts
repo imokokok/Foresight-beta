@@ -94,23 +94,23 @@ export async function POST(req: NextRequest) {
     const content = String((body as { content?: unknown }).content || "");
     const rawWalletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
     if (!eventId || !threadId) {
-      return ApiResponses.invalidParameters("eventId、threadId 必填");
+      return ApiResponses.invalidParameters("eventId and threadId are required");
     }
     if (!content.trim()) {
-      return ApiResponses.invalidParameters("content 必填");
+      return ApiResponses.invalidParameters("content is required");
     }
     if (textLengthWithoutSpaces(content) < 2) {
-      return ApiResponses.invalidParameters("评论内容过短");
+      return ApiResponses.invalidParameters("Comment is too short");
     }
     const client = supabaseAdmin || getClient();
     if (!client) {
-      return ApiResponses.internalError("Supabase 未配置");
+      return ApiResponses.internalError("Supabase is not configured");
     }
 
     const sessAddr = await getSessionAddress(req);
     const walletAddress = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
-      return ApiResponses.unauthorized("未登录或会话失效");
+      return ApiResponses.unauthorized("Unauthorized or session expired");
     }
     if (rawWalletAddress && normalizeAddress(rawWalletAddress) !== walletAddress) {
       return ApiResponses.forbidden("walletAddress mismatch");
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     const ok = await isUnderCommentRateLimit(client, walletAddress);
     if (!ok) {
-      return ApiResponses.rateLimit("评论过于频繁，请稍后再试");
+      return ApiResponses.rateLimit("Too many comments, please try again later");
     }
     const { data, error } = await (client as any)
       .from("forum_comments")
@@ -133,12 +133,12 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (error) {
       logApiError("POST /api/forum/comments insert failed", error);
-      return ApiResponses.databaseError("创建失败", error.message);
+      return ApiResponses.databaseError("Failed to create comment", error.message);
     }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: any) {
     logApiError("POST /api/forum/comments unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("创建失败", detail);
+    return ApiResponses.internalError("Failed to create comment", detail);
   }
 }

@@ -1,6 +1,10 @@
 {
   "common": {
     "appName": "Foresight",
+    "brand": {
+      "taglinePrimary": "당신의 인사이트,",
+      "taglineSecondary": "세상의 포어사이트"
+    },
     "welcome": "환영합니다",
     "loading": "로딩 중...",
     "error": "오류",
@@ -73,6 +77,48 @@
     "myFollows": "내 팔로우",
     "backToTop": "맨 위로"
   },
+  "seo": {
+    "root": {
+      "titleDefault": "Foresight - 탈중앙화 예측 시장",
+      "description": "현실 세계의 이벤트를 안전하고 투명하며 공정하게 거래할 수 있는 탈중앙화 예측 시장입니다.",
+      "keywords": [
+        "예측 시장",
+        "암호화폐",
+        "블록체인",
+        "Web3",
+        "DeFi",
+        "Polygon",
+        "스마트 계약",
+        "오라클",
+        "prediction market"
+      ],
+      "openGraphTitle": "Foresight - 탈중앙화 예측 시장",
+      "openGraphDescription": "현실 세계의 이벤트를 안전하고 투명하며 공정하게 거래하세요.",
+      "twitterTitle": "Foresight - 탈중앙화 예측 시장",
+      "twitterDescription": "현실 세계의 이벤트를 거래하고 보상을 획득하세요."
+    },
+    "terms": {
+      "title": "Foresight 서비스 이용약관 - 계약 및 위험 고지",
+      "description": "Foresight 이용약관을 읽고 플랫폼 규칙, 자격 요건, 위험 고지 및 책임 제한을 확인하세요.",
+      "openGraphTitle": "Foresight 서비스 이용약관 - 계약 및 위험 고지",
+      "openGraphDescription": "Foresight 사용 전 확인해야 할 주요 조항(위험 고지, 책임 제한, 이용 규칙 등).",
+      "twitterTitle": "Foresight 서비스 이용약관 - 계약 및 위험 고지",
+      "twitterDescription": "Foresight 사용 전 서비스 이용약관과 위험 고지를 확인하세요."
+    },
+    "privacy": {
+      "title": "Foresight 개인정보처리방침 - 데이터 수집 및 이용",
+      "description": "Foresight가 개인정보와 이용 데이터를 수집, 사용, 보호하는 방식을 확인하세요."
+    },
+    "prediction": {
+      "notFoundTitle": "예측을 찾을 수 없습니다",
+      "notFoundDescription": "요청한 예측 시장 이벤트를 찾을 수 없습니다.",
+      "fallbackTitle": "Foresight 예측 이벤트",
+      "fallbackDescription": "온체인 예측 시장 이벤트. 안전하고 투명한 탈중앙화 플랫폼에서 현실 세계 이벤트를 거래하세요.",
+      "breadcrumbHome": "홈",
+      "breadcrumbTrending": "트렌딩",
+      "keywordsBase": ["예측 시장", "블록체인", "암호화폐", "Foresight"]
+    }
+  },
   "auth": {
     "login": "로그인",
     "logout": "로그아웃",
@@ -84,7 +130,8 @@
     "signToConnect": "서명하여 연결",
     "siweStatement": "Foresight에 오신 것을 환영합니다! 지갑을 연결하려면 서명하세요.",
     "loggedIn": "로그인됨",
-    "noEmail": "이메일 없음"
+    "noEmail": "이메일 없음",
+    "supabaseNotConfigured": "Supabase가 설정되지 않았습니다"
   },
   "wallet": {
     "connected": "연결됨",
@@ -1127,6 +1174,9 @@
     "tryAgain": "다시 시도",
     "goHome": "홈으로 돌아가기",
     "contactSupport": "지원팀 문의",
+    "debugInfo": "디버그 정보",
+    "noErrorMessage": "오류 메시지가 없습니다",
+    "digestLabel": "Digest",
     "followActionFailed": "팔로우 작업 실패, 나중에 다시 시도하세요",
     "componentLoadFailed": "컴포넌트 로드 실패",
     "errorOccurred": "오류가 발생했습니다",

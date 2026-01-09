@@ -6,15 +6,15 @@ import { safeJson } from "./http";
  */
 async function fetchDepthV2(marketKey: string, outcome: number) {
   if (!RELAYER_BASE) return null;
-  
+
   try {
     const url = `${RELAYER_BASE}/v2/depth?marketKey=${encodeURIComponent(marketKey)}&outcome=${outcome}&levels=20`;
-    const res = await fetch(url, { 
+    const res = await fetch(url, {
       next: { revalidate: 1 },
       signal: AbortSignal.timeout(3000),
     });
     const json = await safeJson(res);
-    
+
     if ((json as any).success && (json as any).data) {
       return {
         bids: (json as any).data.bids || [],
@@ -30,12 +30,7 @@ async function fetchDepthV2(marketKey: string, outcome: number) {
 /**
  * v1 API - 传统方式获取深度
  */
-async function fetchDepthV1(
-  contract: string,
-  chainId: number,
-  marketKey: string,
-  outcome: number
-) {
+async function fetchDepthV1(contract: string, chainId: number, marketKey: string, outcome: number) {
   const qBuy = `contract=${contract}&chainId=${chainId}&marketKey=${encodeURIComponent(
     marketKey
   )}&outcome=${outcome}&side=true&levels=10`;
@@ -91,7 +86,11 @@ export async function fetchUserOpenOrdersApi(
   if ((json as any).success && (json as any).data) {
     const rows = (json as any).data as any[];
     return rows.filter(
-      (row) => row && (row.status === "open" || row.status === "partially_filled")
+      (row) =>
+        row &&
+        (row.status === "open" ||
+          row.status === "filled_partial" ||
+          row.status === "partially_filled")
     );
   }
   return [];
@@ -148,7 +147,7 @@ export async function submitOrderV2(order: OrderSubmitInput): Promise<{
     });
 
     const json = await safeJson(res);
-    
+
     if ((json as any).success) {
       return {
         success: true,
@@ -174,7 +173,10 @@ export async function submitOrderV2(order: OrderSubmitInput): Promise<{
 /**
  * 🚀 v2 市场统计 - 获取最佳买卖价、成交量等
  */
-export async function fetchMarketStatsV2(marketKey: string, outcomeIndex: number): Promise<{
+export async function fetchMarketStatsV2(
+  marketKey: string,
+  outcomeIndex: number
+): Promise<{
   bestBid: string | null;
   bestAsk: string | null;
   spread: string | null;
@@ -216,7 +218,7 @@ export async function getWsInfo(): Promise<{
   try {
     const res = await fetch(`${RELAYER_BASE}/v2/ws-info`);
     const json = await safeJson(res);
-    
+
     if ((json as any).success && (json as any).data) {
       return (json as any).data;
     }

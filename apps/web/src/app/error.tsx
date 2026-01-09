@@ -60,11 +60,15 @@ export default function Error({
 
         {/* 强制显示错误详情以便调试 */}
         <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-left">
-          <p className="text-sm font-bold text-red-600 mb-2">Debug Info:</p>
+          <p className="text-sm font-bold text-red-600 mb-2">{tErrors("debugInfo")}</p>
           <p className="text-xs font-mono text-gray-700 break-all whitespace-pre-wrap">
-            {error.message || "No error message"}
+            {error.message || tErrors("noErrorMessage")}
           </p>
-          {error.digest && <p className="text-xs text-gray-500 mt-2">Digest: {error.digest}</p>}
+          {error.digest && (
+            <p className="text-xs text-gray-500 mt-2">
+              {tErrors("digestLabel")}: {error.digest}
+            </p>
+          )}
           <pre className="text-xs text-gray-500 mt-2 overflow-auto max-h-40">{error.stack}</pre>
         </div>
 

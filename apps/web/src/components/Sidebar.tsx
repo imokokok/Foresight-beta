@@ -185,8 +185,8 @@ export default function Sidebar() {
                   Foresight
                 </span>
                 <p className="text-[11px] font-medium leading-snug mt-0.5">
-                  <span className="text-purple-500">Your Insight,</span>
-                  <span className="text-gray-500 ml-0.5">The World&apos;s Foresight</span>
+                  <span className="text-purple-500">{tCommon("brand.taglinePrimary")}</span>
+                  <span className="text-gray-500 ml-0.5">{tCommon("brand.taglineSecondary")}</span>
                 </p>
               </div>
             </div>

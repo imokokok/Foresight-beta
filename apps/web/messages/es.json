@@ -1,6 +1,10 @@
 {
   "common": {
     "appName": "Foresight",
+    "brand": {
+      "taglinePrimary": "Tu visión,",
+      "taglineSecondary": "La previsión del mundo"
+    },
     "welcome": "Bienvenido",
     "loading": "Cargando...",
     "error": "Error",
@@ -72,6 +76,48 @@
     "admin": "Centro de administración",
     "myFollows": "Mis seguimientos",
     "backToTop": "Volver arriba"
+  },
+  "seo": {
+    "root": {
+      "titleDefault": "Foresight - Mercado de predicción descentralizado",
+      "description": "Un mercado de predicción descentralizado para operar con eventos del mundo real de forma segura, transparente y justa.",
+      "keywords": [
+        "mercado de predicción",
+        "cripto",
+        "blockchain",
+        "Web3",
+        "DeFi",
+        "Polygon",
+        "contrato inteligente",
+        "oráculo",
+        "prediction market"
+      ],
+      "openGraphTitle": "Foresight - Mercado de predicción descentralizado",
+      "openGraphDescription": "Opera con eventos del mundo real de forma segura, transparente y justa.",
+      "twitterTitle": "Foresight - Mercado de predicción descentralizado",
+      "twitterDescription": "Opera con eventos del mundo real y gana recompensas."
+    },
+    "terms": {
+      "title": "Términos de servicio de Foresight - Acuerdo y divulgación de riesgos",
+      "description": "Lee los términos de Foresight para conocer reglas de uso, requisitos, divulgación de riesgos y límites de responsabilidad.",
+      "openGraphTitle": "Términos de servicio de Foresight - Acuerdo y divulgación de riesgos",
+      "openGraphDescription": "Términos clave antes de usar Foresight, incluyendo riesgos, límites de responsabilidad y normas de uso.",
+      "twitterTitle": "Términos de servicio de Foresight - Acuerdo y divulgación de riesgos",
+      "twitterDescription": "Revisa los términos de servicio y la divulgación de riesgos antes de usar Foresight."
+    },
+    "privacy": {
+      "title": "Política de privacidad de Foresight - Recopilación y uso de datos",
+      "description": "Descubre cómo Foresight recopila, usa y protege tu información personal y datos de uso."
+    },
+    "prediction": {
+      "notFoundTitle": "Predicción no encontrada",
+      "notFoundDescription": "No se pudo encontrar el evento solicitado del mercado de predicción.",
+      "fallbackTitle": "Evento de predicción de Foresight",
+      "fallbackDescription": "Evento de mercado de predicción en cadena. Opera con eventos del mundo real en una plataforma descentralizada segura y transparente.",
+      "breadcrumbHome": "Inicio",
+      "breadcrumbTrending": "Tendencias",
+      "keywordsBase": ["mercado de predicción", "blockchain", "cripto", "Foresight"]
+    }
   },
   "forum": {
     "title": "Debates de la comunidad",
@@ -484,9 +530,10 @@
     "signMessage": "Firmar mensaje",
     "welcome": "Bienvenido a Foresight",
     "signToConnect": "Firma para conectar",
-    "siweStatement": "Bienvenido a Foresight, firma para conectar tu billetera.",
+    "siweStatement": "¡Bienvenido a Foresight! Firma para conectar tu billetera.",
     "loggedIn": "Sesión iniciada",
-    "noEmail": "Sin correo electrónico"
+    "noEmail": "Sin correo electrónico",
+    "supabaseNotConfigured": "Supabase no está configurado"
   },
   "wallet": {
     "connected": "Conectado",
@@ -808,6 +855,9 @@
     "tryAgain": "Intentar de nuevo",
     "goHome": "Ir al inicio",
     "contactSupport": "Contactar soporte",
+    "debugInfo": "Información de depuración",
+    "noErrorMessage": "Sin mensaje de error",
+    "digestLabel": "Digest",
     "followActionFailed": "La acción de seguir falló, inténtalo más tarde",
     "componentLoadFailed": "El componente no se pudo cargar",
     "errorOccurred": "Ocurrió un error",

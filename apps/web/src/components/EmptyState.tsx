@@ -18,19 +18,6 @@ interface EmptyStateProps {
  * 统一的空状态组件
  *
  * 提供一致的视觉体验和用户引导
- *
- * @example
- * ```tsx
- * <EmptyState
- *   icon={MessageSquare}
- *   title="暂无消息"
- *   description="快来开启讨论吧！这里将显示所有相关的聊天记录。"
- *   action={{
- *     label: "发送第一条消息",
- *     onClick: () => setInput("你好！")
- *   }}
- * />
- * ```
  */
 export default function EmptyState({
   icon: Icon,

@@ -536,7 +536,19 @@ export function usePredictionDetail() {
         }
       }
 
-      const salt = Math.floor(Math.random() * 1000000).toString();
+      const salt = (() => {
+        try {
+          const c = globalThis.crypto;
+          if (!c || typeof c.getRandomValues !== "function") {
+            return String(Date.now());
+          }
+          const arr = new Uint32Array(2);
+          c.getRandomValues(arr);
+          return ((BigInt(arr[0]) << 32n) | BigInt(arr[1])).toString();
+        } catch {
+          return String(Date.now());
+        }
+      })();
       const expiry = Math.floor(Date.now() / 1000) + 3600 * 24;
 
       const value = {

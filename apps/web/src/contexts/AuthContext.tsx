@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
+import { useTranslations } from "@/lib/i18n";
 
 interface AuthContextValue {
   user: { id: string; email: string | null; user_metadata?: any } | null;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthContextValue["user"]>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const tAuth = useTranslations("auth");
 
   const refreshSession = async () => {
     if (!supabase) return;
@@ -89,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmailOtp = async (email: string) => {
     const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
-    if (!supabase) throw new Error("Supabase 未配置");
+    if (!supabase) throw new Error(tAuth("supabaseNotConfigured"));
     const { error } = await (supabase as any).auth.signInWithOtp({
       email,
       options: {
@@ -113,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifyEmailOtp = async (email: string, token: string) => {
     setError(null);
     try {
-      if (!supabase) throw new Error("Supabase 未配置");
+      if (!supabase) throw new Error(tAuth("supabaseNotConfigured"));
       const { data, error } = await (supabase as any).auth.verifyOtp({
         type: "email",
         email,
