@@ -37,7 +37,7 @@ INSERT INTO public.markets_map (event_id, chain_id, market, collateral_token, ti
 VALUES (
   1, 
   80002, 
-  '0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02', 
+  '0x8b2aE97451d5773319b9d3480A71b010a544A10b', 
   '0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf', 
   1,
   'open'

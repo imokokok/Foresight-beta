@@ -84,6 +84,18 @@ export async function POST(req: NextRequest) {
     }
 
     rec.sentAtList = rec.sentAtList || [];
+    const rateWindowMs = 60 * 60_000;
+    const minIntervalMs = 60_000;
+    const maxInWindow = 5;
+    rec.sentAtList = rec.sentAtList.filter((t) => typeof t === "number" && now - t < rateWindowMs);
+    const lastSentAt = rec.sentAtList.length ? rec.sentAtList[rec.sentAtList.length - 1] : 0;
+    if (lastSentAt && now - lastSentAt < minIntervalMs) {
+      const waitSec = Math.ceil((minIntervalMs - (now - lastSentAt)) / 1000);
+      return ApiResponses.rateLimit(`请求过于频繁，请 ${waitSec} 秒后重试`);
+    }
+    if (rec.sentAtList.length >= maxInWindow) {
+      return ApiResponses.rateLimit("请求过于频繁，请稍后重试");
+    }
 
     const code = genCode();
     rec.code = code;
@@ -135,7 +147,7 @@ export async function POST(req: NextRequest) {
         return successResponse(
           {
             codePreview: code,
-            expiresInSec: 300,
+            expiresInSec: 900,
           },
           "开发环境：邮件发送失败，已直接返回验证码"
         );

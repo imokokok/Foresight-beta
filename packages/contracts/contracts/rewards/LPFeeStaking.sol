@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -37,10 +38,8 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
     function stake(uint256 amount) external nonReentrant {
         if (amount == 0) return;
         _updateReward(msg.sender);
-        unchecked {
-            totalSupply += amount;
-            balanceOf[msg.sender] += amount;
-        }
+        totalSupply += amount;
+        balanceOf[msg.sender] += amount;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
@@ -50,10 +49,8 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         _updateReward(msg.sender);
         uint256 bal = balanceOf[msg.sender];
         if (amount > bal) amount = bal;
-        unchecked {
-            totalSupply -= amount;
-            balanceOf[msg.sender] = bal - amount;
-        }
+        totalSupply -= amount;
+        balanceOf[msg.sender] = bal - amount;
         stakingToken.safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
     }
@@ -63,9 +60,7 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         uint256 reward = rewards[msg.sender];
         if (reward == 0) return;
         rewards[msg.sender] = 0;
-        unchecked {
-            accountedRewardBalance -= reward;
-        }
+        accountedRewardBalance -= reward;
         rewardToken.safeTransfer(msg.sender, reward);
         emit RewardPaid(msg.sender, reward);
     }
@@ -84,9 +79,7 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         uint256 pending = rewards[account];
         uint256 paid = userRewardPerTokenPaid[account];
         uint256 bal = balanceOf[account];
-        unchecked {
-            return pending + ((bal * (rpt - paid)) / 1e18);
-        }
+        return pending + Math.mulDiv(bal, rpt - paid, 1e18);
     }
 
     function recoverERC20(IERC20 token, address to, uint256 amount) external onlyRole(ADMIN_ROLE) {
@@ -102,9 +95,7 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         if (rpt != paid) {
             uint256 bal = balanceOf[account];
             uint256 pending = rewards[account];
-            unchecked {
-                rewards[account] = pending + ((bal * (rpt - paid)) / 1e18);
-            }
+            rewards[account] = pending + Math.mulDiv(bal, rpt - paid, 1e18);
             userRewardPerTokenPaid[account] = rpt;
         }
     }
@@ -116,7 +107,7 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         uint256 base = accountedRewardBalance;
         if (current <= base) return rewardPerTokenStored;
         uint256 diff = current - base;
-        uint256 increment = (diff * 1e18) / supply;
+        uint256 increment = Math.mulDiv(diff, 1e18, supply);
         return rewardPerTokenStored + increment;
     }
 
@@ -133,12 +124,11 @@ contract LPFeeStaking is AccessControl, ReentrancyGuard {
         if (supply == 0) return;
 
         uint256 diff = current - base;
-        uint256 increment = (diff * 1e18) / supply;
+        uint256 increment = Math.mulDiv(diff, 1e18, supply);
         if (increment == 0) return;
 
         rewardPerTokenStored += increment;
-        uint256 distributed = (increment * supply) / 1e18;
+        uint256 distributed = Math.mulDiv(increment, supply, 1e18);
         accountedRewardBalance = base + distributed;
     }
 }
-

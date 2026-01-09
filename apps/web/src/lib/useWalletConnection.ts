@@ -83,10 +83,16 @@ export function useWalletConnection(params: Params = {}) {
 
   const handleChainChanged = useCallback((chainId: string | number) => {
     const raw = String(chainId);
-    const hex = raw.startsWith("0x") ? raw : "0x" + Number(raw || 0).toString(16);
+    let hex = "";
+    if (raw.startsWith("0x")) {
+      if (/^0x[0-9a-fA-F]+$/.test(raw)) hex = raw.toLowerCase();
+    } else {
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) hex = `0x${Math.floor(n).toString(16)}`;
+    }
     setWalletState((prev) => ({
       ...prev,
-      chainId: hex,
+      chainId: hex || null,
     }));
   }, []);
 

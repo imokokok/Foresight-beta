@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,13 +51,27 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get("days") || "7");
-    const metricName = searchParams.get("metric");
+    const daysRaw = Number(searchParams.get("days") || 7);
+    const days = Math.max(1, Math.min(30, Number.isFinite(daysRaw) ? Math.floor(daysRaw) : 7));
+    const metricNameRaw = String(searchParams.get("metric") || "").trim();
+    const metricName =
+      metricNameRaw && /^[a-zA-Z0-9._:-]{1,64}$/.test(metricNameRaw) ? metricNameRaw : "";
 
     const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Database not configured");
     }
+
+    const viewer = normalizeAddress(await getSessionAddress(request));
+    if (!viewer) return ApiResponses.unauthorized();
+    const { data: prof, error: profErr } = await (client as any)
+      .from("user_profiles")
+      .select("is_admin")
+      .eq("wallet_address", viewer)
+      .maybeSingle();
+    if (profErr) return ApiResponses.databaseError("Query failed", profErr.message);
+    const viewerIsAdmin = !!prof?.is_admin || isAdminAddress(viewer);
+    if (!viewerIsAdmin) return ApiResponses.forbidden("无权限");
 
     // 计算时间范围
     const startDate = new Date();

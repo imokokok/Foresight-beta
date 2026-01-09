@@ -28,20 +28,34 @@ export async function GET(req: NextRequest) {
     const outcome = url.searchParams.get("outcome");
     const side = url.searchParams.get("side"); // 'true' for buy, 'false' for sell
     const marketKey = url.searchParams.get("marketKey") || url.searchParams.get("market_key");
-    const levels = Number(url.searchParams.get("levels") || 10);
+    const levelsRaw = url.searchParams.get("levels");
+    const levelsParsed = levelsRaw == null ? 10 : Number(levelsRaw);
+    const levels = Number.isFinite(levelsParsed) ? Math.max(1, Math.min(50, levelsParsed)) : 10;
 
     if (!contract || !chainId || outcome === null || side === null) {
       return ApiResponses.invalidParameters("Missing parameters");
     }
+
+    const chainIdNum = Number(chainId);
+    if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
+      return ApiResponses.badRequest("Invalid chainId");
+    }
+
+    const outcomeNum = Number(outcome);
+    if (!Number.isFinite(outcomeNum) || outcomeNum < 0) {
+      return ApiResponses.badRequest("Invalid outcome");
+    }
+
+    const sideNorm = normalizeDepthSideForRelayer(side);
 
     const relayerBase = getRelayerBaseUrl();
     if (relayerBase) {
       try {
         const relayerUrl = new URL("/orderbook/depth", relayerBase);
         relayerUrl.searchParams.set("contract", contract);
-        relayerUrl.searchParams.set("chainId", chainId);
-        relayerUrl.searchParams.set("outcome", outcome);
-        relayerUrl.searchParams.set("side", normalizeDepthSideForRelayer(side));
+        relayerUrl.searchParams.set("chainId", String(chainIdNum));
+        relayerUrl.searchParams.set("outcome", String(outcomeNum));
+        relayerUrl.searchParams.set("side", sideNorm);
         relayerUrl.searchParams.set("levels", String(levels));
         if (marketKey) relayerUrl.searchParams.set("marketKey", marketKey);
 
@@ -64,14 +78,14 @@ export async function GET(req: NextRequest) {
       return ApiResponses.internalError("Supabase not configured");
     }
 
-    const isBuy = side === "true";
+    const isBuy = sideNorm === "buy";
 
     let query = client
       .from("orders")
       .select("price, remaining")
       .eq("verifying_contract", contract.toLowerCase())
-      .eq("chain_id", Number(chainId))
-      .eq("outcome_index", Number(outcome))
+      .eq("chain_id", chainIdNum)
+      .eq("outcome_index", outcomeNum)
       .eq("is_buy", isBuy)
       .in("status", ["open", "filled_partial"]);
 

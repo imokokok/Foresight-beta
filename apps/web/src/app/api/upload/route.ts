@@ -3,22 +3,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { ApiResponses } from "@/lib/apiResponse";
+import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+
+function isEvmAddress(value: string) {
+  return /^0x[0-9a-fA-F]{40}$/.test(value);
+}
+
+function guessFileExt(file: File) {
+  const rawName = String(file?.name || "");
+  const nameExt = rawName.includes(".") ? rawName.split(".").pop() || "" : "";
+  const ext = nameExt.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (ext) return ext;
+  const byMime: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+  return byMime[String(file?.type || "").toLowerCase()] || "bin";
+}
 
 export async function POST(request: NextRequest) {
   try {
     // 验证用户是否已登录（钱包地址）
     const formData = await request.formData();
-    const walletAddress = formData.get("walletAddress") as string;
-    const file = formData.get("file") as File;
-
-    if (!walletAddress) {
+    const sessAddrRaw = await getSessionAddress(request);
+    const sessAddr = normalizeAddress(String(sessAddrRaw || ""));
+    if (!sessAddr) {
       return ApiResponses.unauthorized("请先连接钱包登录");
     }
+    if (!isEvmAddress(sessAddr)) {
+      return ApiResponses.unauthorized("无效的钱包地址格式");
+    }
 
-    // 验证钱包地址格式
-    const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    if (!ethAddressRegex.test(walletAddress)) {
-      return ApiResponses.invalidParameters("无效的钱包地址格式");
+    const walletAddressRaw = String(formData.get("walletAddress") || "");
+    const walletAddress = walletAddressRaw ? normalizeAddress(walletAddressRaw) : "";
+    const file = formData.get("file") as File;
+
+    if (walletAddress && walletAddress !== sessAddr) {
+      return ApiResponses.forbidden("walletAddress mismatch");
     }
 
     // 验证文件
@@ -40,8 +64,8 @@ export async function POST(request: NextRequest) {
 
     // 生成唯一的文件名
     const timestamp = Date.now();
-    const fileExtension = file.name.split(".").pop();
-    const fileName = `predictions/${walletAddress}/${timestamp}.${fileExtension}`;
+    const fileExtension = guessFileExt(file);
+    const fileName = `predictions/${sessAddr}/${timestamp}.${fileExtension}`;
 
     // 将文件转换为Buffer
     const arrayBuffer = await file.arrayBuffer();

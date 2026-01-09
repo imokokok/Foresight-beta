@@ -14,6 +14,9 @@ contract ManualOracle is IOracle, AccessControl {
 
     event OutcomeSet(uint256 outcome);
 
+    error OutcomeAlreadySet();
+    error OutcomeNotSet();
+
     constructor(address reporter) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(REPORTER_ROLE, reporter);
@@ -23,7 +26,7 @@ contract ManualOracle is IOracle, AccessControl {
     /// @notice Sets the outcome of the market.
     /// @param outcome The outcome to set.
     function setOutcome(uint256 outcome) external onlyRole(REPORTER_ROLE) {
-        require(!_isSet, "outcome already set");
+        if (_isSet) revert OutcomeAlreadySet();
         _outcome = outcome;
         _isSet = true;
         emit OutcomeSet(outcome);
@@ -32,7 +35,7 @@ contract ManualOracle is IOracle, AccessControl {
     /// @notice Returns the outcome of the market.
     /// @return The outcome of the market.
     function getOutcome(bytes32) external view override returns (uint256) {
-        require(_isSet, "outcome not set");
+        if (!_isSet) revert OutcomeNotSet();
         return _outcome;
     }
 }

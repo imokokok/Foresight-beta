@@ -343,7 +343,7 @@ export async function handleUserFollowsGet(req: NextRequest) {
   try {
     const client = getClient();
     if (!client) {
-      return successResponse<UserFollowsEventsResponse>({ follows: [], total: 0 });
+      return ApiResponses.internalError("Supabase not configured");
     }
 
     const { searchParams } = new URL(req.url);
@@ -358,7 +358,8 @@ export async function handleUserFollowsGet(req: NextRequest) {
       .eq("user_id", address);
 
     if (followsError) {
-      return successResponse<UserFollowsEventsResponse>({ follows: [], total: 0 });
+      logApiError("GET /api/user-follows event_follows query failed", followsError);
+      return ApiResponses.databaseError("Failed to fetch follows", followsError.message);
     }
 
     const followedEventIds = (rawFollowedEventIds || []) as Array<{ event_id: number }>;
@@ -379,7 +380,8 @@ export async function handleUserFollowsGet(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (eventsError) {
-      return successResponse<UserFollowsEventsResponse>({ follows: [], total: 0 });
+      logApiError("GET /api/user-follows predictions query failed", eventsError);
+      return ApiResponses.databaseError("Failed to fetch followed events", eventsError.message);
     }
 
     const eventsData = (rawEventsData || []) as Array<

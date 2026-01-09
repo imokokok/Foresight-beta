@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
     if (!rec) {
       return ApiResponses.invalidParameters("验证码未发送或已失效");
     }
+    if (rec.address && rec.address !== walletAddress) {
+      return ApiResponses.unauthorized("未认证或会话地址不匹配");
+    }
     if (rec.lockUntil && now < rec.lockUntil) {
       const waitMin = Math.ceil((rec.lockUntil - now) / 60000);
       return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
@@ -53,30 +56,34 @@ export async function POST(req: NextRequest) {
 
     // 通过验证：绑定邮箱到钱包地址
     const client = supabaseAdmin as any;
-    if (client) {
-      const { data: existing } = await client
+    if (!client) return ApiResponses.internalError("Supabase not configured");
+    const { data: existing, error: existingErr } = await client
+      .from("user_profiles")
+      .select("wallet_address, email")
+      .eq("wallet_address", walletAddress)
+      .maybeSingle();
+    if (existingErr) {
+      return ApiResponses.databaseError("Failed to query profile", existingErr.message);
+    }
+    if (!existing) {
+      const { error: insertErr } = await client.from("user_profiles").insert({
+        wallet_address: walletAddress,
+        email,
+      } as Database["public"]["Tables"]["user_profiles"]["Insert"]);
+      if (insertErr) {
+        return ApiResponses.databaseError("Failed to bind email", insertErr.message);
+      }
+    } else {
+      const { error: updateErr } = await client
         .from("user_profiles")
-        .select("wallet_address, email")
-        .eq("wallet_address", walletAddress)
-        .maybeSingle();
-      if (!existing) {
-        await client.from("user_profiles").insert({
-          wallet_address: walletAddress,
-          email,
-        } as Database["public"]["Tables"]["user_profiles"]["Insert"]);
-      } else {
-        await client
-          .from("user_profiles")
-          .update({ email } as Database["public"]["Tables"]["user_profiles"]["Update"])
-          .eq("wallet_address", walletAddress);
+        .update({ email } as Database["public"]["Tables"]["user_profiles"]["Update"])
+        .eq("wallet_address", walletAddress);
+      if (updateErr) {
+        return ApiResponses.databaseError("Failed to bind email", updateErr.message);
       }
     }
 
     // 审计记录（内存）：时间戳与 IP
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
-    console.log(
-      `[email-otp] verified email=${email} addr=${walletAddress} ip=${ip} at=${new Date().toISOString()}`
-    );
     try {
       logs.push({
         email,

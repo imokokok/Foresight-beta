@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
-import { logApiError } from "@/lib/serverUtils";
+import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
 function toNum(v: unknown): number | null {
@@ -84,7 +84,7 @@ async function isUnderCommentRateLimit(client: any, walletAddress: string): Prom
 }
 
 // POST /api/forum/comments  body: { eventId, threadId, content, walletAddress, parentId? }
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await parseBody(req);
     const eventId = toNum((body as { eventId?: unknown }).eventId);
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     const parentIdRaw = (body as { parentId?: unknown }).parentId;
     const parentId = parentIdRaw == null ? null : toNum(parentIdRaw);
     const content = String((body as { content?: unknown }).content || "");
-    const walletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
+    const rawWalletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
     if (!eventId || !threadId) {
       return ApiResponses.invalidParameters("eventId、threadId 必填");
     }
@@ -106,6 +106,16 @@ export async function POST(req: Request) {
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
+
+    const sessAddr = await getSessionAddress(req);
+    const walletAddress = normalizeAddress(String(sessAddr || ""));
+    if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
+      return ApiResponses.unauthorized("未登录或会话失效");
+    }
+    if (rawWalletAddress && normalizeAddress(rawWalletAddress) !== walletAddress) {
+      return ApiResponses.forbidden("walletAddress mismatch");
+    }
+
     const ok = await isUnderCommentRateLimit(client, walletAddress);
     if (!ok) {
       return ApiResponses.rateLimit("评论过于频繁，请稍后再试");
@@ -116,7 +126,7 @@ export async function POST(req: Request) {
         event_id: eventId,
         thread_id: threadId,
         content,
-        user_id: walletAddress || "guest",
+        user_id: walletAddress,
         parent_id: parentId,
       })
       .select()

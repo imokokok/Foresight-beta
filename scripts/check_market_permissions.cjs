@@ -4,7 +4,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const marketAddr = "0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02";
+  const marketAddr = process.env.CLOB_MARKET_ADDRESS || "0x8b2aE97451d5773319b9d3480A71b010a544A10b";
   const [signer] = await hre.ethers.getSigners();
   const signerAddr = await signer.getAddress();
   console.log("Checking permissions for market:", marketAddr);

@@ -69,9 +69,11 @@ export async function POST(req: NextRequest) {
     rawBody && typeof rawBody === "object"
       ? (rawBody as { walletAddress?: unknown; isReviewer?: unknown })
       : {};
-  const walletAddress = typeof body.walletAddress === "string" ? body.walletAddress.trim() : "";
+  const walletAddress = normalizeAddress(
+    typeof body.walletAddress === "string" ? body.walletAddress.trim() : ""
+  );
   const isReviewer = body.isReviewer === true;
-  if (!walletAddress) {
+  if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
     return ApiResponses.badRequest("walletAddress 必填");
   }
   const { error } = await client

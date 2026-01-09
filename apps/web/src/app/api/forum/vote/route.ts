@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
 function toNum(v: any): number | null {
   const n = Number(v);
@@ -8,18 +9,6 @@ function toNum(v: any): number | null {
 }
 
 // POST /api/forum/vote  body: { type: 'thread'|'comment', id: number, dir: 'up'|'down' }
-function getSessionAddressFromCookie(req: NextRequest): string | null {
-  try {
-    const raw = req.cookies.get("fs_session")?.value || "";
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    const addr = String(obj?.address || "").toLowerCase();
-    return /^0x[a-fA-F0-9]{40}$/.test(addr) ? addr : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json().catch(() => ({}))) as any;
@@ -27,8 +16,8 @@ export async function POST(req: NextRequest) {
     const dir = body?.dir === "down" ? "down" : "up";
     const id = toNum(body?.id);
     if (!id) return ApiResponses.badRequest("id 必填");
-    const userAddr = getSessionAddressFromCookie(req);
-    if (!userAddr) return ApiResponses.unauthorized("未登录或会话失效");
+    const userAddr = normalizeAddress(await getSessionAddress(req));
+    if (!/^0x[a-f0-9]{40}$/.test(userAddr)) return ApiResponses.unauthorized("未登录或会话失效");
 
     // 内容存在性与事件ID解析
     let eventId: number | null = null;

@@ -54,6 +54,9 @@ export async function POST(req: NextRequest) {
     if (!ethers.isAddress(vc)) {
       return ApiResponses.badRequest("Invalid verifyingContract");
     }
+    if (!ethers.isAddress(String(maker))) {
+      return ApiResponses.badRequest("Invalid maker");
+    }
 
     const domain = {
       name: "Foresight Market",
@@ -67,8 +70,12 @@ export async function POST(req: NextRequest) {
         { name: "salt", type: "uint256" },
       ],
     };
-    const recoveredAddress = ethers.verifyTypedData(domain, types, { maker, salt }, signature);
-    if (recoveredAddress.toLowerCase() !== maker.toLowerCase()) {
+    try {
+      const recoveredAddress = ethers.verifyTypedData(domain, types, { maker, salt }, signature);
+      if (recoveredAddress.toLowerCase() !== String(maker).toLowerCase()) {
+        return ApiResponses.invalidSignature("Invalid signature");
+      }
+    } catch {
       return ApiResponses.invalidSignature("Invalid signature");
     }
 

@@ -32,10 +32,31 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 
-    if (!query || query.trim().length < 2) {
+    const trimmed = String(query || "").trim();
+    if (!trimmed || trimmed.length < 2) {
       return NextResponse.json(
         {
           error: "Search keyword must be at least 2 characters",
+          results: [],
+          total: 0,
+        },
+        { status: 400 }
+      );
+    }
+    if (trimmed.length > 64) {
+      return NextResponse.json(
+        {
+          error: "Search keyword is too long",
+          results: [],
+          total: 0,
+        },
+        { status: 400 }
+      );
+    }
+    if (/[(),]/.test(trimmed)) {
+      return NextResponse.json(
+        {
+          error: "Search keyword contains invalid characters",
           results: [],
           total: 0,
         },
@@ -55,7 +76,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const trimmed = query.trim();
     const searchTerm = `%${trimmed}%`;
 
     const [predictionsRes, proposalsRes, usersRes] = await Promise.all([
@@ -77,7 +97,7 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: false }),
       supabase
         .from("user_profiles")
-        .select("wallet_address, username, email")
+        .select("wallet_address, username")
         .or(`username.ilike.${searchTerm},wallet_address.ilike.${searchTerm}`)
         .limit(10),
     ]);
@@ -94,7 +114,7 @@ export async function GET(request: NextRequest) {
     };
     type UserRow = Pick<
       Database["public"]["Tables"]["user_profiles"]["Row"],
-      "wallet_address" | "username" | "email"
+      "wallet_address" | "username"
     >;
 
     const { data: predictions, error: predictionsError } = predictionsRes as {
@@ -141,7 +161,7 @@ export async function GET(request: NextRequest) {
     const userResults = (users || []).map((u) => ({
       id: u.wallet_address,
       title: u.username || u.wallet_address,
-      description: u.email || u.wallet_address,
+      description: u.wallet_address,
       category: "User",
       type: "user" as const,
     }));
@@ -196,7 +216,14 @@ export async function POST(request: NextRequest) {
       query?: string;
     };
 
-    if (!query || query.trim().length < 2) {
+    const trimmed = String(query || "").trim();
+    if (!trimmed || trimmed.length < 2) {
+      return NextResponse.json({ suggestions: [] });
+    }
+    if (trimmed.length > 64) {
+      return NextResponse.json({ suggestions: [] });
+    }
+    if (/[(),]/.test(trimmed)) {
       return NextResponse.json({ suggestions: [] });
     }
 
@@ -206,7 +233,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 只返回标题作为建议
-    const searchTerm = `%${query.trim()}%`;
+    const searchTerm = `%${trimmed}%`;
     type TitleOnly = Pick<Database["public"]["Tables"]["predictions"]["Row"], "title">;
 
     const { data } = (await supabase

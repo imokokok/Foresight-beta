@@ -1,8 +1,13 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "your-secret-key-change-in-production"
-);
+function resolveJwtSecret(): Uint8Array {
+  const raw = (process.env.JWT_SECRET || "").trim();
+  if (raw) return new TextEncoder().encode(raw);
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing JWT_SECRET");
+  }
+  return new TextEncoder().encode("your-secret-key-change-in-production");
+}
 
 const JWT_ISSUER = "foresight";
 const JWT_AUDIENCE = "foresight-users";
@@ -37,7 +42,7 @@ export async function createToken(
     .setAudience(JWT_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${expiresIn}s`)
-    .sign(JWT_SECRET);
+    .sign(resolveJwtSecret());
 
   return token;
 }
@@ -49,7 +54,7 @@ export async function createToken(
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
+    const { payload } = await jwtVerify(token, resolveJwtSecret(), {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     });

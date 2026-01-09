@@ -1,0 +1,35 @@
+{
+  "network": "polygonAmoy",
+  "chainId": 80002,
+  "deployer": "0x377f4bB22F0eBd9238C1A30A8872fd00fB0B6F43",
+  "collateral": "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf",
+  "outcome1155": "0x11A5daf63ad1d4b59E0aC91D4EA25891B94E5394",
+  "defaultOracle": "0xe2289fc81Bc0278f86d8077A95A0641A242Db918",
+  "marketFactory": "0xc339B117E1d0a64d206013fDFCC20a2a361CD423",
+  "templates": {
+    "offchainBinary": "0xEd7C2e416E3d1c873B8D71846D823AA988EB1e27",
+    "offchainMulti8": "0x4E7A2322B9cCAfC17A8eF889690338E902dbE2a2",
+    "templateIds": {
+      "binary": "0x5fdbce0ae70d376c2a0a6198d7fe90f9889a8fb71c39f40f84c862235ee610d5",
+      "multi": "0x0edd9a67d2832c4a7e7bb63ca0c15b881ea41bf3434b9f748d786a0ddaae5870"
+    }
+  },
+  "markets": {
+    "binary": "0x8b2aE97451d5773319b9d3480A71b010a544A10b",
+    "multi": "0x7785D4f9832252faE8b0fF846a9a3A9Ae1b6E2D0",
+    "multiOutcomeCount": 3
+  },
+  "fee": {
+    "totalFeeBps": 80,
+    "protocolFeeTo": "0x377f4bB22F0eBd9238C1A30A8872fd00fB0B6F43",
+    "lpFeeBps": 40,
+    "lpFeeTo": "0x377f4bB22F0eBd9238C1A30A8872fd00fB0B6F43"
+  },
+  "allowlist": {
+    "enforceAllowlist": true,
+    "requireContract": true,
+    "collateralAllowed": ["0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf"],
+    "oracleAllowed": ["0xe2289fc81Bc0278f86d8077A95A0641A242Db918"]
+  },
+  "timestamp": "2026-01-09T10:03:42.446Z"
+}

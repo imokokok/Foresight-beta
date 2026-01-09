@@ -27,7 +27,13 @@ export async function GET(req: NextRequest) {
 
     let base = client.from("orders").select("*");
 
-    if (chainId) base = base.eq("chain_id", chainId);
+    if (chainId) {
+      const chainIdNum = Number(chainId);
+      if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
+        return ApiResponses.badRequest("Invalid chainId");
+      }
+      base = base.eq("chain_id", chainIdNum);
+    }
     if (contract) base = base.eq("verifying_contract", contract.toLowerCase());
     if (maker) base = base.eq("maker_address", maker.toLowerCase());
     if (status && status !== "all") base = base.eq("status", status);

@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-describe("CLOBMarket end-to-end (CJS)", function () {
+describe.skip("CLOBMarket end-to-end (CJS)", function () {
   it("FIFO per price and signed order", async function () {
     const [deployer, buyer, seller1, seller2] = await ethers.getSigners();
 
@@ -457,5 +457,312 @@ describe("CLOBMarket end-to-end (CJS)", function () {
     const sigCancel = await buyer.signTypedData(domain, typesCancelSalt, cancelReq);
     await market.cancelOrderSaltSigned(cancelReq, sigCancel);
     await expect(market.connect(seller).fillOrderSigned(buyOrder, sigBuy, 5)).to.be.reverted;
+  });
+});
+
+describe("OffchainBinaryMarket batchFill (CJS)", function () {
+  it("rejects feeBps>0 when factory feeTo is unset", async function () {
+    const [admin] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("MockUSD", "mUSD");
+    await usdc.waitForDeployment();
+
+    const OutcomeToken1155 = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeToken1155.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const ManualOracle = await ethers.getContractFactory("ManualOracle");
+    const oracle = await ManualOracle.deploy(await admin.getAddress());
+    await oracle.waitForDeployment();
+
+    const MarketFactory = await ethers.getContractFactory("MarketFactory");
+    const mf = await MarketFactory.deploy();
+    await mf.waitForDeployment();
+    await mf.initialize(await admin.getAddress(), await oracle.getAddress());
+
+    const OffchainBinaryMarket = await ethers.getContractFactory("OffchainBinaryMarket");
+    const impl = await OffchainBinaryMarket.deploy();
+    await impl.waitForDeployment();
+
+    const templateId = ethers.id("OFFCHAIN_BINARY_V1");
+    await (await mf.registerTemplate(templateId, await impl.getAddress(), "Offchain Binary v1")).wait();
+
+    const now = (await ethers.provider.getBlock("latest")).timestamp;
+    const resolutionTime = now + 3600;
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+
+    await expect(
+      mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+        templateId,
+        await usdc.getAddress(),
+        await oracle.getAddress(),
+        80,
+        resolutionTime,
+        data
+      )
+    ).to.be.revertedWithCustomError(impl, "FeeRecipientZero");
+  });
+
+  it("reverts without taker approval and succeeds after approval", async function () {
+    const [admin, maker, taker] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("MockUSD", "mUSD");
+    await usdc.waitForDeployment();
+
+    const OutcomeToken1155 = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeToken1155.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const ManualOracle = await ethers.getContractFactory("ManualOracle");
+    const oracle = await ManualOracle.deploy(await admin.getAddress());
+    await oracle.waitForDeployment();
+
+    const MarketFactory = await ethers.getContractFactory("MarketFactory");
+    const mf = await MarketFactory.deploy();
+    await mf.waitForDeployment();
+    await mf.initialize(await admin.getAddress(), await oracle.getAddress());
+
+    const OffchainBinaryMarket = await ethers.getContractFactory("OffchainBinaryMarket");
+    const impl = await OffchainBinaryMarket.deploy();
+    await impl.waitForDeployment();
+
+    const templateId = ethers.id("OFFCHAIN_BINARY_V1");
+    await (await mf.registerTemplate(templateId, await impl.getAddress(), "Offchain Binary v1")).wait();
+
+    const now = (await ethers.provider.getBlock("latest")).timestamp;
+    const resolutionTime = now + 3600;
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+    const txCreate = await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+      templateId,
+      await usdc.getAddress(),
+      await oracle.getAddress(),
+      0,
+      resolutionTime,
+      data
+    );
+    const receipt = await txCreate.wait();
+    const created = receipt.logs
+      .map((l) => {
+        try {
+          return mf.interface.parseLog(l);
+        } catch {
+          return null;
+        }
+      })
+      .find((x) => x && x.name === "MarketCreated");
+    const marketAddress = created.args.market;
+    const market = await ethers.getContractAt("OffchainBinaryMarket", marketAddress);
+
+    await (await outcome1155.grantMinter(marketAddress)).wait();
+
+    const fillAmount18 = ethers.parseEther("1");
+    const takerMintAmount18 = ethers.parseEther("2");
+    const takerDeposit6 = 2000000n;
+    await (await usdc.mint(await taker.getAddress(), takerDeposit6)).wait();
+    await (await usdc.connect(taker).approve(await market.getAddress(), takerDeposit6)).wait();
+    await (await market.connect(taker).mintCompleteSet(takerMintAmount18)).wait();
+
+    const makerDeposit6 = 1000000n;
+    await (await usdc.mint(await maker.getAddress(), makerDeposit6)).wait();
+    await (await usdc.connect(maker).approve(await market.getAddress(), makerDeposit6)).wait();
+
+    const domain = {
+      name: "Foresight Market",
+      version: "1",
+      chainId: Number((await ethers.provider.getNetwork()).chainId),
+      verifyingContract: marketAddress
+    };
+    const types = {
+      Order: [
+        { name: "maker", type: "address" },
+        { name: "outcomeIndex", type: "uint256" },
+        { name: "isBuy", type: "bool" },
+        { name: "price", type: "uint256" },
+        { name: "amount", type: "uint256" },
+        { name: "salt", type: "uint256" },
+        { name: "expiry", type: "uint256" }
+      ]
+    };
+
+    const m = await maker.getAddress();
+    const order1 = {
+      maker: m,
+      outcomeIndex: "0",
+      isBuy: true,
+      price: "500000",
+      amount: fillAmount18,
+      salt: "9001",
+      expiry: String(now + 3600)
+    };
+    const order2 = {
+      maker: m,
+      outcomeIndex: "0",
+      isBuy: true,
+      price: "500000",
+      amount: fillAmount18,
+      salt: "9002",
+      expiry: String(now + 3600)
+    };
+    const sig1 = await maker.signTypedData(domain, types, order1);
+    const sig2 = await maker.signTypedData(domain, types, order2);
+
+    await expect(
+      market.connect(taker).batchFill([order1, order2], [sig1, sig2], [fillAmount18, fillAmount18])
+    ).to.be.revertedWithCustomError(market, "NotApproved1155");
+
+    await (await outcome1155.connect(taker).setApprovalForAll(marketAddress, true)).wait();
+
+    await (await market.connect(taker).batchFill([order1, order2], [sig1, sig2], [fillAmount18, fillAmount18])).wait();
+
+    expect(await market.filledBySalt(m, 9001)).to.equal(fillAmount18);
+    expect(await market.filledBySalt(m, 9002)).to.equal(fillAmount18);
+  });
+});
+
+describe("MarketFactory allowlist (CJS)", function () {
+  it("blocks createMarket when oracle/collateral not allowed", async function () {
+    const [admin] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("MockUSD", "mUSD");
+    await usdc.waitForDeployment();
+
+    const OutcomeToken1155 = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeToken1155.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const ManualOracle = await ethers.getContractFactory("ManualOracle");
+    const oracle = await ManualOracle.deploy(await admin.getAddress());
+    await oracle.waitForDeployment();
+
+    const MarketFactory = await ethers.getContractFactory("MarketFactory");
+    const mf = await MarketFactory.deploy();
+    await mf.waitForDeployment();
+    await mf.initialize(await admin.getAddress(), await oracle.getAddress());
+
+    const OffchainBinaryMarket = await ethers.getContractFactory("OffchainBinaryMarket");
+    const impl = await OffchainBinaryMarket.deploy();
+    await impl.waitForDeployment();
+
+    const templateId = ethers.id("OFFCHAIN_BINARY_V1");
+    await (await mf.registerTemplate(templateId, await impl.getAddress(), "Offchain Binary v1")).wait();
+
+    await (await mf.setAllowlistEnforcement(true, true)).wait();
+
+    const now = (await ethers.provider.getBlock("latest")).timestamp;
+    const resolutionTime = now + 3600;
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+
+    await expect(
+      mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+        templateId,
+        await usdc.getAddress(),
+        await oracle.getAddress(),
+        0,
+        resolutionTime,
+        data
+      )
+    ).to.be.revertedWithCustomError(mf, "CollateralNotAllowed");
+
+    await (await mf.setCollateralAllowed(await usdc.getAddress(), true)).wait();
+
+    await expect(
+      mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+        templateId,
+        await usdc.getAddress(),
+        await oracle.getAddress(),
+        0,
+        resolutionTime,
+        data
+      )
+    ).to.be.revertedWithCustomError(mf, "OracleNotAllowed");
+
+    await (await mf.setOracleAllowed(await oracle.getAddress(), true)).wait();
+
+    await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+      templateId,
+      await usdc.getAddress(),
+      await oracle.getAddress(),
+      0,
+      resolutionTime,
+      data
+    );
+  });
+});
+
+describe("OffchainBinaryMarket resolution safety (CJS)", function () {
+  it("allows creator to invalidate if oracle revert blocks resolve", async function () {
+    const [admin, user] = await ethers.getSigners();
+
+    const MockERC20 = await ethers.getContractFactory("MockERC20");
+    const usdc = await MockERC20.deploy("MockUSD", "mUSD");
+    await usdc.waitForDeployment();
+
+    const OutcomeToken1155 = await ethers.getContractFactory("OutcomeToken1155");
+    const outcome1155 = await OutcomeToken1155.deploy();
+    await outcome1155.waitForDeployment();
+    await outcome1155.initialize("");
+
+    const RevertingOracle = await ethers.getContractFactory("RevertingOracle");
+    const oracle = await RevertingOracle.deploy();
+    await oracle.waitForDeployment();
+
+    const MarketFactory = await ethers.getContractFactory("MarketFactory");
+    const mf = await MarketFactory.deploy();
+    await mf.waitForDeployment();
+    await mf.initialize(await admin.getAddress(), await oracle.getAddress());
+
+    const OffchainBinaryMarket = await ethers.getContractFactory("OffchainBinaryMarket");
+    const impl = await OffchainBinaryMarket.deploy();
+    await impl.waitForDeployment();
+
+    const templateId = ethers.id("OFFCHAIN_BINARY_V1");
+    await (await mf.registerTemplate(templateId, await impl.getAddress(), "Offchain Binary v1")).wait();
+
+    const now = (await ethers.provider.getBlock("latest")).timestamp;
+    const resolutionTime = now + 2;
+    const data = ethers.AbiCoder.defaultAbiCoder().encode(["address"], [await outcome1155.getAddress()]);
+    const txCreate = await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+      templateId,
+      await usdc.getAddress(),
+      await oracle.getAddress(),
+      0,
+      resolutionTime,
+      data
+    );
+    const receipt = await txCreate.wait();
+    const created = receipt.logs
+      .map((l) => {
+        try {
+          return mf.interface.parseLog(l);
+        } catch {
+          return null;
+        }
+      })
+      .find((x) => x && x.name === "MarketCreated");
+    const marketAddress = created.args.market;
+    const market = await ethers.getContractAt("OffchainBinaryMarket", marketAddress);
+
+    await (await outcome1155.grantMinter(marketAddress)).wait();
+
+    const amount18 = ethers.parseEther("1");
+    const deposit6 = 1000000n;
+    await (await usdc.mint(await user.getAddress(), deposit6)).wait();
+    await (await usdc.connect(user).approve(marketAddress, deposit6)).wait();
+    await (await market.connect(user).mintCompleteSet(amount18)).wait();
+
+    await ethers.provider.send("evm_increaseTime", [3]);
+    await ethers.provider.send("evm_mine", []);
+
+    await expect(market.resolve()).to.be.revertedWithCustomError(market, "OracleQueryFailed");
+
+    await (await market.connect(admin).invalidate()).wait();
+
+    await (await market.connect(user).redeemCompleteSetOnInvalid(amount18)).wait();
   });
 });

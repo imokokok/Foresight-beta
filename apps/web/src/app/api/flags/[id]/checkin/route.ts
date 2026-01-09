@@ -94,21 +94,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       logApiError("POST /api/flags/[id]/checkin history insert failed", e);
     }
 
-    let insertedCheckin: Database["public"]["Tables"]["flag_checkins"]["Row"] | null = null;
-    try {
-      const ins = await client
-        .from("flag_checkins")
-        .insert({
-          flag_id: flagId,
-          user_id: userId,
-          note,
-          image_url: imageUrl || null,
-        } as Database["public"]["Tables"]["flag_checkins"]["Insert"])
-        .select("*")
-        .maybeSingle();
-      insertedCheckin = ins?.data || null;
-    } catch (e) {
-      logApiError("POST /api/flags/[id]/checkin insert failed", e);
+    const { data: insertedCheckin, error: insertErr } = await client
+      .from("flag_checkins")
+      .insert({
+        flag_id: flagId,
+        user_id: userId,
+        note,
+        image_url: imageUrl || null,
+      } as Database["public"]["Tables"]["flag_checkins"]["Insert"])
+      .select("*")
+      .maybeSingle();
+    if (insertErr || !insertedCheckin?.id) {
+      logApiError("POST /api/flags/[id]/checkin insert failed", insertErr);
+      return ApiResponses.databaseError("Check-in failed", insertErr?.message || "insert_failed");
     }
 
     const isSelfSupervised =

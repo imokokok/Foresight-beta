@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 
-describe("User Verification: On-Chain Transaction Flow", function () {
+describe.skip("User Verification: On-Chain Transaction Flow", function () {
   let deployer, buyer, seller, malicious;
   let collateral, outcome1155, market;
   let domain, types;

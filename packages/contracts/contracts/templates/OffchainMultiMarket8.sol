@@ -11,6 +11,10 @@ import "../MarketFactory.sol";
  * - abi.encode(address outcome1155, uint8 outcomeCount)
  */
 contract OffchainMultiMarket8 is OffchainMarketBase {
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         bytes32 _marketId,
         address _factory,

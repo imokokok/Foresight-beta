@@ -33,13 +33,18 @@ export async function GET(req: NextRequest) {
         "Supabase client not initialized"
       );
     }
+    const sess = await getSessionAddress(req);
+    const viewer = normalizeAddress(String(sess || ""));
+    const viewerIsAdmin = !!viewer && (isAdminAddress(viewer) || false);
+
     const { searchParams } = new URL(req.url);
     let address = normalizeAddress(String(searchParams.get("address") || ""));
     const addressesStr = String(searchParams.get("addresses") || "");
     const list = addressesStr
       .split(",")
       .map((s) => normalizeAddress(s.trim()))
-      .filter((s) => s);
+      .filter((s) => s && isEthAddress(s))
+      .slice(0, 200);
 
     if (list.length > 0) {
       const { data, error } = await client
@@ -51,6 +56,10 @@ export async function GET(req: NextRequest) {
       }
       const rows = (data || []).map((p: Database["public"]["Tables"]["user_profiles"]["Row"]) => ({
         ...p,
+        email:
+          viewerIsAdmin || (viewer && normalizeAddress(p?.wallet_address || "") === viewer)
+            ? p?.email || ""
+            : "",
         is_admin: !!p?.is_admin || isAdminAddress(p?.wallet_address || ""),
       }));
       return successResponse(
@@ -63,8 +72,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!address) {
-      const sess = await getSessionAddress(req);
-      address = normalizeAddress(String(sess || ""));
+      address = viewer;
     }
     if (!address) {
       const emptyProfile = {
@@ -105,7 +113,11 @@ export async function GET(req: NextRequest) {
       );
     }
     const profile = data
-      ? { ...data, is_admin: !!data?.is_admin || isAdminAddress(address) }
+      ? {
+          ...data,
+          email: viewerIsAdmin || address === viewer ? String(data?.email || "") : "",
+          is_admin: !!data?.is_admin || isAdminAddress(address),
+        }
       : {
           wallet_address: address,
           username: "",
@@ -164,23 +176,18 @@ export async function POST(req: NextRequest) {
     if (existError) {
       return ApiResponses.databaseError("Failed to fetch existing profile", existError.message);
     }
-    if (existing) {
-      const { error: updError } = await client
-        .from("user_profiles")
-        .update({ username, email } as Database["public"]["Tables"]["user_profiles"]["Update"])
-        .eq("wallet_address", walletAddress);
-      if (updError) {
-        return ApiResponses.databaseError("Failed to update profile", updError.message);
-      }
-    } else {
-      const { error: insError } = await client.from("user_profiles").insert({
-        wallet_address: walletAddress,
-        username,
-        email,
-      } as Database["public"]["Tables"]["user_profiles"]["Insert"]);
-      if (insError) {
-        return ApiResponses.databaseError("Failed to create profile", insError.message);
-      }
+    if (!existing) {
+      return ApiResponses.invalidParameters("请先完成邮箱验证");
+    }
+    if (String(existing?.email || "").trim() !== email) {
+      return ApiResponses.forbidden("邮箱未验证或不匹配");
+    }
+    const { error: updError } = await client
+      .from("user_profiles")
+      .update({ username } as Database["public"]["Tables"]["user_profiles"]["Update"])
+      .eq("wallet_address", walletAddress);
+    if (updError) {
+      return ApiResponses.databaseError("Failed to update profile", updError.message);
     }
 
     const res = successResponse({ ok: true }, "Profile saved successfully");

@@ -59,6 +59,14 @@ export async function POST(req: NextRequest) {
       String(body?.verification_type || "self") === "witness" ? "witness" : "self";
     const witness_id = String(body?.witness_id || "").trim();
     if (!title) return ApiResponses.invalidParameters("Missing required parameters");
+    const witnessIdToUse = verification_type === "witness" ? witness_id : "";
+    if (verification_type === "witness") {
+      const isOfficialWitness = witnessIdToUse === "official";
+      const isValidWitnessAddress = isEvmAddress(witnessIdToUse);
+      if (!witnessIdToUse || (!isOfficialWitness && !isValidWitnessAddress)) {
+        return ApiResponses.invalidParameters("Invalid witness_id");
+      }
+    }
 
     let deadline: Date;
     if (!deadlineRaw) {
@@ -80,10 +88,15 @@ export async function POST(req: NextRequest) {
     };
     let data: Database["public"]["Tables"]["flags"]["Row"] | null = null;
     let error: { message?: string } | null = null;
-    if (witness_id) {
+    if (witnessIdToUse) {
       const res = await client
         .from("flags")
-        .insert({ ...payload, witness_id } as never)
+        .insert({
+          ...payload,
+          witness_id: isEvmAddress(witnessIdToUse)
+            ? normalizeAddress(witnessIdToUse)
+            : witnessIdToUse,
+        } as never)
         .select("*")
         .maybeSingle();
       data = res.data as Database["public"]["Tables"]["flags"]["Row"] | null;
@@ -108,9 +121,9 @@ export async function POST(req: NextRequest) {
     }
     if (error) return ApiResponses.databaseError("Failed to create flag", error.message);
     try {
-      if (witness_id && data && data.id) {
+      if (witnessIdToUse && witnessIdToUse !== "official" && data && data.id) {
         const flagIdNum = data.id;
-        const recipient = normalizeAddress(witness_id);
+        const recipient = normalizeAddress(witnessIdToUse);
         try {
           await (client as any).from("notifications").insert({
             recipient_id: recipient,
@@ -134,7 +147,7 @@ export async function POST(req: NextRequest) {
         }
         const invitePayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
           proposal_id: flagIdNum,
-          user_id: witness_id,
+          user_id: witnessIdToUse,
           content: JSON.stringify({
             type: "witness_invite",
             flag_id: flagIdNum,

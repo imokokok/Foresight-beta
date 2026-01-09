@@ -66,6 +66,13 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     uint256 public lpFeeBps;
     address public lpFeeTo;
 
+    mapping(address => bool) public isCollateralAllowed;
+    mapping(address => bool) public isOracleAllowed;
+    bool public enforceCollateralAllowlist;
+    bool public enforceOracleAllowlist;
+    bool public requireContractCollateral;
+    bool public requireContractOracle;
+
     // ═══════════════════════════════════════════════════════════════════════
     // EVENTS
     // ═══════════════════════════════════════════════════════════════════════
@@ -83,6 +90,10 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         uint256 _feeBps,
         uint256 resolutionTime
     );
+    event CollateralAllowlistUpdated(address indexed token, bool allowed);
+    event OracleAllowlistUpdated(address indexed oracle, bool allowed);
+    event AllowlistEnforcementUpdated(bool enforceCollateral, bool enforceOracle);
+    event ContractRequirementUpdated(bool requireCollateralContract, bool requireOracleContract);
 
     // ═══════════════════════════════════════════════════════════════════════
     // ERRORS
@@ -92,6 +103,9 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     error TemplateNotFound();
     error FeeTooHigh();
     error ResolutionInPast();
+    error CollateralNotAllowed();
+    error OracleNotAllowed();
+    error NotAContract();
 
     // ═══════════════════════════════════════════════════════════════════════
     // INITIALIZER
@@ -116,6 +130,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
     function setFee(uint256 newFeeBps, address newFeeTo) external onlyRole(ADMIN_ROLE) {
         if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh();
+        if (newFeeBps != 0 && newFeeTo == address(0)) revert ZeroAddress();
         feeBps = newFeeBps;
         feeTo = newFeeTo;
         emit FeeChanged(newFeeBps, newFeeTo);
@@ -123,6 +138,7 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
 
     function setFeeSplit(uint256 newLpFeeBps, address newLpFeeTo) external onlyRole(ADMIN_ROLE) {
         if (newLpFeeBps > feeBps) revert FeeTooHigh();
+        if (newLpFeeBps != 0 && newLpFeeTo == address(0)) revert ZeroAddress();
         lpFeeBps = newLpFeeBps;
         lpFeeTo = newLpFeeTo;
     }
@@ -130,6 +146,30 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
     function setDefaultOracle(address newOracle) external onlyRole(ADMIN_ROLE) {
         if (newOracle == address(0)) revert ZeroAddress();
         umaOracle = newOracle;
+    }
+
+    function setAllowlistEnforcement(bool enforceCollateral, bool enforceOracle) external onlyRole(ADMIN_ROLE) {
+        enforceCollateralAllowlist = enforceCollateral;
+        enforceOracleAllowlist = enforceOracle;
+        emit AllowlistEnforcementUpdated(enforceCollateral, enforceOracle);
+    }
+
+    function setContractRequirement(bool requireCollateralContract, bool requireOracleContract) external onlyRole(ADMIN_ROLE) {
+        requireContractCollateral = requireCollateralContract;
+        requireContractOracle = requireOracleContract;
+        emit ContractRequirementUpdated(requireCollateralContract, requireOracleContract);
+    }
+
+    function setCollateralAllowed(address token, bool allowed) external onlyRole(ADMIN_ROLE) {
+        if (token == address(0)) revert ZeroAddress();
+        isCollateralAllowed[token] = allowed;
+        emit CollateralAllowlistUpdated(token, allowed);
+    }
+
+    function setOracleAllowed(address oracle, bool allowed) external onlyRole(ADMIN_ROLE) {
+        if (oracle == address(0)) revert ZeroAddress();
+        isOracleAllowed[oracle] = allowed;
+        emit OracleAllowlistUpdated(oracle, allowed);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -182,6 +222,14 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         if (!t.exists) revert TemplateNotFound();
         if (collateralToken == address(0)) revert ZeroAddress();
         if (resolutionTime <= block.timestamp) revert ResolutionInPast();
+        if (requireContractCollateral) {
+            uint256 size;
+            assembly {
+                size := extcodesize(collateralToken)
+            }
+            if (size == 0) revert NotAContract();
+        }
+        if (enforceCollateralAllowlist && !isCollateralAllowed[collateralToken]) revert CollateralNotAllowed();
 
         // Clone template
         market = t.implementation.clone();
@@ -196,6 +244,14 @@ contract MarketFactory is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         // Determine oracle
         address oracleToUse = oracle == address(0) ? umaOracle : oracle;
         if (oracleToUse == address(0)) revert ZeroAddress();
+        if (requireContractOracle) {
+            uint256 size;
+            assembly {
+                size := extcodesize(oracleToUse)
+            }
+            if (size == 0) revert NotAContract();
+        }
+        if (enforceOracleAllowlist && !isOracleAllowed[oracleToUse]) revert OracleNotAllowed();
 
         // Initialize market
         IMarket(market).initialize(

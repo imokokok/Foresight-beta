@@ -54,19 +54,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     > | null;
 
     if (chkErr) {
-      const payload: Database["public"]["Tables"]["discussions"]["Insert"] = {
-        user_id: reviewer_id,
-        proposal_id: checkinId,
-        content: JSON.stringify({
-          type: "checkin_review",
-          checkin_id: checkinId,
-          action,
-          reason,
-          ts: new Date().toISOString(),
-        }),
-      };
-      await client.from("discussions").insert(payload);
-      return NextResponse.json({ message: "ok" }, { status: 200 });
+      logApiError("POST /api/checkins/[id]/review checkin_query_failed", chkErr);
+      return ApiResponses.databaseError("Failed to query check-in", chkErr.message);
     }
     if (!chk) return ApiResponses.notFound("Check-in record not found");
 
@@ -99,23 +88,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       .select("*")
       .maybeSingle();
     if (uErr) {
-      const payload: Database["public"]["Tables"]["discussions"]["Insert"] = {
-        user_id: reviewer_id,
-        proposal_id: checkinId,
-        content: JSON.stringify({
-          type: "checkin_review",
-          checkin_id: checkinId,
-          action,
-          reason,
-          ts: new Date().toISOString(),
-        }),
-      };
-      try {
-        await client.from("discussions").insert(payload);
-      } catch (e) {
-        logApiError("POST /api/checkins/[id]/review fallback log insert failed", e);
-      }
-      return NextResponse.json({ message: "ok" }, { status: 200 });
+      logApiError("POST /api/checkins/[id]/review update_failed", uErr);
+      return ApiResponses.databaseError("Failed to update check-in review", uErr.message);
     }
 
     // 若 flags 当前为 pending_review，审核后回到 active

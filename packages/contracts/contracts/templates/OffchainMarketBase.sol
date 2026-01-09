@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -28,8 +28,8 @@ import "../tokens/OutcomeToken1155.sol";
 /// @custom:security-contact security@foresight.io
 abstract contract OffchainMarketBase is
     IMarket,
-    ReentrancyGuard,
     Initializable,
+    ReentrancyGuardUpgradeable,
     ERC1155Holder,
     EIP712Upgradeable
 {
@@ -52,7 +52,7 @@ abstract contract OffchainMarketBase is
     uint256 internal constant MAX_BATCH_SIZE = 50;
     uint256 internal constant MAX_VOLUME_PER_BLOCK = 1_000_000 * 1e6;
     uint256 internal constant MIN_ORDER_LIFETIME = 30;
-    uint256 internal constant ECDSA_S_UPPER_BOUND = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A1;
+    uint256 internal constant ECDSA_S_UPPER_BOUND = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
 
     /// @dev Precomputed MINTER_ROLE hash to avoid external call
     bytes32 internal constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -138,6 +138,15 @@ abstract contract OffchainMarketBase is
     error FlashLoanProtection();
     error OrderLifetimeTooShort();
     error InvalidSignatureS();
+    error BadActors();
+    error BadAddresses();
+    error Outcome1155Zero();
+    error ResolutionInPast();
+    error ResolutionTimeTooLarge();
+    error OutcomesRange();
+    error FeeRecipientZero();
+    error LpFeeRecipientZero();
+    error OracleQueryFailed();
 
     // ═══════════════════════════════════════════════════════════════════════
     // MODIFIERS
@@ -179,12 +188,35 @@ abstract contract OffchainMarketBase is
     /// @dev Flash loan protection with cached block number
     function _checkFlashLoanProtection(address user, uint256 volume) internal {
         uint256 currentBlock = block.number;
-        uint256 newVolume;
-        unchecked {
-            newVolume = _blockVolume[user][currentBlock] + volume;
-        }
+        uint256 newVolume = _blockVolume[user][currentBlock] + volume;
         if (newVolume > MAX_VOLUME_PER_BLOCK) revert FlashLoanProtection();
         _blockVolume[user][currentBlock] = newVolume;
+    }
+
+    function _accumulateFlashLoanProtection(
+        address[] memory users,
+        uint256[] memory newVolumes,
+        uint256 count,
+        address user,
+        uint256 volume,
+        uint256 currentBlock
+    ) internal view returns (uint256 newCount) {
+        newCount = count;
+        for (uint256 i; i < count;) {
+            if (users[i] == user) {
+                uint256 v = newVolumes[i] + volume;
+                if (v > MAX_VOLUME_PER_BLOCK) revert FlashLoanProtection();
+                newVolumes[i] = v;
+                return newCount;
+            }
+            unchecked { ++i; }
+        }
+
+        uint256 v0 = _blockVolume[user][currentBlock] + volume;
+        if (v0 > MAX_VOLUME_PER_BLOCK) revert FlashLoanProtection();
+        users[count] = user;
+        newVolumes[count] = v0;
+        unchecked { newCount = count + 1; }
     }
 
     /// @dev Assembly-optimized signature malleability check
@@ -194,6 +226,13 @@ abstract contract OffchainMarketBase is
             assembly {
                 s := calldataload(add(signature.offset, 32))
             }
+            if (s > ECDSA_S_UPPER_BOUND) revert InvalidSignatureS();
+        } else if (signature.length == 64) {
+            uint256 vs;
+            assembly {
+                vs := calldataload(add(signature.offset, 32))
+            }
+            uint256 s = vs & 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
             if (s > ECDSA_S_UPPER_BOUND) revert InvalidSignatureS();
         }
     }
@@ -215,7 +254,23 @@ abstract contract OffchainMarketBase is
                 return false;
             }
         }
-        return ECDSA.recover(digest, signature) == signer;
+        if (signature.length == 65) {
+            (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, signature);
+            return err == ECDSA.RecoverError.NoError && recovered == signer;
+        }
+
+        if (signature.length == 64) {
+            bytes32 r;
+            bytes32 vs;
+            assembly {
+                r := calldataload(signature.offset)
+                vs := calldataload(add(signature.offset, 32))
+            }
+            (address recovered, ECDSA.RecoverError err, ) = ECDSA.tryRecover(digest, r, vs);
+            return err == ECDSA.RecoverError.NoError && recovered == signer;
+        }
+
+        return false;
     }
 
     /// @dev Assembly-optimized token ID computation
@@ -260,13 +315,15 @@ abstract contract OffchainMarketBase is
         address outcome1155,
         uint8 oc
     ) internal onlyInitializing {
+        __ReentrancyGuard_init();
         __EIP712_init("Foresight Market", "1");
 
-        require(_factory != address(0) && _creator != address(0), "bad actors");
-        require(_collateralToken != address(0) && _oracle != address(0), "bad addrs");
-        require(outcome1155 != address(0), "outcome1155=0");
-        require(_resolutionTime > block.timestamp, "resolution in past");
-        require(oc >= MIN_OUTCOMES && oc <= MAX_OUTCOMES, "outcomes range");
+        if (_factory == address(0) || _creator == address(0)) revert BadActors();
+        if (_collateralToken == address(0) || _oracle == address(0)) revert BadAddresses();
+        if (outcome1155 == address(0)) revert Outcome1155Zero();
+        if (_resolutionTime <= block.timestamp) revert ResolutionInPast();
+        if (_resolutionTime > type(uint64).max) revert ResolutionTimeTooLarge();
+        if (oc < MIN_OUTCOMES || oc > MAX_OUTCOMES) revert OutcomesRange();
 
         marketId = _marketId;
         factory = _factory;
@@ -285,6 +342,7 @@ abstract contract OffchainMarketBase is
     }
 
     function _setFeeConfig(uint256 _feeBps, address _feeRecipient) internal {
+        if (_feeBps != 0 && _feeRecipient == address(0)) revert FeeRecipientZero();
         feeBps = _feeBps;
         feeRecipient = _feeRecipient;
         lpFeeBps = 0;
@@ -293,6 +351,8 @@ abstract contract OffchainMarketBase is
 
     function _setFeeConfig(uint256 _feeBps, address _feeRecipient, uint256 _lpFeeBps, address _lpFeeRecipient) internal {
         if (_lpFeeBps > _feeBps) revert FeeNotSupported();
+        if (_feeBps != 0 && _feeRecipient == address(0)) revert FeeRecipientZero();
+        if (_lpFeeBps != 0 && _lpFeeRecipient == address(0)) revert LpFeeRecipientZero();
         feeBps = _feeBps;
         feeRecipient = _feeRecipient;
         lpFeeBps = _lpFeeBps;
@@ -339,6 +399,31 @@ abstract contract OffchainMarketBase is
         }
     }
 
+    function cancelSaltsBatchStrict(
+        address[] calldata makers,
+        uint256[] calldata salts,
+        bytes[] calldata signatures
+    ) external nonReentrant inState(State.TRADING) {
+        uint256 n = makers.length;
+        if (n != salts.length || n != signatures.length) revert ArrayLengthMismatch();
+        if (n > MAX_BATCH_SIZE) revert BatchSizeExceeded();
+
+        for (uint256 i; i < n;) {
+            address maker = makers[i];
+            uint256 salt = salts[i];
+
+            if (canceledSalt[maker][salt]) revert OrderCanceled();
+
+            bytes32 structHash = keccak256(abi.encode(CANCEL_SALT_TYPEHASH, maker, salt));
+            if (!_isValidSignature(maker, _hashTypedDataV4(structHash), signatures[i])) revert InvalidSignedRequest();
+
+            canceledSalt[maker][salt] = true;
+            emit OrderSaltCanceled(maker, salt);
+
+            unchecked { ++i; }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // ORDER FILLING
     // ═══════════════════════════════════════════════════════════════════════
@@ -356,9 +441,52 @@ abstract contract OffchainMarketBase is
         OutcomeToken1155 _outcomeToken = outcomeToken;
         IERC20 _collateral = collateral;
         uint8 _outcomeCount = outcomeCount;
+        uint256 currentBlock = block.number;
+        address[] memory users = new address[](2 * n);
+        uint256[] memory newVolumes = new uint256[](2 * n);
+        uint256 userCount;
+        bool takerApprovalChecked;
+        address[] memory makerApprovalOwners = new address[](n);
+        uint256 makerApprovalCount;
         
         for (uint256 i; i < n;) {
-            _fillOneOptimized(orders[i], signatures[i], fillAmounts[i], _outcomeToken, _collateral, _outcomeCount);
+            if (!takerApprovalChecked && orders[i].isBuy) {
+                if (!_outcomeToken.isApprovedForAll(msg.sender, address(this))) revert NotApproved1155();
+                takerApprovalChecked = true;
+            }
+            if (!orders[i].isBuy) {
+                address maker = orders[i].maker;
+                bool seen;
+                for (uint256 j; j < makerApprovalCount;) {
+                    if (makerApprovalOwners[j] == maker) {
+                        seen = true;
+                        break;
+                    }
+                    unchecked { ++j; }
+                }
+                if (!seen) {
+                    if (!_outcomeToken.isApprovedForAll(maker, address(this))) revert NotApproved1155();
+                    makerApprovalOwners[makerApprovalCount] = maker;
+                    unchecked { ++makerApprovalCount; }
+                }
+            }
+            userCount = _fillOneOptimizedBatch(
+                orders[i],
+                signatures[i],
+                fillAmounts[i],
+                _outcomeToken,
+                _collateral,
+                _outcomeCount,
+                users,
+                newVolumes,
+                userCount,
+                currentBlock
+            );
+            unchecked { ++i; }
+        }
+
+        for (uint256 i; i < userCount;) {
+            _blockVolume[users[i]][currentBlock] = newVolumes[i];
             unchecked { ++i; }
         }
     }
@@ -381,21 +509,18 @@ abstract contract OffchainMarketBase is
         if (o.price == 0 || o.price > MAX_PRICE_6_PER_1E18) revert InvalidPrice();
         if (o.amount == 0 || fillAmount == 0) revert InvalidAmount();
         
-        // Use bitwise AND for faster modulo check when divisor is power of 10
-        // SHARE_GRANULARITY = 1e12, check if lower 12 decimal places are zero
-        unchecked {
-            if (o.amount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
-            if (fillAmount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
-        }
+        if (o.amount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
+        if (fillAmount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         
-        if (o.expiry != 0 && o.expiry <= block.timestamp) revert InvalidExpiry();
+        if (o.expiry != 0) {
+            if (o.expiry <= block.timestamp) revert InvalidExpiry();
+            if (o.expiry < block.timestamp + MIN_ORDER_LIFETIME) revert OrderLifetimeTooShort();
+        }
         if (canceledSalt[o.maker][o.salt]) revert OrderCanceled();
 
         // Cache and check filled amount
         uint256 alreadyFilled = filledBySalt[o.maker][o.salt];
-        unchecked {
-            if (alreadyFilled + fillAmount > o.amount) revert InvalidAmount();
-        }
+        if (alreadyFilled + fillAmount > o.amount) revert InvalidAmount();
 
         // --- Signature verification ---
         bytes32 structHash = keccak256(abi.encode(
@@ -405,23 +530,70 @@ abstract contract OffchainMarketBase is
         if (!_isValidSignature(o.maker, _hashTypedDataV4(structHash), signature)) revert InvalidSignedRequest();
 
         // --- Compute cost (use unchecked for known-safe math) ---
-        uint256 cost6;
-        unchecked {
-            // cost6 = fillAmount * price / 1e18
-            // Using assembly for gas optimization since we know values are bounded
-            cost6 = (fillAmount * o.price) / SHARE_SCALE;
-        }
+        uint256 cost6 = Math.mulDiv(fillAmount, o.price, SHARE_SCALE);
 
         // --- Flash loan protection ---
         _checkFlashLoanProtection(msg.sender, cost6);
         _checkFlashLoanProtection(o.maker, cost6);
 
         // --- State update ---
-        unchecked {
-            filledBySalt[o.maker][o.salt] = alreadyFilled + fillAmount;
-        }
+        filledBySalt[o.maker][o.salt] = alreadyFilled + fillAmount;
 
         // --- Token transfers ---
+        uint256 tokenId = _outcomeTokenIdUnchecked(o.outcomeIndex);
+
+        if (o.isBuy) {
+            _collateral.safeTransferFrom(o.maker, msg.sender, cost6);
+            _outcomeToken.safeTransferFrom(msg.sender, o.maker, tokenId, fillAmount, "");
+        } else {
+            _collateral.safeTransferFrom(msg.sender, o.maker, cost6);
+            _outcomeToken.safeTransferFrom(o.maker, msg.sender, tokenId, fillAmount, "");
+        }
+
+        emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, 0, o.salt);
+    }
+
+    function _fillOneOptimizedBatch(
+        Order calldata o,
+        bytes calldata signature,
+        uint256 fillAmount,
+        OutcomeToken1155 _outcomeToken,
+        IERC20 _collateral,
+        uint8 _outcomeCount,
+        address[] memory users,
+        uint256[] memory newVolumes,
+        uint256 userCount,
+        uint256 currentBlock
+    ) internal returns (uint256) {
+        if (o.outcomeIndex >= _outcomeCount) revert InvalidOutcomeIndex();
+        if (o.price == 0 || o.price > MAX_PRICE_6_PER_1E18) revert InvalidPrice();
+        if (o.amount == 0 || fillAmount == 0) revert InvalidAmount();
+
+        if (o.amount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
+        if (fillAmount % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
+
+        if (o.expiry != 0) {
+            if (o.expiry <= block.timestamp) revert InvalidExpiry();
+            if (o.expiry < block.timestamp + MIN_ORDER_LIFETIME) revert OrderLifetimeTooShort();
+        }
+        if (canceledSalt[o.maker][o.salt]) revert OrderCanceled();
+
+        uint256 alreadyFilled = filledBySalt[o.maker][o.salt];
+        if (alreadyFilled + fillAmount > o.amount) revert InvalidAmount();
+
+        bytes32 structHash = keccak256(abi.encode(
+            ORDER_TYPEHASH,
+            o.maker, o.outcomeIndex, o.isBuy, o.price, o.amount, o.salt, o.expiry
+        ));
+        if (!_isValidSignature(o.maker, _hashTypedDataV4(structHash), signature)) revert InvalidSignedRequest();
+
+        uint256 cost6 = Math.mulDiv(fillAmount, o.price, SHARE_SCALE);
+
+        userCount = _accumulateFlashLoanProtection(users, newVolumes, userCount, msg.sender, cost6, currentBlock);
+        userCount = _accumulateFlashLoanProtection(users, newVolumes, userCount, o.maker, cost6, currentBlock);
+
+        filledBySalt[o.maker][o.salt] = alreadyFilled + fillAmount;
+
         uint256 tokenId = _outcomeTokenIdUnchecked(o.outcomeIndex);
 
         if (o.isBuy) {
@@ -435,6 +607,7 @@ abstract contract OffchainMarketBase is
         }
 
         emit OrderFilledSigned(o.maker, msg.sender, o.outcomeIndex, o.isBuy, o.price, fillAmount, 0, o.salt);
+        return userCount;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -443,9 +616,7 @@ abstract contract OffchainMarketBase is
 
     function mintCompleteSet(uint256 amount18) external nonReentrant inState(State.TRADING) whenNotPaused {
         if (amount18 == 0) revert InvalidAmount();
-        unchecked {
-            if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
-        }
+        if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         
         // Cache storage reads
         OutcomeToken1155 _outcomeToken = outcomeToken;
@@ -453,10 +624,7 @@ abstract contract OffchainMarketBase is
         
         if (!_outcomeToken.hasRole(MINTER_ROLE, address(this))) revert NoMinterRole();
         
-        uint256 deposit6;
-        unchecked {
-            deposit6 = (amount18 * USDC_SCALE) / SHARE_SCALE;
-        }
+        uint256 deposit6 = amount18 / SHARE_GRANULARITY;
         
         _checkFlashLoanProtection(msg.sender, deposit6);
         collateral.safeTransferFrom(msg.sender, address(this), deposit6);
@@ -475,9 +643,7 @@ abstract contract OffchainMarketBase is
 
     function redeem(uint256 amount18) external nonReentrant inState(State.RESOLVED) {
         if (amount18 == 0) revert InvalidAmount();
-        unchecked {
-            if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
-        }
+        if (amount18 % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         
         OutcomeToken1155 _outcomeToken = outcomeToken;
         if (!_outcomeToken.hasRole(MINTER_ROLE, address(this))) revert NoMinterRole();
@@ -485,10 +651,7 @@ abstract contract OffchainMarketBase is
         uint256 idWin = _outcomeTokenIdUnchecked(resolvedOutcome);
         _outcomeToken.burn(msg.sender, idWin, amount18);
         
-        uint256 payout6;
-        unchecked {
-            payout6 = (amount18 * USDC_SCALE) / SHARE_SCALE;
-        }
+        uint256 payout6 = amount18 / SHARE_GRANULARITY;
 
         uint256 totalBps = feeBps;
         uint256 lpBps = lpFeeBps;
@@ -497,16 +660,12 @@ abstract contract OffchainMarketBase is
 
         uint256 lpFee;
         if (lpRecipient != address(0) && lpBps != 0) {
-            unchecked {
-                lpFee = (payout6 * lpBps) / 10000;
-            }
+            lpFee = Math.mulDiv(payout6, lpBps, 10000);
         }
 
         uint256 protocolFee;
         if (protocolRecipient != address(0) && totalBps > lpBps) {
-            unchecked {
-                protocolFee = (payout6 * (totalBps - lpBps)) / 10000;
-            }
+            protocolFee = Math.mulDiv(payout6, totalBps - lpBps, 10000);
         }
 
         uint256 totalFee = lpFee + protocolFee;
@@ -523,9 +682,7 @@ abstract contract OffchainMarketBase is
 
     function redeemCompleteSetOnInvalid(uint256 amount18PerOutcome) external nonReentrant inState(State.INVALID) {
         if (amount18PerOutcome == 0) revert InvalidAmount();
-        unchecked {
-            if (amount18PerOutcome % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
-        }
+        if (amount18PerOutcome % SHARE_GRANULARITY != 0) revert InvalidShareGranularity();
         
         OutcomeToken1155 _outcomeToken = outcomeToken;
         uint8 _count = outcomeCount;
@@ -540,10 +697,7 @@ abstract contract OffchainMarketBase is
         }
         _outcomeToken.burnBatch(msg.sender, ids, amts);
 
-        uint256 payout6;
-        unchecked {
-            payout6 = (amount18PerOutcome * USDC_SCALE) / SHARE_SCALE;
-        }
+        uint256 payout6 = amount18PerOutcome / SHARE_GRANULARITY;
         collateral.safeTransfer(msg.sender, payout6);
         
         emit CompleteSetRedeemedOnInvalid(msg.sender, amount18PerOutcome);
@@ -553,10 +707,15 @@ abstract contract OffchainMarketBase is
     // RESOLUTION
     // ═══════════════════════════════════════════════════════════════════════
 
-    function resolve() external inState(State.TRADING) {
+    function resolve() external nonReentrant inState(State.TRADING) {
         if (block.timestamp < resolutionTime) revert ResolutionTimeNotReached();
 
-        uint256 outcome = IOracle(oracle).getOutcome(marketId);
+        uint256 outcome;
+        try IOracle(oracle).getOutcome(marketId) returns (uint256 o) {
+            outcome = o;
+        } catch {
+            revert OracleQueryFailed();
+        }
         
         // Single state write for gas efficiency
         if (outcome == type(uint256).max || outcome >= uint256(outcomeCount)) {
@@ -567,6 +726,12 @@ abstract contract OffchainMarketBase is
             state = State.RESOLVED;
             emit Resolved(outcome);
         }
+    }
+
+    function invalidate() external nonReentrant inState(State.TRADING) onlyFactoryOrCreator {
+        if (block.timestamp < resolutionTime) revert ResolutionTimeNotReached();
+        state = State.INVALID;
+        emit Invalidated();
     }
 
     // ═══════════════════════════════════════════════════════════════════════

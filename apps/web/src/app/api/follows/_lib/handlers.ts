@@ -1,7 +1,12 @@
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
-import { logApiError, normalizeAddress, parseRequestBody } from "@/lib/serverUtils";
+import {
+  getSessionAddress,
+  logApiError,
+  normalizeAddress,
+  parseRequestBody,
+} from "@/lib/serverUtils";
 import {
   isEventIdForeignKeyViolation,
   isMissingRelation,
@@ -16,6 +21,7 @@ import {
   SQL_FIX_USER_ID_TYPE_ONLY,
 } from "./sql";
 import { parsePredictionId, parseWalletAddressStrict } from "./validators";
+import type { NextRequest } from "next/server";
 
 function supabaseNotConfigured() {
   return ApiResponses.internalError(
@@ -23,7 +29,7 @@ function supabaseNotConfigured() {
   );
 }
 
-export async function handleFollowsPost(req: Request) {
+export async function handleFollowsPost(req: NextRequest) {
   try {
     if (!supabaseAdmin) return supabaseNotConfigured();
 
@@ -31,21 +37,20 @@ export async function handleFollowsPost(req: Request) {
     const rawPredictionId = body?.predictionId ?? body?.eventId ?? body?.event_id;
     const rawWallet = body?.walletAddress ?? body?.userId ?? body?.user_id;
     const predictionId = parsePredictionId(rawPredictionId);
-    const { walletAddress } = parseWalletAddressStrict(rawWallet);
+    const sessionAddress = await getSessionAddress(req);
+    const sessionWallet = sessionAddress ? normalizeAddress(sessionAddress) : "";
+    if (!sessionWallet) {
+      return ApiResponses.unauthorized("Unauthorized");
+    }
+    const { walletAddress: bodyWallet } = parseWalletAddressStrict(rawWallet);
 
     if (!predictionId) {
       return ApiResponses.badRequest("predictionId is required and must be a number", {
         received: String(rawPredictionId ?? ""),
       });
     }
-    if (!rawWallet) {
-      return ApiResponses.badRequest("walletAddress is required", { received: "" });
-    }
-    if (!walletAddress) {
-      return ApiResponses.badRequest(
-        "walletAddress format is invalid, expected 0x followed by 40 hex characters",
-        { received: String(rawWallet) }
-      );
+    if (rawWallet && bodyWallet && bodyWallet !== sessionWallet) {
+      return ApiResponses.forbidden("walletAddress mismatch");
     }
 
     const { count: pidCount, error: pidCheckError } = await supabaseAdmin
@@ -73,7 +78,7 @@ export async function handleFollowsPost(req: Request) {
       .from("event_follows")
       .upsert(
         {
-          user_id: walletAddress,
+          user_id: sessionWallet,
           event_id: predictionId,
         } as Database["public"]["Tables"]["event_follows"]["Insert"] as never,
         {
@@ -86,7 +91,7 @@ export async function handleFollowsPost(req: Request) {
     if (error) {
       logApiError("POST /api/follows upsert error", {
         predictionId,
-        walletAddress,
+        walletAddress: sessionWallet,
         message: error?.message,
       });
 
@@ -130,7 +135,7 @@ export async function handleFollowsPost(req: Request) {
         const { count: existCount, error: existError } = await supabaseAdmin
           .from("event_follows")
           .select("*", { count: "exact", head: true })
-          .eq("user_id", walletAddress)
+          .eq("user_id", sessionWallet)
           .eq("event_id", predictionId);
 
         if (existError) {
@@ -153,7 +158,7 @@ export async function handleFollowsPost(req: Request) {
 
         if (existCount && existCount > 0) {
           return successResponse(
-            { follow: { user_id: walletAddress, event_id: predictionId } },
+            { follow: { user_id: sessionWallet, event_id: predictionId } },
             "Already followed"
           );
         }
@@ -161,7 +166,7 @@ export async function handleFollowsPost(req: Request) {
         const { data: insData, error: insError } = await supabaseAdmin
           .from("event_follows")
           .insert({
-            user_id: walletAddress,
+            user_id: sessionWallet,
             event_id: predictionId,
           } as Database["public"]["Tables"]["event_follows"]["Insert"] as never)
           .select()
@@ -214,24 +219,29 @@ export async function handleFollowsPost(req: Request) {
   }
 }
 
-export async function handleFollowsDelete(req: Request) {
+export async function handleFollowsDelete(req: NextRequest) {
   try {
     if (!supabaseAdmin) return supabaseNotConfigured();
 
     const body = await parseRequestBody(req);
     const predictionId = Number(body?.predictionId ?? body?.eventId ?? body?.event_id);
-    const walletAddress = normalizeAddress(
-      String(body?.walletAddress ?? body?.userId ?? body?.user_id ?? "")
-    );
+    const rawWallet = body?.walletAddress ?? body?.userId ?? body?.user_id;
+    const sessionAddress = await getSessionAddress(req);
+    const sessionWallet = sessionAddress ? normalizeAddress(sessionAddress) : "";
+    if (!sessionWallet) {
+      return ApiResponses.unauthorized("Unauthorized");
+    }
+    const { walletAddress: bodyWallet } = parseWalletAddressStrict(rawWallet);
 
-    if (!predictionId || !walletAddress) {
-      return ApiResponses.badRequest("predictionId and walletAddress are required");
+    if (!predictionId) return ApiResponses.badRequest("predictionId is required");
+    if (rawWallet && bodyWallet && bodyWallet !== sessionWallet) {
+      return ApiResponses.forbidden("walletAddress mismatch");
     }
 
     const { error } = await supabaseAdmin
       .from("event_follows")
       .delete()
-      .eq("user_id", walletAddress)
+      .eq("user_id", sessionWallet)
       .eq("event_id", predictionId);
 
     if (error) {
@@ -286,14 +296,14 @@ CREATE TABLE IF NOT EXISTS public.event_follows (
   }
 }
 
-export async function handleFollowsGet(req: Request) {
+export async function handleFollowsGet(req: NextRequest) {
   try {
     if (!supabaseAdmin) return supabaseNotConfigured();
 
     const { searchParams } = new URL(req.url);
     const predictionId = Number(searchParams.get("predictionId"));
-    const wa = normalizeAddress(String(searchParams.get("walletAddress") || ""));
-    const walletAddress = /^0x[a-f0-9]{40}$/.test(wa) ? wa : "";
+    const sessionAddress = await getSessionAddress(req);
+    const sessionWallet = sessionAddress ? normalizeAddress(sessionAddress) : "";
 
     if (!predictionId) {
       return ApiResponses.badRequest("predictionId is required");
@@ -320,11 +330,11 @@ export async function handleFollowsGet(req: Request) {
     }
 
     let following = false;
-    if (walletAddress) {
+    if (sessionWallet) {
       const { data: followData, error: followError } = await supabaseAdmin
         .from("event_follows")
         .select("*")
-        .eq("user_id", walletAddress)
+        .eq("user_id", sessionWallet)
         .eq("event_id", predictionId)
         .maybeSingle();
 

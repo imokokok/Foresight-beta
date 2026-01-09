@@ -8,9 +8,9 @@ async function main() {
   const addr = await signer.getAddress();
   console.log("Trader:", addr);
 
-  const market = process.env.CLOB_MARKET_ADDRESS || '0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02';
+  const market = process.env.CLOB_MARKET_ADDRESS || '0x8b2aE97451d5773319b9d3480A71b010a544A10b';
   const usdc = process.env.USDC_ADDRESS_AMOY || process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY || '0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf';
-  const outcome1155 = process.env.OUTCOME1155_ADDRESS || '0xaAFcb10C0DdF7b49378Ba9fBa8c027F512576FE1';
+  const outcome1155 = process.env.OUTCOME1155_ADDRESS || '0x11A5daf63ad1d4b59E0aC91D4EA25891B94E5394';
 
   const erc20 = await hre.ethers.getContractAt("IERC20", usdc);
   const outcome = await hre.ethers.getContractAt("OutcomeToken1155", outcome1155);

@@ -12,6 +12,10 @@ import "../MarketFactory.sol";
  * - abi.encode(address outcome1155)
  */
 contract OffchainBinaryMarket is OffchainMarketBase {
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         bytes32 _marketId,
         address _factory,

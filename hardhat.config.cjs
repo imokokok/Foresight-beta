@@ -1,3 +1,5 @@
+process.env.TS_NODE_PROJECT = process.env.TS_NODE_PROJECT || "tsconfig.hardhat.json";
+require("ts-node/register");
 require("dotenv").config();
 require("dotenv").config({ path: ".env.local", override: true });
 require("@nomicfoundation/hardhat-toolbox");
@@ -30,6 +32,9 @@ module.exports = {
       viaIR: true,
       optimizer: { enabled: true, runs: 1 }
     }
+  },
+  mocha: {
+    extension: ["ts", "js", "cjs"]
   },
   paths: {
     // 将合约源码路径指向工作区 packages/contracts/contracts

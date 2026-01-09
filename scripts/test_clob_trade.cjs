@@ -8,9 +8,9 @@ async function main() {
   const rpc = process.env.AMOY_RPC_URL;
   const provider = new ethers.JsonRpcProvider(rpc);
   const w = new ethers.Wallet(pk, provider);
-  const market = process.env.CLOB_MARKET_ADDRESS || '0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02';
+  const market = process.env.CLOB_MARKET_ADDRESS || '0x8b2aE97451d5773319b9d3480A71b010a544A10b';
   const usdt = process.env.USDT_ADDRESS_AMOY || process.env.NEXT_PUBLIC_USDT_ADDRESS_AMOY || '0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf';
-  const outcome1155 = process.env.OUTCOME1155_ADDRESS || '0xaAFcb10C0DdF7b49378Ba9fBa8c027F512576FE1';
+  const outcome1155 = process.env.OUTCOME1155_ADDRESS || '0x11A5daf63ad1d4b59E0aC91D4EA25891B94E5394';
 
   const erc20 = new ethers.Contract(usdt, [
     'function approve(address spender,uint256 amount) external returns (bool)',

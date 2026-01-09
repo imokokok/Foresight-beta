@@ -116,6 +116,12 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
     error MaxReassertionsReached();
     error InvalidMarket();
     error TooEarly();
+    error ZeroAddress();
+    error MarketIdZero();
+    error OutcomesRange();
+    error ResolutionTimeZero();
+    error NotAsserted();
+    error NotFinalized();
 
     // ═══════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -127,10 +133,10 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         address admin,
         address reporter
     ) {
-        require(umaOracleV3 != address(0), "uma=0");
-        require(bondCurrency_ != address(0), "bondCurrency=0");
-        require(admin != address(0), "admin=0");
-        require(reporter != address(0), "reporter=0");
+        if (umaOracleV3 == address(0)) revert ZeroAddress();
+        if (bondCurrency_ == address(0)) revert ZeroAddress();
+        if (admin == address(0)) revert ZeroAddress();
+        if (reporter == address(0)) revert ZeroAddress();
 
         uma = IOptimisticOracleV3(umaOracleV3);
         bondCurrency = IERC20(bondCurrency_);
@@ -151,9 +157,9 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
         uint64 resolutionTime,
         uint8 outcomeCount
     ) external override onlyRole(REGISTRAR_ROLE) {
-        require(marketId != bytes32(0), "marketId=0");
-        require(outcomeCount >= 2 && outcomeCount <= 8, "outcomes range");
-        require(resolutionTime > 0, "resolutionTime=0");
+        if (marketId == bytes32(0)) revert MarketIdZero();
+        if (outcomeCount < 2 || outcomeCount > 8) revert OutcomesRange();
+        if (resolutionTime == 0) revert ResolutionTimeZero();
         
         marketConfig[marketId] = MarketConfig({
             resolutionTime: resolutionTime,
@@ -253,13 +259,13 @@ contract UMAOracleAdapterV2 is IOracle, IOracleRegistrar, AccessControl, Reentra
 
     function settleOutcome(bytes32 marketId) external nonReentrant {
         bytes32 assertionId = marketToAssertion[marketId];
-        require(assertionId != bytes32(0), "not asserted");
+        if (assertionId == bytes32(0)) revert NotAsserted();
         uma.settle(assertionId);
     }
 
     function getOutcome(bytes32 marketId) external view override returns (uint256) {
         Status s = marketStatus[marketId];
-        require(s == Status.RESOLVED || s == Status.INVALID, "not finalized");
+        if (s != Status.RESOLVED && s != Status.INVALID) revert NotFinalized();
         return marketOutcome[marketId];
     }
 

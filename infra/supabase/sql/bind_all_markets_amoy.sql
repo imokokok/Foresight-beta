@@ -1,5 +1,5 @@
 -- Bind all existing predictions to the current test market
--- Market: 0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02
+-- Market: 0x8b2aE97451d5773319b9d3480A71b010a544A10b
 -- Chain ID: 80002 (Amoy)
 -- Collateral: 0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf
 
@@ -12,7 +12,7 @@ BEGIN
     VALUES (
       r.id, 
       80002, 
-      '0xBec1Fd7e69346aCBa7C15d6E380FcCA993Ea6b02', 
+      '0x8b2aE97451d5773319b9d3480A71b010a544A10b', 
       '0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf', 
       1,
       'open'

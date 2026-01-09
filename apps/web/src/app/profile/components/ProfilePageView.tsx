@@ -16,7 +16,7 @@ import {
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
-import { formatAddress } from "@/lib/address";
+import { formatAddress, normalizeAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -84,6 +84,9 @@ export function ProfilePageView({
   const queryClient = useQueryClient();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
 
+  const accountNorm = useMemo(() => (account ? normalizeAddress(account) : ""), [account]);
+  const myAccountNorm = useMemo(() => (myAccount ? normalizeAddress(myAccount) : ""), [myAccount]);
+
   const countsQuery = useUserFollowCounts(account || null);
   const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
 
@@ -91,7 +94,7 @@ export function ProfilePageView({
     mutationFn: async () => {
       return fetcher<UserFollowToggleResult>("/api/user-follows/user", {
         method: "POST",
-        body: JSON.stringify({ targetAddress: account }),
+        body: JSON.stringify({ targetAddress: accountNorm || account }),
       });
     },
     onMutate: async () => {
@@ -99,27 +102,27 @@ export function ProfilePageView({
 
       await Promise.all([
         queryClient.cancelQueries({
-          queryKey: QueryKeys.userFollowStatus(account || "", myAccount || ""),
+          queryKey: QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
         }),
-        queryClient.cancelQueries({ queryKey: QueryKeys.userFollowCounts(account || "") }),
+        queryClient.cancelQueries({ queryKey: QueryKeys.userFollowCounts(accountNorm) }),
       ]);
 
       const prevFollowed = queryClient.getQueryData<boolean>([
-        ...QueryKeys.userFollowStatus(account || "", myAccount || ""),
+        ...QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
       ]);
       const prevCounts = queryClient.getQueryData<{
         followersCount: number;
         followingCount: number;
-      }>(QueryKeys.userFollowCounts(account || ""));
+      }>(QueryKeys.userFollowCounts(accountNorm));
 
       const nextFollowed = !(prevFollowed ?? false);
       queryClient.setQueryData(
-        QueryKeys.userFollowStatus(account || "", myAccount || ""),
+        QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
         nextFollowed
       );
 
       if (prevCounts) {
-        queryClient.setQueryData(QueryKeys.userFollowCounts(account || ""), {
+        queryClient.setQueryData(QueryKeys.userFollowCounts(accountNorm), {
           ...prevCounts,
           followersCount: Math.max(0, prevCounts.followersCount + (nextFollowed ? 1 : -1)),
         });
@@ -130,10 +133,10 @@ export function ProfilePageView({
     onError: (_err, _vars, ctx) => {
       if (!account || !myAccount || !ctx) return;
       queryClient.setQueryData(
-        QueryKeys.userFollowStatus(account || "", myAccount || ""),
+        QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
         ctx.prevFollowed
       );
-      queryClient.setQueryData(QueryKeys.userFollowCounts(account || ""), ctx.prevCounts);
+      queryClient.setQueryData(QueryKeys.userFollowCounts(accountNorm), ctx.prevCounts);
       toast.error(tProfile("follow.failed"));
     },
     onSuccess: (data) => {
@@ -145,11 +148,21 @@ export function ProfilePageView({
     onSettled: async () => {
       if (!account) return;
       await queryClient.invalidateQueries({
-        queryKey: QueryKeys.userFollowCounts(account || ""),
+        queryKey: QueryKeys.userFollowCounts(accountNorm),
       });
+      if (accountNorm) {
+        await queryClient.invalidateQueries({
+          queryKey: ["profile", "followers", "users", accountNorm],
+        });
+      }
+      if (myAccountNorm) {
+        await queryClient.invalidateQueries({
+          queryKey: ["profile", "following", "users", myAccountNorm],
+        });
+      }
       if (myAccount && !isOwnProfile) {
         await queryClient.invalidateQueries({
-          queryKey: QueryKeys.userFollowStatus(account || "", myAccount || ""),
+          queryKey: QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
         });
       }
     },

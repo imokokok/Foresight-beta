@@ -1,6 +1,10 @@
 export function normalizeAddress(addr: string): string {
-  const a = String(addr || "");
-  return a.startsWith("0x") ? a.toLowerCase() : a;
+  const a = String(addr || "").trim();
+  if (!a) return "";
+  if (/^0x/i.test(a)) {
+    return `0x${a.slice(2).toLowerCase()}`;
+  }
+  return a;
 }
 
 export function formatAddress(

@@ -1,6 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getClient, supabaseAdmin } from "@/lib/supabase";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import {
+  getSessionAddress,
+  normalizeAddress,
+  parseRequestBody,
+  logApiError,
+} from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 import { normalizeCategory } from "@/features/trending/trendingModel";
@@ -147,7 +152,7 @@ async function maybeAutoCreatePrediction(
 }
 
 // GET /api/forum?eventId=1
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const eventId = normalizeId(searchParams.get("eventId"));
   if (eventId === null) {
@@ -258,13 +263,13 @@ async function isUnderThreadRateLimit(client: any, walletAddress: string): Promi
   return true;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req);
     const eventId = normalizeId(body?.eventId);
     const title = String(body?.title || "");
     const content = String(body?.content || "");
-    const walletAddress = String(body?.walletAddress || "");
+    const rawWalletAddress = String(body?.walletAddress || "");
     if (eventId === null) {
       return ApiResponses.invalidParameters("eventId 必填");
     }
@@ -281,6 +286,16 @@ export async function POST(req: Request) {
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
+
+    const sessAddr = await getSessionAddress(req);
+    const walletAddress = normalizeAddress(String(sessAddr || ""));
+    if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
+      return ApiResponses.unauthorized("未登录或会话失效");
+    }
+    if (rawWalletAddress && normalizeAddress(rawWalletAddress) !== walletAddress) {
+      return ApiResponses.forbidden("walletAddress mismatch");
+    }
+
     const ok = await isUnderThreadRateLimit(client, walletAddress);
     if (!ok) {
       return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
@@ -299,7 +314,7 @@ export async function POST(req: Request) {
         event_id: eventId,
         title,
         content,
-        user_id: walletAddress || "guest",
+        user_id: walletAddress,
         subject_name,
         action_verb,
         target_value,

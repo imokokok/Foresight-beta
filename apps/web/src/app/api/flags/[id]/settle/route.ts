@@ -145,7 +145,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       endDay: endDay.toISOString(),
     };
 
-    await client.from("flags").update({ status }).eq("id", flagId);
+    const { error: flagUpdateErr } = await client.from("flags").update({ status }).eq("id", flagId);
+    if (flagUpdateErr)
+      return ApiResponses.databaseError("Failed to update flag status", flagUpdateErr.message);
 
     const isLuckyOwner = isLuckyAddress(owner);
 

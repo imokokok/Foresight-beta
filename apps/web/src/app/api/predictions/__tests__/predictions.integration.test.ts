@@ -53,11 +53,22 @@ vi.mock("@/lib/supabase", () => {
               }),
             }),
           }),
+          delete: () => ({
+            eq: async () => ({ error: null }),
+          }),
         };
       }
       if (table === "prediction_outcomes") {
         return {
           insert: async () => ({ error: null }),
+          delete: () => ({
+            eq: async () => ({ error: null }),
+          }),
+        };
+      }
+      if (table === "markets_map") {
+        return {
+          upsert: async () => ({ error: null }),
         };
       }
       return {
@@ -93,6 +104,8 @@ describe("POST /api/predictions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.MOCK_ONCHAIN_MARKET_ADDRESS = "0x1111111111111111111111111111111111111111";
+    process.env.NEXT_PUBLIC_CHAIN_ID = "80002";
   });
 
   it("应该在缺少必填字段时返回 400", async () => {

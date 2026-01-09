@@ -18,10 +18,9 @@ describe("user-follows API", () => {
       const res = await GET(req as any);
       const json = await res.json();
 
-      expect(res.status).toBe(200);
-      expect(json.success).toBe(true);
-      expect(Array.isArray(json.data?.follows)).toBe(true);
-      expect(json.data.follows.length).toBe(0);
+      expect(res.status).toBe(500);
+      expect(json.success).toBe(false);
+      expect(json.error?.code).toBe(ApiErrorCode.INTERNAL_ERROR);
 
       vi.resetModules();
     });

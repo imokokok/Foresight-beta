@@ -435,9 +435,9 @@ export function useFollowEvent() {
       });
     },
     onSuccess: (data, variables) => {
-      // 刷新用户关注列表
+      const userNorm = normalizeAddress(variables.userId);
       queryClient.invalidateQueries({
-        queryKey: QueryKeys.userFollows(variables.userId),
+        queryKey: QueryKeys.profileFollowingEvents(userNorm),
       });
 
       // 刷新事件详情（关注数变化）
@@ -467,8 +467,9 @@ export function useUnfollowEvent() {
       });
     },
     onSuccess: (data, variables) => {
+      const userNorm = normalizeAddress(variables.userId);
       queryClient.invalidateQueries({
-        queryKey: QueryKeys.userFollows(variables.userId),
+        queryKey: QueryKeys.profileFollowingEvents(userNorm),
       });
       queryClient.invalidateQueries({
         queryKey: QueryKeys.prediction(variables.eventId),
