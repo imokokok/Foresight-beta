@@ -36,6 +36,7 @@ export function useTopNavBarLogic() {
   const [showBalance, setShowBalance] = useState(true);
   const [walletSelectorOpen, setWalletSelectorOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const prevUserIdRef = useRef<string | null>(user?.id ?? null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const walletSelectorRef = useRef<HTMLDivElement | null>(null);
   const avatarRef = useRef<HTMLImageElement | null>(null);
@@ -78,6 +79,15 @@ export function useTopNavBarLogic() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    const curr = user?.id ?? null;
+    if (walletModalOpen && !prev && curr) {
+      setWalletModalOpen(false);
+    }
+    prevUserIdRef.current = curr;
+  }, [user?.id, walletModalOpen]);
 
   useEffect(() => {
     try {
@@ -450,6 +460,8 @@ export function useTopNavBarLogic() {
     if (currentWalletType === "coinbase") return "Coinbase";
     if (currentWalletType === "okx") return "OKX";
     if (currentWalletType === "binance") return "Binance";
+    if (currentWalletType === "kaia") return "Kaia";
+    if (currentWalletType === "trust") return "Trust";
     return "";
   }, [currentWalletType]);
 

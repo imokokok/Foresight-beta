@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,6 +46,7 @@ export default function Sidebar() {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const prevUserIdRef = useRef<string | null>(user?.id ?? null);
 
   const tCommon = useTranslations("common");
   const tAuth = useTranslations("auth");
@@ -128,6 +129,15 @@ export default function Sidebar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    const curr = user?.id ?? null;
+    if (walletModalOpen && !prev && curr) {
+      setWalletModalOpen(false);
+    }
+    prevUserIdRef.current = curr;
+  }, [user?.id, walletModalOpen]);
 
   return (
     <>

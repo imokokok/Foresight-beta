@@ -4,7 +4,8 @@ import { useTopNavBarLogic } from "../topNavBar/useTopNavBarLogic";
 
 const accountMock = "0x1234567890123456789012345678901234567890";
 let chainIdMock: string | null = "0xaa36a7";
-let currentWalletTypeMock: "metamask" | "coinbase" | "okx" | "binance" | null = "metamask";
+let currentWalletTypeMock: "metamask" | "coinbase" | "okx" | "binance" | "kaia" | "trust" | null =
+  "metamask";
 
 const refreshBalanceMock = vi.fn();
 const connectWalletMock = vi.fn();
@@ -109,6 +110,14 @@ describe("useTopNavBarLogic", () => {
     currentWalletTypeMock = "binance";
     rerender();
     expect(result.current.walletTypeLabel).toBe("Binance");
+
+    currentWalletTypeMock = "kaia";
+    rerender();
+    expect(result.current.walletTypeLabel).toBe("Kaia");
+
+    currentWalletTypeMock = "trust";
+    rerender();
+    expect(result.current.walletTypeLabel).toBe("Trust");
   });
 
   it("copyAddress 应该写入剪贴板并更新 copied 状态", async () => {

@@ -73,6 +73,28 @@ export const walletIcons = {
       />
     </svg>
   ),
+  kaia: (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="8" fill="#D8FF00" />
+      <path
+        d="M10 9h4.2l-3.6 7.2L17 23h-4.2l-5.2-6.1V23H6V9h3.6v6.1L10 9zM19 9h7v3h-4v2.3h3.5v3H22V23h-3v-8.7V9z"
+        fill="#000000"
+      />
+    </svg>
+  ),
+  trust: (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="16" fill="#0500FF" />
+      <path
+        d="M16 7c-2.9 0-5.7-.6-8.5-1.7-.6-.2-1.3.2-1.3.9V17c0 5.2 3.6 9.9 9.4 11.7.3.1.5.1.8 0C22.2 26.9 26 22.2 26 17V6.2c0-.7-.7-1.1-1.3-.9C21.7 6.4 18.9 7 16 7Z"
+        fill="white"
+      />
+      <path
+        d="M11 12.2v4.4c0 2.5 1.7 4.9 4.7 6 .2.1.4.1.6 0 3-1.1 4.7-3.5 4.7-6v-4.4c-1.8.3-3.7.5-5.3.5-1.7 0-3.6-.2-4.7-.5Z"
+        fill="#0500FF"
+      />
+    </svg>
+  ),
 } as const;
 
 export const walletNames = {
@@ -80,4 +102,6 @@ export const walletNames = {
   coinbase: "Coinbase Wallet",
   binance: "Binance Wallet",
   okx: "OKX Wallet",
+  kaia: "Kaia Wallet",
+  trust: "Trust Wallet",
 } as const;

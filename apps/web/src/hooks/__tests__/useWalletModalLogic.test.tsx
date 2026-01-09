@@ -20,12 +20,13 @@ const useWalletMock = vi.hoisted(() =>
     requestWalletPermissions: requestWalletPermissionsMock,
     multisigSign: multisigSignMock,
     account: null,
+    normalizedAccount: null,
   }))
 );
 
 const useAuthOptionalMock = vi.hoisted(() =>
   vi.fn(() => ({
-    user: null,
+    user: null as any,
     error: null,
     requestEmailOtp: requestEmailOtpMock,
     verifyEmailOtp: verifyEmailOtpMock,
@@ -54,6 +55,28 @@ vi.mock("@/lib/i18n", () => ({
 describe("useWalletModalLogic 邮箱登录流程", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("已登录但没有钱包地址时会自动关闭弹窗", async () => {
+    const onClose = vi.fn();
+    useAuthOptionalMock.mockImplementation(() => ({
+      user: { id: "u1", email: "user@example.com" },
+      error: null,
+      requestEmailOtp: requestEmailOtpMock,
+      verifyEmailOtp: verifyEmailOtpMock,
+      sendMagicLink: sendMagicLinkMock,
+    }));
+
+    renderHook(() =>
+      useWalletModalLogic({
+        isOpen: true,
+        onClose,
+      })
+    );
+
+    await act(async () => {});
+
+    expect(onClose.mock.calls.length).toBeGreaterThan(0);
   });
 
   it("在邮箱格式无效时不会请求 OTP", async () => {

@@ -5,6 +5,8 @@ import StickerRevealModal, {
 } from "@/components/StickerRevealModal";
 import StickerGalleryModal from "@/components/StickerGalleryModal";
 import WalletModal from "@/components/WalletModal";
+import { useAuthOptional } from "@/contexts/AuthContext";
+import { useEffect, useRef } from "react";
 import { FlagsHistoryModal } from "../FlagsHistoryModal";
 import type { OfficialTemplate } from "../flagsConfig";
 import type { FlagsData } from "../useFlagsData";
@@ -89,6 +91,9 @@ export function FlagsModals({
   uiState,
   uiActions,
 }: FlagsModalsProps) {
+  const auth = useAuthOptional();
+  const userId = auth?.user?.id ?? null;
+  const prevUserIdRef = useRef<string | null>(userId);
   const { collectedStickers, dbStickers, loadFlags, viewerId } = data;
 
   const {
@@ -140,6 +145,15 @@ export function FlagsModals({
   } = uiActions;
 
   const allStickerList = dbStickers.length > 0 ? dbStickers : OFFICIAL_STICKERS;
+
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    const curr = userId;
+    if (walletModalOpen && !prev && curr) {
+      setWalletModalOpen(false);
+    }
+    prevUserIdRef.current = curr;
+  }, [userId, walletModalOpen, setWalletModalOpen]);
 
   return (
     <>

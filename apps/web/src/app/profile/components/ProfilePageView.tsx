@@ -18,7 +18,8 @@ import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast } from "@/lib/toast";
 import { formatAddress, normalizeAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
-import { useMemo, useState } from "react";
+import { useAuthOptional } from "@/contexts/AuthContext";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type {
   PortfolioStats,
@@ -81,8 +82,11 @@ export function ProfilePageView({
   isOwnProfile = true,
 }: ProfilePageViewProps) {
   const { account: myAccount } = useWallet();
+  const auth = useAuthOptional();
+  const userId = auth?.user?.id ?? null;
   const queryClient = useQueryClient();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const prevUserIdRef = useRef<string | null>(userId);
 
   const accountNorm = useMemo(() => (account ? normalizeAddress(account) : ""), [account]);
   const myAccountNorm = useMemo(() => (myAccount ? normalizeAddress(myAccount) : ""), [myAccount]);
@@ -167,6 +171,15 @@ export function ProfilePageView({
       }
     },
   });
+
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    const curr = userId;
+    if (walletModalOpen && !prev && curr) {
+      setWalletModalOpen(false);
+    }
+    prevUserIdRef.current = curr;
+  }, [userId, walletModalOpen]);
 
   const followersCount = countsQuery.data?.followersCount ?? 0;
   const followingCount = countsQuery.data?.followingCount ?? 0;

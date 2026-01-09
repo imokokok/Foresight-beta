@@ -10,7 +10,7 @@ import {
 import { ethers } from "ethers";
 import { t } from "./i18n";
 
-export type WalletType = "metamask" | "coinbase" | "binance" | "okx";
+export type WalletType = "metamask" | "coinbase" | "binance" | "okx" | "kaia" | "trust";
 
 export type WalletState = {
   account: string | null;
@@ -111,7 +111,7 @@ export function useWalletConnection(params: Params = {}) {
         setWalletState((prev) => ({ ...prev, hasProvider, availableWallets: updated }));
       };
       window.addEventListener("eip6963:announceProvider", onAnnounce);
-      window.dispatchEvent(new Event("eip6963:scan"));
+      window.dispatchEvent(new Event("eip6963:requestProvider"));
       setTimeout(() => {
         const updated = detectWallets();
         const hasProvider =
@@ -150,6 +150,7 @@ export function useWalletConnection(params: Params = {}) {
             ? (localStorage.getItem("lastWalletType") as WalletType | null) || null
             : null;
         const ethereum = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+        const klaytn = typeof window !== "undefined" ? (window as any).klaytn : undefined;
 
         let targetProvider: any = null;
 
@@ -197,6 +198,18 @@ export function useWalletConnection(params: Params = {}) {
           ) {
             targetProvider =
               (window as any).okxwallet || (window as any).okex || (window as any).OKXWallet;
+          } else if (
+            lastWalletType === "kaia" &&
+            typeof window !== "undefined" &&
+            (window as any).klaytn
+          ) {
+            targetProvider = (window as any).klaytn;
+          } else if (
+            lastWalletType === "trust" &&
+            typeof window !== "undefined" &&
+            ((window as any).trustwallet || (window as any).ethereum?.isTrust)
+          ) {
+            targetProvider = (window as any).trustwallet || (window as any).ethereum;
           } else if (ethereum && identifyWalletType(ethereum) === lastWalletType) {
             targetProvider = ethereum;
           }
@@ -255,7 +268,9 @@ export function useWalletConnection(params: Params = {}) {
         throw new Error(t("errors.wallet.useInBrowser"));
       }
       const ethereum: any = (window as any).ethereum;
-      if (!ethereum && !(window as any).BinanceChain) {
+      const klaytn: any = (window as any).klaytn;
+      const trustwallet: any = (window as any).trustwallet;
+      if (!ethereum && !(window as any).BinanceChain && !klaytn && !trustwallet) {
         throw new Error(t("errors.wallet.installExtension"));
       }
 
@@ -303,6 +318,51 @@ export function useWalletConnection(params: Params = {}) {
           } else if ((window as any).okxWallet) {
             targetProvider = (window as any).okxWallet;
           }
+        } else if (walletType === "kaia" && (window as any).klaytn) {
+          targetProvider = (window as any).klaytn;
+          if (
+            typeof targetProvider.request !== "function" &&
+            typeof targetProvider.enable === "function"
+          ) {
+            const original = targetProvider;
+            targetProvider = {
+              ...original,
+              request: async (args: { method: string; params?: any[] }) => {
+                if (
+                  args.method === "eth_requestAccounts" ||
+                  args.method === "klay_requestAccounts"
+                ) {
+                  const accounts = await original.enable();
+                  return accounts;
+                }
+                if (typeof original.request === "function") {
+                  return original.request(args);
+                }
+                return new Promise((resolve, reject) => {
+                  if (typeof original.sendAsync !== "function") {
+                    reject(new Error("Provider does not support request"));
+                    return;
+                  }
+                  original.sendAsync(
+                    {
+                      method: args.method,
+                      params: args.params || [],
+                    },
+                    (err: any, result: any) => {
+                      if (err) reject(err);
+                      else resolve(result?.result);
+                    }
+                  );
+                });
+              },
+            };
+          }
+        } else if (walletType === "trust") {
+          if ((window as any).trustwallet) {
+            targetProvider = (window as any).trustwallet;
+          } else if (ethereum && (ethereum as any).isTrust) {
+            targetProvider = ethereum;
+          }
         }
       }
 
@@ -321,7 +381,11 @@ export function useWalletConnection(params: Params = {}) {
             throw new Error(t("errors.wallet.okxNotInstalled"));
           }
         } else if (!walletType) {
-          targetProvider = ethereum || (window as any).BinanceChain;
+          targetProvider =
+            ethereum ||
+            (window as any).BinanceChain ||
+            (window as any).klaytn ||
+            (window as any).trustwallet;
         } else {
           throw new Error(t("errors.wallet.walletNotInitialized"));
         }

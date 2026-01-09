@@ -1,7 +1,7 @@
 "use client";
 import type { RefObject } from "react";
 
-type WalletType = "metamask" | "coinbase" | "binance" | "okx";
+type WalletType = "metamask" | "coinbase" | "binance" | "okx" | "kaia" | "trust";
 
 interface EIP6963ProviderInfo {
   uuid?: string;
@@ -22,6 +22,14 @@ function walletTypeFromInfo(info: EIP6963ProviderInfo): WalletType | null {
   if (name.includes("coinbase") || rdns.includes("coinbase")) return "coinbase";
   if (name.includes("binance") || rdns.includes("binance")) return "binance";
   if (name.includes("okx") || rdns.includes("okx")) return "okx";
+  if (
+    name.includes("kaia") ||
+    name.includes("kaikas") ||
+    rdns.includes("kaia") ||
+    rdns.includes("kaikas")
+  )
+    return "kaia";
+  if (name.includes("trust") || rdns.includes("trust")) return "trust";
   return null;
 }
 
@@ -48,13 +56,30 @@ export type WalletInfo = {
 
 export function identifyWalletType(provider?: any): WalletType | null {
   const ethereum = (typeof window !== "undefined" ? (window as any).ethereum : undefined) as any;
-  const p = provider || ethereum;
+  const klaytn = typeof window !== "undefined" ? (window as any).klaytn : undefined;
+  const p = provider || ethereum || klaytn;
   if (!p) return null;
 
   const mapped = providerTypeMap.get(p as any);
   if (mapped) return mapped;
 
   try {
+    if (
+      (klaytn && (p === klaytn || klaytn.isKaikas || p.isKaikas || p.isKaia)) ||
+      (typeof p.networkVersion === "string" &&
+        (p as any).selectedAddress &&
+        ((p as any).isKaikas || (p as any).isKaia))
+    ) {
+      return "kaia";
+    }
+
+    if (
+      (p as any).isTrust ||
+      (typeof window !== "undefined" && (window as any).trustwallet === p)
+    ) {
+      return "trust";
+    }
+
     if (
       p.isOkxWallet ||
       p.isOKExWallet ||
@@ -70,6 +95,23 @@ export function identifyWalletType(provider?: any): WalletType | null {
           p === (window as any).okxWallet))
     ) {
       return "okx";
+    }
+
+    if (
+      p.isMetaMask &&
+      !p.isBitKeep &&
+      !p.isBlockWallet &&
+      !p.isMathWallet &&
+      !p.isOkxWallet &&
+      !p.isOKExWallet &&
+      !p.isOKX &&
+      !p.isTrust &&
+      !p.isCoinbaseWallet &&
+      !p.isBinance &&
+      !p.isKuCoinWallet &&
+      !p.isRabby
+    ) {
+      return "metamask";
     }
 
     if (
@@ -107,6 +149,8 @@ export function identifyWalletType(provider?: any): WalletType | null {
       if (host.includes("coinbase")) return "coinbase";
       if (host.includes("binance")) return "binance";
       if (host.includes("okx")) return "okx";
+      if (host.includes("kaia") || host.includes("kaikas")) return "kaia";
+      if (host.includes("trust")) return "trust";
     }
 
     if (typeof p.name === "string") {
@@ -115,6 +159,8 @@ export function identifyWalletType(provider?: any): WalletType | null {
       if (name.includes("coinbase")) return "coinbase";
       if (name.includes("binance")) return "binance";
       if (name.includes("okx")) return "okx";
+      if (name.includes("kaia") || name.includes("kaikas")) return "kaia";
+      if (name.includes("trust")) return "trust";
     }
   } catch {}
 
@@ -136,6 +182,18 @@ export function identifyWalletType(provider?: any): WalletType | null {
   ) {
     return "okx";
   }
+  if (
+    typeof window !== "undefined" &&
+    ((window as any).klaytn === p || (window as any).klaytn?.isKaikas)
+  ) {
+    return "kaia";
+  }
+  if (
+    typeof window !== "undefined" &&
+    ((window as any).trustwallet === p || (window as any).ethereum?.isTrust)
+  ) {
+    return "trust";
+  }
 
   if (!provider && ethereum?.providers) {
     for (const pr of ethereum.providers) {
@@ -152,10 +210,13 @@ export function identifyWalletType(provider?: any): WalletType | null {
 
 export function detectWallets(): WalletInfo[] {
   const ethereum: any = typeof window !== "undefined" ? (window as any).ethereum : undefined;
+  const klaytn: any = typeof window !== "undefined" ? (window as any).klaytn : undefined;
   let hasMM = false;
   let hasCB = false;
   let hasBN = false;
   let hasOKX = false;
+  let hasKaia = false;
+  let hasTrust = false;
 
   if (ethereum?.providers) {
     ethereum.providers.forEach((provider: any) => {
@@ -164,6 +225,8 @@ export function detectWallets(): WalletInfo[] {
       else if (t === "coinbase") hasCB = true;
       else if (t === "binance") hasBN = true;
       else if (t === "okx") hasOKX = true;
+      else if (t === "kaia") hasKaia = true;
+      else if (t === "trust") hasTrust = true;
     });
   }
 
@@ -174,11 +237,19 @@ export function detectWallets(): WalletInfo[] {
       else if (mapped === "coinbase") hasCB = true;
       else if (mapped === "binance") hasBN = true;
       else if (mapped === "okx") hasOKX = true;
+      else if (mapped === "kaia") hasKaia = true;
+      else if (mapped === "trust") hasTrust = true;
     }
   }
 
   if (typeof window !== "undefined" && (window as any).BinanceChain) hasBN = true;
   if (typeof window !== "undefined" && (window as any).coinbaseWalletExtension) hasCB = true;
+  if (klaytn && (klaytn.isKaikas || typeof klaytn.networkVersion === "string")) hasKaia = true;
+  if (
+    typeof window !== "undefined" &&
+    ((window as any).trustwallet || (window as any).ethereum?.isTrust)
+  )
+    hasTrust = true;
 
   if (
     typeof window !== "undefined" &&
@@ -196,6 +267,8 @@ export function detectWallets(): WalletInfo[] {
     else if (t === "coinbase") hasCB = true;
     else if (t === "binance") hasBN = true;
     else if (t === "okx") hasOKX = true;
+    else if (t === "kaia") hasKaia = true;
+    else if (t === "trust") hasTrust = true;
     if (ethereum.isBinanceWallet) hasBN = true;
   }
 
@@ -204,6 +277,8 @@ export function detectWallets(): WalletInfo[] {
     { type: "coinbase", name: "Coinbase Wallet", isAvailable: hasCB, provider: null },
     { type: "binance", name: "Binance Wallet", isAvailable: hasBN, provider: null },
     { type: "okx", name: "OKX Wallet", isAvailable: hasOKX, provider: null },
+    { type: "kaia", name: "Kaia Wallet", isAvailable: hasKaia, provider: null },
+    { type: "trust", name: "Trust Wallet", isAvailable: hasTrust, provider: null },
   ];
 
   const uniqueWallets = wallets.reduce((acc: WalletInfo[], current) => {

@@ -110,7 +110,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     if (user) {
       const addr = normalizedAccount || "";
       if (!addr) {
-        setProfileLoading(false);
+        onClose();
         return;
       }
       if (showProfileForm) return;
@@ -175,6 +175,14 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     okx: {
       name: "OKX Wallet",
       url: "https://chrome.google.com/webstore/detail/okx-wallet/mcohilncbfahbmgdjkbpemcciiolgcge",
+    },
+    kaia: {
+      name: "Kaia Wallet",
+      url: "https://chromewebstore.google.com/detail/kaia-wallet/jblndlipeogpafnldhgmapagcccfchpi",
+    },
+    trust: {
+      name: "Trust Wallet",
+      url: "https://trustwallet.com/browser-extension",
     },
   };
 
