@@ -26,6 +26,19 @@ describe("Rate Limiting", () => {
       }
     });
 
+    it("should isolate rate limits by namespace", async () => {
+      const identifier = "test-user-ns";
+      const config = { limit: 1, interval: 60000 };
+
+      const ns1a = await checkRateLimit(identifier, config, "ns1");
+      const ns2a = await checkRateLimit(identifier, config, "ns2");
+      const ns1b = await checkRateLimit(identifier, config, "ns1");
+
+      expect(ns1a.success).toBe(true);
+      expect(ns2a.success).toBe(true);
+      expect(ns1b.success).toBe(false);
+    });
+
     it("should block requests exceeding limit", async () => {
       const identifier = "test-user-2";
       const config = { limit: 3, interval: 60000 };

@@ -211,45 +211,49 @@ export function identifyWalletType(provider?: any): WalletType | null {
 export function detectWallets(): WalletInfo[] {
   const ethereum: any = typeof window !== "undefined" ? (window as any).ethereum : undefined;
   const klaytn: any = typeof window !== "undefined" ? (window as any).klaytn : undefined;
-  let hasMM = false;
-  let hasCB = false;
-  let hasBN = false;
-  let hasOKX = false;
-  let hasKaia = false;
-  let hasTrust = false;
+  const providerByType: Partial<Record<WalletType, any>> = {};
 
   if (ethereum?.providers) {
     ethereum.providers.forEach((provider: any) => {
       const t = identifyWalletType(provider);
-      if (t === "metamask") hasMM = true;
-      else if (t === "coinbase") hasCB = true;
-      else if (t === "binance") hasBN = true;
-      else if (t === "okx") hasOKX = true;
-      else if (t === "kaia") hasKaia = true;
-      else if (t === "trust") hasTrust = true;
+      if (t && !providerByType[t]) {
+        providerByType[t] = provider;
+      }
     });
   }
 
   if (discoveredProviders.length > 0) {
     for (const d of discoveredProviders) {
       const mapped = providerTypeMap.get(d.provider) || walletTypeFromInfo(d.info);
-      if (mapped === "metamask") hasMM = true;
-      else if (mapped === "coinbase") hasCB = true;
-      else if (mapped === "binance") hasBN = true;
-      else if (mapped === "okx") hasOKX = true;
-      else if (mapped === "kaia") hasKaia = true;
-      else if (mapped === "trust") hasTrust = true;
+      if (mapped && !providerByType[mapped]) {
+        providerByType[mapped] = d.provider;
+      }
     }
   }
 
-  if (typeof window !== "undefined" && (window as any).BinanceChain) hasBN = true;
-  if (typeof window !== "undefined" && (window as any).coinbaseWalletExtension) hasCB = true;
-  if (klaytn && (klaytn.isKaikas || typeof klaytn.networkVersion === "string")) hasKaia = true;
+  if (typeof window !== "undefined" && (window as any).BinanceChain && !providerByType.binance) {
+    providerByType.binance = (window as any).BinanceChain;
+  }
   if (
     typeof window !== "undefined" &&
-    ((window as any).trustwallet || (window as any).ethereum?.isTrust)
-  )
-    hasTrust = true;
+    (window as any).coinbaseWalletExtension &&
+    !providerByType.coinbase
+  ) {
+    providerByType.coinbase = (window as any).coinbaseWalletExtension;
+  }
+  if (
+    klaytn &&
+    (klaytn.isKaikas || typeof klaytn.networkVersion === "string") &&
+    !providerByType.kaia
+  ) {
+    providerByType.kaia = klaytn;
+  }
+  if (typeof window !== "undefined" && (window as any).trustwallet && !providerByType.trust) {
+    providerByType.trust = (window as any).trustwallet;
+  }
+  if (typeof window !== "undefined" && (window as any).ethereum?.isTrust && !providerByType.trust) {
+    providerByType.trust = (window as any).ethereum;
+  }
 
   if (
     typeof window !== "undefined" &&
@@ -258,27 +262,62 @@ export function detectWallets(): WalletInfo[] {
       (window as any).OKXWallet ||
       (window as any).okxWallet)
   ) {
-    hasOKX = true;
+    if (!providerByType.okx) {
+      providerByType.okx =
+        (window as any).okxwallet ||
+        (window as any).okex ||
+        (window as any).OKXWallet ||
+        (window as any).okxWallet;
+    }
   }
 
   if (!ethereum?.providers && ethereum) {
     const t = identifyWalletType(ethereum);
-    if (t === "metamask") hasMM = true;
-    else if (t === "coinbase") hasCB = true;
-    else if (t === "binance") hasBN = true;
-    else if (t === "okx") hasOKX = true;
-    else if (t === "kaia") hasKaia = true;
-    else if (t === "trust") hasTrust = true;
-    if (ethereum.isBinanceWallet) hasBN = true;
+    if (t && !providerByType[t]) {
+      providerByType[t] = ethereum;
+    }
+    if (ethereum.isBinanceWallet && !providerByType.binance) {
+      providerByType.binance = ethereum;
+    }
   }
 
   const wallets: WalletInfo[] = [
-    { type: "metamask", name: "MetaMask", isAvailable: hasMM, provider: null },
-    { type: "coinbase", name: "Coinbase Wallet", isAvailable: hasCB, provider: null },
-    { type: "binance", name: "Binance Wallet", isAvailable: hasBN, provider: null },
-    { type: "okx", name: "OKX Wallet", isAvailable: hasOKX, provider: null },
-    { type: "kaia", name: "Kaia Wallet", isAvailable: hasKaia, provider: null },
-    { type: "trust", name: "Trust Wallet", isAvailable: hasTrust, provider: null },
+    {
+      type: "metamask",
+      name: "MetaMask",
+      isAvailable: !!providerByType.metamask,
+      provider: providerByType.metamask || null,
+    },
+    {
+      type: "coinbase",
+      name: "Coinbase Wallet",
+      isAvailable: !!providerByType.coinbase,
+      provider: providerByType.coinbase || null,
+    },
+    {
+      type: "binance",
+      name: "Binance Wallet",
+      isAvailable: !!providerByType.binance,
+      provider: providerByType.binance || null,
+    },
+    {
+      type: "okx",
+      name: "OKX Wallet",
+      isAvailable: !!providerByType.okx,
+      provider: providerByType.okx || null,
+    },
+    {
+      type: "kaia",
+      name: "Kaia Wallet",
+      isAvailable: !!providerByType.kaia,
+      provider: providerByType.kaia || null,
+    },
+    {
+      type: "trust",
+      name: "Trust Wallet",
+      isAvailable: !!providerByType.trust,
+      provider: providerByType.trust || null,
+    },
   ];
 
   const uniqueWallets = wallets.reduce((acc: WalletInfo[], current) => {

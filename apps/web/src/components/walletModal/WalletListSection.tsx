@@ -9,6 +9,7 @@ export type WalletListSectionProps = {
   siweLoading: boolean;
   permLoading: boolean;
   multiLoading: boolean;
+  walletError?: string | null;
   handleWalletConnect: (walletType: string, isAvailable?: boolean) => Promise<void>;
 };
 
@@ -20,10 +21,16 @@ export function WalletListSection({
   siweLoading,
   permLoading,
   multiLoading,
+  walletError,
   handleWalletConnect,
 }: WalletListSectionProps) {
   return (
     <div className="relative px-6 pb-6">
+      {walletError ? (
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {walletError}
+        </div>
+      ) : null}
       <div className="h-56 overflow-y-auto snap-y snap-mandatory pr-2 -mr-2 space-y-3 scrollbar-beauty">
         {availableWallets.map((wallet, index) => (
           <motion.button

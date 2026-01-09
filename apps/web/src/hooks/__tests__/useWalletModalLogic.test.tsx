@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useWalletModalLogic } from "../useWalletModalLogic";
 
 const connectWalletMock = vi.hoisted(() => vi.fn());
+const connectWalletWithResultMock = vi.hoisted(() => vi.fn());
 const siweLoginMock = vi.hoisted(() => vi.fn());
 const requestWalletPermissionsMock = vi.hoisted(() => vi.fn());
 const multisigSignMock = vi.hoisted(() => vi.fn());
@@ -14,6 +15,7 @@ const sendMagicLinkMock = vi.hoisted(() => vi.fn());
 const useWalletMock = vi.hoisted(() =>
   vi.fn(() => ({
     connectWallet: connectWalletMock,
+    connectWalletWithResult: connectWalletWithResultMock,
     availableWallets: [],
     isConnecting: false,
     siweLogin: siweLoginMock,

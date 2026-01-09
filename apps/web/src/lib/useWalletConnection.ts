@@ -26,6 +26,16 @@ type Params = {
   onAccountsChanged?: (account: string | null) => void;
 };
 
+export type WalletConnectResult =
+  | {
+      success: true;
+      account: string;
+      chainId: string | null;
+      currentWalletType: WalletType | null;
+      provider: any;
+    }
+  | { success: false; error: string };
+
 const LOGOUT_FLAG = "fs_wallet_logged_out";
 
 function setupEventListeners(
@@ -256,7 +266,7 @@ export function useWalletConnection(params: Params = {}) {
     };
   }, [handleAccountsChanged, handleChainChanged, onAccountsChanged]);
 
-  const connectWallet = async (walletType?: WalletType) => {
+  const connectWalletWithResult = async (walletType?: WalletType): Promise<WalletConnectResult> => {
     setWalletState((prev) => ({
       ...prev,
       isConnecting: true,
@@ -434,14 +444,36 @@ export function useWalletConnection(params: Params = {}) {
         if (onAccountsChanged) {
           onAccountsChanged(accounts[0]);
         }
+
+        return {
+          success: true,
+          account: accounts[0],
+          chainId: hexChainId || null,
+          currentWalletType: finalWalletType,
+          provider: targetProvider,
+        };
       }
-    } catch (error: any) {
+
+      const message = t("errors.wallet.connectFailed");
       setWalletState((prev) => ({
         ...prev,
         isConnecting: false,
-        connectError: error?.message || t("errors.wallet.connectFailed"),
+        connectError: message,
       }));
+      return { success: false, error: message };
+    } catch (error: any) {
+      const message = error?.message || t("errors.wallet.connectFailed");
+      setWalletState((prev) => ({
+        ...prev,
+        isConnecting: false,
+        connectError: message,
+      }));
+      return { success: false, error: message };
     }
+  };
+
+  const connectWallet = async (walletType?: WalletType) => {
+    await connectWalletWithResult(walletType);
   };
 
   const disconnectWallet = async () => {
@@ -541,6 +573,7 @@ export function useWalletConnection(params: Params = {}) {
   return {
     walletState,
     connectWallet,
+    connectWalletWithResult,
     disconnectWallet,
     currentProviderRef,
     handleChainChanged,

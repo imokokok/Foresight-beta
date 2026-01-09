@@ -3,6 +3,80 @@
 import { ethers } from "ethers";
 import { t, formatTranslation } from "./i18n";
 
+const nonceCache = {
+  value: null as string | null,
+  expiresAt: 0,
+  inFlight: null as Promise<string> | null,
+};
+
+function waitMs(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function getRetryAfterMs(res: Response): number | null {
+  const retryAfter = res.headers.get("Retry-After");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds * 1000);
+  }
+
+  const resetIso = res.headers.get("X-RateLimit-Reset");
+  if (resetIso) {
+    const resetAt = new Date(resetIso).getTime();
+    if (Number.isFinite(resetAt)) {
+      const delta = resetAt - Date.now();
+      if (delta > 0) return Math.ceil(delta);
+    }
+  }
+
+  return null;
+}
+
+async function fetchNonce(): Promise<string> {
+  const now = Date.now();
+  if (nonceCache.value && nonceCache.expiresAt > now) {
+    return nonceCache.value;
+  }
+
+  if (nonceCache.inFlight) {
+    return nonceCache.inFlight;
+  }
+
+  nonceCache.inFlight = (async () => {
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const res = await fetch("/api/siwe/nonce", { method: "GET" });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const nonce: string = json?.nonce;
+        if (nonce) {
+          nonceCache.value = nonce;
+          nonceCache.expiresAt = Date.now() + 30_000;
+          return nonce;
+        }
+        throw { status: res.status };
+      }
+
+      if (res.status === 429 && attempt < maxAttempts - 1) {
+        const retryMs = getRetryAfterMs(res);
+        const fallbackMs = Math.min(2000 * Math.pow(2, attempt), 8000);
+        await waitMs(retryMs ?? fallbackMs);
+        continue;
+      }
+
+      throw { status: res.status };
+    }
+
+    throw { status: 429 };
+  })();
+
+  try {
+    return await nonceCache.inFlight;
+  } finally {
+    nonceCache.inFlight = null;
+  }
+}
+
 type Params = {
   providerRef: React.RefObject<any>;
   account: string | null;
@@ -24,20 +98,22 @@ export function useSiweAuth(params: Params) {
       const address = signerAddress || params.account;
       if (!address) return { success: false, error: t("errors.wallet.connectFirst") };
 
-      const nonceRes = await fetch("/api/siwe/nonce", { method: "GET" });
-      if (!nonceRes.ok) {
-        console.error("[SIWE] Nonce API failed:", nonceRes.status, nonceRes.statusText);
-        return {
-          success: false,
-          error: formatTranslation(t("errors.wallet.nonceFetchFailed"), {
-            status: nonceRes.status,
-          }),
-        };
-      }
-      const nonceJson = await nonceRes.json().catch(() => null);
-      const nonce: string = nonceJson?.nonce;
-      if (!nonce) {
-        console.error("[SIWE] Nonce response invalid:", nonceJson);
+      let nonce: string;
+      try {
+        nonce = await fetchNonce();
+      } catch (e: any) {
+        const status = typeof e?.status === "number" ? e.status : undefined;
+        if (status === 429) {
+          return { success: false, error: t("errors.api.429.description") };
+        }
+        if (status) {
+          return {
+            success: false,
+            error: formatTranslation(t("errors.wallet.nonceFetchFailed"), {
+              status,
+            }),
+          };
+        }
         return { success: false, error: t("errors.wallet.nonceInvalid") };
       }
 

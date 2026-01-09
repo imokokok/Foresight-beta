@@ -19,6 +19,7 @@ export type WalletModalViewProps = WalletModalProps & {
   tLogin: (key: string) => string;
   user: any;
   authError: string | null;
+  walletError: string | null;
   selectedWallet: string | null;
   email: string;
   setEmail: (value: string) => void;
@@ -73,6 +74,7 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
   tWalletModal,
   tLogin,
   authError,
+  walletError,
   selectedWallet,
   email,
   setEmail,
@@ -198,6 +200,7 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
                 siweLoading={siweLoading}
                 permLoading={permLoading}
                 multiLoading={multiLoading}
+                walletError={walletError}
                 handleWalletConnect={handleWalletConnect}
               />
             </>

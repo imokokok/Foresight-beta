@@ -7,7 +7,12 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { useWalletConnection, type WalletState, type WalletType } from "../lib/useWalletConnection";
+import {
+  useWalletConnection,
+  type WalletConnectResult,
+  type WalletState,
+  type WalletType,
+} from "../lib/useWalletConnection";
 import {
   detectWallets,
   identifyWalletType,
@@ -40,6 +45,7 @@ declare global {
 
 interface WalletContextType extends WalletState {
   connectWallet: (walletType?: WalletType) => Promise<void>;
+  connectWalletWithResult: (walletType?: WalletType) => Promise<WalletConnectResult>;
   disconnectWallet: () => Promise<void>;
   formatAddress: (addr: string) => string;
   detectWallets: () => WalletInfo[];
@@ -66,8 +72,14 @@ interface WalletContextType extends WalletState {
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const { walletState, connectWallet, disconnectWallet, currentProviderRef, handleChainChanged } =
-    useWalletConnection();
+  const {
+    walletState,
+    connectWallet,
+    connectWalletWithResult,
+    disconnectWallet,
+    currentProviderRef,
+    handleChainChanged,
+  } = useWalletConnection();
 
   const rawProvider = getActiveRawProvider(currentProviderRef);
 
@@ -179,6 +191,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     balanceEth,
     balanceLoading,
     connectWallet,
+    connectWalletWithResult,
     disconnectWallet,
     formatAddress,
     detectWallets,

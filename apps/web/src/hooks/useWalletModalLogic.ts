@@ -28,7 +28,7 @@ export interface UseWalletModalOptions {
 
 export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) {
   const {
-    connectWallet,
+    connectWalletWithResult,
     availableWallets,
     isConnecting,
     siweLogin,
@@ -39,6 +39,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   } = useWallet();
   const auth = useAuthOptional();
   const userProfile = useUserProfileOptional();
+  const tGlobal = useTranslations();
   const tWalletModal = useTranslations("walletModal");
   const tLogin = useTranslations("login");
   const user = auth?.user ?? null;
@@ -55,6 +56,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const [profileLoading, setProfileLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [resendLeft, setResendLeft] = useState(0);
@@ -97,6 +99,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setProfileLoading(false);
       setUsername("");
       setProfileError(null);
+      setWalletError(null);
       setRememberMe(false);
       setEmailVerified(false);
       setResendLeft(0);
@@ -188,6 +191,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
   const handleWalletConnect = async (walletType: string, isAvailable?: boolean) => {
     if (!isAvailable) {
+      setWalletError(null);
       const cfg = installMap[walletType] || {
         name: walletType,
         url: "https://metamask.io/download/",
@@ -198,10 +202,16 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       return;
     }
     setSelectedWallet(walletType);
+    setWalletError(null);
     try {
       // 步骤 1: 连接钱包
       setWalletStep("connecting");
-      await connectWallet(walletType as any);
+      const connectRes = await connectWalletWithResult(walletType as any);
+      if (!connectRes.success) {
+        setWalletError(connectRes.error);
+        setWalletStep("select");
+        return;
+      }
 
       // 步骤 2: 请求权限（可选，快速跳过）
       setPermLoading(true);
@@ -221,6 +231,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
       if (!res.success) {
         console.error("Sign-in with wallet failed:", res.error);
+        setWalletError(res.error || tGlobal("errors.wallet.loginError"));
         setWalletStep("select");
         setSelectedWallet(null);
         return;
@@ -230,7 +241,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         await auth.refreshSession();
       }
 
-      const addrCheck = String(res.address || account || "").toLowerCase();
+      const addrCheck = String(res.address || connectRes.account || account || "").toLowerCase();
       if (addrCheck) {
         try {
           const r = await fetch(`/api/user-profiles?address=${encodeURIComponent(addrCheck)}`);
@@ -252,6 +263,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       onClose();
     } catch (error) {
       console.error("Wallet connection failed:", error);
+      setWalletError(
+        String((error as any)?.message || error || tGlobal("errors.wallet.loginError"))
+      );
       // 出错时重置状态
       setWalletStep("select");
       setSiweLoading(false);
@@ -436,6 +450,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     username,
     setUsername,
     profileError,
+    walletError,
     rememberMe,
     setRememberMe,
     emailVerified,

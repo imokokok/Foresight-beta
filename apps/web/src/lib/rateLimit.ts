@@ -46,10 +46,11 @@ if (typeof setInterval !== "undefined") {
  */
 export async function checkRateLimit(
   identifier: string,
-  config: RateLimitConfig = { interval: 60 * 1000, limit: 60 }
+  config: RateLimitConfig = { interval: 60 * 1000, limit: 60 },
+  namespace: string = "default"
 ): Promise<{ success: boolean; remaining: number; resetAt: number }> {
   const now = Date.now();
-  const key = `ratelimit:${identifier}`;
+  const key = `ratelimit:${namespace}:${identifier}`;
 
   const entry = store.get(key);
 

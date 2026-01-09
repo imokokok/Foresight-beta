@@ -10,6 +10,7 @@ const useWalletModalLogicMock = vi.hoisted(() =>
     tLogin: (key: string) => key,
     user: null,
     authError: "login failed",
+    walletError: null,
     selectedWallet: null,
     email: "",
     setEmail: vi.fn(),
