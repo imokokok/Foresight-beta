@@ -135,26 +135,37 @@ export class BalanceChecker {
       intervalMs: this.config.intervalMs,
     });
 
-    // 立即运行一次
-    await this.runCheck();
-
-    // 启动定时任务
-    this.checkTimer = setInterval(async () => {
-      await this.runCheck();
-    }, this.config.intervalMs);
-
     this.isRunning = true;
+    try {
+      await this.runCheck();
+
+      this.checkTimer = setInterval(() => {
+        if (!this.isRunning) return;
+        void this.runCheck().catch((error: any) => {
+          logger.error("Scheduled balance check failed", {
+            error: error?.message || String(error),
+          });
+        });
+      }, this.config.intervalMs);
+    } catch (error) {
+      this.isRunning = false;
+      if (this.checkTimer) {
+        clearInterval(this.checkTimer);
+        this.checkTimer = null;
+      }
+      throw error;
+    }
   }
 
   /**
    * 停止余额检查
    */
   async stop(): Promise<void> {
+    this.isRunning = false;
     if (this.checkTimer) {
       clearInterval(this.checkTimer);
       this.checkTimer = null;
     }
-    this.isRunning = false;
     logger.info("BalanceChecker stopped");
   }
 
@@ -164,7 +175,7 @@ export class BalanceChecker {
   async runCheck(): Promise<BalanceReport> {
     const checkId = `balance-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const startTime = Date.now();
-    
+
     logger.info("Starting balance check", { checkId });
 
     const report: BalanceReport = {
@@ -185,12 +196,12 @@ export class BalanceChecker {
     try {
       // 获取所有有余额的用户
       const users = await this.getActiveUsers();
-      
+
       // 分批检查
       for (let i = 0; i < users.length; i += this.config.batchSize) {
         const batch = users.slice(i, i + this.config.batchSize);
         const batchResults = await this.checkBatch(batch);
-        
+
         report.results.push(...batchResults);
         report.usersChecked += batch.length;
       }
@@ -199,24 +210,28 @@ export class BalanceChecker {
       for (const result of report.results) {
         report.summary.totalOnchain += result.onchainBalance;
         report.summary.totalOffchain += result.offchainBalance;
-        
+
         if (!result.isMatch) {
           report.mismatches.push(result);
           report.summary.mismatchCount++;
           report.summary.totalDifference += result.difference;
-          
-          balanceMismatchesTotal.inc({ 
-            token: result.token, 
-            severity: result.difference > BigInt(100e6) ? "high" : "low" 
+
+          balanceMismatchesTotal.inc({
+            token: result.token,
+            severity: result.difference > BigInt(100e6) ? "high" : "low",
           });
         }
       }
 
       // 更新系统总余额指标
-      systemTotalBalance.set({ token: "USDC", type: "onchain" }, 
-        Number(report.summary.totalOnchain) / 1e6);
-      systemTotalBalance.set({ token: "USDC", type: "offchain" }, 
-        Number(report.summary.totalOffchain) / 1e6);
+      systemTotalBalance.set(
+        { token: "USDC", type: "onchain" },
+        Number(report.summary.totalOnchain) / 1e6
+      );
+      systemTotalBalance.set(
+        { token: "USDC", type: "offchain" },
+        Number(report.summary.totalOffchain) / 1e6
+      );
 
       report.endTime = Date.now();
 
@@ -241,7 +256,7 @@ export class BalanceChecker {
   private async getActiveUsers(): Promise<string[]> {
     const pool = getDatabasePool();
     const client = pool.getReadClient();
-    
+
     if (!client) {
       logger.warn("Database not available for balance check");
       return [];
@@ -258,7 +273,7 @@ export class BalanceChecker {
         throw error;
       }
 
-      return (data || []).map(d => d.user_address);
+      return (data || []).map((d) => d.user_address);
     } catch (error: any) {
       logger.error("Failed to get active users", {}, error);
       return [];
@@ -289,9 +304,10 @@ export class BalanceChecker {
     // 对比
     for (const { user, balance: onchainBalance } of onchainBalances) {
       const offchainBalance = offchainBalances.get(user) || 0n;
-      const difference = onchainBalance > offchainBalance 
-        ? onchainBalance - offchainBalance 
-        : offchainBalance - onchainBalance;
+      const difference =
+        onchainBalance > offchainBalance
+          ? onchainBalance - offchainBalance
+          : offchainBalance - onchainBalance;
       const isMatch = difference <= this.config.tolerance;
 
       results.push({
@@ -304,9 +320,9 @@ export class BalanceChecker {
         checkedAt: Date.now(),
       });
 
-      balanceChecksTotal.inc({ 
-        status: isMatch ? "match" : "mismatch", 
-        token: "USDC" 
+      balanceChecksTotal.inc({
+        status: isMatch ? "match" : "mismatch",
+        token: "USDC",
       });
     }
 
@@ -320,7 +336,7 @@ export class BalanceChecker {
     const pool = getDatabasePool();
     const client = pool.getReadClient();
     const balances = new Map<string, bigint>();
-    
+
     if (!client) {
       return balances;
     }
@@ -357,10 +373,9 @@ export class BalanceChecker {
       const usdcOnchain = BigInt(await this.usdcContract.balanceOf(userAddress));
       const offchainBalances = await this.getOffchainBalances([userAddress]);
       const usdcOffchain = offchainBalances.get(userAddress) || 0n;
-      
-      const usdcDiff = usdcOnchain > usdcOffchain 
-        ? usdcOnchain - usdcOffchain 
-        : usdcOffchain - usdcOnchain;
+
+      const usdcDiff =
+        usdcOnchain > usdcOffchain ? usdcOnchain - usdcOffchain : usdcOffchain - usdcOnchain;
 
       results.push({
         userAddress,
@@ -373,7 +388,6 @@ export class BalanceChecker {
       });
 
       // TODO: 检查 ERC1155 outcome token 余额
-
     } catch (error: any) {
       logger.error("Failed to check user balance", { userAddress }, error);
     }
@@ -391,9 +405,7 @@ export class BalanceChecker {
   }> {
     try {
       // 获取市场合约的 USDC 余额
-      const totalUsdcLocked = BigInt(
-        await this.usdcContract.balanceOf(this.config.marketAddress)
-      );
+      const totalUsdcLocked = BigInt(await this.usdcContract.balanceOf(this.config.marketAddress));
 
       // TODO: 计算所有持仓总量
 
@@ -441,7 +453,9 @@ export function getBalanceChecker(config?: Partial<BalanceCheckConfig>): Balance
   return checkerInstance;
 }
 
-export async function initBalanceChecker(config?: Partial<BalanceCheckConfig>): Promise<BalanceChecker> {
+export async function initBalanceChecker(
+  config?: Partial<BalanceCheckConfig>
+): Promise<BalanceChecker> {
   const checker = getBalanceChecker(config);
   await checker.start();
   return checker;
@@ -453,4 +467,3 @@ export async function closeBalanceChecker(): Promise<void> {
     checkerInstance = null;
   }
 }
-

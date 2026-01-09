@@ -36,8 +36,34 @@ CREATE TABLE IF NOT EXISTS public.failed_fills (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'failed_fills' AND column_name = 'chain_id'
+  ) THEN
+    ALTER TABLE public.failed_fills ADD COLUMN chain_id INTEGER;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'failed_fills' AND column_name = 'market_address'
+  ) THEN
+    ALTER TABLE public.failed_fills ADD COLUMN market_address TEXT;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'failed_fills' AND column_name = 'payload'
+  ) THEN
+    ALTER TABLE public.failed_fills ADD COLUMN payload JSONB;
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS failed_fills_batch_idx ON public.failed_fills (batch_id);
 CREATE INDEX IF NOT EXISTS failed_fills_retry_idx ON public.failed_fills (next_retry_at) WHERE resolved_at IS NULL;
+CREATE INDEX IF NOT EXISTS failed_fills_market_chain_idx ON public.failed_fills (chain_id, market_address);
+CREATE UNIQUE INDEX IF NOT EXISTS failed_fills_fill_id_uq ON public.failed_fills (fill_id);
 
 -- 3. Operator 配置表
 CREATE TABLE IF NOT EXISTS public.operators (
@@ -144,4 +170,3 @@ END $$;
 COMMENT ON TABLE public.settlement_batches IS '批量结算记录 - 追踪链上结算状态';
 COMMENT ON TABLE public.failed_fills IS '失败的撮合记录 - 用于重试';
 COMMENT ON TABLE public.operators IS 'Operator 配置 - 每个市场的链上结算者';
-

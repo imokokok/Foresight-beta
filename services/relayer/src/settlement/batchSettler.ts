@@ -15,6 +15,7 @@ import type {
 } from "./types.js";
 import { DEFAULT_SETTLEMENT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
+import { getRedisClient } from "../redis/client.js";
 
 // 合约 ABI (只需要 batchFill 函数)
 const MARKET_ABI = [
@@ -23,6 +24,10 @@ const MARKET_ABI = [
   "event OrderFilledSigned(address indexed maker, address indexed taker, uint256 indexed outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt)",
 ];
 
+const clobIface = new ethers.Interface([
+  "event OrderFilledSigned(address maker, address taker, uint256 outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt)",
+]);
+
 /**
  * 批量结算器
  */
@@ -30,15 +35,16 @@ export class BatchSettler extends EventEmitter {
   private provider: JsonRpcProvider;
   private wallet: Wallet;
   private config: SettlementQueueConfig;
-  
+
   // 结算队列
   private pendingFills: Map<string, SettlementFill> = new Map();
   private batches: Map<string, SettlementBatch> = new Map();
-  
+
   // 定时器
   private batchTimer: NodeJS.Timeout | null = null;
   private confirmTimer: NodeJS.Timeout | null = null;
-  
+  private failedFillTimer: NodeJS.Timeout | null = null;
+
   // 统计
   private stats: SettlementStats = {
     pendingFills: 0,
@@ -51,8 +57,11 @@ export class BatchSettler extends EventEmitter {
     averageBatchSize: 0,
     averageConfirmationTime: 0,
   };
-  
+
   private isShuttingDown = false;
+  private createBatchInFlight = false;
+  private checkConfirmationsInFlight = false;
+  private retryFailedFillsInFlight = false;
 
   constructor(
     private chainId: number,
@@ -65,7 +74,7 @@ export class BatchSettler extends EventEmitter {
     this.provider = new JsonRpcProvider(rpcUrl);
     this.wallet = new Wallet(privateKey, this.provider);
     this.config = { ...DEFAULT_SETTLEMENT_CONFIG, ...config };
-    
+
     console.log(`[BatchSettler] Initialized for market ${marketAddress} on chain ${chainId}`);
     console.log(`[BatchSettler] Operator address: ${this.wallet.address}`);
   }
@@ -76,13 +85,23 @@ export class BatchSettler extends EventEmitter {
   start(): void {
     // 定期检查是否需要创建批次
     this.batchTimer = setInterval(() => {
-      this.checkAndCreateBatch();
+      void this.checkAndCreateBatch().catch((error) => {
+        console.error("[BatchSettler] checkAndCreateBatch failed", error);
+      });
     }, 1000);
 
     // 定期检查待确认的交易
     this.confirmTimer = setInterval(() => {
-      this.checkConfirmations();
+      void this.checkConfirmations().catch((error) => {
+        console.error("[BatchSettler] checkConfirmations failed", error);
+      });
     }, 3000);
+
+    this.failedFillTimer = setInterval(() => {
+      void this.retryFailedFills().catch((error) => {
+        console.error("[BatchSettler] retryFailedFills failed", error);
+      });
+    }, this.config.failedFillRetryIntervalMs);
 
     console.log("[BatchSettler] Started");
   }
@@ -102,30 +121,32 @@ export class BatchSettler extends EventEmitter {
 
     // 检查是否达到批量大小
     if (this.pendingFills.size >= this.config.maxBatchSize) {
-      this.createBatch();
+      void this.createBatch();
     }
   }
 
   /**
    * 检查是否需要创建批次
    */
-  private checkAndCreateBatch(): void {
+  private async checkAndCreateBatch(): Promise<void> {
     if (this.pendingFills.size === 0) return;
-    
+    if (this.isShuttingDown) return;
+    if (this.createBatchInFlight) return;
+
     // 获取最早的 fill
     const fills = Array.from(this.pendingFills.values());
-    const oldestFill = fills.reduce((oldest, fill) => 
+    const oldestFill = fills.reduce((oldest, fill) =>
       fill.timestamp < oldest.timestamp ? fill : oldest
     );
-    
+
     const waitTime = Date.now() - oldestFill.timestamp;
-    
+
     // 达到最小批量大小 或 等待时间超过阈值
     if (
       this.pendingFills.size >= this.config.minBatchSize ||
       waitTime >= this.config.maxBatchWaitMs
     ) {
-      this.createBatch();
+      await this.createBatch();
     }
   }
 
@@ -134,61 +155,83 @@ export class BatchSettler extends EventEmitter {
    */
   private async createBatch(): Promise<void> {
     if (this.pendingFills.size === 0) return;
+    if (this.isShuttingDown) return;
+    if (this.createBatchInFlight) return;
+    this.createBatchInFlight = true;
 
-    // 取出待处理的 fills (最多 maxBatchSize)
-    const fills = Array.from(this.pendingFills.values())
-      .slice(0, this.config.maxBatchSize);
+    try {
+      // 取出待处理的 fills (最多 maxBatchSize)
+      const fills = Array.from(this.pendingFills.values()).slice(0, this.config.maxBatchSize);
 
-    // 从 pending 中移除
-    for (const fill of fills) {
-      this.pendingFills.delete(fill.id);
+      // 从 pending 中移除
+      for (const fill of fills) {
+        this.pendingFills.delete(fill.id);
+      }
+
+      // 创建批次
+      const batch: SettlementBatch = {
+        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        chainId: this.chainId,
+        marketAddress: this.marketAddress,
+        fills,
+        status: "pending",
+        createdAt: Date.now(),
+        retryCount: 0,
+      };
+
+      this.batches.set(batch.id, batch);
+      this.stats.pendingBatches++;
+      this.stats.pendingFills = this.pendingFills.size;
+
+      this.emitEvent({ type: "batch_created", batch });
+
+      console.log(`[BatchSettler] Created batch ${batch.id} with ${fills.length} fills`);
+
+      // 异步提交
+      void this.submitBatch(batch);
+    } finally {
+      this.createBatchInFlight = false;
     }
-
-    // 创建批次
-    const batch: SettlementBatch = {
-      id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      chainId: this.chainId,
-      marketAddress: this.marketAddress,
-      fills,
-      status: "pending",
-      createdAt: Date.now(),
-      retryCount: 0,
-    };
-
-    this.batches.set(batch.id, batch);
-    this.stats.pendingBatches++;
-    this.stats.pendingFills = this.pendingFills.size;
-
-    this.emitEvent({ type: "batch_created", batch });
-
-    console.log(`[BatchSettler] Created batch ${batch.id} with ${fills.length} fills`);
-
-    // 异步提交
-    this.submitBatch(batch);
   }
 
   /**
    * 提交批次到链上
    */
   private async submitBatch(batch: SettlementBatch): Promise<void> {
+    if (this.isShuttingDown) return;
     batch.status = "submitting";
 
     try {
       // 检查 Gas 价格
       const feeData = await this.provider.getFeeData();
       const gasPrice = feeData.gasPrice || 0n;
-      
+
       if (gasPrice > this.config.maxGasPrice) {
-        console.warn(`[BatchSettler] Gas price too high: ${gasPrice}, max: ${this.config.maxGasPrice}`);
-        // 放回队列稍后重试
-        batch.status = "pending";
+        console.warn(
+          `[BatchSettler] Gas price too high: ${gasPrice}, max: ${this.config.maxGasPrice}`
+        );
+        batch.retryCount++;
+        if (batch.retryCount < this.config.maxRetries) {
+          batch.status = "retrying";
+          const delay =
+            this.config.retryDelayMs *
+            Math.pow(this.config.retryBackoffMultiplier, Math.max(0, batch.retryCount - 1));
+          setTimeout(() => void this.submitBatch(batch), delay);
+        } else {
+          batch.status = "failed";
+          batch.error = "Gas price too high";
+          this.stats.failedBatches++;
+          this.stats.pendingBatches--;
+          this.emitEvent({ type: "batch_failed", batchId: batch.id, error: batch.error });
+          await this.saveFailedBatch(batch);
+        }
         return;
       }
 
       const contract = new Contract(this.marketAddress, MARKET_ABI, this.wallet);
 
       // 准备批量调用参数
-      const orders = batch.fills.map(fill => ({
+      const orders = batch.fills.map((fill) => ({
         maker: fill.order.maker,
         outcomeIndex: fill.order.outcomeIndex,
         isBuy: fill.order.isBuy,
@@ -198,8 +241,8 @@ export class BatchSettler extends EventEmitter {
         expiry: fill.order.expiry,
       }));
 
-      const signatures = batch.fills.map(fill => fill.signature);
-      const fillAmounts = batch.fills.map(fill => fill.fillAmount);
+      const signatures = batch.fills.map((fill) => fill.signature);
+      const fillAmounts = batch.fills.map((fill) => fill.fillAmount);
 
       console.log(`[BatchSettler] Submitting batch ${batch.id} with ${orders.length} orders`);
 
@@ -210,12 +253,16 @@ export class BatchSettler extends EventEmitter {
         // 加 20% 余量
         gasEstimate = (gasEstimate * 120n) / 100n;
       } catch (estimateError: any) {
-        console.error(`[BatchSettler] Gas estimation failed for batch ${batch.id}:`, estimateError.message);
+        console.error(
+          `[BatchSettler] Gas estimation failed for batch ${batch.id}:`,
+          estimateError.message
+        );
         batch.status = "failed";
         batch.error = `Gas estimation failed: ${estimateError.message}`;
         this.stats.failedBatches++;
         this.stats.pendingBatches--;
         this.emitEvent({ type: "batch_failed", batchId: batch.id, error: batch.error });
+        await this.saveFailedBatch(batch);
         return;
       }
 
@@ -228,7 +275,7 @@ export class BatchSettler extends EventEmitter {
       batch.txHash = tx.hash;
       batch.status = "submitted";
       batch.submittedAt = Date.now();
-      
+
       this.stats.submittedBatches++;
       this.stats.pendingBatches--;
 
@@ -237,27 +284,30 @@ export class BatchSettler extends EventEmitter {
 
       // 保存到数据库
       await this.saveBatchToDb(batch);
-
     } catch (error: any) {
       console.error(`[BatchSettler] Failed to submit batch ${batch.id}:`, error.message);
-      
+
       batch.retryCount++;
-      
+
       if (batch.retryCount < this.config.maxRetries) {
         batch.status = "retrying";
-        const delay = this.config.retryDelayMs * Math.pow(this.config.retryBackoffMultiplier, batch.retryCount - 1);
-        
-        console.log(`[BatchSettler] Retrying batch ${batch.id} in ${delay}ms (attempt ${batch.retryCount}/${this.config.maxRetries})`);
-        
-        setTimeout(() => this.submitBatch(batch), delay);
+        const delay =
+          this.config.retryDelayMs *
+          Math.pow(this.config.retryBackoffMultiplier, batch.retryCount - 1);
+
+        console.log(
+          `[BatchSettler] Retrying batch ${batch.id} in ${delay}ms (attempt ${batch.retryCount}/${this.config.maxRetries})`
+        );
+
+        setTimeout(() => void this.submitBatch(batch), delay);
       } else {
         batch.status = "failed";
         batch.error = error.message;
         this.stats.failedBatches++;
         this.stats.pendingBatches--;
-        
+
         this.emitEvent({ type: "batch_failed", batchId: batch.id, error: error.message });
-        
+
         // 将失败的 fills 记录到数据库
         await this.saveFailedBatch(batch);
       }
@@ -268,63 +318,92 @@ export class BatchSettler extends EventEmitter {
    * 检查待确认的交易
    */
   private async checkConfirmations(): Promise<void> {
-    const submittedBatches = Array.from(this.batches.values())
-      .filter(b => b.status === "submitted" && b.txHash);
+    if (this.checkConfirmationsInFlight) return;
+    this.checkConfirmationsInFlight = true;
+    const submittedBatches = Array.from(this.batches.values()).filter(
+      (b) => b.status === "submitted" && b.txHash
+    );
 
-    for (const batch of submittedBatches) {
-      try {
-        const receipt = await this.provider.getTransactionReceipt(batch.txHash!);
-        
-        if (receipt) {
-          const currentBlock = await this.provider.getBlockNumber();
-          const confirmations = currentBlock - receipt.blockNumber;
-          
-          if (confirmations >= this.config.confirmations) {
-            batch.status = "confirmed";
-            batch.blockNumber = receipt.blockNumber;
-            batch.gasUsed = receipt.gasUsed;
-            batch.confirmedAt = Date.now();
-            
-            this.stats.confirmedBatches++;
-            this.stats.submittedBatches--;
-            this.stats.totalFillsSettled += batch.fills.length;
-            this.stats.totalGasUsed += receipt.gasUsed;
-            
-            // 更新平均批量大小
-            const totalBatches = this.stats.confirmedBatches;
-            this.stats.averageBatchSize = 
-              (this.stats.averageBatchSize * (totalBatches - 1) + batch.fills.length) / totalBatches;
-            
-            // 更新平均确认时间
-            const confirmTime = batch.confirmedAt! - batch.submittedAt!;
-            this.stats.averageConfirmationTime =
-              (this.stats.averageConfirmationTime * (totalBatches - 1) + confirmTime) / totalBatches;
+    try {
+      for (const batch of submittedBatches) {
+        try {
+          const receipt = await this.provider.getTransactionReceipt(batch.txHash!);
 
-            console.log(`[BatchSettler] Batch ${batch.id} confirmed at block ${receipt.blockNumber}`);
-            this.emitEvent({ type: "batch_confirmed", batchId: batch.id, blockNumber: receipt.blockNumber });
+          if (receipt) {
+            const currentBlock = await this.provider.getBlockNumber();
+            const confirmations = currentBlock - receipt.blockNumber;
 
-            // 更新数据库中的订单状态
-            await this.updateFillsOnChain(batch);
-            
-            // 清理已确认的批次
-            this.batches.delete(batch.id);
+            if (confirmations >= this.config.confirmations) {
+              batch.status = "confirmed";
+              batch.blockNumber = receipt.blockNumber;
+              batch.gasUsed = receipt.gasUsed;
+              batch.confirmedAt = Date.now();
+
+              this.stats.confirmedBatches++;
+              this.stats.submittedBatches--;
+              this.stats.totalFillsSettled += batch.fills.length;
+              this.stats.totalGasUsed += receipt.gasUsed;
+
+              // 更新平均批量大小
+              const totalBatches = this.stats.confirmedBatches;
+              this.stats.averageBatchSize =
+                (this.stats.averageBatchSize * (totalBatches - 1) + batch.fills.length) /
+                totalBatches;
+
+              // 更新平均确认时间
+              const confirmTime = batch.confirmedAt! - batch.submittedAt!;
+              this.stats.averageConfirmationTime =
+                (this.stats.averageConfirmationTime * (totalBatches - 1) + confirmTime) /
+                totalBatches;
+
+              console.log(
+                `[BatchSettler] Batch ${batch.id} confirmed at block ${receipt.blockNumber}`
+              );
+              this.emitEvent({
+                type: "batch_confirmed",
+                batchId: batch.id,
+                blockNumber: receipt.blockNumber,
+              });
+
+              await this.saveConfirmationToDb(batch);
+
+              await this.ingestFillsFromReceipt(receipt, batch.chainId);
+              for (const fill of batch.fills) {
+                this.emitEvent({ type: "fill_settled", fillId: fill.id, txHash: batch.txHash! });
+                await this.markFailedFillResolved(fill.id);
+              }
+
+              // 清理已确认的批次
+              this.batches.delete(batch.id);
+            }
+          } else {
+            // 检查超时
+            const elapsed = Date.now() - batch.submittedAt!;
+            if (elapsed > this.config.confirmationTimeoutMs) {
+              console.warn(`[BatchSettler] Batch ${batch.id} confirmation timeout`);
+              batch.status = "failed";
+              batch.error = "Confirmation timeout";
+              this.stats.failedBatches++;
+              this.stats.submittedBatches--;
+
+              this.emitEvent({
+                type: "batch_failed",
+                batchId: batch.id,
+                error: "Confirmation timeout",
+              });
+              await this.saveFailureToDb(batch);
+              await this.saveFailedBatch(batch);
+            }
           }
-        } else {
-          // 检查超时
-          const elapsed = Date.now() - batch.submittedAt!;
-          if (elapsed > this.config.confirmationTimeoutMs) {
-            console.warn(`[BatchSettler] Batch ${batch.id} confirmation timeout`);
-            batch.status = "failed";
-            batch.error = "Confirmation timeout";
-            this.stats.failedBatches++;
-            this.stats.submittedBatches--;
-            
-            this.emitEvent({ type: "batch_failed", batchId: batch.id, error: "Confirmation timeout" });
-          }
+        } catch (error: any) {
+          console.error(
+            `[BatchSettler] Error checking confirmation for batch ${batch.id}:`,
+            error.message
+          );
         }
-      } catch (error: any) {
-        console.error(`[BatchSettler] Error checking confirmation for batch ${batch.id}:`, error.message);
       }
+    } finally {
+      this.checkConfirmationsInFlight = false;
     }
   }
 
@@ -346,6 +425,31 @@ export class BatchSettler extends EventEmitter {
     });
   }
 
+  private async saveConfirmationToDb(batch: SettlementBatch): Promise<void> {
+    if (!supabaseAdmin) return;
+    await supabaseAdmin
+      .from("settlement_batches")
+      .update({
+        status: "confirmed",
+        block_number: batch.blockNumber,
+        gas_used: batch.gasUsed ? batch.gasUsed.toString() : null,
+        confirmed_at: batch.confirmedAt ? new Date(batch.confirmedAt).toISOString() : null,
+      })
+      .eq("id", batch.id);
+  }
+
+  private async saveFailureToDb(batch: SettlementBatch): Promise<void> {
+    if (!supabaseAdmin) return;
+    await supabaseAdmin
+      .from("settlement_batches")
+      .update({
+        status: "failed",
+        error: batch.error || "failed",
+        retry_count: batch.retryCount,
+      })
+      .eq("id", batch.id);
+  }
+
   /**
    * 保存失败的批次
    */
@@ -365,32 +469,245 @@ export class BatchSettler extends EventEmitter {
 
     // 记录失败的 fills 以便后续处理
     for (const fill of batch.fills) {
-      await supabaseAdmin.from("failed_fills").upsert({
-        fill_id: fill.id,
-        batch_id: batch.id,
-        error: batch.error,
-        created_at: new Date().toISOString(),
-      });
+      const now = Date.now();
+      const nextRetryAt = new Date(now + this.config.retryDelayMs).toISOString();
+      const payload = this.buildFailedFillPayload(fill);
+      await supabaseAdmin.from("failed_fills").upsert(
+        {
+          fill_id: fill.id,
+          batch_id: batch.id,
+          error: batch.error,
+          chain_id: this.chainId,
+          market_address: this.marketAddress.toLowerCase(),
+          payload,
+          retry_count: 0,
+          next_retry_at: nextRetryAt,
+          resolved_at: null,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: "fill_id" }
+      );
     }
   }
 
+  private buildFailedFillPayload(fill: SettlementFill): any {
+    return {
+      version: 1,
+      chainId: this.chainId,
+      marketAddress: this.marketAddress.toLowerCase(),
+      fill: {
+        id: fill.id,
+        order: {
+          maker: fill.order.maker.toLowerCase(),
+          outcomeIndex: fill.order.outcomeIndex,
+          isBuy: fill.order.isBuy,
+          price: fill.order.price.toString(),
+          amount: fill.order.amount.toString(),
+          salt: fill.order.salt.toString(),
+          expiry: fill.order.expiry.toString(),
+        },
+        signature: fill.signature,
+        fillAmount: fill.fillAmount.toString(),
+        taker: fill.taker.toLowerCase(),
+        matchedPrice: fill.matchedPrice.toString(),
+        makerFee: fill.makerFee.toString(),
+        takerFee: fill.takerFee.toString(),
+        timestamp: fill.timestamp,
+      },
+    };
+  }
+
+  private parseFailedFillPayload(payload: any): SettlementFill | null {
+    const p = payload as any;
+    if (!p || typeof p !== "object") return null;
+    if (!p.fill || typeof p.fill !== "object") return null;
+    const f = p.fill as any;
+    if (!f.order || typeof f.order !== "object") return null;
+    const o = f.order as any;
+
+    try {
+      const order = {
+        maker: String(o.maker || "").toLowerCase(),
+        outcomeIndex: Number(o.outcomeIndex),
+        isBuy: Boolean(o.isBuy),
+        price: BigInt(String(o.price)),
+        amount: BigInt(String(o.amount)),
+        salt: BigInt(String(o.salt)),
+        expiry: BigInt(String(o.expiry)),
+      };
+
+      if (!order.maker || !Number.isFinite(order.outcomeIndex)) return null;
+
+      return {
+        id: String(f.id),
+        order,
+        signature: String(f.signature || ""),
+        fillAmount: BigInt(String(f.fillAmount)),
+        taker: String(f.taker || "").toLowerCase(),
+        matchedPrice: BigInt(String(f.matchedPrice)),
+        makerFee: BigInt(String(f.makerFee)),
+        takerFee: BigInt(String(f.takerFee)),
+        timestamp: Number(f.timestamp || Date.now()),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async retryFailedFills(): Promise<void> {
+    if (!supabaseAdmin) return;
+    if (this.isShuttingDown) return;
+    if (this.retryFailedFillsInFlight) return;
+    this.retryFailedFillsInFlight = true;
+
+    const redis = getRedisClient();
+    const lockKey = `failed_fills:retry:${this.chainId}:${this.marketAddress.toLowerCase()}`;
+    const token = redis.isReady() ? await redis.acquireLock(lockKey, 15000, 0, 0) : null;
+    if (redis.isReady() && !token) {
+      this.retryFailedFillsInFlight = false;
+      return;
+    }
+
+    try {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabaseAdmin
+        .from("failed_fills")
+        .select("id,fill_id,retry_count,next_retry_at,payload")
+        .eq("chain_id", this.chainId)
+        .eq("market_address", this.marketAddress.toLowerCase())
+        .is("resolved_at", null)
+        .or(`next_retry_at.is.null,next_retry_at.lte.${nowIso}`)
+        .order("created_at", { ascending: true })
+        .limit(this.config.failedFillRetryBatchSize);
+
+      if (error) {
+        console.warn("[BatchSettler] Failed to load failed fills", error.message);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? data : [];
+      for (const row of rows) {
+        const rowAny = row as any;
+        const fill = this.parseFailedFillPayload(rowAny.payload);
+        const attempt = Number(rowAny.retry_count || 0) + 1;
+
+        if (attempt > this.config.failedFillMaxRetries) {
+          await supabaseAdmin
+            .from("failed_fills")
+            .update({
+              resolved_at: new Date().toISOString(),
+              error: "Max retries exceeded",
+            })
+            .eq("id", rowAny.id)
+            .is("resolved_at", null);
+          continue;
+        }
+
+        const delayMs =
+          this.config.retryDelayMs *
+          Math.pow(this.config.retryBackoffMultiplier, Math.max(0, attempt - 1));
+        const nextRetryAt = new Date(Date.now() + delayMs).toISOString();
+
+        await supabaseAdmin
+          .from("failed_fills")
+          .update({
+            retry_count: attempt,
+            next_retry_at: nextRetryAt,
+          })
+          .eq("id", rowAny.id)
+          .is("resolved_at", null);
+
+        if (!fill) {
+          await supabaseAdmin
+            .from("failed_fills")
+            .update({
+              resolved_at: new Date().toISOString(),
+              error: "Missing or invalid payload",
+            })
+            .eq("id", rowAny.id)
+            .is("resolved_at", null);
+          continue;
+        }
+
+        this.addFill(fill);
+      }
+    } finally {
+      if (token) {
+        await redis.releaseLock(lockKey, token);
+      }
+      this.retryFailedFillsInFlight = false;
+    }
+  }
+
+  private async markFailedFillResolved(fillId: string): Promise<void> {
+    if (!supabaseAdmin) return;
+    await supabaseAdmin
+      .from("failed_fills")
+      .update({ resolved_at: new Date().toISOString() })
+      .eq("fill_id", fillId)
+      .is("resolved_at", null);
+  }
+
   /**
-   * 更新链上确认的 fills
+   * 从交易收据摄入成交事件
    */
-  private async updateFillsOnChain(batch: SettlementBatch): Promise<void> {
+  private async ingestFillsFromReceipt(receipt: any, chainId: number): Promise<void> {
     if (!supabaseAdmin) return;
 
-    // 更新 trades 表
-    for (const fill of batch.fills) {
-      await supabaseAdmin
-        .from("trades")
-        .update({
-          tx_hash: batch.txHash,
-          block_number: batch.blockNumber,
-        })
-        .eq("id", fill.id);
+    const txHash = String(receipt.transactionHash || "");
+    if (!txHash) return;
 
-      this.emitEvent({ type: "fill_settled", fillId: fill.id, txHash: batch.txHash! });
+    const blockNumber = Number(receipt.blockNumber || 0);
+    const block = blockNumber > 0 ? await this.provider.getBlock(blockNumber) : null;
+    const ts = block ? (block as any).timestamp : 0;
+    const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
+    const blockTsIso = new Date(tsNum * 1000).toISOString();
+
+    const logs = Array.isArray(receipt.logs) ? receipt.logs : [];
+    for (const log of logs) {
+      const addr = String(log?.address || "").toLowerCase();
+      if (!addr || addr !== this.marketAddress.toLowerCase()) continue;
+      let parsed: any;
+      try {
+        parsed = clobIface.parseLog({ topics: log.topics as string[], data: log.data });
+      } catch {
+        continue;
+      }
+      if (!parsed || parsed.name !== "OrderFilledSigned") continue;
+
+      const maker = String((parsed.args as any).maker || "").toLowerCase();
+      const taker = String((parsed.args as any).taker || "").toLowerCase();
+      const outcomeIndex = Number((parsed.args as any).outcomeIndex);
+      const isBuy = Boolean((parsed.args as any).isBuy);
+      const price = BigInt((parsed.args as any).price).toString();
+      const amount = BigInt((parsed.args as any).amount).toString();
+      const fee = BigInt((parsed.args as any).fee).toString();
+      const salt = BigInt((parsed.args as any).salt).toString();
+
+      const logIndexRaw =
+        typeof (log as any).logIndex === "number"
+          ? (log as any).logIndex
+          : typeof (log as any).index === "number"
+            ? (log as any).index
+            : 0;
+      const logIndex = Number.isFinite(logIndexRaw) ? Number(logIndexRaw) : 0;
+
+      await (supabaseAdmin as any).rpc("ingest_trade_event", {
+        p_network_id: chainId,
+        p_market_address: this.marketAddress.toLowerCase(),
+        p_outcome_index: outcomeIndex,
+        p_price: price,
+        p_amount: amount,
+        p_taker_address: taker,
+        p_maker_address: maker,
+        p_is_buy: isBuy,
+        p_tx_hash: txHash.toLowerCase(),
+        p_log_index: logIndex,
+        p_block_number: BigInt(blockNumber).toString(),
+        p_block_timestamp: blockTsIso,
+        p_fee: fee,
+        p_salt: salt,
+      });
     }
   }
 
@@ -439,6 +756,10 @@ export class BatchSettler extends EventEmitter {
       clearInterval(this.confirmTimer);
       this.confirmTimer = null;
     }
+    if (this.failedFillTimer) {
+      clearInterval(this.failedFillTimer);
+      this.failedFillTimer = null;
+    }
 
     // 处理剩余的 pending fills
     if (this.pendingFills.size > 0) {
@@ -450,10 +771,9 @@ export class BatchSettler extends EventEmitter {
     const startTime = Date.now();
     while (this.stats.submittedBatches > 0 && Date.now() - startTime < 30000) {
       await this.checkConfirmations();
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     console.log("[BatchSettler] Shutdown complete");
   }
 }
-

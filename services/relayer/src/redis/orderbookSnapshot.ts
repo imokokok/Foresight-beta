@@ -59,7 +59,9 @@ class OrderbookSnapshotService {
     if (this.syncInterval) return;
 
     this.syncInterval = setInterval(() => {
-      this.flushPendingSnapshots();
+      void this.flushPendingSnapshots().catch((error: any) => {
+        logger.error("Orderbook snapshot sync tick failed", {}, error);
+      });
     }, intervalMs);
 
     logger.info("Orderbook snapshot sync started", { intervalMs });
@@ -144,11 +146,11 @@ class OrderbookSnapshotService {
     const key = this.getOrderKey(order.id);
     const data = JSON.stringify(this.serializeOrder(order));
     const success = await this.redis.set(key, data, SNAPSHOT_TTL);
-    
+
     if (success) {
       logger.debug("Order saved to Redis", { orderId: order.id, marketKey: order.marketKey });
     }
-    
+
     return success;
   }
 
@@ -166,9 +168,9 @@ class OrderbookSnapshotService {
   async getOrder(orderId: string): Promise<Order | null> {
     const key = this.getOrderKey(orderId);
     const data = await this.redis.get(key);
-    
+
     if (!data) return null;
-    
+
     try {
       const serialized = JSON.parse(data) as SerializedOrder;
       return this.deserializeOrder(serialized);
@@ -189,17 +191,17 @@ class OrderbookSnapshotService {
     stats?: OrderBookStats
   ): void {
     const key = `${marketKey}:${outcomeIndex}`;
-    
+
     const snapshot: OrderbookSnapshotData = {
       marketKey,
       outcomeIndex,
-      bidOrders: bidOrders.map(o => this.serializeOrder(o)),
-      askOrders: askOrders.map(o => this.serializeOrder(o)),
+      bidOrders: bidOrders.map((o) => this.serializeOrder(o)),
+      askOrders: askOrders.map((o) => this.serializeOrder(o)),
       lastTradePrice: stats?.lastTradePrice?.toString() || null,
       volume24h: stats?.volume24h?.toString() || "0",
       updatedAt: Date.now(),
     };
-    
+
     this.pendingSnapshots.set(key, snapshot);
   }
 
@@ -208,16 +210,16 @@ class OrderbookSnapshotService {
    */
   private async flushPendingSnapshots(): Promise<void> {
     if (this.syncInProgress || this.pendingSnapshots.size === 0) return;
-    
+
     this.syncInProgress = true;
     const snapshots = new Map(this.pendingSnapshots);
     this.pendingSnapshots.clear();
-    
+
     try {
       for (const [key, snapshot] of snapshots) {
         await this.saveSnapshotToRedis(snapshot);
       }
-      
+
       logger.debug("Flushed orderbook snapshots", { count: snapshots.size });
     } catch (error: any) {
       logger.error("Failed to flush orderbook snapshots", {}, error);
@@ -254,64 +256,67 @@ class OrderbookSnapshotService {
     const snapshot: OrderbookSnapshotData = {
       marketKey,
       outcomeIndex,
-      bidOrders: bidOrders.map(o => this.serializeOrder(o)),
-      askOrders: askOrders.map(o => this.serializeOrder(o)),
+      bidOrders: bidOrders.map((o) => this.serializeOrder(o)),
+      askOrders: askOrders.map((o) => this.serializeOrder(o)),
       lastTradePrice: stats?.lastTradePrice?.toString() || null,
       volume24h: stats?.volume24h?.toString() || "0",
       updatedAt: Date.now(),
     };
-    
+
     const success = await this.saveSnapshotToRedis(snapshot);
-    
+
     if (success) {
-      logger.debug("Orderbook snapshot saved", { 
-        marketKey, 
+      logger.debug("Orderbook snapshot saved", {
+        marketKey,
         outcomeIndex,
         bidCount: bidOrders.length,
         askCount: askOrders.length,
       });
     }
-    
+
     return success;
   }
 
   /**
    * 加载订单簿快照
    */
-  async loadSnapshot(marketKey: string, outcomeIndex: number): Promise<{
+  async loadSnapshot(
+    marketKey: string,
+    outcomeIndex: number
+  ): Promise<{
     orders: Order[];
     stats: Partial<OrderBookStats>;
   } | null> {
     const key = this.getOrderbookKey(marketKey, outcomeIndex);
     const data = await this.redis.get(key);
-    
+
     if (!data) {
       logger.debug("No snapshot found in Redis", { marketKey, outcomeIndex });
       return null;
     }
-    
+
     try {
       const snapshot = JSON.parse(data) as OrderbookSnapshotData;
-      
+
       const orders: Order[] = [
-        ...snapshot.bidOrders.map(o => this.deserializeOrder(o)),
-        ...snapshot.askOrders.map(o => this.deserializeOrder(o)),
+        ...snapshot.bidOrders.map((o) => this.deserializeOrder(o)),
+        ...snapshot.askOrders.map((o) => this.deserializeOrder(o)),
       ];
-      
+
       const stats: Partial<OrderBookStats> = {
         marketKey: snapshot.marketKey,
         outcomeIndex: snapshot.outcomeIndex,
         lastTradePrice: snapshot.lastTradePrice ? BigInt(snapshot.lastTradePrice) : null,
         volume24h: BigInt(snapshot.volume24h),
       };
-      
+
       logger.info("Orderbook snapshot loaded from Redis", {
         marketKey,
         outcomeIndex,
         orderCount: orders.length,
         snapshotAge: Date.now() - snapshot.updatedAt,
       });
-      
+
       return { orders, stats };
     } catch (error: any) {
       logger.error("Failed to parse orderbook snapshot", { marketKey, outcomeIndex }, error);
@@ -332,7 +337,11 @@ class OrderbookSnapshotService {
   /**
    * 保存统计信息
    */
-  async saveStats(marketKey: string, outcomeIndex: number, stats: OrderBookStats): Promise<boolean> {
+  async saveStats(
+    marketKey: string,
+    outcomeIndex: number,
+    stats: OrderBookStats
+  ): Promise<boolean> {
     const key = `${STATS_PREFIX}${marketKey}:${outcomeIndex}`;
     const data = JSON.stringify({
       ...stats,
@@ -345,7 +354,7 @@ class OrderbookSnapshotService {
       volume24h: stats.volume24h.toString(),
       updatedAt: Date.now(),
     });
-    
+
     return this.redis.set(key, data, 300); // 5 分钟过期
   }
 
@@ -355,9 +364,9 @@ class OrderbookSnapshotService {
   async getStats(marketKey: string, outcomeIndex: number): Promise<OrderBookStats | null> {
     const key = `${STATS_PREFIX}${marketKey}:${outcomeIndex}`;
     const data = await this.redis.get(key);
-    
+
     if (!data) return null;
-    
+
     try {
       const parsed = JSON.parse(data);
       return {
@@ -382,10 +391,10 @@ class OrderbookSnapshotService {
    */
   async shutdown(): Promise<void> {
     this.stopSync();
-    
+
     if (this.pendingSnapshots.size > 0) {
-      logger.info("Flushing pending snapshots before shutdown", { 
-        count: this.pendingSnapshots.size 
+      logger.info("Flushing pending snapshots before shutdown", {
+        count: this.pendingSnapshots.size,
       });
       await this.flushPendingSnapshots();
     }
@@ -403,4 +412,3 @@ export function getOrderbookSnapshotService(): OrderbookSnapshotService {
 }
 
 export { OrderbookSnapshotService };
-

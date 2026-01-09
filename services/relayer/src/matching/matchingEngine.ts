@@ -17,6 +17,7 @@ import type {
 import { DEFAULT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
 import { BatchSettler, type SettlementFill, type SettlementOrder } from "../settlement/index.js";
+import { getRedisClient } from "../redis/client.js";
 
 // EIP-712 类型定义
 const ORDER_TYPES = {
@@ -31,6 +32,13 @@ const ORDER_TYPES = {
   ],
 };
 
+const CANCEL_TYPES = {
+  CancelSaltRequest: [
+    { name: "maker", type: "address" },
+    { name: "salt", type: "uint256" },
+  ],
+};
+
 /**
  * 订单撮合引擎
  */
@@ -38,17 +46,53 @@ export class MatchingEngine extends EventEmitter {
   private bookManager: OrderBookManager;
   private config: MatchingEngineConfig;
   private sequenceCounter: bigint = 0n;
-  private pendingMatches: Match[] = [];
-  private settlementTimer: NodeJS.Timeout | null = null;
-  
+
   // 🚀 批量结算器 (Polymarket 模式)
   private batchSettlers: Map<string, BatchSettler> = new Map();
+  private bookLocks: Map<string, Promise<void>> = new Map();
 
   constructor(config: Partial<MatchingEngineConfig> = {}) {
     super();
     this.bookManager = new OrderBookManager();
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.startSettlementLoop();
+  }
+
+  private async withBookLock<T>(
+    marketKey: string,
+    outcomeIndex: number,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    const lockKey = `${marketKey}:${outcomeIndex}`;
+    const previous = this.bookLocks.get(lockKey) || Promise.resolve();
+
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    this.bookLocks.set(lockKey, current);
+    await previous;
+
+    const redis = getRedisClient();
+    const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
+    const distributedLockToken = redis.isReady()
+      ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
+      : null;
+
+    try {
+      if (redis.isReady() && !distributedLockToken) {
+        throw new Error("Orderbook busy");
+      }
+      return await fn();
+    } finally {
+      if (distributedLockToken) {
+        await redis.releaseLock(distributedLockKey, distributedLockToken);
+      }
+      release();
+      if (this.bookLocks.get(lockKey) === current) {
+        this.bookLocks.delete(lockKey);
+      }
+    }
   }
 
   /**
@@ -61,17 +105,11 @@ export class MatchingEngine extends EventEmitter {
     operatorPrivateKey: string,
     rpcUrl: string
   ): BatchSettler {
-    const settler = new BatchSettler(
-      chainId,
-      marketAddress,
-      operatorPrivateKey,
-      rpcUrl,
-      {
-        maxBatchSize: 50,
-        minBatchSize: this.config.batchSettlementThreshold,
-        maxBatchWaitMs: this.config.batchSettlementInterval,
-      }
-    );
+    const settler = new BatchSettler(chainId, marketAddress, operatorPrivateKey, rpcUrl, {
+      maxBatchSize: 50,
+      minBatchSize: this.config.batchSettlementThreshold,
+      maxBatchWaitMs: this.config.batchSettlementInterval,
+    });
 
     // 转发结算事件
     settler.on("settlement_event", (event) => {
@@ -80,7 +118,7 @@ export class MatchingEngine extends EventEmitter {
 
     settler.start();
     this.batchSettlers.set(marketKey, settler);
-    
+
     console.log(`[MatchingEngine] Registered settler for market ${marketKey}`);
     return settler;
   }
@@ -97,73 +135,75 @@ export class MatchingEngine extends EventEmitter {
    */
   async submitOrder(orderInput: OrderInput): Promise<MatchResult> {
     try {
-      // 1. 验证订单
-      const validationResult = await this.validateOrder(orderInput);
-      if (!validationResult.valid) {
-        return {
-          success: false,
-          matches: [],
-          remainingOrder: null,
-          error: validationResult.error,
-        };
-      }
-
-      // 2. 创建内部订单对象
-      const order = this.createOrder(orderInput);
-
-      if (order.postOnly) {
-        const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
-        while (true) {
-          const counterOrder = book.getBestCounterOrder(order.isBuy);
-          if (!counterOrder) break;
-          if (this.isExpired(counterOrder)) {
-            book.removeOrder(counterOrder.id);
-            await this.updateOrderStatus(counterOrder.id, "expired");
-            continue;
-          }
-          if (this.pricesMatch(order, counterOrder)) {
-            return {
-              success: false,
-              matches: [],
-              remainingOrder: null,
-              error: "Post-only order would be immediately executed",
-            };
-          }
-          break;
+      return await this.withBookLock(orderInput.marketKey, orderInput.outcomeIndex, async () => {
+        // 1. 验证订单
+        const validationResult = await this.validateOrder(orderInput);
+        if (!validationResult.valid) {
+          return {
+            success: false,
+            matches: [],
+            remainingOrder: null,
+            error: validationResult.error,
+          };
         }
-        await this.addToOrderBook(order);
-        return {
-          success: true,
-          matches: [],
-          remainingOrder: order,
-        };
-      }
 
-      // 3. 尝试撮合
-      const matchResult = await this.matchOrder(order);
+        // 2. 创建内部订单对象
+        const order = this.createOrder(orderInput);
 
-      // 4. 如果有剩余,加入订单簿
-      if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
-        await this.addToOrderBook(matchResult.remainingOrder);
-      }
-
-      // 5. 广播事件
-      if (matchResult.matches.length > 0) {
-        for (const match of matchResult.matches) {
-          const trade = this.matchToTrade(match);
-          this.emit("trade", trade);
-          this.emitEvent({ type: "trade", trade });
+        if (order.postOnly) {
+          const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+          while (true) {
+            const counterOrder = book.getBestCounterOrder(order.isBuy);
+            if (!counterOrder) break;
+            if (this.isExpired(counterOrder)) {
+              book.removeOrder(counterOrder.id);
+              await this.updateOrderStatus(counterOrder, "expired");
+              continue;
+            }
+            if (this.pricesMatch(order, counterOrder)) {
+              return {
+                success: false,
+                matches: [],
+                remainingOrder: null,
+                error: "Post-only order would be immediately executed",
+              };
+            }
+            break;
+          }
+          await this.addToOrderBook(order);
+          return {
+            success: true,
+            matches: [],
+            remainingOrder: order,
+          };
         }
-      }
 
-      return matchResult;
+        // 3. 尝试撮合
+        const matchResult = await this.matchOrder(order);
+
+        // 4. 如果有剩余,加入订单簿
+        if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
+          await this.addToOrderBook(matchResult.remainingOrder);
+        }
+
+        // 5. 广播事件
+        if (matchResult.matches.length > 0) {
+          for (const match of matchResult.matches) {
+            const trade = this.matchToTrade(match);
+            this.emit("trade", trade);
+            this.emitEvent({ type: "trade", trade });
+          }
+        }
+
+        return matchResult;
+      });
     } catch (error: any) {
       console.error("[MatchingEngine] submitOrder error:", error);
       return {
         success: false,
         matches: [],
         remainingOrder: null,
-        error: error.message || "Unknown error",
+        error: error?.message || "Unknown error",
       };
     }
   }
@@ -197,7 +237,7 @@ export class MatchingEngine extends EventEmitter {
         }
       }
       if (required > 0n) {
-        order.status = "rejected";
+        order.status = "canceled";
         return {
           success: true,
           matches,
@@ -209,7 +249,7 @@ export class MatchingEngine extends EventEmitter {
     while (order.remainingAmount > 0n) {
       // 获取对手盘最优订单
       const counterOrder = book.getBestCounterOrder(order.isBuy);
-      
+
       if (!counterOrder) {
         // 没有对手盘,停止撮合
         break;
@@ -223,14 +263,15 @@ export class MatchingEngine extends EventEmitter {
       // 检查订单是否过期
       if (this.isExpired(counterOrder)) {
         book.removeOrder(counterOrder.id);
-        await this.updateOrderStatus(counterOrder.id, "expired");
+        await this.updateOrderStatus(counterOrder, "expired");
         continue;
       }
 
       // 计算成交量 (取两者剩余量的较小值)
-      const matchAmount = order.remainingAmount < counterOrder.remainingAmount
-        ? order.remainingAmount
-        : counterOrder.remainingAmount;
+      const matchAmount =
+        order.remainingAmount < counterOrder.remainingAmount
+          ? order.remainingAmount
+          : counterOrder.remainingAmount;
 
       // 成交价格使用 Maker 价格 (挂单方价格)
       const matchPrice = counterOrder.price;
@@ -251,7 +292,6 @@ export class MatchingEngine extends EventEmitter {
       };
 
       matches.push(match);
-      this.pendingMatches.push(match);
 
       // 🚀 发送到批量结算器
       const settler = this.batchSettlers.get(order.marketKey);
@@ -358,11 +398,11 @@ export class MatchingEngine extends EventEmitter {
     // 计算成交金额 (USDC, 6 decimals)
     // cost = amount * price / 1e18
     const cost = (amount * price) / BigInt(1e18);
-    
+
     // 手续费 = cost * feeBps / 10000
     const makerFee = (cost * BigInt(this.config.makerFeeBps)) / 10000n;
     const takerFee = (cost * BigInt(this.config.takerFeeBps)) / 10000n;
-    
+
     return { makerFee, takerFee };
   }
 
@@ -372,10 +412,10 @@ export class MatchingEngine extends EventEmitter {
   private async addToOrderBook(order: Order): Promise<void> {
     const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
     book.addOrder(order);
-    
+
     // 持久化到数据库
     await this.saveOrderToDb(order);
-    
+
     // 广播事件
     this.emitEvent({ type: "order_placed", order });
     this.emitDepthUpdate(book);
@@ -385,36 +425,62 @@ export class MatchingEngine extends EventEmitter {
    * 取消订单
    */
   async cancelOrder(
-    orderId: string,
     marketKey: string,
     outcomeIndex: number,
+    chainId: number,
+    verifyingContract: string,
     maker: string,
+    salt: string,
     signature: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const book = this.bookManager.getBook(marketKey, outcomeIndex);
-      if (!book) {
-        return { success: false, error: "Order book not found" };
-      }
+      return await this.withBookLock(marketKey, outcomeIndex, async () => {
+        if (!ethers.isAddress(maker)) {
+          return { success: false, error: "Invalid maker address" };
+        }
+        if (!ethers.isAddress(verifyingContract)) {
+          return { success: false, error: "Invalid verifying contract address" };
+        }
 
-      const order = book.removeOrder(orderId);
-      if (!order) {
-        return { success: false, error: "Order not found" };
-      }
+        const recovered = ethers.verifyTypedData(
+          {
+            name: "Foresight Market",
+            version: "1",
+            chainId,
+            verifyingContract: verifyingContract.toLowerCase(),
+          },
+          CANCEL_TYPES,
+          { maker: maker.toLowerCase(), salt: BigInt(salt) },
+          signature
+        );
+        if (recovered.toLowerCase() !== maker.toLowerCase()) {
+          return { success: false, error: "Invalid signature" };
+        }
 
-      // 验证取消签名
-      // TODO: 实现签名验证
+        const orderId = `${maker.toLowerCase()}-${salt}`;
+        const book = this.bookManager.getBook(marketKey, outcomeIndex);
+        const removed = book ? book.removeOrder(orderId) : null;
 
-      // 更新数据库
-      await this.updateOrderStatus(orderId, "canceled");
+        if (supabaseAdmin) {
+          await supabaseAdmin
+            .from("orders")
+            .update({ status: "canceled", remaining: "0" })
+            .eq("chain_id", chainId)
+            .eq("verifying_contract", verifyingContract.toLowerCase())
+            .eq("maker_address", maker.toLowerCase())
+            .eq("maker_salt", salt)
+            .in("status", ["open", "partially_filled"]);
+        }
 
-      // 广播事件
-      this.emitEvent({ type: "order_canceled", orderId, marketKey });
-      this.emitDepthUpdate(book);
+        if (book && removed) {
+          this.emitEvent({ type: "order_canceled", orderId, marketKey });
+          this.emitDepthUpdate(book);
+        }
 
-      return { success: true };
+        return { success: true };
+      });
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message };
     }
   }
 
@@ -463,7 +529,12 @@ export class MatchingEngine extends EventEmitter {
     }
 
     // 3. 检查订单是否已存在 (防止重放)
-    const exists = await this.checkOrderExists(input.salt, input.maker);
+    const exists = await this.checkOrderExists(
+      input.chainId,
+      input.verifyingContract.toLowerCase(),
+      input.maker,
+      input.salt
+    );
     if (exists) {
       return { valid: false, error: "Order with this salt already exists" };
     }
@@ -509,9 +580,7 @@ export class MatchingEngine extends EventEmitter {
       const orderCostUsdc = (input.amount * input.price) / BigInt(1e18);
 
       if (this.config.maxMarketLongExposureUsdc && this.config.maxMarketLongExposureUsdc > 0) {
-        const limitUsdc = BigInt(
-          Math.floor(this.config.maxMarketLongExposureUsdc * 1e6)
-        );
+        const limitUsdc = BigInt(Math.floor(this.config.maxMarketLongExposureUsdc * 1e6));
         const newLongExposure = marketLongUsdc + (input.isBuy ? orderCostUsdc : 0n);
         if (newLongExposure > limitUsdc) {
           return { valid: false, error: "Market long exposure limit exceeded" };
@@ -519,9 +588,7 @@ export class MatchingEngine extends EventEmitter {
       }
 
       if (this.config.maxMarketShortExposureUsdc && this.config.maxMarketShortExposureUsdc > 0) {
-        const limitUsdc = BigInt(
-          Math.floor(this.config.maxMarketShortExposureUsdc * 1e6)
-        );
+        const limitUsdc = BigInt(Math.floor(this.config.maxMarketShortExposureUsdc * 1e6));
         const newShortExposure = marketShortUsdc + (!input.isBuy ? orderCostUsdc : 0n);
         if (newShortExposure > limitUsdc) {
           return { valid: false, error: "Market short exposure limit exceeded" };
@@ -615,16 +682,23 @@ export class MatchingEngine extends EventEmitter {
   /**
    * 检查订单是否已存在
    */
-  private async checkOrderExists(salt: string, maker: string): Promise<boolean> {
+  private async checkOrderExists(
+    chainId: number,
+    verifyingContract: string,
+    maker: string,
+    salt: string
+  ): Promise<boolean> {
     if (!supabaseAdmin) return false;
-    
+
     const { data } = await supabaseAdmin
       .from("orders")
       .select("id")
-      .eq("maker_salt", salt)
+      .eq("chain_id", chainId)
+      .eq("verifying_contract", verifyingContract)
       .eq("maker_address", maker.toLowerCase())
+      .eq("maker_salt", salt)
       .maybeSingle();
-    
+
     return !!data;
   }
 
@@ -633,9 +707,9 @@ export class MatchingEngine extends EventEmitter {
    */
   private createOrder(input: OrderInput): Order {
     const sequence = this.sequenceCounter++;
-    
+
     return {
-      id: `${input.maker}-${input.salt}`,
+      id: `${input.maker.toLowerCase()}-${input.salt}`,
       marketKey: input.marketKey,
       maker: input.maker.toLowerCase(),
       outcomeIndex: input.outcomeIndex,
@@ -649,7 +723,7 @@ export class MatchingEngine extends EventEmitter {
       chainId: input.chainId,
       verifyingContract: input.verifyingContract.toLowerCase(),
       sequence,
-      status: "pending",
+      status: "open",
       createdAt: Date.now(),
       tif: input.tif,
       postOnly: input.postOnly,
@@ -662,38 +736,45 @@ export class MatchingEngine extends EventEmitter {
   private async saveOrderToDb(order: Order): Promise<void> {
     if (!supabaseAdmin) return;
 
-    await supabaseAdmin.from("orders").upsert({
-      verifying_contract: order.verifyingContract,
-      chain_id: order.chainId,
-      market_key: order.marketKey,
-      maker_address: order.maker,
-      maker_salt: order.salt,
-      outcome_index: order.outcomeIndex,
-      is_buy: order.isBuy,
-      price: order.price.toString(),
-      amount: order.amount.toString(),
-      remaining: order.remainingAmount.toString(),
-      expiry: order.expiry === 0 ? null : new Date(order.expiry * 1000).toISOString(),
-      signature: order.signature,
-      status: order.status,
-      sequence: order.sequence.toString(),
-    }, {
-      onConflict: "verifying_contract,chain_id,maker_address,maker_salt",
-    });
+    await supabaseAdmin.from("orders").upsert(
+      {
+        verifying_contract: order.verifyingContract,
+        chain_id: order.chainId,
+        market_key: order.marketKey,
+        maker_address: order.maker,
+        maker_salt: order.salt,
+        outcome_index: order.outcomeIndex,
+        is_buy: order.isBuy,
+        price: order.price.toString(),
+        amount: order.amount.toString(),
+        remaining: order.remainingAmount.toString(),
+        expiry: order.expiry === 0 ? null : new Date(order.expiry * 1000).toISOString(),
+        signature: order.signature,
+        status: order.status,
+        sequence: order.sequence.toString(),
+      },
+      {
+        onConflict: "verifying_contract,chain_id,maker_address,maker_salt",
+      }
+    );
   }
 
   /**
    * 更新订单状态
    */
-  private async updateOrderStatus(orderId: string, status: string): Promise<void> {
+  private async updateOrderStatus(
+    order: Pick<Order, "chainId" | "verifyingContract" | "maker" | "salt">,
+    status: Order["status"]
+  ): Promise<void> {
     if (!supabaseAdmin) return;
 
-    const [maker, salt] = orderId.split("-");
     await supabaseAdmin
       .from("orders")
       .update({ status })
-      .eq("maker_address", maker)
-      .eq("maker_salt", salt);
+      .eq("chain_id", order.chainId)
+      .eq("verifying_contract", order.verifyingContract)
+      .eq("maker_address", order.maker.toLowerCase())
+      .eq("maker_salt", order.salt);
   }
 
   /**
@@ -708,6 +789,8 @@ export class MatchingEngine extends EventEmitter {
         remaining: order.remainingAmount.toString(),
         status: order.status,
       })
+      .eq("chain_id", order.chainId)
+      .eq("verifying_contract", order.verifyingContract)
       .eq("maker_address", order.maker)
       .eq("maker_salt", order.salt);
   }
@@ -755,62 +838,32 @@ export class MatchingEngine extends EventEmitter {
   }
 
   /**
-   * 启动批量结算循环
-   */
-  private startSettlementLoop(): void {
-    this.settlementTimer = setInterval(async () => {
-      await this.processSettlement();
-    }, this.config.batchSettlementInterval);
-  }
-
-  /**
-   * 处理批量链上结算
-   */
-  private async processSettlement(): Promise<void> {
-    if (this.pendingMatches.length === 0) return;
-    if (this.pendingMatches.length < this.config.batchSettlementThreshold) return;
-
-    const matchesToSettle = [...this.pendingMatches];
-    this.pendingMatches = [];
-
-    try {
-      // 批量提交链上结算
-      // TODO: 实现链上批量结算逻辑
-      console.log(`[MatchingEngine] Settling ${matchesToSettle.length} matches`);
-      
-      // 保存交易记录到数据库
-      for (const match of matchesToSettle) {
-        await this.saveTradeToDb(match);
-      }
-    } catch (error) {
-      console.error("[MatchingEngine] Settlement error:", error);
-      // 失败的撮合放回队列
-      this.pendingMatches.push(...matchesToSettle);
-    }
-  }
-
-  /**
    * 保存交易记录
    */
   private async saveTradeToDb(match: Match): Promise<void> {
     if (!supabaseAdmin) return;
 
-    await supabaseAdmin.from("trades").insert({
-      network_id: match.makerOrder.chainId,
-      market_address: match.makerOrder.verifyingContract,
-      outcome_index: match.makerOrder.outcomeIndex,
-      price: match.matchedPrice.toString(),
-      amount: match.matchedAmount.toString(),
-      taker_address: match.takerOrder.maker,
-      maker_address: match.makerOrder.maker,
-      is_buy: match.takerOrder.isBuy,
-      tx_hash: `pending-${match.id}`, // 待链上确认后更新
-      log_index: 0,
-      fee: (match.makerFee + match.takerFee).toString(),
-      salt: match.makerOrder.salt,
-      block_number: 0,
-      block_timestamp: new Date(match.timestamp).toISOString(),
-    });
+    await supabaseAdmin.from("trades").upsert(
+      {
+        network_id: match.makerOrder.chainId,
+        market_address: match.makerOrder.verifyingContract,
+        outcome_index: match.makerOrder.outcomeIndex,
+        price: match.matchedPrice.toString(),
+        amount: match.matchedAmount.toString(),
+        taker_address: match.takerOrder.maker,
+        maker_address: match.makerOrder.maker,
+        is_buy: match.takerOrder.isBuy,
+        tx_hash: `pending-${match.id}`, // 待链上确认后更新
+        log_index: 0,
+        fee: (match.makerFee + match.takerFee).toString(),
+        salt: match.makerOrder.salt,
+        block_number: 0,
+        block_timestamp: new Date(match.timestamp).toISOString(),
+      },
+      {
+        onConflict: "tx_hash,log_index",
+      }
+    );
   }
 
   /**
@@ -837,10 +890,7 @@ export class MatchingEngine extends EventEmitter {
   async recoverFromDb(marketKey?: string): Promise<void> {
     if (!supabaseAdmin) return;
 
-    let query = supabaseAdmin
-      .from("orders")
-      .select("*")
-      .in("status", ["open", "partially_filled"]);
+    let query = supabaseAdmin.from("orders").select("*").in("status", ["open", "partially_filled"]);
 
     if (marketKey) {
       query = query.eq("market_key", marketKey);
@@ -854,9 +904,9 @@ export class MatchingEngine extends EventEmitter {
 
     for (const row of orders) {
       const order: Order = {
-        id: `${row.maker_address}-${row.maker_salt}`,
+        id: `${String(row.maker_address).toLowerCase()}-${row.maker_salt}`,
         marketKey: row.market_key || `${row.chain_id}:unknown`,
-        maker: row.maker_address,
+        maker: String(row.maker_address).toLowerCase(),
         outcomeIndex: row.outcome_index,
         isBuy: row.is_buy,
         price: BigInt(row.price),
@@ -866,7 +916,7 @@ export class MatchingEngine extends EventEmitter {
         expiry: row.expiry ? Math.floor(new Date(row.expiry).getTime() / 1000) : 0,
         signature: row.signature,
         chainId: row.chain_id,
-        verifyingContract: row.verifying_contract,
+        verifyingContract: String(row.verifying_contract).toLowerCase(),
         sequence: BigInt(row.sequence || "0"),
         status: row.status as any,
         createdAt: new Date(row.created_at).getTime(),
@@ -887,11 +937,6 @@ export class MatchingEngine extends EventEmitter {
    */
   async shutdown(): Promise<void> {
     console.log("[MatchingEngine] Shutting down...");
-    
-    if (this.settlementTimer) {
-      clearInterval(this.settlementTimer);
-      this.settlementTimer = null;
-    }
 
     // 🚀 关闭所有结算器
     const shutdownPromises: Promise<void>[] = [];

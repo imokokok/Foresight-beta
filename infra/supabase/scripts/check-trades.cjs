@@ -121,7 +121,7 @@ async function main() {
       const { data: partialOrders } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'filled_partial')
+        .in('status', ['partially_filled', 'filled_partial'])
 
       // 分别查询获取数量
       const { count: openCount } = await supabase
@@ -137,12 +137,12 @@ async function main() {
       const { count: partialCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'filled_partial')
+        .in('status', ['partially_filled', 'filled_partial'])
 
       console.log('\n📈 订单状态统计:')
       console.log(`   开放中 (open): ${openCount || 0}`)
       console.log(`   已成交 (filled): ${filledCount || 0}`)
-      console.log(`   部分成交 (filled_partial): ${partialCount || 0}`)
+      console.log(`   部分成交 (partially_filled): ${partialCount || 0}`)
 
       // 买卖单统计
       const { count: buyCount } = await supabase
@@ -201,4 +201,3 @@ async function main() {
 }
 
 main()
-

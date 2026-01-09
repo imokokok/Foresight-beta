@@ -64,6 +64,15 @@ vi.mock("@/lib/supabase", () => {
       }
       if (table === "flag_settlements") {
         return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: async () => ({ data: null, error: null }),
+                }),
+              }),
+            }),
+          }),
           insert: async () => ({ error: null }),
         };
       }

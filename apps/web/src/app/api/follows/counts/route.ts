@@ -78,10 +78,16 @@ export async function POST(req: Request) {
 ALTER TABLE public.event_follows ALTER COLUMN user_id TYPE TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS event_follows_user_id_event_id_key ON public.event_follows (user_id, event_id);`,
       };
-      return ApiResponses.internalError("批量计数查询失败，需要修复表结构", details);
+      return ApiResponses.internalError(
+        "批量计数查询失败，需要修复表结构",
+        process.env.NODE_ENV === "development" ? details : undefined
+      );
     }
     const detail =
       (wrapped?.error && wrapped.error.message) || (e instanceof Error ? e.message : String(e));
-    return ApiResponses.internalError("批量计数查询失败", detail);
+    return ApiResponses.internalError(
+      "批量计数查询失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

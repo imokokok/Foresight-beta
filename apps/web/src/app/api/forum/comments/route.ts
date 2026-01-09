@@ -63,7 +63,7 @@ async function isUnderCommentRateLimit(client: any, walletAddress: string): Prom
     .gte("created_at", fifteenSecondsAgo);
   if (err15s) {
     logApiError("POST /api/forum/comments rate limit 15s query failed", err15s);
-    return false;
+    throw err15s;
   }
   if (typeof count15s === "number" && count15s > 0) {
     return false;
@@ -75,7 +75,7 @@ async function isUnderCommentRateLimit(client: any, walletAddress: string): Prom
     .gte("created_at", dayAgo);
   if (err24h) {
     logApiError("POST /api/forum/comments rate limit 24h query failed", err24h);
-    return false;
+    throw err24h;
   }
   if (typeof count24h === "number" && count24h >= 30) {
     return false;
@@ -93,8 +93,13 @@ export async function POST(req: NextRequest) {
     const parentId = parentIdRaw == null ? null : toNum(parentIdRaw);
     const content = String((body as { content?: unknown }).content || "");
     const rawWalletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
-    if (!eventId || !threadId) {
-      return ApiResponses.invalidParameters("eventId and threadId are required");
+    if (parentIdRaw != null && parentId == null) {
+      return ApiResponses.invalidParameters("parentId is invalid");
+    }
+    if (eventId == null || eventId <= 0 || threadId == null || threadId <= 0) {
+      return ApiResponses.invalidParameters(
+        "eventId and threadId are required and must be positive integers"
+      );
     }
     if (!content.trim()) {
       return ApiResponses.invalidParameters("content is required");
@@ -116,10 +121,17 @@ export async function POST(req: NextRequest) {
       return ApiResponses.forbidden("walletAddress mismatch");
     }
 
-    const ok = await isUnderCommentRateLimit(client, walletAddress);
-    if (!ok) {
-      return ApiResponses.rateLimit("Too many comments, please try again later");
+    let ok: boolean;
+    try {
+      ok = await isUnderCommentRateLimit(client, walletAddress);
+    } catch (e: any) {
+      logApiError("POST /api/forum/comments rate limit check failed", e);
+      return ApiResponses.internalError(
+        "Failed to check rate limit",
+        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      );
     }
+    if (!ok) return ApiResponses.rateLimit("Too many comments, please try again later");
     const { data, error } = await (client as any)
       .from("forum_comments")
       .insert({
@@ -139,6 +151,9 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     logApiError("POST /api/forum/comments unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("Failed to create comment", detail);
+    return ApiResponses.internalError(
+      "Failed to create comment",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

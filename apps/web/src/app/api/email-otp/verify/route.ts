@@ -103,6 +103,9 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     const detail = String(e?.message || e);
     logApiError("POST /api/email-otp/verify unhandled error", e);
-    return ApiResponses.internalError("邮箱验证码验证失败", detail);
+    return ApiResponses.internalError(
+      "邮箱验证码验证失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

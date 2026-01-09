@@ -10,6 +10,25 @@ type OrdersRow = Pick<Database["public"]["Tables"]["orders"]["Row"], "id" | "rem
 
 export async function POST(req: NextRequest) {
   try {
+    const expectedToken =
+      process.env.INTERNAL_API_TOKEN ||
+      process.env.RELAYER_INTERNAL_TOKEN ||
+      process.env.INTERNAL_API_KEY ||
+      "";
+    if (expectedToken) {
+      const provided =
+        req.headers.get("x-internal-token") ||
+        req.headers.get("x-relayer-token") ||
+        req.headers.get("authorization") ||
+        "";
+      const token = provided.startsWith("Bearer ") ? provided.slice("Bearer ".length) : provided;
+      if (token !== expectedToken) {
+        return ApiResponses.unauthorized("未授权");
+      }
+    } else if (process.env.NODE_ENV === "production") {
+      return ApiResponses.internalError("Internal token not configured");
+    }
+
     const client = supabaseAdmin || getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
@@ -67,7 +86,7 @@ export async function POST(req: NextRequest) {
         .eq("verifying_contract", vc.toLowerCase())
         .eq("maker_address", maker.toLowerCase())
         .eq("maker_salt", String(salt))
-        .in("status", ["open", "filled_partial"]);
+        .in("status", ["open", "partially_filled", "filled_partial"]);
       if (useMk && mk) {
         q = q.eq("market_key", mk);
       }
@@ -113,7 +132,7 @@ export async function POST(req: NextRequest) {
     }
 
     const newRemaining = remainingBN > fillBN ? remainingBN - fillBN : 0n;
-    const newStatus = newRemaining === 0n ? "filled" : "filled_partial";
+    const newStatus = newRemaining === 0n ? "filled" : "partially_filled";
 
     const runUpdate = async (useMk: boolean) => {
       let q = client

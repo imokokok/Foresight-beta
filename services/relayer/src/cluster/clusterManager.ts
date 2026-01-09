@@ -45,7 +45,7 @@ export interface ClusterNode {
   metadata?: Record<string, unknown>;
 }
 
-export type ClusterEventType = 
+export type ClusterEventType =
   | "node_joined"
   | "node_left"
   | "leader_changed"
@@ -65,9 +65,24 @@ export class ClusterManager extends EventEmitter {
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
 
+  private readonly onBecameLeader = () => {
+    clusterNodeRole.set({ node_id: this.nodeId }, 1);
+    this.emit("became_leader");
+    void this.broadcastClusterEvent("leader_changed", {
+      newLeader: this.nodeId,
+    }).catch((error: any) => {
+      logger.warn("Failed to broadcast leader_changed", { error: error?.message || String(error) });
+    });
+  };
+
+  private readonly onLostLeadership = () => {
+    clusterNodeRole.set({ node_id: this.nodeId }, 0);
+    this.emit("lost_leadership");
+  };
+
   constructor(config: ClusterConfig = {}) {
     super();
-    
+
     this.config = {
       enableLeaderElection: config.enableLeaderElection ?? true,
       enablePubSub: config.enablePubSub ?? true,
@@ -95,56 +110,59 @@ export class ClusterManager extends EventEmitter {
 
     logger.info("Starting ClusterManager", { nodeId: this.nodeId });
 
-    // 初始化 Pub/Sub
-    if (this.config.enablePubSub) {
-      this.pubsub = getPubSub({}, this.nodeId);
-      await this.pubsub.connect();
-      
-      // 订阅集群事件
-      await this.pubsub.subscribeToClusterEvents((msg) => this.handleClusterMessage(msg));
-    }
-
-    // 初始化 Leader Election
-    if (this.config.enableLeaderElection) {
-      this.leaderElection = getLeaderElection({
-        ...this.config.leaderElectionConfig,
-        nodeId: this.nodeId,
-      });
-      
-      // 监听 Leader 事件
-      this.leaderElection.on("became_leader", () => {
-        clusterNodeRole.set({ node_id: this.nodeId }, 1);
-        this.emit("became_leader");
-        this.broadcastClusterEvent("leader_changed", {
-          newLeader: this.nodeId,
-        });
-      });
-
-      this.leaderElection.on("lost_leadership", () => {
-        clusterNodeRole.set({ node_id: this.nodeId }, 0);
-        this.emit("lost_leadership");
-      });
-
-      await this.leaderElection.start();
-    }
-
-    // 启动心跳
-    this.startHeartbeat();
-
-    // 广播节点加入
-    await this.broadcastClusterEvent("node_joined", {
-      nodeId: this.nodeId,
-      timestamp: Date.now(),
-    });
-
-    // 注册自己
-    this.registerNode(this.nodeId, this.isLeader());
-
     this.isRunning = true;
-    logger.info("ClusterManager started", { 
-      nodeId: this.nodeId, 
-      isLeader: this.isLeader() 
-    });
+    try {
+      if (this.config.enablePubSub) {
+        this.pubsub = getPubSub({}, this.nodeId);
+        await this.pubsub.connect();
+        await this.pubsub.subscribeToClusterEvents((msg) => this.handleClusterMessage(msg));
+      }
+
+      if (this.config.enableLeaderElection) {
+        this.leaderElection = getLeaderElection({
+          ...this.config.leaderElectionConfig,
+          nodeId: this.nodeId,
+        });
+
+        this.leaderElection.on("became_leader", this.onBecameLeader);
+        this.leaderElection.on("lost_leadership", this.onLostLeadership);
+
+        await this.leaderElection.start();
+      }
+
+      this.startHeartbeat();
+
+      await this.broadcastClusterEvent("node_joined", {
+        nodeId: this.nodeId,
+        timestamp: Date.now(),
+      });
+
+      this.registerNode(this.nodeId, this.isLeader());
+
+      logger.info("ClusterManager started", {
+        nodeId: this.nodeId,
+        isLeader: this.isLeader(),
+      });
+    } catch (error: any) {
+      this.isRunning = false;
+
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
+
+      if (this.leaderElection) {
+        this.leaderElection.removeListener("became_leader", this.onBecameLeader);
+        this.leaderElection.removeListener("lost_leadership", this.onLostLeadership);
+        await this.leaderElection.stop();
+      }
+
+      if (this.pubsub) {
+        await this.pubsub.disconnect();
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -155,11 +173,16 @@ export class ClusterManager extends EventEmitter {
 
     logger.info("Stopping ClusterManager", { nodeId: this.nodeId });
 
-    // 广播节点离开
-    await this.broadcastClusterEvent("node_left", {
-      nodeId: this.nodeId,
-      timestamp: Date.now(),
-    });
+    this.isRunning = false;
+
+    try {
+      await this.broadcastClusterEvent("node_left", {
+        nodeId: this.nodeId,
+        timestamp: Date.now(),
+      });
+    } catch (error: any) {
+      logger.warn("Failed to broadcast node_left", { error: error?.message || String(error) });
+    }
 
     // 停止心跳
     if (this.heartbeatTimer) {
@@ -169,6 +192,8 @@ export class ClusterManager extends EventEmitter {
 
     // 停止 Leader Election
     if (this.leaderElection) {
+      this.leaderElection.removeListener("became_leader", this.onBecameLeader);
+      this.leaderElection.removeListener("lost_leadership", this.onLostLeadership);
       await this.leaderElection.stop();
     }
 
@@ -178,8 +203,7 @@ export class ClusterManager extends EventEmitter {
     }
 
     this.nodes.clear();
-    this.isRunning = false;
-    
+
     logger.info("ClusterManager stopped");
   }
 
@@ -188,22 +212,22 @@ export class ClusterManager extends EventEmitter {
    */
   private handleClusterMessage(message: PubSubMessage): void {
     const { type, payload, source } = message;
-    
+
     logger.debug("Received cluster message", { type, source });
 
     switch (type) {
       case "node_joined":
         this.handleNodeJoined(payload as { nodeId: string });
         break;
-        
+
       case "node_left":
         this.handleNodeLeft(payload as { nodeId: string });
         break;
-        
+
       case "heartbeat":
         this.handleHeartbeat(payload as { nodeId: string; isLeader: boolean });
         break;
-        
+
       case "leader_changed":
         this.emit("leader_changed", payload);
         break;
@@ -216,7 +240,7 @@ export class ClusterManager extends EventEmitter {
   private handleNodeJoined(data: { nodeId: string }): void {
     this.registerNode(data.nodeId, false);
     this.emit("node_joined", data.nodeId);
-    
+
     logger.info("Node joined cluster", { nodeId: data.nodeId });
   }
 
@@ -226,9 +250,9 @@ export class ClusterManager extends EventEmitter {
   private handleNodeLeft(data: { nodeId: string }): void {
     this.nodes.delete(data.nodeId);
     clusterNodesTotal.set(this.nodes.size);
-    
+
     this.emit("node_left", data.nodeId);
-    
+
     logger.info("Node left cluster", { nodeId: data.nodeId });
   }
 
@@ -248,7 +272,7 @@ export class ClusterManager extends EventEmitter {
       isLeader,
       lastSeen: Date.now(),
     });
-    
+
     clusterNodesTotal.set(this.nodes.size);
   }
 
@@ -257,20 +281,23 @@ export class ClusterManager extends EventEmitter {
    */
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(async () => {
-      // 发送心跳
-      await this.broadcastClusterEvent("heartbeat", {
-        nodeId: this.nodeId,
-        isLeader: this.isLeader(),
-      });
+      if (!this.isRunning) return;
+      try {
+        await this.broadcastClusterEvent("heartbeat", {
+          nodeId: this.nodeId,
+          isLeader: this.isLeader(),
+        });
 
-      // 清理过期节点
-      const now = Date.now();
-      const timeout = 60000; // 60 秒
-      
-      for (const [nodeId, node] of this.nodes.entries()) {
-        if (nodeId !== this.nodeId && now - node.lastSeen > timeout) {
-          this.handleNodeLeft({ nodeId });
+        const now = Date.now();
+        const timeout = 60000;
+
+        for (const [nodeId, node] of this.nodes.entries()) {
+          if (nodeId !== this.nodeId && now - node.lastSeen > timeout) {
+            this.handleNodeLeft({ nodeId });
+          }
         }
+      } catch (error: any) {
+        logger.warn("Cluster heartbeat failed", { error: error?.message || String(error) });
       }
     }, 15000); // 15 秒
   }
@@ -380,4 +407,3 @@ export async function closeClusterManager(): Promise<void> {
     clusterManagerInstance = null;
   }
 }
-

@@ -223,7 +223,7 @@ export async function getDepth(
       .eq("chain_id", chainId)
       .eq("outcome_index", outcomeIndex)
       .eq("is_buy", isBuy)
-      .in("status", ["open", "filled_partial"]);
+      .in("status", ["open", "partially_filled"]);
     if (useMarketKey && marketKey) q = q.eq("market_key", marketKey);
     return q;
   };
@@ -279,7 +279,7 @@ export async function getQueue(
       .eq("outcome_index", outcomeIndex)
       .eq("is_buy", isBuy)
       .eq("price", price.toString())
-      .in("status", ["open", "filled_partial"])
+      .in("status", ["open", "partially_filled"])
       .order("sequence", { ascending: true })
       .range(offset, offset + limit - 1);
     if (useMarketKey && marketKey) q = q.eq("market_key", marketKey);

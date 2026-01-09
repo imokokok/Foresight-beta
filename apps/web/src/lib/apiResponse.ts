@@ -82,10 +82,20 @@ export const ApiResponses = {
 
   // 500 错误
   internalError: (message: string = "Internal server error", details?: any) =>
-    errorResponse(message, ApiErrorCode.INTERNAL_ERROR, 500, details),
+    errorResponse(
+      message,
+      ApiErrorCode.INTERNAL_ERROR,
+      500,
+      process.env.NODE_ENV === "development" ? details : undefined
+    ),
 
   databaseError: (message: string = "Database error", details?: any) =>
-    errorResponse(message, ApiErrorCode.DATABASE_ERROR, 500, details),
+    errorResponse(
+      message,
+      ApiErrorCode.DATABASE_ERROR,
+      500,
+      process.env.NODE_ENV === "development" ? details : undefined
+    ),
 
   // 业务逻辑错误
   orderExpired: (message: string = "Order expired") =>
@@ -107,6 +117,7 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
       return await handler(...args);
     } catch (error: any) {
       logApiError("API Error", error);
+      const isDev = process.env.NODE_ENV === "development";
 
       // 处理已知错误类型
       if (error.code === "PGRST116") {
@@ -119,8 +130,8 @@ export function withErrorHandler<T extends any[]>(handler: (...args: T) => Promi
 
       // 处理其他错误
       return ApiResponses.internalError(
-        error.message || "Unknown error",
-        process.env.NODE_ENV === "development" ? error.stack : undefined
+        isDev ? error.message || "Unknown error" : "Internal server error",
+        isDev ? error.stack : undefined
       );
     }
   };

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return ApiResponses.invalidParameters("flagId is required");
+    if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
     const { searchParams } = new URL(req.url);
     const sessionViewer = await getSessionAddress(req);
     const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";

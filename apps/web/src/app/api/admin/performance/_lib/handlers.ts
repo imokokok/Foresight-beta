@@ -68,7 +68,12 @@ export async function handleAdminPerformanceGet(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Performance API Error]:", error);
-    return errorResponse(error.message || "服务器错误", ApiErrorCode.INTERNAL_ERROR, 500, error);
+    return errorResponse(
+      error.message || "服务器错误",
+      ApiErrorCode.INTERNAL_ERROR,
+      500,
+      process.env.NODE_ENV === "development" ? error : undefined
+    );
   }
 }
 
@@ -98,6 +103,11 @@ export async function handleAdminPerformancePost(req: NextRequest) {
     return successResponse({ success: true });
   } catch (error: any) {
     console.error("[Performance POST Error]:", error);
-    return errorResponse(error.message || "服务器错误", ApiErrorCode.INTERNAL_ERROR, 500, error);
+    return errorResponse(
+      error.message || "服务器错误",
+      ApiErrorCode.INTERNAL_ERROR,
+      500,
+      process.env.NODE_ENV === "development" ? error : undefined
+    );
   }
 }

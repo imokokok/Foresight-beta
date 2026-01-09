@@ -17,6 +17,7 @@ import {
   matchedVolumeTotal,
   wsConnectionsActive,
   wsSubscriptionsActive,
+  stopMetricsTimers,
 } from "./monitoring/metrics.js";
 import {
   healthService,
@@ -28,6 +29,7 @@ import {
 } from "./monitoring/health.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
+import { closeRateLimiter } from "./ratelimit/index.js";
 import { healthRoutes, clusterRoutes } from "./routes/index.js";
 import {
   metricsMiddleware,
@@ -39,6 +41,8 @@ import {
 import { initClusterManager, closeClusterManager, getClusterManager } from "./cluster/index.js";
 import { initDatabasePool, closeDatabasePool } from "./database/index.js";
 import { initChainReconciler, closeChainReconciler } from "./reconciliation/index.js";
+
+let clusterIsActive = false;
 
 // 环境变量校验与读取
 const EnvSchema = z.object({
@@ -222,14 +226,15 @@ const PORT = RELAYER_PORT;
 
 let provider: ethers.JsonRpcProvider | null = null;
 let bundlerWallet: ethers.Wallet | null = null;
-if (BUNDLER_PRIVATE_KEY) {
-  try {
-    provider = new ethers.JsonRpcProvider(RPC_URL);
+try {
+  provider = new ethers.JsonRpcProvider(RPC_URL);
+  if (BUNDLER_PRIVATE_KEY) {
     bundlerWallet = new ethers.Wallet(BUNDLER_PRIVATE_KEY, provider);
     console.log(`Bundler address: ${bundlerWallet.address}`);
-  } catch (e) {
-    bundlerWallet = null;
   }
+} catch {
+  provider = null;
+  bundlerWallet = null;
 }
 
 app.get("/", (req, res) => {
@@ -372,6 +377,57 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
     res.status(400).json({
       success: false,
       message: "Order submission failed",
+      detail: String(e?.message || e),
+    });
+  }
+});
+
+const CancelV2Schema = z.object({
+  marketKey: z.string().min(1),
+  outcomeIndex: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+  maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+  salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
+  signature: z.string().regex(/^0x[0-9a-fA-F]+$/),
+});
+
+app.post("/v2/cancel-salt", limitOrders, async (req, res) => {
+  try {
+    const parsed = CancelV2Schema.parse(req.body || {});
+    const result = await matchingEngine.cancelOrder(
+      parsed.marketKey,
+      parsed.outcomeIndex,
+      parsed.chainId,
+      parsed.verifyingContract,
+      parsed.maker,
+      parsed.salt,
+      parsed.signature
+    );
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error || "Cancel failed",
+      });
+    }
+    res.json({ success: true, data: { ok: true } });
+  } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: "cancel validation failed",
+        detail: e.flatten(),
+      });
+    }
+    res.status(400).json({
+      success: false,
+      message: "Cancel failed",
       detail: String(e?.message || e),
     });
   }
@@ -864,6 +920,8 @@ app.get("/orderbook/types", (req, res) => {
  *
  * NOTE: For production, persist lastProcessedBlock (e.g. in Supabase) and use getLogs by topic.
  */
+let autoIngestTimer: NodeJS.Timeout | null = null;
+
 async function startAutoIngestLoop() {
   if (process.env.RELAYER_AUTO_INGEST !== "1") return;
   if (!supabaseAdmin) {
@@ -884,17 +942,77 @@ async function startAutoIngestLoop() {
     return;
   }
 
-  let last = Number(process.env.RELAYER_AUTO_INGEST_FROM_BLOCK || "0") || 0;
+  const cursorKey = "order_filled_signed";
+  const configuredFrom = Number(process.env.RELAYER_AUTO_INGEST_FROM_BLOCK || "0") || 0;
+  const lookback = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_REORG_LOOKBACK || "20"));
+  let last = 0;
   const confirmations = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_CONFIRMATIONS || "1"));
   const pollMs = Math.max(2000, Number(process.env.RELAYER_AUTO_INGEST_POLL_MS || "5000"));
   const maxConcurrent = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_CONCURRENCY || "3"));
-  const blockConcurrency = Math.max(
-    1,
-    Number(process.env.RELAYER_AUTO_INGEST_BLOCK_CONCURRENCY || "4")
-  );
+
+  if (autoIngestTimer) {
+    clearInterval(autoIngestTimer);
+    autoIngestTimer = null;
+  }
+
+  const loadCursor = async (): Promise<number> => {
+    try {
+      const { data, error } = await supabaseAdmin!
+        .from("relayer_ingest_cursors")
+        .select("last_processed_block")
+        .eq("chain_id", chainId)
+        .eq("cursor_key", cursorKey)
+        .maybeSingle();
+      if (error) {
+        const code = (error as any).code;
+        if (code === "42P01" || code === "42703") return 0;
+        console.warn("[auto-ingest] cursor load error:", String(error.message || error));
+        return 0;
+      }
+      const raw = (data as any)?.last_processed_block;
+      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
+      return Number.isFinite(n) ? n : 0;
+    } catch (e: any) {
+      console.warn("[auto-ingest] cursor load exception:", String(e?.message || e));
+      return 0;
+    }
+  };
+
+  const saveCursor = async (blockNumber: number): Promise<void> => {
+    try {
+      const { error } = await supabaseAdmin!.from("relayer_ingest_cursors").upsert(
+        {
+          chain_id: chainId,
+          cursor_key: cursorKey,
+          last_processed_block: blockNumber,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "chain_id,cursor_key" }
+      );
+      if (error) {
+        const code = (error as any).code;
+        if (code === "42P01" || code === "42703") return;
+        console.warn("[auto-ingest] cursor save error:", String(error.message || error));
+      }
+    } catch (e: any) {
+      console.warn("[auto-ingest] cursor save exception:", String(e?.message || e));
+    }
+  };
+
+  const persistedLast = await loadCursor();
+  if (configuredFrom > 0) {
+    last = configuredFrom;
+  } else {
+    last = persistedLast > 0 ? Math.max(0, persistedLast - lookback) : 0;
+  }
 
   const loop = async () => {
     try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) return;
+      }
+
       const head = await provider!.getBlockNumber();
       const target = Math.max(0, head - confirmations);
       if (last === 0) last = target;
@@ -906,38 +1024,26 @@ async function startAutoIngestLoop() {
       const fromBlock = last + 1;
       if (fromBlock > to) return;
 
-      const blocks: number[] = [];
-      for (let b = fromBlock; b <= to; b++) {
-        blocks.push(b);
-      }
-
       const startTime = Date.now();
       let totalIngested = 0;
-      let index = 0;
-      while (index < blocks.length) {
-        const slice = blocks.slice(index, index + blockConcurrency);
-        const results = await Promise.all(
-          slice.map(async (b) => {
-            try {
-              const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
-              return { block: b, ingested: r.ingestedCount || 0 };
-            } catch (e: any) {
-              console.warn(
-                "[auto-ingest] ingestTradesByLogs error:",
-                String(e?.message || e),
-                chainId,
-                b
-              );
-              return { block: b, ingested: 0 };
-            }
-          })
-        );
-        for (const r of results) {
-          totalIngested += r.ingested;
+      let processedTo = last;
+      for (let b = fromBlock; b <= to; b++) {
+        try {
+          const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
+          totalIngested += r.ingestedCount || 0;
+          processedTo = b;
+          last = processedTo;
+          await saveCursor(processedTo);
+        } catch (e: any) {
+          console.warn(
+            "[auto-ingest] ingestTradesByLogs error:",
+            String(e?.message || e),
+            chainId,
+            b
+          );
+          break;
         }
-        index += blockConcurrency;
       }
-      last = to;
       const duration = Date.now() - startTime;
       console.log(
         "[auto-ingest] window",
@@ -956,7 +1062,7 @@ async function startAutoIngestLoop() {
 
   // initial tick + interval
   await loop();
-  setInterval(loop, pollMs);
+  autoIngestTimer = setInterval(loop, pollMs);
   console.log("[auto-ingest] enabled");
 }
 
@@ -998,6 +1104,7 @@ if (process.env.NODE_ENV !== "test") {
           enableLeaderElection: true,
           enablePubSub: true,
         });
+        clusterIsActive = true;
 
         // 监听 Leader 事件
         cluster.on("became_leader", () => {
@@ -1135,6 +1242,26 @@ async function gracefulShutdown(signal: string) {
       logger.info("WebSocket server stopped");
     } catch (e: any) {
       logger.error("Failed to stop WebSocket server", {}, e);
+    }
+
+    // 停止 auto-ingest 定时器
+    if (autoIngestTimer) {
+      clearInterval(autoIngestTimer);
+      autoIngestTimer = null;
+    }
+
+    // 停止 metrics 定时器
+    try {
+      stopMetricsTimers();
+    } catch (e: any) {
+      logger.warn("Failed to stop metrics timers", {}, e);
+    }
+
+    // 停止限流器定时器
+    try {
+      closeRateLimiter();
+    } catch (e: any) {
+      logger.warn("Failed to stop rate limiter", {}, e);
     }
 
     // 关闭 Redis

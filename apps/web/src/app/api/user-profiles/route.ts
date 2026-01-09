@@ -133,7 +133,10 @@ export async function GET(req: NextRequest) {
     );
   } catch (e: any) {
     logApiError("GET /api/user-profiles unhandled error", e);
-    return ApiResponses.internalError("Failed to fetch profile", String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to fetch profile",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }
 
@@ -203,6 +206,9 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (e: any) {
     logApiError("POST /api/user-profiles unhandled error", e);
-    return ApiResponses.internalError("Failed to save profile", String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to save profile",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const checkinId = normalizeId(id);
-    if (!checkinId) {
+    if (checkinId == null || checkinId <= 0) {
       return NextResponse.json({ message: "checkinId is required" }, { status: 400 });
     }
     const body = await parseRequestBody(req as any);
@@ -131,6 +131,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });
   } catch (e: any) {
-    return ApiResponses.internalError("Failed to review check-in", String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to review check-in",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }

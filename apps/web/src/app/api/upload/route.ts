@@ -123,7 +123,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("图片上传异常:", error);
     const detail = error instanceof Error ? error.message : String(error);
-    return ApiResponses.internalError("图片上传失败", detail);
+    return ApiResponses.internalError(
+      "图片上传失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 

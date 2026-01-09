@@ -1,20 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
 // POST /api/history  body: { eventId: number, walletAddress: string }
 // GET /api/history?address=0x...
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     if (!supabaseAdmin) {
       return ApiResponses.internalError("Supabase client not initialized");
     }
 
-    const body = await req.json();
-    const { eventId, walletAddress } = body;
+    const body = await req.json().catch(() => ({}) as any);
+    const eventIdRaw = (body as any)?.eventId;
+    const walletAddressRaw = String((body as any)?.walletAddress || "");
+    const eventId =
+      typeof eventIdRaw === "number" || typeof eventIdRaw === "string" ? Number(eventIdRaw) : NaN;
 
-    if (!eventId || !walletAddress) {
+    const viewer = normalizeAddress(await getSessionAddress(req));
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) {
+      return ApiResponses.unauthorized("未登录或会话失效");
+    }
+
+    const walletAddress = walletAddressRaw ? normalizeAddress(walletAddressRaw) : viewer;
+    if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
+      return ApiResponses.badRequest("walletAddress 无效");
+    }
+    if (walletAddress !== viewer) {
+      return ApiResponses.forbidden("walletAddress mismatch");
+    }
+
+    if (!Number.isFinite(eventId) || eventId <= 0) {
       return ApiResponses.badRequest("Missing required fields");
     }
 
@@ -39,17 +56,26 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     if (!supabaseAdmin) {
       return ApiResponses.internalError("Supabase client not initialized");
     }
 
     const { searchParams } = new URL(req.url);
-    const address = searchParams.get("address");
+    const addressRaw = searchParams.get("address") || "";
 
-    if (!address) {
+    const viewer = normalizeAddress(await getSessionAddress(req));
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) {
+      return ApiResponses.unauthorized("未登录或会话失效");
+    }
+
+    const address = addressRaw ? normalizeAddress(addressRaw) : viewer;
+    if (!/^0x[a-f0-9]{40}$/.test(address)) {
       return ApiResponses.badRequest("Address is required");
+    }
+    if (address !== viewer) {
+      return ApiResponses.forbidden("address mismatch");
     }
 
     const { data, error } = await supabaseAdmin

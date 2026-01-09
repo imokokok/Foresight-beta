@@ -359,6 +359,11 @@ export interface Database {
           proposal_id: number;
           user_id: string;
           content: string;
+          image_url: string | null;
+          topic: string | null;
+          reply_to_id: number | null;
+          reply_to_user: string | null;
+          reply_to_content: string | null;
           created_at: string;
         };
         Insert: {
@@ -366,6 +371,11 @@ export interface Database {
           proposal_id: number;
           user_id: string;
           content: string;
+          image_url?: string | null;
+          topic?: string | null;
+          reply_to_id?: number | null;
+          reply_to_user?: string | null;
+          reply_to_content?: string | null;
           created_at?: string;
         };
         Update: {
@@ -373,6 +383,11 @@ export interface Database {
           proposal_id?: number;
           user_id?: string;
           content?: string;
+          image_url?: string | null;
+          topic?: string | null;
+          reply_to_id?: number | null;
+          reply_to_user?: string | null;
+          reply_to_content?: string | null;
           created_at?: string;
         };
       };

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
-import { parseRequestBody, logApiError } from "@/lib/serverUtils";
+import {
+  getSessionAddress,
+  isAdminAddress,
+  normalizeAddress,
+  parseRequestBody,
+  logApiError,
+} from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 function actionLabel(v: string): string {
@@ -13,11 +19,19 @@ function actionLabel(v: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessAddr = await getSessionAddress(req);
+    const caller = normalizeAddress(String(sessAddr || ""));
+    if (!/^0x[a-f0-9]{40}$/.test(caller)) {
+      return ApiResponses.unauthorized("未登录");
+    }
+    if (!isAdminAddress(caller)) {
+      return ApiResponses.forbidden("无权限");
+    }
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = normalizeId(body?.eventId ?? searchParams.get("eventId"));
-    if (eventId === null) {
-      return ApiResponses.invalidParameters("eventId 必填");
+    if (eventId === null || eventId <= 0) {
+      return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
     }
     const client = getClient() as any;
     if (!client) {
@@ -149,10 +163,16 @@ export async function POST(req: NextRequest) {
           hot_since: new Date().toISOString(),
         } as any)
         .eq("id", top.id);
-    return NextResponse.json({ message: "ok", prediction: pred, thread_id: top.id }, { status: 200 });
+    return NextResponse.json(
+      { message: "ok", prediction: pred, thread_id: top.id },
+      { status: 200 }
+    );
   } catch (e: any) {
     logApiError("POST /api/forum/triggers/run unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("触发失败", detail);
+    return ApiResponses.internalError(
+      "触发失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

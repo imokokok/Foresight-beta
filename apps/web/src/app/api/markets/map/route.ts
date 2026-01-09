@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     logApiError("GET /api/markets/map unhandled error", e);
     const detail = e?.message || String(e);
-    return ApiResponses.internalError("Failed to fetch market map", detail);
+    return ApiResponses.internalError(
+      "Failed to fetch market map",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -112,6 +115,9 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     logApiError("POST /api/markets/map unhandled error", e);
     const detail = e?.message || String(e);
-    return ApiResponses.internalError("Failed to upsert market map", detail);
+    return ApiResponses.internalError(
+      "Failed to upsert market map",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

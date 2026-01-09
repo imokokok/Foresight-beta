@@ -38,15 +38,14 @@ vi.mock("ethers", () => {
 vi.mock("../database/connectionPool.js", () => ({
   getDatabasePool: vi.fn(() => ({
     getReadClient: vi.fn(() => ({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            gte: vi.fn(() => ({
-              lte: vi.fn(async () => ({ data: [], error: null })),
-            })),
-          })),
-        })),
-      })),
+      from: vi.fn(() => {
+        const chain: any = {};
+        chain.select = vi.fn(() => chain);
+        chain.eq = vi.fn(() => chain);
+        chain.gte = vi.fn(() => chain);
+        chain.lte = vi.fn(async () => ({ data: [], error: null }));
+        return chain;
+      }),
     })),
     getWriteClient: vi.fn(() => null),
   })),
@@ -78,9 +77,9 @@ describe("ChainReconciler", () => {
     it("should use default configuration when not provided", async () => {
       const { ChainReconciler } = await import("./chainReconciler.js");
       const reconciler = new ChainReconciler();
-      
+
       const status = reconciler.getStatus();
-      
+
       expect(status.isRunning).toBe(false);
       expect(status.lastCheckedBlock).toBe(0);
       expect(status.unresolvedDiscrepancies).toBe(0);
@@ -93,7 +92,7 @@ describe("ChainReconciler", () => {
         blockRange: 500,
         autoFix: true,
       });
-      
+
       expect(reconciler.getStatus().isRunning).toBe(false);
     });
   });
@@ -102,7 +101,7 @@ describe("ChainReconciler", () => {
     it("should start with no discrepancies", async () => {
       const { ChainReconciler } = await import("./chainReconciler.js");
       const reconciler = new ChainReconciler();
-      
+
       expect(reconciler.getDiscrepancies()).toEqual([]);
       expect(reconciler.getUnresolvedDiscrepancies()).toEqual([]);
     });
@@ -110,10 +109,10 @@ describe("ChainReconciler", () => {
     it("should resolve discrepancy by ID", async () => {
       const { ChainReconciler } = await import("./chainReconciler.js");
       const reconciler = new ChainReconciler();
-      
+
       // 尝试解决不存在的差异
       const result = reconciler.resolveDiscrepancy("non-existent", "Manual fix");
-      
+
       expect(result).toBe(false);
     });
   });
@@ -122,9 +121,9 @@ describe("ChainReconciler", () => {
     it("should return correct initial status", async () => {
       const { ChainReconciler } = await import("./chainReconciler.js");
       const reconciler = new ChainReconciler();
-      
+
       const status = reconciler.getStatus();
-      
+
       expect(status).toEqual({
         isRunning: false,
         lastCheckedBlock: 0,

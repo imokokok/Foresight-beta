@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return ApiResponses.invalidParameters("flagId is required");
+    if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
 
     const body = await parseRequestBody(req as any);
     const client = getClient() as any;

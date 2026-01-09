@@ -10,6 +10,9 @@ vi.mock("../redis/client.js", () => ({
     isReady: vi.fn(() => true),
     connect: vi.fn(async () => true),
     disconnect: vi.fn(async () => {}),
+    acquireLock: vi.fn(async () => null),
+    releaseLock: vi.fn(async () => true),
+    refreshLock: vi.fn(async () => true),
     set: vi.fn(async () => true),
     get: vi.fn(async () => null),
     del: vi.fn(async () => true),
@@ -47,7 +50,7 @@ describe("LeaderElection", () => {
     it("should use default configuration when not provided", async () => {
       const { LeaderElection } = await import("./leaderElection.js");
       const election = new LeaderElection();
-      
+
       expect(election.getNodeId()).toBeTruthy();
       expect(election.isCurrentLeader()).toBe(false);
     });
@@ -59,7 +62,7 @@ describe("LeaderElection", () => {
         lockTtlMs: 60000,
         renewIntervalMs: 20000,
       });
-      
+
       expect(election.getNodeId()).toBe("test-node-1");
     });
   });
@@ -67,10 +70,10 @@ describe("LeaderElection", () => {
   describe("Node ID Generation", () => {
     it("should generate unique node IDs", async () => {
       const { LeaderElection } = await import("./leaderElection.js");
-      
+
       const election1 = new LeaderElection();
       const election2 = new LeaderElection();
-      
+
       // 由于是单例模式，需要检查生成逻辑
       expect(election1.getNodeId()).toBeTruthy();
       expect(typeof election1.getNodeId()).toBe("string");
@@ -81,7 +84,7 @@ describe("LeaderElection", () => {
     it("should start as non-leader", async () => {
       const { LeaderElection } = await import("./leaderElection.js");
       const election = new LeaderElection({ nodeId: "test-node" });
-      
+
       expect(election.isCurrentLeader()).toBe(false);
     });
   });
@@ -90,10 +93,9 @@ describe("LeaderElection", () => {
     it("should return null when no leader exists", async () => {
       const { LeaderElection } = await import("./leaderElection.js");
       const election = new LeaderElection({ nodeId: "test-node" });
-      
+
       const leader = await election.getCurrentLeader();
       expect(leader).toBeNull();
     });
   });
 });
-

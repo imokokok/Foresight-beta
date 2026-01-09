@@ -106,13 +106,13 @@ export class DatabasePool {
    */
   private getReplicasFromEnv(): DatabaseConfig["replicas"] {
     const replicas: DatabaseConfig["replicas"] = [];
-    
+
     // 支持 SUPABASE_REPLICA_1_URL, SUPABASE_REPLICA_1_KEY 格式
     for (let i = 1; i <= 5; i++) {
       const url = process.env[`SUPABASE_REPLICA_${i}_URL`];
       const key = process.env[`SUPABASE_REPLICA_${i}_KEY`];
       const weight = parseInt(process.env[`SUPABASE_REPLICA_${i}_WEIGHT`] || "1", 10);
-      
+
       if (url && key) {
         replicas.push({
           url,
@@ -122,7 +122,7 @@ export class DatabasePool {
         });
       }
     }
-    
+
     return replicas;
   }
 
@@ -137,16 +137,16 @@ export class DatabasePool {
     try {
       // 初始化主库连接
       if (this.config.primary.url && this.config.primary.serviceKey) {
-        this.primaryClient = createClient(
-          this.config.primary.url,
-          this.config.primary.serviceKey,
-          {
-            auth: { autoRefreshToken: false, persistSession: false },
-          }
-        );
-        
+        this.primaryClient = createClient(this.config.primary.url, this.config.primary.serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
         // 测试主库连接
-        const { error } = await this.primaryClient.from("markets").select("count").limit(1).single();
+        const { error } = await this.primaryClient
+          .from("markets")
+          .select("count")
+          .limit(1)
+          .single();
         if (error && !error.message.includes("No rows")) {
           logger.warn("Primary database connection test failed", { error: error.message });
         } else {
@@ -161,13 +161,9 @@ export class DatabasePool {
       // 初始化副本连接
       if (this.config.replicas && this.config.replicas.length > 0) {
         for (const replica of this.config.replicas) {
-          const client = createClient(
-            replica.url,
-            replica.serviceKey,
-            {
-              auth: { autoRefreshToken: false, persistSession: false },
-            }
-          );
+          const client = createClient(replica.url, replica.serviceKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
 
           this.replicas.push({
             client,
@@ -180,7 +176,7 @@ export class DatabasePool {
 
           dbReplicaHealth.set({ replica: replica.name }, 1);
         }
-        
+
         logger.info("Replicas initialized", { count: this.replicas.length });
         dbConnectionsActive.set({ pool: "replica", type: "read" }, this.replicas.length);
       } else {
@@ -207,7 +203,11 @@ export class DatabasePool {
     }
 
     this.healthCheckTimer = setInterval(async () => {
-      await this.checkReplicaHealth();
+      try {
+        await this.checkReplicaHealth();
+      } catch (error: any) {
+        logger.warn("Replica health check tick failed", { error: error?.message || String(error) });
+      }
     }, this.config.options?.healthCheckInterval || 30000);
   }
 
@@ -244,8 +244,8 @@ export class DatabasePool {
       if (replica.healthy) {
         replica.healthy = false;
         dbReplicaHealth.set({ replica: replica.name }, 0);
-        logger.warn("Replica marked unhealthy", { 
-          replica: replica.name, 
+        logger.warn("Replica marked unhealthy", {
+          replica: replica.name,
           reason,
           failureCount: replica.failureCount,
         });
@@ -279,7 +279,7 @@ export class DatabasePool {
    */
   getReadClient(): SupabaseClient | null {
     // 获取健康的副本
-    const healthyReplicas = this.replicas.filter(r => r.healthy);
+    const healthyReplicas = this.replicas.filter((r) => r.healthy);
 
     if (healthyReplicas.length === 0) {
       // 没有健康副本,回退到主库
@@ -290,7 +290,7 @@ export class DatabasePool {
     // 加权轮询选择
     const totalWeight = healthyReplicas.reduce((sum, r) => sum + r.weight, 0);
     let random = Math.random() * totalWeight;
-    
+
     for (const replica of healthyReplicas) {
       random -= replica.weight;
       if (random <= 0) {
@@ -314,9 +314,8 @@ export class DatabasePool {
       throw new Error("No database connection available");
     }
 
-    const pool = this.replicas.length > 0 && this.replicas.some(r => r.healthy) 
-      ? "replica" 
-      : "primary";
+    const pool =
+      this.replicas.length > 0 && this.replicas.some((r) => r.healthy) ? "replica" : "primary";
     const start = Date.now();
 
     try {
@@ -369,8 +368,8 @@ export class DatabasePool {
     return {
       primaryConnected: this.primaryClient !== null,
       replicaCount: this.replicas.length,
-      healthyReplicaCount: this.replicas.filter(r => r.healthy).length,
-      replicas: this.replicas.map(r => ({
+      healthyReplicaCount: this.replicas.filter((r) => r.healthy).length,
+      replicas: this.replicas.map((r) => ({
         name: r.name,
         healthy: r.healthy,
         failureCount: r.failureCount,
@@ -430,4 +429,3 @@ export function getSupabaseAdmin(): SupabaseClient | null {
   const pool = getDatabasePool();
   return pool.getWriteClient();
 }
-

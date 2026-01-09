@@ -9,6 +9,7 @@ import {
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 import { normalizeCategory } from "@/features/trending/trendingModel";
+import { isAdminSession } from "../admin/performance/_lib/auth";
 
 // 论坛数据可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -155,8 +156,8 @@ async function maybeAutoCreatePrediction(
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const eventId = normalizeId(searchParams.get("eventId"));
-  if (eventId === null) {
-    return ApiResponses.invalidParameters("eventId 必填");
+  if (eventId === null || eventId <= 0) {
+    return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
   }
   try {
     const client = getClient();
@@ -191,7 +192,12 @@ export async function GET(req: NextRequest) {
         (commentsByThread[k] = commentsByThread[k] || []).push(c);
       });
     }
-    await maybeAutoCreatePrediction(client, eventId, threads || [], commentsArr);
+    try {
+      const admin = await isAdminSession(client as any, req);
+      if (admin.ok) {
+        await maybeAutoCreatePrediction(client, eventId, threads || [], commentsArr);
+      }
+    } catch {}
     const merged = (threads || []).map((t: any) => ({
       id: Number(t.id),
       event_id: Number(t.event_id),
@@ -222,7 +228,10 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     logApiError("GET /api/forum unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("查询失败", detail);
+    return ApiResponses.internalError(
+      "查询失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -243,7 +252,7 @@ async function isUnderThreadRateLimit(client: any, walletAddress: string): Promi
     .gte("created_at", tenMinutesAgo);
   if (err10m) {
     logApiError("POST /api/forum rate limit 10m query failed", err10m);
-    return false;
+    throw err10m;
   }
   if (typeof count10m === "number" && count10m > 0) {
     return false;
@@ -255,7 +264,7 @@ async function isUnderThreadRateLimit(client: any, walletAddress: string): Promi
     .gte("created_at", dayAgo);
   if (err24h) {
     logApiError("POST /api/forum rate limit 24h query failed", err24h);
-    return false;
+    throw err24h;
   }
   if (typeof count24h === "number" && count24h >= 3) {
     return false;
@@ -270,8 +279,8 @@ export async function POST(req: NextRequest) {
     const title = String(body?.title || "");
     const content = String(body?.content || "");
     const rawWalletAddress = String(body?.walletAddress || "");
-    if (eventId === null) {
-      return ApiResponses.invalidParameters("eventId 必填");
+    if (eventId === null || eventId <= 0) {
+      return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
     }
     if (!title.trim()) {
       return ApiResponses.invalidParameters("标题必填");
@@ -296,10 +305,17 @@ export async function POST(req: NextRequest) {
       return ApiResponses.forbidden("walletAddress mismatch");
     }
 
-    const ok = await isUnderThreadRateLimit(client, walletAddress);
-    if (!ok) {
-      return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
+    let ok: boolean;
+    try {
+      ok = await isUnderThreadRateLimit(client, walletAddress);
+    } catch (e: any) {
+      logApiError("POST /api/forum rate limit check failed", e);
+      return ApiResponses.internalError(
+        "限流检查失败",
+        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      );
     }
+    if (!ok) return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
     const subject_name = String(body?.subjectName || "");
     const action_verb = String(body?.actionVerb || "");
     const target_value = String(body?.targetValue || "");
@@ -333,6 +349,9 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     logApiError("POST /api/forum unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("创建失败", detail);
+    return ApiResponses.internalError(
+      "创建失败",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

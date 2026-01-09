@@ -8,4 +8,4 @@ SET status = 'canceled',
 WHERE verifying_contract = '0x8b2ae97451d5773319b9d3480a71b010a544a10b'
   AND chain_id = 80002
   AND is_buy = TRUE
-  AND status IN ('open', 'filled_partial');
+  AND status IN ('open', 'partially_filled', 'filled_partial');

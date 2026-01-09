@@ -2,14 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionAddress, normalizeAddress, isAdminAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 
-export async function requireAdmin(args: {
-  request: NextRequest;
-  client: any;
-  allowWalletFromBody?: string;
-}) {
-  const { request, client, allowWalletFromBody } = args;
+export async function requireAdmin(args: { request: NextRequest; client: any }) {
+  const { request, client } = args;
   const sessAddr = await getSessionAddress(request);
-  const addr = normalizeAddress(String(sessAddr || allowWalletFromBody || ""));
+  const addr = normalizeAddress(String(sessAddr || ""));
   if (!/^0x[a-f0-9]{40}$/.test(addr)) {
     return {
       ok: false as const,

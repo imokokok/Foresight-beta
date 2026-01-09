@@ -93,7 +93,10 @@ export async function handleGetPredictionDetail(request: NextRequest, id: string
   } catch (error: any) {
     logApiError("GET /api/predictions/[id] detail unhandled error", error);
     const detail = error?.message || String(error);
-    return ApiResponses.internalError("Failed to fetch prediction detail", detail);
+    return ApiResponses.internalError(
+      "Failed to fetch prediction detail",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -113,7 +116,6 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
     const admin = await requireAdmin({
       request,
       client,
-      allowWalletFromBody: normalizeAddress(String((body as any).walletAddress || "")),
     });
     if (!admin.ok) return admin.response;
 
@@ -150,7 +152,10 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
   } catch (e: any) {
     logApiError("PATCH /api/predictions/[id] unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("Failed to update prediction", detail);
+    return ApiResponses.internalError(
+      "Failed to update prediction",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -177,6 +182,9 @@ export async function handleDeletePrediction(request: NextRequest, id: string) {
   } catch (e: any) {
     logApiError("DELETE /api/predictions/[id] unhandled error", e);
     const detail = String(e?.message || e);
-    return ApiResponses.internalError("Failed to delete prediction", detail);
+    return ApiResponses.internalError(
+      "Failed to delete prediction",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }

@@ -266,9 +266,10 @@ export const systemHealthy = new Gauge({
 
 // 启动时间
 const startTime = Date.now();
+let uptimeTimer: NodeJS.Timeout | null = null;
 
 // 定期更新 uptime
-setInterval(() => {
+uptimeTimer = setInterval(() => {
   systemUptime.set((Date.now() - startTime) / 1000);
 }, 5000);
 
@@ -297,3 +298,9 @@ export function resetMetrics(): void {
   metricsRegistry.resetMetrics();
 }
 
+export function stopMetricsTimers(): void {
+  if (uptimeTimer) {
+    clearInterval(uptimeTimer);
+    uptimeTimer = null;
+  }
+}

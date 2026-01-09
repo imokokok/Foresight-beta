@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClient } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
+import { isAdminSession } from "../admin/performance/_lib/auth";
 
 export type LeaderboardEntry = {
   rank: number;
@@ -46,7 +47,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const range = (searchParams.get("range") || "weekly") as TimeRange;
     const category = (searchParams.get("category") || "profit") as Category;
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+    const limitRaw = Number(searchParams.get("limit") || 50);
+    const limit = Math.max(1, Math.min(100, Number.isFinite(limitRaw) ? Math.trunc(limitRaw) : 50));
     const noCache = searchParams.get("nocache") === "true";
 
     // 检查缓存
@@ -374,6 +376,12 @@ export async function POST(req: NextRequest) {
     const client = getClient("leaderboard-refresh");
     if (!client) {
       return ApiResponses.internalError("Database not configured");
+    }
+
+    const admin = await isAdminSession(client as any, req);
+    if (!admin.ok) {
+      if (admin.reason === "unauthorized") return ApiResponses.unauthorized("未授权");
+      return ApiResponses.forbidden("权限不足");
     }
 
     // 调用刷新函数

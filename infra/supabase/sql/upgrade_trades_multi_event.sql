@@ -82,24 +82,6 @@ BEGIN
   GET DIAGNOSTICS v_row_count = ROW_COUNT;
   inserted := v_row_count > 0;
 
-  IF inserted THEN
-    -- Apply fill to maker order (idempotent because we only do it when the trade insert succeeds)
-    UPDATE public.orders
-    SET
-      remaining = GREATEST((remaining::numeric - p_amount::numeric), 0)::text,
-      status = CASE
-        WHEN GREATEST((remaining::numeric - p_amount::numeric), 0) = 0 THEN 'filled'
-        ELSE 'filled_partial'
-      END
-    WHERE chain_id = p_network_id
-      AND verifying_contract = lower(p_market_address)
-      AND maker_address = lower(p_maker_address)
-      AND maker_salt = p_salt
-      AND status IN ('open', 'filled_partial');
-  END IF;
-
   RETURN jsonb_build_object('inserted', inserted);
 END;
 $$;
-
-

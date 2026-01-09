@@ -58,9 +58,7 @@ const MARKET_ABI = [
   "function balanceOf(address account, uint256 outcomeIndex) view returns (uint256)",
 ];
 
-const ERC20_ABI = [
-  "function balanceOf(address account) view returns (uint256)",
-];
+const ERC20_ABI = ["function balanceOf(address account) view returns (uint256)"];
 
 // ============================================================
 // 类型定义
@@ -89,6 +87,7 @@ export interface Discrepancy {
   details: {
     tradeId?: string;
     txHash?: string;
+    logIndex?: number;
     expectedAmount?: string;
     actualAmount?: string;
     difference?: string;
@@ -145,10 +144,11 @@ export class ChainReconciler extends EventEmitter {
   private reconciliationTimer: NodeJS.Timeout | null = null;
   private lastCheckedBlock: number = 0;
   private discrepancies: Map<string, Discrepancy> = new Map();
+  private runInFlight: boolean = false;
 
   constructor(config: Partial<ReconciliationConfig> = {}) {
     super();
-    
+
     this.config = {
       rpcUrl: config.rpcUrl || process.env.RPC_URL || "",
       marketAddress: config.marketAddress || process.env.MARKET_ADDRESS || "",
@@ -162,6 +162,55 @@ export class ChainReconciler extends EventEmitter {
 
     this.provider = new JsonRpcProvider(this.config.rpcUrl);
     this.marketContract = new Contract(this.config.marketAddress, MARKET_ABI, this.provider);
+  }
+
+  private getCursorKey(): string {
+    return `chain_reconciler:${this.config.marketAddress.toLowerCase()}`;
+  }
+
+  private async loadLastCheckedBlockFromDb(): Promise<number | null> {
+    const pool = getDatabasePool();
+    const client = pool.getWriteClient() || pool.getReadClient();
+    if (!client) return null;
+
+    try {
+      const { data, error } = await client
+        .from("relayer_ingest_cursors")
+        .select("last_processed_block")
+        .eq("chain_id", this.config.chainId)
+        .eq("cursor_key", this.getCursorKey())
+        .maybeSingle();
+
+      if (error) {
+        logger.warn("Failed to load reconciliation cursor", { error: error.message });
+        return null;
+      }
+
+      if (!data) return null;
+      const n = Number((data as any).last_processed_block ?? 0);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return n;
+    } catch (error: any) {
+      logger.warn("Failed to load reconciliation cursor", { error: error.message });
+      return null;
+    }
+  }
+
+  private async saveLastCheckedBlockToDb(blockNumber: number): Promise<void> {
+    const pool = getDatabasePool();
+    const client = pool.getWriteClient();
+    if (!client) return;
+
+    try {
+      await client.from("relayer_ingest_cursors").upsert({
+        chain_id: this.config.chainId,
+        cursor_key: this.getCursorKey(),
+        last_processed_block: blockNumber,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      logger.warn("Failed to save reconciliation cursor", { error: error.message });
+    }
   }
 
   /**
@@ -179,18 +228,32 @@ export class ChainReconciler extends EventEmitter {
       intervalMs: this.config.intervalMs,
     });
 
-    // 获取当前区块
-    this.lastCheckedBlock = await this.provider.getBlockNumber() - this.config.blockRange;
+    const currentBlock = await this.provider.getBlockNumber();
+    const persisted = await this.loadLastCheckedBlockFromDb();
+    const reorgBuffer = 5;
+    if (persisted != null) {
+      this.lastCheckedBlock = Math.max(0, persisted - reorgBuffer - 1);
+    } else {
+      this.lastCheckedBlock = Math.max(0, currentBlock - this.config.blockRange - 1);
+    }
+
+    this.isRunning = true;
 
     // 立即运行一次
     await this.runReconciliation();
 
     // 启动定时任务
     this.reconciliationTimer = setInterval(async () => {
-      await this.runReconciliation();
+      if (!this.isRunning) return;
+      if (this.runInFlight) return;
+      try {
+        await this.runReconciliation();
+      } catch (error: any) {
+        logger.error("Scheduled reconciliation run failed", {
+          error: error?.message || String(error),
+        });
+      }
     }, this.config.intervalMs);
-
-    this.isRunning = true;
   }
 
   /**
@@ -209,9 +272,30 @@ export class ChainReconciler extends EventEmitter {
    * 运行对账
    */
   async runReconciliation(): Promise<ReconciliationReport> {
+    if (this.runInFlight) {
+      const now = Date.now();
+      return {
+        runId: `recon-skip-${now}-${Math.random().toString(36).substr(2, 6)}`,
+        startTime: now,
+        endTime: now,
+        durationMs: 0,
+        blocksScanned: 0,
+        tradesChecked: 0,
+        discrepancies: [],
+        summary: {
+          totalDiscrepancies: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+          autoFixed: 0,
+        },
+      };
+    }
+    this.runInFlight = true;
     const runId = `recon-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const startTime = Date.now();
-    
+
     logger.info("Starting reconciliation run", { runId });
 
     const report: ReconciliationReport = {
@@ -234,10 +318,22 @@ export class ChainReconciler extends EventEmitter {
 
     try {
       const currentBlock = await this.provider.getBlockNumber();
-      const fromBlock = this.lastCheckedBlock;
+      const fromBlock = this.lastCheckedBlock + 1;
       const toBlock = currentBlock;
 
-      report.blocksScanned = toBlock - fromBlock;
+      if (fromBlock > toBlock) {
+        report.endTime = Date.now();
+        report.durationMs = report.endTime - startTime;
+        reconciliationRunsTotal.inc({ status: "success" });
+        reconciliationDuration.observe(report.durationMs / 1000);
+        lastReconciliationTime.set(report.endTime);
+        this.lastCheckedBlock = toBlock;
+        await this.saveLastCheckedBlockToDb(this.lastCheckedBlock);
+        this.emit("reconciliation_complete", report);
+        return report;
+      }
+
+      report.blocksScanned = toBlock - fromBlock + 1;
 
       // 1. 获取链上填充事件
       const onchainFills = await this.fetchOnchainFills(fromBlock, toBlock);
@@ -255,7 +351,7 @@ export class ChainReconciler extends EventEmitter {
       for (const d of discrepancies) {
         report.summary.totalDiscrepancies++;
         report.summary[d.severity]++;
-        
+
         this.discrepancies.set(d.id, d);
         reconciliationDiscrepancies.inc({ type: d.type });
       }
@@ -268,6 +364,7 @@ export class ChainReconciler extends EventEmitter {
 
       // 更新检查点
       this.lastCheckedBlock = toBlock;
+      await this.saveLastCheckedBlockToDb(this.lastCheckedBlock);
 
       report.endTime = Date.now();
       report.durationMs = report.endTime - startTime;
@@ -299,6 +396,8 @@ export class ChainReconciler extends EventEmitter {
       this.emit("reconciliation_error", { runId, error: error.message });
 
       throw error;
+    } finally {
+      this.runInFlight = false;
     }
   }
 
@@ -314,7 +413,7 @@ export class ChainReconciler extends EventEmitter {
 
       for (const event of events) {
         const { maker, taker, outcomeIndex, isBuy, price, amount, fee, salt } = (event as any).args;
-        
+
         fills.push({
           txHash: event.transactionHash,
           blockNumber: event.blockNumber,
@@ -342,18 +441,18 @@ export class ChainReconciler extends EventEmitter {
   private async fetchOffchainTrades(fromBlock: number, toBlock: number): Promise<any[]> {
     const pool = getDatabasePool();
     const client = pool.getReadClient();
-    
+
     if (!client) {
       logger.warn("Database not available for reconciliation");
       return [];
     }
 
     try {
-      // 获取在此区块范围内结算的成交
       const { data, error } = await client
         .from("trades")
         .select("*")
-        .eq("settled", true)
+        .eq("network_id", this.config.chainId)
+        .eq("market_address", this.config.marketAddress.toLowerCase())
         .gte("block_number", fromBlock)
         .lte("block_number", toBlock);
 
@@ -365,6 +464,23 @@ export class ChainReconciler extends EventEmitter {
     } catch (error: any) {
       logger.error("Failed to fetch offchain trades", { fromBlock, toBlock }, error);
       return [];
+    }
+  }
+
+  private amountToBigInt(raw: any): bigint {
+    if (typeof raw === "bigint") return raw;
+    if (typeof raw === "number") return BigInt(Math.trunc(raw));
+    const s = String(raw ?? "0").trim();
+    if (s.length === 0) return 0n;
+    if (s.includes(".")) {
+      const n = Number(s);
+      if (!Number.isFinite(n)) return 0n;
+      return BigInt(Math.trunc(n));
+    }
+    try {
+      return BigInt(s);
+    } catch {
+      return 0n;
     }
   }
 
@@ -387,64 +503,79 @@ export class ChainReconciler extends EventEmitter {
     // 创建链下成交的索引 (按 txHash)
     const offchainIndex = new Map<string, any>();
     for (const trade of offchainTrades) {
-      if (trade.tx_hash) {
-        offchainIndex.set(trade.tx_hash, trade);
+      if (trade.tx_hash != null) {
+        const txHash = String(trade.tx_hash);
+        const logIndex =
+          typeof trade.log_index === "number"
+            ? trade.log_index
+            : typeof trade.log_index === "string"
+              ? Number(trade.log_index)
+              : 0;
+        offchainIndex.set(`${txHash}-${logIndex}`, trade);
       }
     }
 
     // 检查链下记录是否都在链上
     for (const trade of offchainTrades) {
-      if (trade.tx_hash && trade.settled) {
-        // 查找对应的链上记录
-        const onchainFill = onchainFills.find(f => f.txHash === trade.tx_hash);
-        
-        if (!onchainFill) {
-          discrepancies.push({
-            id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            type: "missing_onchain",
-            severity: "critical",
-            description: "Trade marked as settled but no onchain event found",
-            details: {
-              tradeId: trade.id,
-              txHash: trade.tx_hash,
-              userAddress: trade.maker_address,
-              marketKey: trade.market_key,
-            },
-            detectedAt: Date.now(),
-            resolved: false,
-          });
-        } else {
-          // 验证金额
-          const offchainAmount = BigInt(Math.floor(trade.quantity * 1e18));
-          const amountDiff = offchainAmount > onchainFill.amount 
-            ? offchainAmount - onchainFill.amount 
-            : onchainFill.amount - offchainAmount;
-            
-          if (amountDiff > this.config.amountTolerance) {
-            discrepancies.push({
-              id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-              type: "amount_mismatch",
-              severity: amountDiff > BigInt(1e18) ? "high" : "medium",
-              description: "Trade amount mismatch between onchain and offchain",
-              details: {
-                tradeId: trade.id,
-                txHash: trade.tx_hash,
-                expectedAmount: offchainAmount.toString(),
-                actualAmount: onchainFill.amount.toString(),
-                difference: amountDiff.toString(),
-              },
-              detectedAt: Date.now(),
-              resolved: false,
-            });
-          }
-        }
+      if (trade.tx_hash == null) continue;
+      const txHash = String(trade.tx_hash);
+      const logIndex =
+        typeof trade.log_index === "number"
+          ? trade.log_index
+          : typeof trade.log_index === "string"
+            ? Number(trade.log_index)
+            : 0;
+      const onchainFill = onchainIndex.get(`${txHash}-${logIndex}`);
+
+      if (!onchainFill) {
+        discrepancies.push({
+          id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          type: "missing_onchain",
+          severity: "high",
+          description: "Offchain trade has no corresponding onchain fill event",
+          details: {
+            tradeId: trade.id,
+            txHash,
+            logIndex,
+            userAddress: trade.maker_address,
+            marketKey: this.config.marketAddress,
+          },
+          detectedAt: Date.now(),
+          resolved: false,
+        });
+        continue;
+      }
+
+      const offchainAmount = this.amountToBigInt(trade.amount);
+      const amountDiff =
+        offchainAmount > onchainFill.amount
+          ? offchainAmount - onchainFill.amount
+          : onchainFill.amount - offchainAmount;
+
+      if (amountDiff > this.config.amountTolerance) {
+        discrepancies.push({
+          id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          type: "amount_mismatch",
+          severity: amountDiff > 1_000_000_000_000_000_000n ? "high" : "medium",
+          description: "Trade amount mismatch between onchain and offchain",
+          details: {
+            tradeId: trade.id,
+            txHash,
+            logIndex,
+            expectedAmount: offchainAmount.toString(),
+            actualAmount: onchainFill.amount.toString(),
+            difference: amountDiff.toString(),
+          },
+          detectedAt: Date.now(),
+          resolved: false,
+        });
       }
     }
 
     // 检查链上事件是否都有对应的链下记录
     for (const fill of onchainFills) {
-      const offchainTrade = offchainIndex.get(fill.txHash);
-      
+      const offchainTrade = offchainIndex.get(`${fill.txHash}-${fill.logIndex}`);
+
       if (!offchainTrade) {
         discrepancies.push({
           id: `disc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -453,6 +584,7 @@ export class ChainReconciler extends EventEmitter {
           description: "Onchain fill event has no corresponding offchain trade",
           details: {
             txHash: fill.txHash,
+            logIndex: fill.logIndex,
             userAddress: fill.maker,
             expectedAmount: fill.amount.toString(),
           },
@@ -485,6 +617,14 @@ export class ChainReconciler extends EventEmitter {
             fixed++;
             break;
 
+          case "amount_mismatch":
+            await this.fixAmountMismatch(d);
+            d.resolved = true;
+            d.resolvedAt = Date.now();
+            d.resolution = "Trade amount corrected";
+            fixed++;
+            break;
+
           case "status_mismatch":
             // 更新状态
             await this.fixStatusMismatch(d);
@@ -494,7 +634,7 @@ export class ChainReconciler extends EventEmitter {
             fixed++;
             break;
 
-          // amount_mismatch 和 missing_onchain 需要人工处理
+          // missing_onchain 需要人工处理
           default:
             logger.warn("Discrepancy requires manual intervention", { discrepancy: d });
         }
@@ -521,45 +661,69 @@ export class ChainReconciler extends EventEmitter {
     const receipt = await this.provider.getTransactionReceipt(txHash);
     if (!receipt) return;
 
-    // 解析事件
+    const block = await this.provider.getBlock(receipt.blockNumber);
+    if (!block) return;
+    const ts = (block as any).timestamp;
+    const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
+    const blockTsIso = new Date(tsNum * 1000).toISOString();
+
     const logs = receipt.logs
-      .filter(log => log.address.toLowerCase() === this.config.marketAddress.toLowerCase())
-      .map(log => {
+      .filter((log) => log.address.toLowerCase() === this.config.marketAddress.toLowerCase())
+      .map((log) => {
         try {
-          return this.marketContract.interface.parseLog({
+          const parsed = this.marketContract.interface.parseLog({
             topics: log.topics as string[],
             data: log.data,
           });
+          return { parsed, logIndex: Number((log as any).index ?? (log as any).logIndex ?? 0) };
         } catch {
           return null;
         }
       })
-      .filter(Boolean);
+      .filter(Boolean) as Array<{ parsed: any; logIndex: number }>;
 
     // 创建缺失的记录
-    for (const log of logs) {
+    for (const item of logs) {
+      const log = item.parsed;
       if (log && log.name === "OrderFilledSigned") {
         const { maker, taker, outcomeIndex, isBuy, price, amount, fee, salt } = log.args;
-        
-        await client.from("trades").insert({
-          id: `sync-${txHash}-${salt}`,
-          market_key: this.config.marketAddress,
-          outcome_index: Number(outcomeIndex),
-          maker_address: maker,
-          taker_address: taker,
-          price: Number(price) / 1e18,
-          quantity: Number(amount) / 1e18,
-          is_buyer_maker: isBuy,
-          tx_hash: txHash,
-          block_number: receipt.blockNumber,
-          settled: true,
-          created_at: new Date().toISOString(),
-          synced_from_chain: true,
+        const logIndex = Number.isFinite(item.logIndex) ? item.logIndex : 0;
+
+        await (client as any).rpc("ingest_trade_event", {
+          p_network_id: this.config.chainId,
+          p_market_address: this.config.marketAddress.toLowerCase(),
+          p_outcome_index: Number(outcomeIndex),
+          p_price: BigInt(price).toString(),
+          p_amount: BigInt(amount).toString(),
+          p_taker_address: String(taker).toLowerCase(),
+          p_maker_address: String(maker).toLowerCase(),
+          p_is_buy: Boolean(isBuy),
+          p_tx_hash: txHash.toLowerCase(),
+          p_log_index: logIndex,
+          p_block_number: BigInt(receipt.blockNumber).toString(),
+          p_block_timestamp: blockTsIso,
+          p_fee: BigInt(fee).toString(),
+          p_salt: BigInt(salt).toString(),
         });
       }
     }
 
     logger.info("Synced trade from chain", { txHash });
+  }
+
+  private async fixAmountMismatch(discrepancy: Discrepancy): Promise<void> {
+    const { txHash, logIndex, actualAmount } = discrepancy.details;
+    if (!txHash || logIndex == null || actualAmount == null) return;
+
+    const pool = getDatabasePool();
+    const client = pool.getWriteClient();
+    if (!client) return;
+
+    await client
+      .from("trades")
+      .update({ amount: actualAmount })
+      .eq("tx_hash", txHash)
+      .eq("log_index", logIndex);
   }
 
   /**
@@ -576,14 +740,13 @@ export class ChainReconciler extends EventEmitter {
     // 检查链上状态
     if (txHash) {
       const receipt = await this.provider.getTransactionReceipt(txHash);
-      
+
       if (receipt && receipt.status === 1) {
-        // 交易成功，更新状态
-        await client.from("trades")
-          .update({ settled: true, block_number: receipt.blockNumber })
-          .eq("id", tradeId);
-        
-        logger.info("Fixed trade status", { tradeId, txHash });
+        logger.info("Trade receipt confirmed", {
+          tradeId,
+          txHash,
+          blockNumber: receipt.blockNumber,
+        });
       }
     }
   }
@@ -599,7 +762,7 @@ export class ChainReconciler extends EventEmitter {
    * 获取未解决的差异
    */
   getUnresolvedDiscrepancies(): Discrepancy[] {
-    return Array.from(this.discrepancies.values()).filter(d => !d.resolved);
+    return Array.from(this.discrepancies.values()).filter((d) => !d.resolved);
   }
 
   /**
@@ -655,7 +818,9 @@ export function getChainReconciler(config?: Partial<ReconciliationConfig>): Chai
   return reconcilerInstance;
 }
 
-export async function initChainReconciler(config?: Partial<ReconciliationConfig>): Promise<ChainReconciler> {
+export async function initChainReconciler(
+  config?: Partial<ReconciliationConfig>
+): Promise<ChainReconciler> {
   const reconciler = getChainReconciler(config);
   await reconciler.start();
   return reconciler;
@@ -667,4 +832,3 @@ export async function closeChainReconciler(): Promise<void> {
     reconcilerInstance = null;
   }
 }
-

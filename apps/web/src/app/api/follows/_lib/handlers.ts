@@ -215,7 +215,10 @@ export async function handleFollowsPost(req: NextRequest) {
     return successResponse({ follow: data }, "Already followed");
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
-    return ApiResponses.internalError("Failed to process request", detail);
+    return ApiResponses.internalError(
+      "Failed to process request",
+      process.env.NODE_ENV === "development" ? detail : undefined
+    );
   }
 }
 
@@ -292,7 +295,10 @@ CREATE TABLE IF NOT EXISTS public.event_follows (
 
     return successResponse({ ok: true }, "Unfollowed successfully");
   } catch (e: any) {
-    return ApiResponses.internalError("Failed to process request", String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to process request",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }
 
@@ -357,6 +363,9 @@ export async function handleFollowsGet(req: NextRequest) {
 
     return successResponse({ following, followersCount: count || 0 });
   } catch (e: any) {
-    return ApiResponses.internalError("Failed to process request", String(e?.message || e));
+    return ApiResponses.internalError(
+      "Failed to process request",
+      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+    );
   }
 }

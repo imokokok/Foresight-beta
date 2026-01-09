@@ -4,6 +4,7 @@
  */
 
 import { createClient, RedisClientType } from "redis";
+import { randomBytes } from "node:crypto";
 import { redisLogger as logger } from "../monitoring/logger.js";
 import {
   redisOperationsTotal,
@@ -55,7 +56,7 @@ class RedisClient {
 
     try {
       const url = this.config.url || `redis://${this.config.host}:${this.config.port}`;
-      
+
       this.client = createClient({
         url,
         password: this.config.password,
@@ -194,6 +195,27 @@ class RedisClient {
       redisOperationsTotal.inc({ operation: "set", status: "error" });
       redisOperationLatency.observe({ operation: "set" }, Date.now() - start);
       logger.error("Redis SET failed", { key }, error);
+      return false;
+    }
+  }
+
+  async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    if (!this.isReady()) return false;
+
+    const ttl = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? Math.trunc(ttlSeconds) : 0;
+    if (!ttl) return false;
+
+    const start = Date.now();
+    try {
+      const result = await this.client!.set(this.prefixKey(key), value, { NX: true, EX: ttl });
+      const ok = result === "OK";
+      redisOperationsTotal.inc({ operation: "setnx", status: ok ? "success" : "error" });
+      redisOperationLatency.observe({ operation: "setnx" }, Date.now() - start);
+      return ok;
+    } catch (error: any) {
+      redisOperationsTotal.inc({ operation: "setnx", status: "error" });
+      redisOperationLatency.observe({ operation: "setnx" }, Date.now() - start);
+      logger.error("Redis SETNX failed", { key }, error);
       return false;
     }
   }
@@ -385,6 +407,79 @@ class RedisClient {
   getRawClient(): RedisClientType | null {
     return this.client;
   }
+
+  async acquireLock(
+    key: string,
+    ttlMs: number,
+    retries: number = 20,
+    delayMs: number = 50
+  ): Promise<string | null> {
+    if (!this.isReady()) return null;
+    const raw = this.getRawClient();
+    if (!raw) return null;
+
+    const fullKey = this.prefixKey(key);
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const token = randomBytes(16).toString("hex");
+      try {
+        const result = await raw.set(fullKey, token, { NX: true, PX: ttlMs });
+        if (result === "OK") {
+          return token;
+        }
+      } catch (error: any) {
+        logger.error("Redis acquireLock failed", { key }, error);
+        return null;
+      }
+
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    return null;
+  }
+
+  async releaseLock(key: string, token: string): Promise<boolean> {
+    if (!this.isReady()) return false;
+    const raw = this.getRawClient();
+    if (!raw) return false;
+
+    const fullKey = this.prefixKey(key);
+    const script =
+      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+
+    try {
+      const result = await raw.eval(script, { keys: [fullKey], arguments: [token] });
+      return Number(result) === 1;
+    } catch (error: any) {
+      logger.error("Redis releaseLock failed", { key }, error);
+      return false;
+    }
+  }
+
+  async refreshLock(key: string, token: string, ttlMs: number): Promise<boolean> {
+    if (!this.isReady()) return false;
+    const raw = this.getRawClient();
+    if (!raw) return false;
+    const ttl = Number.isFinite(ttlMs) && ttlMs > 0 ? Math.trunc(ttlMs) : 0;
+    if (!ttl) return false;
+
+    const fullKey = this.prefixKey(key);
+    const script =
+      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end';
+
+    try {
+      const result = await raw.eval(script, {
+        keys: [fullKey],
+        arguments: [token, String(ttl)],
+      });
+      return Number(result) === 1;
+    } catch (error: any) {
+      logger.error("Redis refreshLock failed", { key }, error);
+      return false;
+    }
+  }
 }
 
 // ============================================================
@@ -421,4 +516,3 @@ export async function closeRedis(): Promise<void> {
 }
 
 export { RedisClient };
-

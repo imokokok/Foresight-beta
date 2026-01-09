@@ -3,6 +3,7 @@ import { getClient } from "@/lib/supabase";
 import { Database } from "@/lib/database.types";
 import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
 import {
   getFlagTotalDaysFromRange,
   getFlagTierFromTotalDays,
@@ -11,11 +12,6 @@ import {
   issueRandomSticker,
 } from "@/lib/flagRewards";
 import { ApiResponses } from "@/lib/apiResponse";
-
-type SettleRequestBody = {
-  min_days?: number | string;
-  threshold?: number | string;
-};
 
 function parseNumberWithBounds(value: unknown, fallback: number, min?: number, max?: number) {
   const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
@@ -29,16 +25,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const { id } = await ctx.params;
     const flagId = normalizeId(id);
-    if (!flagId) return ApiResponses.invalidParameters("flagId is required");
-    const body = (await parseRequestBody(req as any)) as SettleRequestBody;
-    const minDays = parseNumberWithBounds(body.min_days, 10, 1);
-    const threshold = parseNumberWithBounds(body.threshold, 0.8, 0, 1);
+    if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
+    await parseRequestBody(req as any);
+    const minDays = 10;
+    const threshold = 0.8;
 
     const client = getClient() as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const settler_id = await getSessionAddress(req);
     if (!settler_id) return ApiResponses.unauthorized("Unauthorized");
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(`flags:settle:${settler_id.toLowerCase()}:${flagId}:${ip}`, {
+      interval: RateLimits.strict.interval,
+      limit: RateLimits.strict.limit,
+    });
+    if (!rl.success) return ApiResponses.rateLimit("Too many requests, please try again later");
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -51,6 +54,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const owner = String(flag.user_id || "");
     if (settler_id.toLowerCase() !== owner.toLowerCase())
       return ApiResponses.forbidden("Only the owner can settle this flag");
+
+    const { data: existingSettlementBefore } = await client
+      .from("flag_settlements")
+      .select("*")
+      .eq("flag_id", flagId)
+      .order("settled_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingSettlementBefore) {
+      const status = existingSettlementBefore.status;
+      if (flag.status !== "success" && flag.status !== "failed") {
+        try {
+          await client.from("flags").update({ status }).eq("id", flagId);
+        } catch (e) {
+          logApiError("POST /api/flags/[id]/settle sync flag status failed", e);
+        }
+      }
+      return NextResponse.json(
+        {
+          status,
+          metrics: existingSettlementBefore.metrics,
+          sticker_earned: false,
+          sticker_id: null,
+          sticker: null,
+        },
+        { status: 200 }
+      );
+    }
 
     const end = new Date(String(flag.deadline));
     if (Number.isNaN(end.getTime())) return ApiResponses.internalError("Invalid flag deadline");
@@ -145,10 +176,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       endDay: endDay.toISOString(),
     };
 
-    const { error: flagUpdateErr } = await client.from("flags").update({ status }).eq("id", flagId);
-    if (flagUpdateErr)
-      return ApiResponses.databaseError("Failed to update flag status", flagUpdateErr.message);
-
     const isLuckyOwner = isLuckyAddress(owner);
 
     let rewardedSticker: {
@@ -162,7 +189,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     } | null = null;
 
     try {
-      await client.from("flag_settlements").insert({
+      const { error: settleErr } = await client.from("flag_settlements").insert({
         flag_id: flagId,
         status,
         strategy: "ratio_threshold",
@@ -170,6 +197,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         settled_by: settler_id,
         settled_at: new Date().toISOString(),
       } as Database["public"]["Tables"]["flag_settlements"]["Insert"]);
+      if (settleErr) {
+        return ApiResponses.databaseError("Failed to create settlement", settleErr.message);
+      }
 
       const tier = getFlagTierFromTotalDays(totalDays);
       const tierConfig = getTierConfig(tier);
@@ -189,6 +219,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
     } catch (e) {
       logApiError("POST /api/flags/[id]/settle settlement insert failed", e);
+    }
+
+    try {
+      const { error: flagUpdateErr } = await client
+        .from("flags")
+        .update({ status })
+        .eq("id", flagId);
+      if (flagUpdateErr) {
+        logApiError("POST /api/flags/[id]/settle update flag status failed", flagUpdateErr);
+      }
+    } catch (e) {
+      logApiError("POST /api/flags/[id]/settle update flag status failed", e);
     }
 
     return NextResponse.json(

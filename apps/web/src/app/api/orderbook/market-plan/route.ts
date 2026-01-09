@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
       .eq("chain_id", chainId)
       .eq("outcome_index", outcome)
       .eq("is_buy", makerIsBuy)
-      .in("status", ["open", "filled_partial"]);
+      .in("status", ["open", "partially_filled", "filled_partial"]);
 
     if (marketKey) {
       query = query.eq("market_key", marketKey);
@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
         .eq("chain_id", chainId)
         .eq("outcome_index", outcome)
         .eq("is_buy", makerIsBuy)
-        .in("status", ["open", "filled_partial"])
+        .in("status", ["open", "partially_filled", "filled_partial"])
         .limit(2000);
       const fallback = await fallbackQuery;
       orders = (fallback.data ?? []) as OrdersRow[];
