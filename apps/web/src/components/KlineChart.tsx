@@ -169,8 +169,8 @@ export default function KlineChart({
 
     const fetchCandles = async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_RELAYER_URL || "http://localhost:3005";
-        const url = `${base}/orderbook/candles?market=${market}&chainId=${chainId}&outcome=${outcomeIndex}&resolution=${resolution}&limit=200`;
+        // Use local API route instead of direct relayer call
+        const url = `/api/orderbook/candles?market=${market}&chainId=${chainId}&outcome=${outcomeIndex}&resolution=${resolution}&limit=200`;
         const res = await fetch(url);
         const json = await safeJson(res);
         if (json.success === false) return;

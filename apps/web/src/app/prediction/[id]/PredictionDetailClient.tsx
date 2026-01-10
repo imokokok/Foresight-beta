@@ -372,6 +372,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
               tradeOutcome={tradeOutcome}
               setTradeOutcome={setTradeOutcome}
               outcomes={outcomes}
+              marketKey={market && prediction ? `${market.chain_id}:${prediction.id}` : undefined}
             />
 
             {/* Outcomes List */}

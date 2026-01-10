@@ -23,6 +23,7 @@ interface MarketChartProps {
   tradeOutcome: number;
   outcomes: any[];
   setTradeOutcome: (idx: number) => void;
+  marketKey?: string;
 }
 
 export function MarketChart({
@@ -31,6 +32,7 @@ export function MarketChart({
   tradeOutcome,
   outcomes,
   setTradeOutcome,
+  marketKey,
 }: MarketChartProps) {
   const [expanded, setExpanded] = useState(false);
   const tMarket = useTranslations("market");
@@ -119,7 +121,12 @@ export function MarketChart({
 
       {/* Chart Body */}
       <div className="flex-1 w-full h-full min-h-0 bg-white">
-        <KlineChart market={market.market} chainId={market.chain_id} outcomeIndex={tradeOutcome} />
+        <KlineChart
+          market={market.market}
+          chainId={market.chain_id}
+          outcomeIndex={tradeOutcome}
+          marketKey={marketKey}
+        />
       </div>
     </div>
   );
