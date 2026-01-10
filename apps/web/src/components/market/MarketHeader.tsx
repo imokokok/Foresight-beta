@@ -59,12 +59,12 @@ export function MarketHeader({
     <div className="space-y-6">
       {/* Breadcrumbs / Category */}
       <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/" className="hover:text-purple-600 transition-colors">
+        <Link href="/trending" className="hover:text-purple-600 transition-colors">
           {tMarketBreadcrumbs("home")}
         </Link>
         <span className="text-gray-300">/</span>
         <Link
-          href={`/?category=${prediction.category}`}
+          href={`/trending?category=${prediction.category}`}
           className="hover:text-purple-600 transition-colors"
         >
           {prediction.category}

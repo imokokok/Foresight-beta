@@ -19,6 +19,13 @@ import { DEFAULT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
 import { BatchSettler, type SettlementFill, type SettlementOrder } from "../settlement/index.js";
 import { getRedisClient } from "../redis/client.js";
+import { getOrderbookSnapshotService } from "../redis/orderbookSnapshot.js";
+import {
+  orderbookLockBusyTotal,
+  orderbookSnapshotLoadLatency,
+  orderbookSnapshotLoadTotal,
+  orderbookSnapshotQueueThrottledTotal,
+} from "../monitoring/metrics.js";
 
 // EIP-712 类型定义
 const ORDER_TYPES = {
@@ -47,6 +54,8 @@ export class MatchingEngine extends EventEmitter {
   private bookManager: OrderBookManager;
   private config: MatchingEngineConfig;
   private sequenceCounter: bigint = 0n;
+  private redisSnapshotLoadAttempts: Set<string> = new Set();
+  private snapshotQueueLastAtMs: Map<string, number> = new Map();
 
   // 🚀 批量结算器 (Polymarket 模式)
   private batchSettlers: Map<string, BatchSettler> = new Map();
@@ -82,8 +91,14 @@ export class MatchingEngine extends EventEmitter {
 
     try {
       if (redis.isReady() && !distributedLockToken) {
+        orderbookLockBusyTotal.inc({
+          market_key: marketKey,
+          outcome_index: String(outcomeIndex),
+          operation: "book_lock",
+        });
         throw new Error("Orderbook busy");
       }
+      await this.loadSnapshotIfNeeded(marketKey, outcomeIndex);
       return await fn();
     } finally {
       if (distributedLockToken) {
@@ -93,6 +108,66 @@ export class MatchingEngine extends EventEmitter {
       if (this.bookLocks.get(lockKey) === current) {
         this.bookLocks.delete(lockKey);
       }
+    }
+  }
+
+  async warmupOrderBook(marketKey: string, outcomeIndex: number): Promise<void> {
+    await this.withBookLock(marketKey, outcomeIndex, async () => {});
+  }
+
+  private async loadSnapshotIfNeeded(marketKey: string, outcomeIndex: number): Promise<void> {
+    const attemptKey = `${marketKey}:${outcomeIndex}`;
+    if (this.redisSnapshotLoadAttempts.has(attemptKey)) return;
+    this.redisSnapshotLoadAttempts.add(attemptKey);
+
+    const redis = getRedisClient();
+    if (!redis.isReady()) return;
+
+    const existing = this.bookManager.getBook(marketKey, outcomeIndex);
+    if (existing && existing.getOrderCount() > 0) return;
+
+    const snapshotService = getOrderbookSnapshotService();
+    const startedAt = Date.now();
+    let loaded: Awaited<ReturnType<typeof snapshotService.loadSnapshot>> | null = null;
+    try {
+      loaded = await snapshotService.loadSnapshot(marketKey, outcomeIndex);
+    } catch {
+      const elapsed = Date.now() - startedAt;
+      orderbookSnapshotLoadTotal.inc({ result: "error" });
+      orderbookSnapshotLoadLatency.observe({ result: "error" }, elapsed);
+      return;
+    }
+    const elapsed = Date.now() - startedAt;
+    if (!loaded) {
+      orderbookSnapshotLoadTotal.inc({ result: "miss" });
+      orderbookSnapshotLoadLatency.observe({ result: "miss" }, elapsed);
+      return;
+    }
+    orderbookSnapshotLoadTotal.inc({ result: "hit" });
+    orderbookSnapshotLoadLatency.observe({ result: "hit" }, elapsed);
+
+    const book = this.bookManager.getOrCreateBook(marketKey, outcomeIndex);
+    if (book.getOrderCount() > 0) return;
+
+    const orders = loaded.orders
+      .filter((o) => !this.isExpired(o))
+      .filter((o) => o.status === "open" || o.status === "partially_filled")
+      .sort((a, b) => (a.sequence < b.sequence ? -1 : a.sequence > b.sequence ? 1 : 0));
+
+    let maxSeq = -1n;
+    for (const order of orders) {
+      book.addOrder(order);
+      if (order.sequence > maxSeq) maxSeq = order.sequence;
+    }
+
+    const lastTradePrice =
+      typeof loaded.stats.lastTradePrice === "bigint" ? loaded.stats.lastTradePrice : null;
+    const volume24h = typeof loaded.stats.volume24h === "bigint" ? loaded.stats.volume24h : 0n;
+    book.restoreStats(lastTradePrice, volume24h);
+
+    const nextSeq = maxSeq + 1n;
+    if (nextSeq > this.sequenceCounter) {
+      this.sequenceCounter = nextSeq;
     }
   }
 
@@ -106,6 +181,25 @@ export class MatchingEngine extends EventEmitter {
     operatorPrivateKey: string,
     rpcUrl: string
   ): BatchSettler {
+    const existing = this.batchSettlers.get(marketKey);
+    if (existing) return existing;
+
+    if (!marketKey || marketKey.trim().length === 0) {
+      throw new Error("Invalid marketKey");
+    }
+    if (!Number.isInteger(chainId) || chainId <= 0) {
+      throw new Error("Invalid chainId");
+    }
+    if (!ethers.isAddress(marketAddress)) {
+      throw new Error("Invalid marketAddress");
+    }
+    if (!ethers.isHexString(operatorPrivateKey, 32)) {
+      throw new Error("Invalid operatorPrivateKey");
+    }
+    if (!rpcUrl || String(rpcUrl).trim().length === 0) {
+      throw new Error("Invalid rpcUrl");
+    }
+
     const settler = new BatchSettler(chainId, marketAddress, operatorPrivateKey, rpcUrl, {
       maxBatchSize: 50,
       minBatchSize: this.config.batchSettlementThreshold,
@@ -136,6 +230,12 @@ export class MatchingEngine extends EventEmitter {
    */
   async submitOrder(orderInput: OrderInput): Promise<MatchResult> {
     try {
+      if (!orderInput.marketKey || orderInput.marketKey.trim().length === 0) {
+        return { success: false, matches: [], remainingOrder: null, error: "Invalid marketKey" };
+      }
+      if (!Number.isInteger(orderInput.outcomeIndex) || orderInput.outcomeIndex < 0) {
+        return { success: false, matches: [], remainingOrder: null, error: "Invalid outcomeIndex" };
+      }
       return await this.withBookLock(orderInput.marketKey, orderInput.outcomeIndex, async () => {
         // 1. 验证订单
         const validationResult = await this.validateOrder(orderInput);
@@ -338,6 +438,8 @@ export class MatchingEngine extends EventEmitter {
       // 持久化订单状态
       await this.updateOrderInDb(counterOrder);
 
+      this.emitEvent({ type: "order_updated", order: counterOrder });
+
       // 广播订单簿更新
       this.emitDepthUpdate(book);
     }
@@ -435,14 +537,27 @@ export class MatchingEngine extends EventEmitter {
     signature: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      if (!marketKey || marketKey.trim().length === 0) {
+        return { success: false, error: "Invalid marketKey" };
+      }
+      if (!Number.isInteger(outcomeIndex) || outcomeIndex < 0) {
+        return { success: false, error: "Invalid outcomeIndex" };
+      }
+      if (!Number.isInteger(chainId) || chainId <= 0) {
+        return { success: false, error: "Invalid chainId" };
+      }
+      if (!ethers.isAddress(verifyingContract)) {
+        return { success: false, error: "Invalid verifying contract address" };
+      }
+      if (!ethers.isAddress(maker)) {
+        return { success: false, error: "Invalid maker address" };
+      }
+      try {
+        BigInt(salt);
+      } catch {
+        return { success: false, error: "Invalid salt" };
+      }
       return await this.withBookLock(marketKey, outcomeIndex, async () => {
-        if (!ethers.isAddress(maker)) {
-          return { success: false, error: "Invalid maker address" };
-        }
-        if (!ethers.isAddress(verifyingContract)) {
-          return { success: false, error: "Invalid verifying contract address" };
-        }
-
         const recovered = ethers.verifyTypedData(
           {
             name: "Foresight Market",
@@ -474,7 +589,7 @@ export class MatchingEngine extends EventEmitter {
         }
 
         if (book && removed) {
-          this.emitEvent({ type: "order_canceled", orderId, marketKey });
+          this.emitEvent({ type: "order_canceled", orderId, marketKey, outcomeIndex });
           this.emitDepthUpdate(book);
         }
 
@@ -490,6 +605,27 @@ export class MatchingEngine extends EventEmitter {
    */
   private async validateOrder(input: OrderInput): Promise<{ valid: boolean; error?: string }> {
     // 1. 验证基本参数
+    if (!input.marketKey || input.marketKey.trim().length === 0) {
+      return { valid: false, error: "Invalid marketKey" };
+    }
+    if (!Number.isInteger(input.outcomeIndex) || input.outcomeIndex < 0) {
+      return { valid: false, error: "Invalid outcomeIndex" };
+    }
+    if (!Number.isInteger(input.chainId) || input.chainId <= 0) {
+      return { valid: false, error: "Invalid chainId" };
+    }
+    if (!ethers.isAddress(input.verifyingContract)) {
+      return { valid: false, error: "Invalid verifying contract address" };
+    }
+    if (!Number.isInteger(input.expiry) || input.expiry < 0) {
+      return { valid: false, error: "Invalid expiry" };
+    }
+    try {
+      BigInt(input.salt);
+    } catch {
+      return { valid: false, error: "Invalid salt" };
+    }
+
     if (!ethers.isAddress(input.maker)) {
       return { valid: false, error: "Invalid maker address" };
     }
@@ -807,6 +943,10 @@ export class MatchingEngine extends EventEmitter {
       outcomeIndex: match.makerOrder.outcomeIndex,
       maker: match.makerOrder.maker,
       taker: match.takerOrder.maker,
+      makerOrderId: match.makerOrder.id,
+      takerOrderId: match.takerOrder.id,
+      makerSalt: match.makerOrder.salt,
+      takerSalt: match.takerOrder.salt,
       isBuyerMaker: match.makerOrder.isBuy,
       price: match.matchedPrice,
       amount: match.matchedAmount,
@@ -828,6 +968,257 @@ export class MatchingEngine extends EventEmitter {
    */
   private emitEvent(event: MarketEvent): void {
     this.emit("market_event", event);
+    this.persistMarketEvent(event);
+  }
+
+  private toBigInt(value: unknown): bigint {
+    if (typeof value === "bigint") return value;
+    if (typeof value === "number") return BigInt(Math.trunc(value));
+    if (typeof value === "string") return BigInt(value);
+    throw new Error("Invalid bigint");
+  }
+
+  private normalizeRecoveredOrder(order: any): Order {
+    return {
+      id: String(order.id),
+      marketKey: String(order.marketKey),
+      maker: String(order.maker),
+      outcomeIndex: Number(order.outcomeIndex),
+      isBuy: Boolean(order.isBuy),
+      price: this.toBigInt(order.price),
+      amount: this.toBigInt(order.amount),
+      remainingAmount: this.toBigInt(order.remainingAmount),
+      salt: String(order.salt),
+      expiry: Number(order.expiry),
+      signature: String(order.signature),
+      chainId: Number(order.chainId),
+      verifyingContract: String(order.verifyingContract),
+      sequence: this.toBigInt(order.sequence),
+      status: order.status as any,
+      createdAt: Number(order.createdAt),
+      tif: order.tif,
+      postOnly: order.postOnly,
+    };
+  }
+
+  private normalizeRecoveredTrade(trade: any): Trade {
+    return {
+      id: String(trade.id),
+      matchId: String(trade.matchId),
+      marketKey: String(trade.marketKey),
+      outcomeIndex: Number(trade.outcomeIndex),
+      maker: String(trade.maker),
+      taker: String(trade.taker),
+      makerOrderId: trade.makerOrderId ? String(trade.makerOrderId) : undefined,
+      takerOrderId: trade.takerOrderId ? String(trade.takerOrderId) : undefined,
+      makerSalt: trade.makerSalt ? String(trade.makerSalt) : undefined,
+      takerSalt: trade.takerSalt ? String(trade.takerSalt) : undefined,
+      isBuyerMaker: Boolean(trade.isBuyerMaker),
+      price: this.toBigInt(trade.price),
+      amount: this.toBigInt(trade.amount),
+      makerFee: this.toBigInt(trade.makerFee),
+      takerFee: this.toBigInt(trade.takerFee),
+      txHash: trade.txHash ? String(trade.txHash) : undefined,
+      blockNumber: typeof trade.blockNumber === "number" ? trade.blockNumber : undefined,
+      timestamp: Number(trade.timestamp),
+    };
+  }
+
+  async recoverFromEventLog(): Promise<{ replayed: number; skipped: number }> {
+    if (process.env.RELAYER_MATCHING_EVENTLOG_ENABLED !== "true") {
+      return { replayed: 0, skipped: 0 };
+    }
+
+    const redis = getRedisClient();
+    if (!redis.isReady()) return { replayed: 0, skipped: 0 };
+    const raw = redis.getRawClient();
+    if (!raw) return { replayed: 0, skipped: 0 };
+
+    const keyPrefix = process.env.REDIS_KEY_PREFIX || "foresight:";
+    const listKey = `${keyPrefix}matching:events`;
+    const maxLen = Math.max(1000, Number(process.env.RELAYER_MATCHING_EVENTLOG_MAXLEN || "50000"));
+
+    const envelopes = await raw.lRange(listKey, 0, maxLen - 1);
+    if (!envelopes || envelopes.length === 0) return { replayed: 0, skipped: 0 };
+
+    const now = Date.now();
+    const volumeWindowStart = now - 24 * 60 * 60 * 1000;
+    const statsByBook = new Map<
+      string,
+      { lastTradePrice: bigint | null; lastTradeAt: number; volume24h: bigint }
+    >();
+
+    let replayed = 0;
+    let skipped = 0;
+    let maxSeq = this.sequenceCounter;
+
+    for (const envelopeRaw of [...envelopes].reverse()) {
+      try {
+        const envelope = JSON.parse(envelopeRaw || "{}") as any;
+        if (!envelope || typeof envelope.payload !== "string") {
+          skipped += 1;
+          continue;
+        }
+
+        const eventParsed = JSON.parse(envelope.payload) as any;
+        if (!eventParsed || typeof eventParsed.type !== "string") {
+          skipped += 1;
+          continue;
+        }
+
+        if (eventParsed.type === "order_placed" || eventParsed.type === "order_updated") {
+          const order = this.normalizeRecoveredOrder(eventParsed.order);
+          if (this.isExpired(order)) {
+            const book = this.bookManager.getBook(order.marketKey, order.outcomeIndex);
+            if (book) book.removeOrder(order.id);
+            replayed += 1;
+            continue;
+          }
+          const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+          if (eventParsed.type === "order_placed") {
+            book.addOrder(order);
+          } else {
+            book.updateOrder(order);
+          }
+          if (order.sequence > maxSeq) maxSeq = order.sequence;
+          replayed += 1;
+          continue;
+        }
+
+        if (eventParsed.type === "order_canceled") {
+          const orderId = String(eventParsed.orderId || "");
+          const marketKey = String(eventParsed.marketKey || "");
+          const outcomeIndex =
+            typeof eventParsed.outcomeIndex === "number"
+              ? eventParsed.outcomeIndex
+              : typeof envelope.outcomeIndex === "string" && envelope.outcomeIndex.length > 0
+                ? Number(envelope.outcomeIndex)
+                : undefined;
+
+          if (!orderId || !marketKey) {
+            skipped += 1;
+            continue;
+          }
+
+          if (typeof outcomeIndex === "number" && Number.isFinite(outcomeIndex)) {
+            const book = this.bookManager.getBook(marketKey, outcomeIndex);
+            if (book) book.removeOrder(orderId);
+          } else {
+            for (const book of this.bookManager.getAllBooks()) {
+              if (book.marketKey !== marketKey) continue;
+              if (book.hasOrder(orderId)) {
+                book.removeOrder(orderId);
+              }
+            }
+          }
+          replayed += 1;
+          continue;
+        }
+
+        if (eventParsed.type === "trade") {
+          const trade = this.normalizeRecoveredTrade(eventParsed.trade);
+          const book = this.bookManager.getOrCreateBook(trade.marketKey, trade.outcomeIndex);
+          void book;
+
+          const key = `${trade.marketKey}|${trade.outcomeIndex}`;
+          const prev = statsByBook.get(key) || {
+            lastTradePrice: null,
+            lastTradeAt: -1,
+            volume24h: 0n,
+          };
+          const ts = Number.isFinite(trade.timestamp) ? trade.timestamp : now;
+          if (ts >= prev.lastTradeAt) {
+            prev.lastTradeAt = ts;
+            prev.lastTradePrice = trade.price;
+          }
+          if (ts >= volumeWindowStart) {
+            prev.volume24h += trade.amount;
+          }
+          statsByBook.set(key, prev);
+
+          replayed += 1;
+          continue;
+        }
+
+        skipped += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+
+    for (const [key, stats] of statsByBook.entries()) {
+      const sep = key.lastIndexOf("|");
+      const marketKey = sep >= 0 ? key.slice(0, sep) : "";
+      const outcomeIndexRaw = sep >= 0 ? key.slice(sep + 1) : "";
+      const outcomeIndex = Number(outcomeIndexRaw);
+      if (!marketKey || !Number.isFinite(outcomeIndex)) continue;
+      const book = this.bookManager.getBook(marketKey, outcomeIndex);
+      if (!book) continue;
+      book.restoreStats(stats.lastTradePrice, stats.volume24h);
+    }
+
+    const nextSeq = maxSeq + 1n;
+    if (nextSeq > this.sequenceCounter) {
+      this.sequenceCounter = nextSeq;
+    }
+
+    return { replayed, skipped };
+  }
+
+  private persistMarketEvent(event: MarketEvent): void {
+    if (process.env.RELAYER_MATCHING_EVENTLOG_ENABLED !== "true") return;
+
+    if (event.type === "depth_update" || event.type === "stats_update") {
+      return;
+    }
+
+    const redis = getRedisClient();
+    if (!redis.isReady()) return;
+    const raw = redis.getRawClient();
+    if (!raw) return;
+
+    const keyPrefix = process.env.REDIS_KEY_PREFIX || "foresight:";
+    const listKey = `${keyPrefix}matching:events`;
+
+    const maxLen = Math.max(1000, Number(process.env.RELAYER_MATCHING_EVENTLOG_MAXLEN || "50000"));
+    const ttlSeconds = Math.max(
+      60,
+      Number(process.env.RELAYER_MATCHING_EVENTLOG_TTL_SECONDS || String(3600 * 24))
+    );
+
+    const safeJson = JSON.stringify(event, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
+
+    let marketKey = "";
+    let outcomeIndex = "";
+    if (event.type === "order_placed" || event.type === "order_updated") {
+      marketKey = event.order.marketKey;
+      outcomeIndex = String(event.order.outcomeIndex);
+    } else if (event.type === "order_canceled") {
+      marketKey = event.marketKey;
+      const oi = (event as any).outcomeIndex;
+      if (typeof oi === "number") {
+        outcomeIndex = String(oi);
+      }
+    } else if (event.type === "trade") {
+      marketKey = event.trade.marketKey;
+      outcomeIndex = String(event.trade.outcomeIndex);
+    }
+
+    const envelope = JSON.stringify({
+      ts: Date.now(),
+      type: event.type,
+      marketKey,
+      outcomeIndex,
+      payload: safeJson,
+    });
+
+    void (async () => {
+      try {
+        await raw.lPush(listKey, envelope);
+        await raw.lTrim(listKey, 0, maxLen - 1);
+        await raw.expire(listKey, ttlSeconds);
+      } catch {}
+    })();
   }
 
   /**
@@ -836,6 +1227,31 @@ export class MatchingEngine extends EventEmitter {
   private emitDepthUpdate(book: OrderBook): void {
     const depth = book.getDepthSnapshot(20);
     this.emitEvent({ type: "depth_update", depth });
+
+    const redis = getRedisClient();
+    if (!redis.isReady()) return;
+
+    const queueKey = `${book.marketKey}:${book.outcomeIndex}`;
+    const now = Date.now();
+    const lastAt = this.snapshotQueueLastAtMs.get(queueKey) || 0;
+    if (now - lastAt < 1000) {
+      orderbookSnapshotQueueThrottledTotal.inc({
+        market_key: book.marketKey,
+        outcome_index: String(book.outcomeIndex),
+      });
+      return;
+    }
+    this.snapshotQueueLastAtMs.set(queueKey, now);
+
+    const snapshotService = getOrderbookSnapshotService();
+    const { bidOrders, askOrders } = book.getAllOrders();
+    snapshotService.queueSnapshot(
+      book.marketKey,
+      book.outcomeIndex,
+      bidOrders,
+      askOrders,
+      book.getStats()
+    );
   }
 
   /**

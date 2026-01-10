@@ -12,10 +12,42 @@ vi.mock("../supabase.js", () => ({
   supabaseAdmin: null,
 }));
 
+let redisReady = false;
+const loadSnapshotMock = vi.fn();
+const queueSnapshotMock = vi.fn();
+const lRangeMock = vi.fn();
+
+vi.mock("../redis/client.js", () => ({
+  getRedisClient: () => ({
+    isReady: () => redisReady,
+    acquireLock: async () => (redisReady ? "token" : null),
+    releaseLock: async () => true,
+    getRawClient: () =>
+      redisReady
+        ? {
+            lRange: lRangeMock,
+          }
+        : null,
+  }),
+}));
+
+vi.mock("../redis/orderbookSnapshot.js", () => ({
+  getOrderbookSnapshotService: () => ({
+    loadSnapshot: loadSnapshotMock,
+    queueSnapshot: queueSnapshotMock,
+    startSync: () => {},
+    shutdown: async () => {},
+  }),
+}));
+
 describe("MatchingEngine", () => {
   let engine: MatchingEngine;
 
   beforeEach(() => {
+    redisReady = false;
+    loadSnapshotMock.mockReset();
+    queueSnapshotMock.mockReset();
+    lRangeMock.mockReset();
     engine = new MatchingEngine({
       makerFeeBps: 0,
       takerFeeBps: 40,
@@ -26,6 +58,214 @@ describe("MatchingEngine", () => {
 
   afterEach(async () => {
     await engine.shutdown();
+  });
+
+  describe("Redis snapshot warmup", () => {
+    it("should warm up an empty book from Redis snapshot once", async () => {
+      redisReady = true;
+
+      const marketKey = "80002:snapshot";
+      const outcomeIndex = 0;
+      const bidOrder: Order = {
+        id: "0x1111111111111111111111111111111111111111-1",
+        marketKey,
+        maker: "0x1111111111111111111111111111111111111111",
+        outcomeIndex,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        salt: "1",
+        expiry: 0,
+        signature: "0x",
+        chainId: 80002,
+        verifyingContract: "0x2222222222222222222222222222222222222222",
+        sequence: 7n,
+        status: "open",
+        createdAt: Date.now(),
+      };
+
+      loadSnapshotMock.mockResolvedValue({
+        orders: [bidOrder],
+        stats: {
+          marketKey,
+          outcomeIndex,
+          lastTradePrice: 500000n,
+          volume24h: 0n,
+        },
+      });
+
+      await engine.warmupOrderBook(marketKey, outcomeIndex);
+      await engine.warmupOrderBook(marketKey, outcomeIndex);
+
+      expect(loadSnapshotMock).toHaveBeenCalledTimes(1);
+
+      const snapshot = engine.getOrderBookSnapshot(marketKey, outcomeIndex, 10);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot!.bids.length).toBe(1);
+      expect(snapshot!.bids[0].orders.length).toBe(1);
+      expect(snapshot!.bids[0].orders[0].id).toBe(bidOrder.id);
+    });
+
+    it("should queue snapshots with throttling", () => {
+      redisReady = true;
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-10T00:00:00.000Z"));
+
+      const marketKey = "80002:throttle";
+      const outcomeIndex = 0;
+      const book = (engine as any).bookManager.getOrCreateBook(
+        marketKey,
+        outcomeIndex
+      ) as OrderBook;
+
+      const order: Order = {
+        id: "0x3333333333333333333333333333333333333333-1",
+        marketKey,
+        maker: "0x3333333333333333333333333333333333333333",
+        outcomeIndex,
+        isBuy: true,
+        price: 600000n,
+        amount: 1_000_000_000_000_000_000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        salt: "1",
+        expiry: 0,
+        signature: "0x",
+        chainId: 80002,
+        verifyingContract: "0x4444444444444444444444444444444444444444",
+        sequence: 1n,
+        status: "open",
+        createdAt: Date.now(),
+      };
+      book.addOrder(order);
+
+      (engine as any).emitDepthUpdate(book);
+      expect(queueSnapshotMock).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(500);
+      (engine as any).emitDepthUpdate(book);
+      expect(queueSnapshotMock).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(600);
+      (engine as any).emitDepthUpdate(book);
+      expect(queueSnapshotMock).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe("Event log recovery", () => {
+    it("should replay placed and canceled events into book state", async () => {
+      const prevEnabled = process.env.RELAYER_MATCHING_EVENTLOG_ENABLED;
+      process.env.RELAYER_MATCHING_EVENTLOG_ENABLED = "true";
+      redisReady = true;
+
+      const marketKey = "80002:eventlog";
+      const outcomeIndex = 0;
+      const order: Order = {
+        id: "0x1111111111111111111111111111111111111111-99",
+        marketKey,
+        maker: "0x1111111111111111111111111111111111111111",
+        outcomeIndex,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        salt: "99",
+        expiry: 0,
+        signature: "0x",
+        chainId: 80002,
+        verifyingContract: "0x2222222222222222222222222222222222222222",
+        sequence: 3n,
+        status: "open",
+        createdAt: Date.now(),
+      };
+
+      const payloadPlaced = JSON.stringify({ type: "order_placed", order }, (_k, v) =>
+        typeof v === "bigint" ? v.toString() : v
+      );
+      const payloadCanceled = JSON.stringify({
+        type: "order_canceled",
+        orderId: order.id,
+        marketKey,
+        outcomeIndex,
+      });
+
+      const envelopePlaced = JSON.stringify({
+        ts: Date.now() - 10,
+        type: "order_placed",
+        marketKey,
+        outcomeIndex: String(outcomeIndex),
+        payload: payloadPlaced,
+      });
+      const envelopeCanceled = JSON.stringify({
+        ts: Date.now(),
+        type: "order_canceled",
+        marketKey,
+        outcomeIndex: String(outcomeIndex),
+        payload: payloadCanceled,
+      });
+
+      lRangeMock.mockResolvedValue([envelopeCanceled, envelopePlaced]);
+
+      const result = await engine.recoverFromEventLog();
+      expect(result.replayed).toBe(2);
+
+      const snapshot = engine.getOrderBookSnapshot(marketKey, outcomeIndex, 10);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot!.bids.length).toBe(0);
+
+      process.env.RELAYER_MATCHING_EVENTLOG_ENABLED = prevEnabled;
+    });
+
+    it("should restore trade-derived stats for a book", async () => {
+      const prevEnabled = process.env.RELAYER_MATCHING_EVENTLOG_ENABLED;
+      process.env.RELAYER_MATCHING_EVENTLOG_ENABLED = "true";
+      redisReady = true;
+
+      const marketKey = "80002:eventlog-stats";
+      const outcomeIndex = 1;
+      const now = Date.now();
+      const trade = {
+        id: "match-1",
+        matchId: "match-1",
+        marketKey,
+        outcomeIndex,
+        maker: "0x1111111111111111111111111111111111111111",
+        taker: "0x2222222222222222222222222222222222222222",
+        makerOrderId: "m1",
+        takerOrderId: "t1",
+        makerSalt: "1",
+        takerSalt: "2",
+        isBuyerMaker: true,
+        price: 700000n,
+        amount: 3_000_000_000_000_000_000n,
+        makerFee: 0n,
+        takerFee: 0n,
+        timestamp: now - 1000,
+      };
+
+      const payloadTrade = JSON.stringify({ type: "trade", trade }, (_k, v) =>
+        typeof v === "bigint" ? v.toString() : v
+      );
+      const envelopeTrade = JSON.stringify({
+        ts: now,
+        type: "trade",
+        marketKey,
+        outcomeIndex: String(outcomeIndex),
+        payload: payloadTrade,
+      });
+
+      lRangeMock.mockResolvedValue([envelopeTrade]);
+
+      await engine.recoverFromEventLog();
+      const stats = engine.getOrderBookStats(marketKey, outcomeIndex);
+      expect(stats).not.toBeNull();
+      expect(stats!.lastTradePrice).toBe(700000n);
+      expect(stats!.volume24h).toBe(3_000_000_000_000_000_000n);
+
+      process.env.RELAYER_MATCHING_EVENTLOG_ENABLED = prevEnabled;
+    });
   });
 
   describe("Order Validation", () => {
@@ -47,6 +287,82 @@ describe("MatchingEngine", () => {
       const result = await engine.submitOrder(order);
       expect(result.success).toBe(false);
       expect(result.error).toContain("Invalid maker address");
+    });
+
+    it("should reject order with invalid verifying contract address", async () => {
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "12345",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "invalid",
+      };
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("verifying contract");
+    });
+
+    it("should reject order with invalid salt", async () => {
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "not-a-number",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Invalid salt");
+    });
+
+    it("should reject order with invalid chainId", async () => {
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "12345",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 0,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("chainId");
+    });
+
+    it("should reject order with invalid outcomeIndex", async () => {
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: -1,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "12345",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+      };
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("outcomeIndex");
     });
 
     it("should reject order with invalid price", async () => {
@@ -211,7 +527,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 500000n,
         amount: 1_000_000_000_000_000_000n,
-        salt: "po-1",
+        salt: "10001",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -248,7 +564,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 500000n,
         amount: 1_000_000_000_000_000_000n,
-        salt: "po-2",
+        salt: "10002",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -284,7 +600,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 600000n,
         amount: 2_000_000_000_000_000_000n,
-        salt: "ioc-1",
+        salt: "20001",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -314,7 +630,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 500000n,
         amount: 1_000_000_000_000_000_000n,
-        salt: "ioc-2",
+        salt: "20002",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -358,7 +674,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 600000n,
         amount: 2_000_000_000_000_000_000n,
-        salt: "fok-1",
+        salt: "30001",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -396,7 +712,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 600000n,
         amount: 2_000_000_000_000_000_000n,
-        salt: "fok-2",
+        salt: "30002",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -444,7 +760,7 @@ describe("MatchingEngine", () => {
         isBuy: true,
         price: 500000n,
         amount: 1_000_000_000_000_000_000n,
-        salt: "risk-long-1",
+        salt: "40001",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,
@@ -489,7 +805,7 @@ describe("MatchingEngine", () => {
         isBuy: false,
         price: 500000n,
         amount: 1_000_000_000_000_000_000n,
-        salt: "risk-short-1",
+        salt: "40002",
         expiry: 0,
         signature: "0x1234",
         chainId: 80002,

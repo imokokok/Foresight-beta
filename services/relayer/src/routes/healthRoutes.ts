@@ -3,7 +3,7 @@
  */
 
 import { Router, Request, Response } from "express";
-import { getMetrics, getContentType } from "../monitoring/metrics.js";
+import { getMetrics, getContentType, readinessCheckReady } from "../monitoring/metrics.js";
 import { healthService } from "../monitoring/health.js";
 import { logger } from "../monitoring/logger.js";
 
@@ -16,9 +16,8 @@ const router = Router();
 router.get("/health", async (req: Request, res: Response) => {
   try {
     const result = await healthService.runHealthChecks();
-    const statusCode = result.status === "healthy" ? 200 : 
-                       result.status === "degraded" ? 200 : 503;
-    
+    const statusCode = result.status === "healthy" ? 200 : result.status === "degraded" ? 200 : 503;
+
     res.status(statusCode).json(result);
   } catch (error: any) {
     logger.error("Health check failed", {}, error);
@@ -37,8 +36,11 @@ router.get("/health", async (req: Request, res: Response) => {
 router.get("/ready", async (req: Request, res: Response) => {
   try {
     const result = await healthService.runReadinessChecks();
+    for (const [name, check] of Object.entries(result.checks || {})) {
+      readinessCheckReady.set({ check: name }, check.ready ? 1 : 0);
+    }
     const statusCode = result.ready ? 200 : 503;
-    
+
     res.status(statusCode).json(result);
   } catch (error: any) {
     logger.error("Readiness check failed", {}, error);
@@ -55,8 +57,8 @@ router.get("/ready", async (req: Request, res: Response) => {
  * 最小化开销的存活检查
  */
 router.get("/live", (req: Request, res: Response) => {
-  res.status(200).json({ 
-    status: "ok", 
+  res.status(200).json({
+    status: "ok",
     timestamp: new Date().toISOString(),
     uptime: healthService.getUptime(),
   });
@@ -90,4 +92,3 @@ router.get("/version", (req: Request, res: Response) => {
 });
 
 export default router;
-

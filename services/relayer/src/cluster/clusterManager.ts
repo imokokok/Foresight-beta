@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import { LeaderElection, getLeaderElection, LeaderElectionConfig } from "./leaderElection.js";
 import { RedisPubSub, getPubSub, PubSubMessage } from "./pubsub.js";
 import { logger } from "../monitoring/logger.js";
-import { Gauge } from "prom-client";
+import { Counter, Gauge } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
 
 // ============================================================
@@ -25,6 +25,38 @@ const clusterNodeRole = new Gauge({
   name: "foresight_cluster_node_role",
   help: "Node role (1=leader, 0=follower)",
   labelNames: ["node_id"] as const,
+  registers: [metricsRegistry],
+});
+
+const clusterLeaderChangesTotal = new Counter({
+  name: "foresight_cluster_leader_changes_total",
+  help: "Total leader changes observed",
+  labelNames: ["source"] as const,
+  registers: [metricsRegistry],
+});
+
+const clusterLeaderKnown = new Gauge({
+  name: "foresight_cluster_leader_known",
+  help: "Whether a leader is currently known (1/0)",
+  registers: [metricsRegistry],
+});
+
+const clusterLeaderLastChangedMs = new Gauge({
+  name: "foresight_cluster_leader_last_changed_ms",
+  help: "Last time leader changed, in unix milliseconds",
+  registers: [metricsRegistry],
+});
+
+const clusterHeartbeatFailuresTotal = new Counter({
+  name: "foresight_cluster_heartbeat_failures_total",
+  help: "Total cluster heartbeat loop failures",
+  registers: [metricsRegistry],
+});
+
+const clusterEventPublishFailuresTotal = new Counter({
+  name: "foresight_cluster_event_publish_failures_total",
+  help: "Total cluster event publish failures",
+  labelNames: ["event_type"] as const,
   registers: [metricsRegistry],
 });
 
@@ -65,6 +97,8 @@ export class ClusterManager extends EventEmitter {
   private nodes: Map<string, ClusterNode> = new Map();
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
+  private currentLeaderId: string | null = null;
+  private leaderLastChangedAtMs: number | null = null;
 
   private stopHeartbeat(): void {
     if (!this.heartbeatTimer) return;
@@ -87,8 +121,23 @@ export class ClusterManager extends EventEmitter {
   }
 
   private readonly onBecameLeader = () => {
-    clusterNodeRole.set({ node_id: this.nodeId }, 1);
+    const previousLeader = this.currentLeaderId;
+    this.currentLeaderId = this.nodeId;
+    clusterLeaderKnown.set(1);
+    if (previousLeader !== this.nodeId) {
+      clusterLeaderChangesTotal.inc({ source: "became_leader" });
+      this.leaderLastChangedAtMs = Date.now();
+      clusterLeaderLastChangedMs.set(this.leaderLastChangedAtMs);
+      logger.info("Leader changed", {
+        previousLeader,
+        newLeader: this.nodeId,
+        source: "became_leader",
+      });
+    }
+
     this.emit("became_leader");
+    this.emit("leader_changed", { newLeader: this.nodeId });
+    this.registerNode(this.nodeId, true);
     void this.broadcastClusterEvent("leader_changed", {
       newLeader: this.nodeId,
     }).catch((error: any) => {
@@ -97,8 +146,18 @@ export class ClusterManager extends EventEmitter {
   };
 
   private readonly onLostLeadership = () => {
-    clusterNodeRole.set({ node_id: this.nodeId }, 0);
+    const previousLeader = this.currentLeaderId;
+    if (this.currentLeaderId === this.nodeId) {
+      this.currentLeaderId = null;
+      clusterLeaderKnown.set(0);
+      clusterLeaderChangesTotal.inc({ source: "lost_leadership" });
+      this.leaderLastChangedAtMs = Date.now();
+      clusterLeaderLastChangedMs.set(this.leaderLastChangedAtMs);
+      logger.warn("Leadership lost", { previousLeader, source: "lost_leadership" });
+    }
+
     this.emit("lost_leadership");
+    this.registerNode(this.nodeId, false);
   };
 
   constructor(config: ClusterConfig = {}) {
@@ -159,6 +218,12 @@ export class ClusterManager extends EventEmitter {
       });
 
       this.registerNode(this.nodeId, this.isLeader());
+      if (this.isLeader()) {
+        this.currentLeaderId = this.nodeId;
+        clusterLeaderKnown.set(1);
+      } else {
+        clusterLeaderKnown.set(this.currentLeaderId ? 1 : 0);
+      }
 
       logger.info("ClusterManager started", {
         nodeId: this.nodeId,
@@ -199,7 +264,17 @@ export class ClusterManager extends EventEmitter {
     await this.stopLeaderElection();
     await this.stopPubSub();
 
+    for (const nodeId of this.nodes.keys()) {
+      try {
+        clusterNodeRole.remove({ node_id: nodeId });
+      } catch {}
+    }
+
     this.nodes.clear();
+    clusterNodesTotal.set(0);
+    try {
+      clusterNodeRole.remove({ node_id: this.nodeId });
+    } catch {}
 
     logger.info("ClusterManager stopped");
   }
@@ -226,9 +301,37 @@ export class ClusterManager extends EventEmitter {
         break;
 
       case "leader_changed":
-        this.emit("leader_changed", payload);
+        this.handleLeaderChanged(payload as { newLeader?: unknown });
         break;
     }
+  }
+
+  private handleLeaderChanged(payload: { newLeader?: unknown }): void {
+    const newLeader = typeof payload?.newLeader === "string" ? payload.newLeader : "";
+    if (newLeader) {
+      const previousLeader = this.currentLeaderId;
+      this.currentLeaderId = newLeader;
+      clusterLeaderKnown.set(1);
+      if (previousLeader !== newLeader) {
+        clusterLeaderChangesTotal.inc({ source: "remote" });
+        this.leaderLastChangedAtMs = Date.now();
+        clusterLeaderLastChangedMs.set(this.leaderLastChangedAtMs);
+        logger.info("Leader changed", { previousLeader, newLeader, source: "remote" });
+      }
+
+      for (const [nodeId, node] of this.nodes.entries()) {
+        const shouldBeLeader = nodeId === newLeader;
+        if (node.isLeader !== shouldBeLeader) {
+          this.nodes.set(nodeId, { ...node, isLeader: shouldBeLeader, lastSeen: Date.now() });
+        }
+        clusterNodeRole.set({ node_id: nodeId }, shouldBeLeader ? 1 : 0);
+      }
+      const existing = this.nodes.get(newLeader);
+      if (!existing) {
+        this.registerNode(newLeader, true);
+      }
+    }
+    this.emit("leader_changed", payload);
   }
 
   /**
@@ -247,6 +350,9 @@ export class ClusterManager extends EventEmitter {
   private handleNodeLeft(data: { nodeId: string }): void {
     this.nodes.delete(data.nodeId);
     clusterNodesTotal.set(this.nodes.size);
+    try {
+      clusterNodeRole.remove({ node_id: data.nodeId });
+    } catch {}
 
     this.emit("node_left", data.nodeId);
 
@@ -271,6 +377,7 @@ export class ClusterManager extends EventEmitter {
     });
 
     clusterNodesTotal.set(this.nodes.size);
+    clusterNodeRole.set({ node_id: nodeId }, isLeader ? 1 : 0);
   }
 
   /**
@@ -294,6 +401,7 @@ export class ClusterManager extends EventEmitter {
           }
         }
       } catch (error: any) {
+        clusterHeartbeatFailuresTotal.inc();
         logger.warn("Cluster heartbeat failed", undefined, error);
       }
     }, 15000); // 15 秒
@@ -304,7 +412,12 @@ export class ClusterManager extends EventEmitter {
    */
   private async broadcastClusterEvent(eventType: string, data: unknown): Promise<void> {
     if (this.pubsub && this.pubsub.isReady()) {
-      await this.pubsub.publishClusterEvent(eventType, data);
+      try {
+        await this.pubsub.publishClusterEvent(eventType, data);
+      } catch (e: any) {
+        clusterEventPublishFailuresTotal.inc({ event_type: eventType });
+        throw e;
+      }
     }
   }
 
@@ -322,6 +435,22 @@ export class ClusterManager extends EventEmitter {
     if (!this.leaderElection) return null;
     const leader = await this.leaderElection.getCurrentLeader();
     return leader?.nodeId ?? null;
+  }
+
+  getKnownLeaderId(): string | null {
+    return this.currentLeaderId;
+  }
+
+  isLeaderKnown(): boolean {
+    return !!this.currentLeaderId;
+  }
+
+  getLeaderLastChangedMs(): number | null {
+    return this.leaderLastChangedAtMs;
+  }
+
+  getIsRunning(): boolean {
+    return this.isRunning;
   }
 
   /**

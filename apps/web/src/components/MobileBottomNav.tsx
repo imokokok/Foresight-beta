@@ -5,6 +5,7 @@ import { Home, TrendingUp, PlusCircle, MessageSquare, User } from "lucide-react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
 
 /**
@@ -20,10 +21,22 @@ import { useTranslations } from "@/lib/i18n";
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { account } = useWallet();
+  const { account, connectWallet } = useWallet();
+  const profileCtx = useUserProfileOptional();
+  const isAdmin = !!profileCtx?.isAdmin;
 
   const tNav = useTranslations("nav");
   const tPrediction = useTranslations("prediction");
+
+  const colorClasses = {
+    blue: { bg: "bg-blue-50", text: "text-blue-600", indicator: "bg-blue-600" },
+    purple: { bg: "bg-purple-50", text: "text-purple-600", indicator: "bg-purple-600" },
+    pink: { bg: "bg-pink-50", text: "text-pink-600", indicator: "bg-pink-600" },
+    green: { bg: "bg-green-50", text: "text-green-600", indicator: "bg-green-600" },
+    orange: { bg: "bg-orange-50", text: "text-orange-600", indicator: "bg-orange-600" },
+  } as const;
+
+  const createHref = isAdmin ? "/admin/predictions/new" : "/proposals";
 
   const navItems = [
     {
@@ -41,7 +54,7 @@ export default function MobileBottomNav() {
     {
       icon: PlusCircle,
       label: tPrediction("createPrediction"),
-      href: "/prediction/new",
+      href: createHref,
       color: "pink",
       special: true, // 特殊样式
     },
@@ -54,7 +67,7 @@ export default function MobileBottomNav() {
     {
       icon: User,
       label: tNav("profile"),
-      href: account ? `/user/${account}` : "/login",
+      href: "/profile",
       color: "orange",
     },
   ];
@@ -66,23 +79,40 @@ export default function MobileBottomNav() {
           const Icon = item.icon;
           const isActive =
             pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          const color = colorClasses[item.color as keyof typeof colorClasses];
 
           // 特殊样式（创建按钮）
           if (item.special) {
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex flex-col items-center justify-center relative"
-              >
-                <motion.div
-                  whileTap={{ scale: 0.9 }}
-                  className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg -mt-6"
-                >
-                  <Icon className="w-7 h-7 text-white" />
-                </motion.div>
-                <span className="text-[10px] font-medium text-gray-600 mt-1">{item.label}</span>
-              </Link>
+              <div key={item.href} className="flex flex-col items-center justify-center relative">
+                {account || !isAdmin ? (
+                  <Link href={item.href} className="flex flex-col items-center justify-center">
+                    <motion.div
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg -mt-6"
+                    >
+                      <Icon className="w-7 h-7 text-white" />
+                    </motion.div>
+                    <span className="text-[10px] font-medium text-gray-600 mt-1">{item.label}</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await connectWallet();
+                    }}
+                    className="flex flex-col items-center justify-center"
+                  >
+                    <motion.div
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg -mt-6"
+                    >
+                      <Icon className="w-7 h-7 text-white" />
+                    </motion.div>
+                    <span className="text-[10px] font-medium text-gray-600 mt-1">{item.label}</span>
+                  </button>
+                )}
+              </div>
             );
           }
 
@@ -94,14 +124,10 @@ export default function MobileBottomNav() {
             >
               <motion.div
                 whileTap={{ scale: 0.9 }}
-                className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-colors ${
-                  isActive ? `bg-${item.color}-50` : "hover:bg-gray-50"
-                }`}
+                className={`flex items-center justify-center w-12 h-12 rounded-2xl transition-colors ${isActive ? color.bg : "hover:bg-gray-50"}`}
               >
                 <Icon
-                  className={`w-6 h-6 transition-colors ${
-                    isActive ? `text-${item.color}-600` : "text-gray-500 group-hover:text-gray-700"
-                  }`}
+                  className={`w-6 h-6 transition-colors ${isActive ? color.text : "text-gray-500 group-hover:text-gray-700"}`}
                 />
               </motion.div>
 
@@ -109,15 +135,13 @@ export default function MobileBottomNav() {
               {isActive && (
                 <motion.div
                   layoutId="bottomNavIndicator"
-                  className={`absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-${item.color}-600`}
+                  className={`absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full ${color.indicator}`}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
 
               <span
-                className={`text-[10px] font-medium mt-0.5 transition-colors ${
-                  isActive ? `text-${item.color}-600` : "text-gray-500 group-hover:text-gray-700"
-                }`}
+                className={`text-[10px] font-medium mt-0.5 transition-colors ${isActive ? color.text : "text-gray-500 group-hover:text-gray-700"}`}
               >
                 {item.label}
               </span>

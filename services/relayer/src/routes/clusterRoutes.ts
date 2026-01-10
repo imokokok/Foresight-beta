@@ -4,6 +4,7 @@
 
 import { Router, Request, Response } from "express";
 import { logger } from "../monitoring/logger.js";
+import { getLeaderProxyState } from "../cluster/leaderProxy.js";
 
 const router = Router();
 
@@ -46,17 +47,52 @@ const getDatabasePool = async () => {
 router.get("/cluster/status", async (req: Request, res: Response) => {
   try {
     const cm = await getClusterManager();
-    
+    const proxyUrlConfigured = !!String(
+      process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
+    ).trim();
+    const isLeader = cm.isLeader();
+    const leaderId = await cm.getLeaderId();
+
     res.json({
       nodeId: cm.getNodeId(),
-      isLeader: cm.isLeader(),
-      leaderId: await cm.getLeaderId(),
+      isLeader,
+      leaderId,
+      knownLeaderId: cm.getKnownLeaderId(),
+      leaderKnown: cm.isLeaderKnown(),
+      leaderLastChangedMs: cm.getLeaderLastChangedMs(),
+      isRunning: cm.getIsRunning(),
+      acceptsWrites: isLeader || proxyUrlConfigured,
+      writeMode: isLeader ? "leader" : proxyUrlConfigured ? "proxy" : "readonly",
+      proxyUrlConfigured,
+      leaderProxy: getLeaderProxyState(),
       nodes: cm.getNodes(),
       nodeCount: cm.getNodeCount(),
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
     logger.error("Failed to get cluster status", {}, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/cluster/writable", async (req: Request, res: Response) => {
+  try {
+    const cm = await getClusterManager();
+    const isLeader = cm.isLeader();
+    const leaderId = await cm.getLeaderId();
+    const proxyUrlConfigured = !!String(
+      process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
+    ).trim();
+    const writable = isLeader || proxyUrlConfigured;
+    res.status(writable ? 200 : 503).json({
+      writable,
+      mode: isLeader ? "leader" : proxyUrlConfigured ? "proxy" : "readonly",
+      leaderId,
+      nodeId: cm.getNodeId(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    logger.error("Failed to get writable status", {}, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -68,18 +104,28 @@ router.get("/cluster/leader", async (req: Request, res: Response) => {
   try {
     const cm = await getClusterManager();
     const election = cm.getLeaderElection();
-    
+
     if (!election) {
-      res.json({ leader: null, message: "Leader election not enabled" });
+      res.json({
+        leader: null,
+        knownLeaderId: cm.getKnownLeaderId(),
+        leaderKnown: cm.isLeaderKnown(),
+        isRunning: cm.getIsRunning(),
+        message: "Leader election not enabled",
+      });
       return;
     }
 
     const leader = await election.getCurrentLeader();
-    
+
     res.json({
       leader,
       isCurrentNodeLeader: cm.isLeader(),
       currentNodeId: cm.getNodeId(),
+      knownLeaderId: cm.getKnownLeaderId(),
+      leaderKnown: cm.isLeaderKnown(),
+      leaderLastChangedMs: cm.getLeaderLastChangedMs(),
+      isRunning: cm.getIsRunning(),
     });
   } catch (error: any) {
     logger.error("Failed to get leader info", {}, error);
@@ -93,7 +139,7 @@ router.get("/cluster/leader", async (req: Request, res: Response) => {
 router.get("/cluster/nodes", async (req: Request, res: Response) => {
   try {
     const cm = await getClusterManager();
-    
+
     res.json({
       nodes: cm.getNodes(),
       count: cm.getNodeCount(),
@@ -116,7 +162,7 @@ router.get("/database/status", async (req: Request, res: Response) => {
   try {
     const pool = await getDatabasePool();
     const stats = pool.getStats();
-    
+
     res.json({
       ...stats,
       timestamp: new Date().toISOString(),
@@ -138,7 +184,7 @@ router.get("/reconciliation/status", async (req: Request, res: Response) => {
   try {
     const reconciler = await getChainReconciler();
     const status = reconciler.getStatus();
-    
+
     res.json({
       ...status,
       timestamp: new Date().toISOString(),
@@ -156,11 +202,11 @@ router.get("/reconciliation/discrepancies", async (req: Request, res: Response) 
   try {
     const reconciler = await getChainReconciler();
     const onlyUnresolved = req.query.unresolved === "true";
-    
-    const discrepancies = onlyUnresolved 
+
+    const discrepancies = onlyUnresolved
       ? reconciler.getUnresolvedDiscrepancies()
       : reconciler.getDiscrepancies();
-    
+
     res.json({
       discrepancies,
       count: discrepancies.length,
@@ -178,12 +224,12 @@ router.get("/reconciliation/discrepancies", async (req: Request, res: Response) 
 router.post("/reconciliation/trigger", async (req: Request, res: Response) => {
   try {
     const reconciler = await getChainReconciler();
-    
+
     // 异步运行对账，立即返回
     reconciler.triggerReconciliation().catch((err: any) => {
       logger.error("Triggered reconciliation failed", {}, err);
     });
-    
+
     res.json({
       message: "Reconciliation triggered",
       timestamp: new Date().toISOString(),
@@ -201,7 +247,7 @@ router.post("/reconciliation/resolve/:id", async (req: Request, res: Response) =
   try {
     const { id } = req.params;
     const { resolution } = req.body;
-    
+
     if (!resolution) {
       res.status(400).json({ error: "Resolution is required" });
       return;
@@ -209,7 +255,7 @@ router.post("/reconciliation/resolve/:id", async (req: Request, res: Response) =
 
     const reconciler = await getChainReconciler();
     const resolved = reconciler.resolveDiscrepancy(id, resolution);
-    
+
     if (resolved) {
       res.json({
         message: "Discrepancy resolved",
@@ -237,7 +283,7 @@ router.get("/admin/overview", async (req: Request, res: Response) => {
     const cm = await getClusterManager();
     const pool = await getDatabasePool();
     const reconciler = await getChainReconciler();
-    
+
     res.json({
       cluster: {
         nodeId: cm.getNodeId(),
@@ -255,4 +301,3 @@ router.get("/admin/overview", async (req: Request, res: Response) => {
 });
 
 export default router;
-

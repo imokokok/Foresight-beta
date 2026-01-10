@@ -31,7 +31,11 @@ export interface ReadinessCheckResult {
   };
 }
 
-type HealthChecker = () => Promise<{ status: "pass" | "fail" | "warn"; message?: string; latency?: number }>;
+type HealthChecker = () => Promise<{
+  status: "pass" | "fail" | "warn";
+  message?: string;
+  latency?: number;
+}>;
 type ReadinessChecker = () => Promise<{ ready: boolean; message?: string }>;
 
 class HealthCheckService {
@@ -254,3 +258,16 @@ export function createOrderbookReadinessChecker(engine: any): ReadinessChecker {
   };
 }
 
+export function createWriteProxyReadinessChecker(opts: {
+  isClusterActive: () => boolean;
+  isLeader: () => boolean;
+  getProxyUrl: () => string;
+}): ReadinessChecker {
+  return async () => {
+    if (!opts.isClusterActive()) return { ready: true, message: "Cluster disabled" };
+    if (opts.isLeader()) return { ready: true, message: "Leader" };
+    const proxyUrl = String(opts.getProxyUrl() || "").trim();
+    if (!proxyUrl) return { ready: false, message: "Follower without proxy URL" };
+    return { ready: true, message: "Follower with proxy URL" };
+  };
+}

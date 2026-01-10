@@ -10,6 +10,7 @@ import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
 import { getDatabasePool } from "../database/connectionPool.js";
+import { getRedisClient } from "../redis/client.js";
 
 // ============================================================
 // 指标定义
@@ -163,6 +164,34 @@ export class ChainReconciler extends EventEmitter {
 
     this.provider = new JsonRpcProvider(this.config.rpcUrl);
     this.marketContract = new Contract(this.config.marketAddress, MARKET_ABI, this.provider);
+  }
+
+  private async enqueueCompensationTask(discrepancy: Discrepancy, reason: string): Promise<void> {
+    if (process.env.RECONCILIATION_TASK_QUEUE_ENABLED !== "true") return;
+    const redis = getRedisClient();
+    if (!redis.isReady()) return;
+    const raw = redis.getRawClient();
+    if (!raw) return;
+
+    const keyPrefix = process.env.REDIS_KEY_PREFIX || "foresight:";
+    const listKey = `${keyPrefix}reconciliation:tasks`;
+    const maxLen = Math.max(100, Number(process.env.RECONCILIATION_TASK_QUEUE_MAXLEN || "20000"));
+    const ttlSeconds = Math.max(
+      60,
+      Number(process.env.RECONCILIATION_TASK_QUEUE_TTL_SECONDS || String(3600 * 24))
+    );
+
+    const envelope = JSON.stringify({
+      ts: Date.now(),
+      reason,
+      discrepancy,
+    });
+
+    try {
+      await raw.lPush(listKey, envelope);
+      await raw.lTrim(listKey, 0, maxLen - 1);
+      await raw.expire(listKey, ttlSeconds);
+    } catch {}
   }
 
   private getCursorKey(): string {
@@ -636,9 +665,11 @@ export class ChainReconciler extends EventEmitter {
           // missing_onchain 需要人工处理
           default:
             logger.warn("Discrepancy requires manual intervention", { discrepancy: d });
+            await this.enqueueCompensationTask(d, "manual_intervention");
         }
       } catch (error: any) {
         logger.error("Failed to auto-fix discrepancy", { discrepancy: d }, error);
+        await this.enqueueCompensationTask(d, "autofix_failed");
       }
     }
 

@@ -11,7 +11,7 @@ import type { Order, PriceLevel, DepthSnapshot, OrderBookStats } from "./types.j
 class PriceLevelNode {
   price: bigint;
   orders: Map<string, Order> = new Map(); // orderId -> Order
-  orderQueue: string[] = [];               // 按时间优先排序的订单ID列表
+  orderQueue: string[] = []; // 按时间优先排序的订单ID列表
   totalQuantity: bigint = 0n;
 
   constructor(price: bigint) {
@@ -36,7 +36,7 @@ class PriceLevelNode {
 
     this.orders.delete(orderId);
     this.totalQuantity -= order.remainingAmount;
-    this.orderQueue = this.orderQueue.filter(id => id !== orderId);
+    this.orderQueue = this.orderQueue.filter((id) => id !== orderId);
     return order;
   }
 
@@ -85,14 +85,14 @@ class OneSideBook {
    */
   addOrder(order: Order): void {
     const priceKey = order.price.toString();
-    
+
     let level = this.levels.get(priceKey);
     if (!level) {
       level = new PriceLevelNode(order.price);
       this.levels.set(priceKey, level);
       this.insertPrice(order.price);
     }
-    
+
     level.addOrder(order);
   }
 
@@ -105,13 +105,13 @@ class OneSideBook {
     if (!level) return null;
 
     const order = level.removeOrder(orderId);
-    
+
     // 如果价格级别为空，移除它
     if (level.isEmpty()) {
       this.levels.delete(priceKey);
       this.removePrice(price);
     }
-    
+
     return order;
   }
 
@@ -138,7 +138,7 @@ class OneSideBook {
   getDepth(maxLevels: number): PriceLevel[] {
     const result: PriceLevel[] = [];
     const count = Math.min(maxLevels, this.sortedPrices.length);
-    
+
     for (let i = 0; i < count; i++) {
       const priceKey = this.sortedPrices[i].toString();
       const level = this.levels.get(priceKey);
@@ -146,7 +146,7 @@ class OneSideBook {
         result.push(level.toPriceLevel());
       }
     }
-    
+
     return result;
   }
 
@@ -168,7 +168,7 @@ class OneSideBook {
     // 二分查找插入位置
     let left = 0;
     let right = this.sortedPrices.length;
-    
+
     while (left < right) {
       const mid = Math.floor((left + right) / 2);
       const cmp = this.comparePrice(price, this.sortedPrices[mid]);
@@ -178,7 +178,7 @@ class OneSideBook {
         left = mid + 1;
       }
     }
-    
+
     this.sortedPrices.splice(left, 0, price);
   }
 
@@ -186,7 +186,7 @@ class OneSideBook {
    * 移除价格
    */
   private removePrice(price: bigint): void {
-    const index = this.sortedPrices.findIndex(p => p === price);
+    const index = this.sortedPrices.findIndex((p) => p === price);
     if (index !== -1) {
       this.sortedPrices.splice(index, 1);
     }
@@ -223,6 +223,21 @@ class OneSideBook {
     }
     return count;
   }
+
+  getAllOrders(): Order[] {
+    const all: Order[] = [];
+    for (const price of this.sortedPrices) {
+      const level = this.levels.get(price.toString());
+      if (!level) continue;
+      for (const orderId of level.orderQueue) {
+        const order = level.orders.get(orderId);
+        if (!order) continue;
+        if (order.remainingAmount <= 0n) continue;
+        all.push(order);
+      }
+    }
+    return all;
+  }
 }
 
 /**
@@ -231,9 +246,9 @@ class OneSideBook {
 export class OrderBook {
   readonly marketKey: string;
   readonly outcomeIndex: number;
-  
-  private bids: OneSideBook;  // 买盘
-  private asks: OneSideBook;  // 卖盘
+
+  private bids: OneSideBook; // 买盘
+  private asks: OneSideBook; // 卖盘
   private orderIndex: Map<string, { price: bigint; isBuy: boolean }> = new Map();
   private lastTradePrice: bigint | null = null;
   private volume24h: bigint = 0n;
@@ -257,7 +272,7 @@ export class OrderBook {
 
     const book = order.isBuy ? this.bids : this.asks;
     book.addOrder(order);
-    
+
     // 更新索引
     this.orderIndex.set(order.id, { price: order.price, isBuy: order.isBuy });
   }
@@ -271,11 +286,11 @@ export class OrderBook {
 
     const book = info.isBuy ? this.bids : this.asks;
     const order = book.removeOrder(orderId, info.price);
-    
+
     if (order) {
       this.orderIndex.delete(orderId);
     }
-    
+
     return order;
   }
 
@@ -291,7 +306,7 @@ export class OrderBook {
     }
 
     const book = info.isBuy ? this.bids : this.asks;
-    
+
     if (order.remainingAmount <= 0n) {
       // 完全成交,移除订单
       book.removeOrder(order.id, info.price);
@@ -330,7 +345,7 @@ export class OrderBook {
    */
   recordTrade(price: bigint, amount: bigint): void {
     this.lastTradePrice = price;
-    
+
     // 24小时成交量滚动统计
     const now = Date.now();
     if (now - this.lastVolumeReset > 24 * 60 * 60 * 1000) {
@@ -359,7 +374,7 @@ export class OrderBook {
   getStats(): OrderBookStats {
     const bestBid = this.bids.getBestPrice();
     const bestAsk = this.asks.getBestPrice();
-    
+
     let spread: bigint | null = null;
     if (bestBid !== null && bestAsk !== null) {
       spread = bestAsk - bestBid;
@@ -376,6 +391,19 @@ export class OrderBook {
       lastTradePrice: this.lastTradePrice,
       volume24h: this.volume24h,
     };
+  }
+
+  getAllOrders(): { bidOrders: Order[]; askOrders: Order[] } {
+    return {
+      bidOrders: this.bids.getAllOrders(),
+      askOrders: this.asks.getAllOrders(),
+    };
+  }
+
+  restoreStats(lastTradePrice: bigint | null, volume24h: bigint): void {
+    this.lastTradePrice = lastTradePrice;
+    this.volume24h = volume24h;
+    this.lastVolumeReset = Date.now();
   }
 
   /**
@@ -413,13 +441,13 @@ export class OrderBookManager {
    */
   getOrCreateBook(marketKey: string, outcomeIndex: number): OrderBook {
     const key = `${marketKey}:${outcomeIndex}`;
-    
+
     let book = this.books.get(key);
     if (!book) {
       book = new OrderBook(marketKey, outcomeIndex);
       this.books.set(key, book);
     }
-    
+
     return book;
   }
 
@@ -465,4 +493,3 @@ export class OrderBookManager {
     };
   }
 }
-

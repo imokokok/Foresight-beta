@@ -250,7 +250,7 @@ export function LeaderboardMainSections({
                     </div>
                   </div>
 
-                  <Link href="/profile">
+                  <Link href={`/profile/${account}`}>
                     <button className="w-full mt-8 py-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all">
                       {t("sidebar.viewFullProfile")}
                     </button>

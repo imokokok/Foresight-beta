@@ -39,6 +39,10 @@ export default function ReviewPage() {
     setError(null);
     try {
       const res = await fetch("/api/review/proposals?status=pending_review", { cache: "no-store" });
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/proposals");
+        return;
+      }
       if (!res.ok) {
         setError(tProposals("review.loadFailed"));
         setItems([]);
@@ -60,7 +64,7 @@ export default function ReviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedId, tProposals]);
+  }, [router, selectedId, tProposals]);
 
   useEffect(() => {
     loadItems();

@@ -26,6 +26,7 @@ import {
   createRpcHealthChecker,
   createMatchingEngineHealthChecker,
   createOrderbookReadinessChecker,
+  createWriteProxyReadinessChecker,
 } from "./monitoring/health.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
@@ -110,6 +111,9 @@ import {
 
 // 🚀 导入新的撮合引擎
 import { MatchingEngine, MarketWebSocketServer, type OrderInput } from "./matching/index.js";
+import { clusterFollowerRejectedTotal } from "./monitoring/metrics.js";
+import { proxyToLeader } from "./cluster/leaderProxy.js";
+import { ClusteredWebSocketServer } from "./cluster/websocketCluster.js";
 
 export const app = express();
 
@@ -121,11 +125,11 @@ const matchingEngine = new MatchingEngine({
   maxMarketShortExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC || "0"),
 });
 
-const wsServer = new MarketWebSocketServer(Number(process.env.WS_PORT || "3006"));
+let wsServer: MarketWebSocketServer | ClusteredWebSocketServer | null = null;
 
 // 🚀 连接撮合引擎事件到 WebSocket
 matchingEngine.on("market_event", (event) => {
-  wsServer.handleMarketEvent(event);
+  void wsServer?.handleMarketEvent(event as any);
 });
 
 matchingEngine.on(
@@ -199,6 +203,120 @@ function createRateLimiter(envPrefix: string, defaultMax: number, defaultWindowM
 const limitOrders = createRateLimiter("RELAYER_RATE_LIMIT_ORDERS", 30, 60000);
 const limitReportTrade = createRateLimiter("RELAYER_RATE_LIMIT_REPORT_TRADE", 60, 60000);
 
+type IdempotencyEntry = {
+  expiresAtMs: number;
+  status: number;
+  body: any;
+};
+
+const idempotencyStore = new Map<string, IdempotencyEntry>();
+
+function getIdempotencyKey(req: express.Request, extra: string): string | null {
+  const headerKey = String(req.headers["x-idempotency-key"] || "").trim();
+  const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
+  const base = headerKey || requestId;
+  if (!base) return null;
+  return `${req.method}:${extra}:${base}`;
+}
+
+function getIdempotencyRedisKey(key: string): string {
+  return `idempotency:${key}`;
+}
+
+async function getIdempotencyEntry(key: string): Promise<IdempotencyEntry | null> {
+  const entry = idempotencyStore.get(key);
+  if (entry) {
+    if (entry.expiresAtMs <= Date.now()) {
+      idempotencyStore.delete(key);
+    } else {
+      return entry;
+    }
+  }
+
+  if (process.env.RELAYER_IDEMPOTENCY_REDIS === "false") return null;
+
+  const redis = getRedisClient();
+  if (!redis.isReady()) return null;
+
+  const raw = await redis.get(getIdempotencyRedisKey(key));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as IdempotencyEntry;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.expiresAtMs !== "number" ||
+      typeof parsed.status !== "number"
+    ) {
+      return null;
+    }
+    if (parsed.expiresAtMs <= Date.now()) return null;
+    idempotencyStore.set(key, parsed);
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function setIdempotencyEntry(key: string, status: number, body: any): Promise<void> {
+  const ttlMs = Math.max(1000, Number(process.env.RELAYER_IDEMPOTENCY_TTL_MS || "60000"));
+  const entry: IdempotencyEntry = { expiresAtMs: Date.now() + ttlMs, status, body };
+  idempotencyStore.set(key, entry);
+  if (idempotencyStore.size > 5000) {
+    const now = Date.now();
+    for (const [k, v] of idempotencyStore.entries()) {
+      if (v.expiresAtMs <= now) idempotencyStore.delete(k);
+    }
+  }
+
+  if (process.env.RELAYER_IDEMPOTENCY_REDIS === "false") return;
+  const redis = getRedisClient();
+  if (!redis.isReady()) return;
+
+  const ttlSeconds = Math.max(1, Math.floor(ttlMs / 1000));
+  try {
+    await redis.set(getIdempotencyRedisKey(key), JSON.stringify(entry), ttlSeconds);
+  } catch {}
+}
+
+function getLeaderProxyUrl(): string {
+  return String(
+    process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
+  ).trim();
+}
+
+function sendNotLeader(
+  res: express.Response,
+  payload: { leaderId: string | null; nodeId?: string; path: string }
+) {
+  const proxyUrl = getLeaderProxyUrl();
+  res.status(503).json({
+    success: false,
+    message: "Not leader",
+    leaderId: payload.leaderId,
+    nodeId: payload.nodeId || null,
+    path: payload.path,
+    retryable: true,
+    suggestedWaitMs: 1000,
+    proxyUrlConfigured: !!proxyUrl,
+  });
+}
+
+function sendApiError(
+  req: express.Request,
+  res: express.Response,
+  status: number,
+  payload: { message: string; detail?: any }
+) {
+  const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
+  return res.status(status).json({
+    success: false,
+    message: payload.message,
+    ...(typeof payload.detail !== "undefined" ? { detail: payload.detail } : {}),
+    ...(requestId ? { requestId } : {}),
+  });
+}
+
 const allowedOriginsRaw = process.env.RELAYER_CORS_ORIGINS || "";
 const allowedOrigins = allowedOriginsRaw
   .split(",")
@@ -244,6 +362,24 @@ app.get("/", (req, res) => {
 
 app.post("/", async (req, res) => {
   try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/");
+          if (ok) return;
+        }
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/" });
+        return;
+      }
+    }
+    const idemKey = getIdempotencyKey(req, "/");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
     if (!bundlerWallet) {
       return res.status(501).json({
         jsonrpc: "2.0",
@@ -262,7 +398,9 @@ app.post("/", async (req, res) => {
     const entryPoint = new Contract(entryPointAddress, EntryPointAbi, bundlerWallet);
     const tx = await entryPoint.handleOps([userOp], bundlerWallet.address);
     const receipt = await tx.wait();
-    res.json({ jsonrpc: "2.0", id: req.body.id, result: receipt.hash });
+    const responseBody = { jsonrpc: "2.0", id: req.body.id, result: receipt.hash };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (error: any) {
     res.status(500).json({
       jsonrpc: "2.0",
@@ -277,13 +415,35 @@ app.post("/orderbook/orders", limitOrders, async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/orders");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/orderbook/orders" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/orderbook/orders" });
+        return;
+      }
+    }
+    const idemKey = getIdempotencyKey(req, "/orderbook/orders");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
     const body = req.body || {};
     const data = await placeSignedOrder(body);
-    res.json({ success: true, data });
+    const responseBody = { success: true, data };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
-    res
-      .status(400)
-      .json({ success: false, message: "place order failed", detail: String(e?.message || e) });
+    return sendApiError(req, res, 400, {
+      message: "place order failed",
+      detail: String(e?.message || e),
+    });
   }
 });
 
@@ -297,34 +457,73 @@ app.post("/orderbook/orders", limitOrders, async (req, res) => {
  */
 app.post("/v2/orders", limitOrders, async (req, res) => {
   try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/v2/orders");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/v2/orders" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/orders" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/v2/orders");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
     const body = req.body || {};
+    const orderBody = body.order || body.order_data || {};
 
     // 构建订单输入
     const orderInput: OrderInput = {
       marketKey:
         body.marketKey ||
         body.market_key ||
-        `${body.chainId}:${body.eventId || body.event_id || "unknown"}`,
-      maker: String(body.order?.maker || ""),
-      outcomeIndex: Number(body.order?.outcomeIndex || 0),
-      isBuy: Boolean(body.order?.isBuy),
-      price: BigInt(String(body.order?.price || "0")),
-      amount: BigInt(String(body.order?.amount || "0")),
-      salt: String(body.order?.salt || ""),
-      expiry: Number(body.order?.expiry || 0),
-      signature: String(body.signature || ""),
-      chainId: Number(body.chainId || 0),
-      verifyingContract: String(body.verifyingContract || body.contract || ""),
-      tif: body.order?.tif as "IOC" | "FOK" | undefined,
-      postOnly: Boolean(body.order?.postOnly),
+        `${body.chainId || body.chain_id}:${body.eventId || body.event_id || "unknown"}`,
+      maker: String(orderBody?.maker || body.maker || ""),
+      outcomeIndex: Number(
+        orderBody?.outcomeIndex ?? orderBody?.outcome_index ?? body.outcomeIndex ?? 0
+      ),
+      isBuy: Boolean(orderBody?.isBuy ?? orderBody?.is_buy ?? body.isBuy),
+      price: BigInt(String(orderBody?.price ?? body.price ?? "0")),
+      amount: BigInt(String(orderBody?.amount ?? body.amount ?? "0")),
+      salt: String(orderBody?.salt || body.salt || ""),
+      expiry: Number(orderBody?.expiry ?? orderBody?.expiresAt ?? body.expiry ?? 0),
+      signature: String(body.signature || orderBody?.signature || ""),
+      chainId: Number(
+        body.chainId || body.chain_id || orderBody?.chainId || orderBody?.chain_id || 0
+      ),
+      verifyingContract: String(
+        body.verifyingContract ||
+          orderBody?.verifyingContract ||
+          body.verifying_contract ||
+          orderBody?.verifying_contract ||
+          body.verifying_contract_address ||
+          orderBody?.verifying_contract_address ||
+          body.contract ||
+          orderBody?.contract ||
+          body.contractAddress ||
+          orderBody?.contractAddress ||
+          body.marketAddress ||
+          orderBody?.marketAddress ||
+          ""
+      ),
+      tif: (orderBody?.tif as "IOC" | "FOK" | undefined) ?? undefined,
+      postOnly: Boolean(orderBody?.postOnly ?? orderBody?.post_only),
     };
 
     // 提交到撮合引擎
     const result = await matchingEngine.submitOrder(orderInput);
 
     if (!result.success) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: result.error || "Order submission failed",
       });
     }
@@ -352,7 +551,7 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
       }
     }
 
-    res.json({
+    const responseBody = {
       success: true,
       data: {
         orderId: orderInput.salt,
@@ -371,35 +570,93 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
         requestedAmount: orderInput.amount.toString(),
         filledAmount: filledAmount.toString(),
       },
-    });
+    };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
     console.error("[v2/orders] Error:", e);
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "Order submission failed",
       detail: String(e?.message || e),
     });
   }
 });
 
-const CancelV2Schema = z.object({
-  marketKey: z.string().min(1),
-  outcomeIndex: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  verifyingContract: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-  maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-  salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
-  signature: z.string().regex(/^0x[0-9a-fA-F]+$/),
-});
+const CancelV2Schema = z
+  .object({
+    marketKey: z.string().min(1),
+    outcomeIndex: z
+      .preprocess(
+        (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+        z.number().int().min(0)
+      )
+      .optional(),
+    outcome_index: z
+      .preprocess(
+        (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+        z.number().int().min(0)
+      )
+      .optional(),
+    chainId: z.preprocess(
+      (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+      z.number().int().positive()
+    ),
+    verifyingContract: z.string().optional(),
+    verifying_contract: z.string().optional(),
+    verifying_contract_address: z.string().optional(),
+    contract: z.string().optional(),
+    contractAddress: z.string().optional(),
+    maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+    salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
+    signature: z.string().regex(/^0x[0-9a-fA-F]+$/),
+  })
+  .refine((v) => typeof v.outcomeIndex === "number" || typeof v.outcome_index === "number", {
+    message: "outcomeIndex is required",
+    path: ["outcomeIndex"],
+  })
+  .transform((v) => ({
+    marketKey: v.marketKey,
+    outcomeIndex: (v.outcomeIndex ?? v.outcome_index) as number,
+    chainId: v.chainId,
+    verifyingContract:
+      v.verifyingContract ||
+      v.verifying_contract ||
+      v.verifying_contract_address ||
+      v.contract ||
+      v.contractAddress ||
+      "",
+    maker: v.maker,
+    salt: v.salt,
+    signature: v.signature,
+  }))
+  .refine((v) => /^0x[0-9a-fA-F]{40}$/.test(v.verifyingContract), {
+    message: "Invalid verifyingContract",
+    path: ["verifyingContract"],
+  });
 
 app.post("/v2/cancel-salt", limitOrders, async (req, res) => {
   try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/v2/cancel-salt");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/v2/cancel-salt" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/cancel-salt" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/v2/cancel-salt");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
     const parsed = CancelV2Schema.parse(req.body || {});
     const result = await matchingEngine.cancelOrder(
       parsed.marketKey,
@@ -411,22 +668,25 @@ app.post("/v2/cancel-salt", limitOrders, async (req, res) => {
       parsed.signature
     );
     if (!result.success) {
-      return res.status(400).json({
+      const responseBody = {
         success: false,
         message: result.error || "Cancel failed",
-      });
+      };
+      res.status(400).json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
+      return;
     }
-    res.json({ success: true, data: { ok: true } });
+    const responseBody = { success: true, data: { ok: true } };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
     if (e instanceof z.ZodError) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: "cancel validation failed",
         detail: e.flatten(),
       });
     }
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "Cancel failed",
       detail: String(e?.message || e),
     });
@@ -446,6 +706,66 @@ app.get("/v2/depth", async (req, res) => {
     if (!marketKey) {
       return res.status(400).json({ success: false, message: "marketKey required" });
     }
+
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      const redis = getRedisClient();
+      if (!cluster.isLeader() && redis.isReady()) {
+        try {
+          const snapshotService = getOrderbookSnapshotService();
+          const loaded = await snapshotService.loadSnapshot(marketKey, outcomeIndex);
+          if (loaded) {
+            const bidLevels = new Map<string, { price: bigint; qty: bigint; count: number }>();
+            const askLevels = new Map<string, { price: bigint; qty: bigint; count: number }>();
+
+            for (const o of loaded.orders) {
+              if (!o || o.remainingAmount <= 0n) continue;
+              const key = o.price.toString();
+              const map = o.isBuy ? bidLevels : askLevels;
+              const existing = map.get(key);
+              if (existing) {
+                existing.qty += o.remainingAmount;
+                existing.count += 1;
+              } else {
+                map.set(key, { price: o.price, qty: o.remainingAmount, count: 1 });
+              }
+            }
+
+            const bids = [...bidLevels.values()].sort((a, b) =>
+              a.price > b.price ? -1 : a.price < b.price ? 1 : 0
+            );
+            const asks = [...askLevels.values()].sort((a, b) =>
+              a.price < b.price ? -1 : a.price > b.price ? 1 : 0
+            );
+
+            res.setHeader("Cache-Control", "public, max-age=1");
+            return res.json({
+              success: true,
+              data: {
+                marketKey,
+                outcomeIndex,
+                bids: bids.slice(0, levels).map((l) => ({
+                  price: l.price.toString(),
+                  qty: l.qty.toString(),
+                  count: l.count,
+                })),
+                asks: asks.slice(0, levels).map((l) => ({
+                  price: l.price.toString(),
+                  qty: l.qty.toString(),
+                  count: l.count,
+                })),
+                timestamp: Date.now(),
+                source: "redis_snapshot",
+              },
+            });
+          }
+        } catch {}
+      }
+    }
+
+    try {
+      await matchingEngine.warmupOrderBook(marketKey, outcomeIndex);
+    } catch {}
 
     const snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
 
@@ -496,6 +816,57 @@ app.get("/v2/stats", async (req, res) => {
       return res.status(400).json({ success: false, message: "marketKey required" });
     }
 
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      const redis = getRedisClient();
+      if (!cluster.isLeader() && redis.isReady()) {
+        try {
+          const snapshotService = getOrderbookSnapshotService();
+          const loaded = await snapshotService.loadSnapshot(marketKey, outcomeIndex);
+          if (loaded) {
+            let bestBid: bigint | null = null;
+            let bestAsk: bigint | null = null;
+            let bidDepth = 0n;
+            let askDepth = 0n;
+
+            for (const o of loaded.orders) {
+              if (!o || o.remainingAmount <= 0n) continue;
+              if (o.isBuy) {
+                bidDepth += o.remainingAmount;
+                if (bestBid === null || o.price > bestBid) bestBid = o.price;
+              } else {
+                askDepth += o.remainingAmount;
+                if (bestAsk === null || o.price < bestAsk) bestAsk = o.price;
+              }
+            }
+
+            const lastTradePrice =
+              typeof loaded.stats.lastTradePrice === "bigint" ? loaded.stats.lastTradePrice : null;
+            const volume24h =
+              typeof loaded.stats.volume24h === "bigint" ? loaded.stats.volume24h : 0n;
+            const spread = bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null;
+
+            res.setHeader("Cache-Control", "public, max-age=1");
+            return res.json({
+              success: true,
+              data: {
+                marketKey,
+                outcomeIndex,
+                bestBid: bestBid?.toString() || null,
+                bestAsk: bestAsk?.toString() || null,
+                spread: spread?.toString() || null,
+                bidDepth: bidDepth.toString(),
+                askDepth: askDepth.toString(),
+                lastTradePrice: lastTradePrice?.toString() || null,
+                volume24h: volume24h.toString(),
+                source: "redis_snapshot",
+              },
+            });
+          }
+        } catch {}
+      }
+    }
+
     const stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
 
     if (!stats) {
@@ -541,7 +912,7 @@ app.get("/v2/stats", async (req, res) => {
  * GET /v2/ws-info - WebSocket 连接信息
  */
 app.get("/v2/ws-info", (req, res) => {
-  const stats = wsServer.getStats();
+  const stats = wsServer ? (wsServer as any).getStats?.() : { connections: 0, subscriptions: 0 };
   res.json({
     success: true,
     data: {
@@ -552,6 +923,7 @@ app.get("/v2/ws-info", (req, res) => {
         "depth:{marketKey}:{outcomeIndex}",
         "trades:{marketKey}:{outcomeIndex}",
         "stats:{marketKey}:{outcomeIndex}",
+        "orders:{marketKey}:{outcomeIndex}",
       ],
     },
   });
@@ -563,12 +935,32 @@ app.get("/v2/ws-info", (req, res) => {
  */
 app.post("/v2/register-settler", async (req, res) => {
   try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/v2/register-settler");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/v2/register-settler" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/register-settler" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/v2/register-settler");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
     const { marketKey, chainId, marketAddress } = req.body;
 
     // 验证必要参数
     if (!marketKey || !chainId || !marketAddress) {
-      return res.status(400).json({
-        success: false,
+      return sendApiError(req, res, 400, {
         message: "Missing required fields: marketKey, chainId, marketAddress",
       });
     }
@@ -578,10 +970,7 @@ app.post("/v2/register-settler", async (req, res) => {
     const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
 
     if (!operatorKey) {
-      return res.status(500).json({
-        success: false,
-        message: "Operator private key not configured",
-      });
+      return sendApiError(req, res, 500, { message: "Operator private key not configured" });
     }
 
     const settler = matchingEngine.registerSettler(
@@ -592,17 +981,18 @@ app.post("/v2/register-settler", async (req, res) => {
       rpcUrl
     );
 
-    res.json({
+    const responseBody = {
       success: true,
       data: {
         marketKey,
         operatorAddress: settler.getOperatorAddress(),
         status: "registered",
       },
-    });
+    };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "Failed to register settler",
       detail: String(e?.message || e),
     });
@@ -657,12 +1047,36 @@ app.post("/orderbook/cancel-salt", async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/cancel-salt");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/orderbook/cancel-salt" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/orderbook/cancel-salt",
+        });
+        return;
+      }
+    }
+    const idemKey = getIdempotencyKey(req, "/orderbook/cancel-salt");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
     const body = req.body || {};
     const data = await cancelSalt(body);
-    res.json({ success: true, data });
+    const responseBody = { success: true, data };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "cancel salt failed",
       detail: String(e?.message || e),
     });
@@ -856,13 +1270,37 @@ app.post("/orderbook/report-trade", limitReportTrade, async (req, res) => {
   try {
     if (!supabaseAdmin)
       return res.status(500).json({ success: false, message: "Supabase not configured" });
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/report-trade");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/orderbook/report-trade" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/orderbook/report-trade",
+        });
+        return;
+      }
+    }
+    const idemKey = getIdempotencyKey(req, "/orderbook/report-trade");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
     const body = TradeReportSchema.parse(req.body || {});
     const data = await ingestTrade(body.chainId, body.txHash);
-    res.json({ success: true, data });
+    const responseBody = { success: true, data };
+    res.json(responseBody);
+    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
     console.error(e);
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "trade report failed",
       detail: String(e?.message || e),
     });
@@ -1098,6 +1536,37 @@ if (process.env.NODE_ENV !== "test") {
 
     // 🚀 Phase 2: 初始化集群管理器 (需要 Redis)
     const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
+    const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
+    const shouldInitReconciler =
+      reconciliationEnabled && !!process.env.RPC_URL && !!process.env.MARKET_ADDRESS;
+    let reconcilerStarted = false;
+
+    const startReconciler = async () => {
+      if (!shouldInitReconciler) return;
+      if (reconcilerStarted) return;
+      try {
+        await initChainReconciler({
+          rpcUrl: process.env.RPC_URL!,
+          marketAddress: process.env.MARKET_ADDRESS!,
+          chainId: Number(process.env.CHAIN_ID || "80002"),
+          intervalMs: Number(process.env.RECONCILIATION_INTERVAL_MS || "300000"),
+          autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
+        });
+        reconcilerStarted = true;
+        logger.info("Chain reconciler initialized");
+      } catch (e: any) {
+        logger.warn("Chain reconciler initialization failed", {}, e);
+      }
+    };
+
+    const stopReconciler = async () => {
+      if (!reconcilerStarted) return;
+      try {
+        await closeChainReconciler();
+      } catch {}
+      reconcilerStarted = false;
+    };
+
     if (clusterEnabled) {
       try {
         const cluster = await initClusterManager({
@@ -1109,38 +1578,28 @@ if (process.env.NODE_ENV !== "test") {
         // 监听 Leader 事件
         cluster.on("became_leader", () => {
           logger.info("This node became the leader, starting matching engine");
-          // 可以在这里添加 Leader 专属逻辑
+          void startReconciler();
         });
 
         cluster.on("lost_leadership", () => {
           logger.warn("This node lost leadership");
-          // 可以在这里添加 Follower 逻辑
+          void stopReconciler();
         });
 
         logger.info("Cluster manager initialized", {
           nodeId: cluster.getNodeId(),
           isLeader: cluster.isLeader(),
         });
+
+        if (cluster.isLeader()) {
+          await startReconciler();
+        }
       } catch (e: any) {
         logger.warn("Cluster manager initialization failed, running in standalone mode", {}, e);
       }
     }
-
-    // 🚀 Phase 2: 初始化链上对账系统 (可选)
-    const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
-    if (reconciliationEnabled && process.env.RPC_URL && process.env.MARKET_ADDRESS) {
-      try {
-        await initChainReconciler({
-          rpcUrl: process.env.RPC_URL,
-          marketAddress: process.env.MARKET_ADDRESS,
-          chainId: Number(process.env.CHAIN_ID || "80002"),
-          intervalMs: Number(process.env.RECONCILIATION_INTERVAL_MS || "300000"),
-          autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
-        });
-        logger.info("Chain reconciler initialized");
-      } catch (e: any) {
-        logger.warn("Chain reconciler initialization failed", {}, e);
-      }
+    if (!clusterEnabled) {
+      await startReconciler();
     }
 
     // 🚀 Phase 1: 注册健康检查器
@@ -1163,9 +1622,37 @@ if (process.env.NODE_ENV !== "test") {
       createOrderbookReadinessChecker(matchingEngine)
     );
 
+    healthService.registerHealthCheck("cluster", async () => {
+      if (!clusterIsActive) return { status: "pass", message: "Cluster disabled" };
+      const cluster = getClusterManager();
+      const role = cluster.isLeader() ? "leader" : "follower";
+      const leaderId = cluster.isLeader() ? cluster.getNodeId() : cluster.getKnownLeaderId();
+      const nodes = cluster.getNodeCount();
+      return {
+        status: "pass",
+        message: `role=${role} leader=${leaderId || "unknown"} nodes=${nodes}`,
+      };
+    });
+
+    healthService.registerReadinessCheck(
+      "write_proxy",
+      createWriteProxyReadinessChecker({
+        isClusterActive: () => clusterIsActive,
+        isLeader: () => getClusterManager().isLeader(),
+        getProxyUrl: () =>
+          String(process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""),
+      })
+    );
+
     // 🚀 启动 WebSocket 服务器
     try {
-      wsServer.start();
+      const useClusteredWs = clusterEnabled;
+      if (useClusteredWs) {
+        wsServer = new ClusteredWebSocketServer(Number(process.env.WS_PORT || "3006"));
+      } else {
+        wsServer = new MarketWebSocketServer(Number(process.env.WS_PORT || "3006"));
+      }
+      await Promise.resolve(wsServer.start());
       logger.info("WebSocket server started", { port: process.env.WS_PORT || 3006 });
     } catch (e: any) {
       logger.error("WebSocket server failed to start", {}, e);
@@ -1177,6 +1664,15 @@ if (process.env.NODE_ENV !== "test") {
       logger.info("Order books recovered from database");
     } catch (e: any) {
       logger.error("Failed to recover order books", {}, e);
+    }
+
+    try {
+      const result = await matchingEngine.recoverFromEventLog();
+      if (result.replayed > 0 || result.skipped > 0) {
+        logger.info("Order books replayed from matching event log", result);
+      }
+    } catch (e: any) {
+      logger.warn("Failed to replay matching event log", {}, e);
     }
 
     // 启动自动交易摄入
@@ -1238,7 +1734,9 @@ async function gracefulShutdown(signal: string) {
 
     // 关闭 WebSocket
     try {
-      wsServer.stop();
+      if (wsServer) {
+        await Promise.resolve(wsServer.stop());
+      }
       logger.info("WebSocket server stopped");
     } catch (e: any) {
       logger.error("Failed to stop WebSocket server", {}, e);

@@ -152,8 +152,12 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   );
 
   const handleCreatePrediction = useCallback(() => {
-    router.push("/prediction/new");
-  }, [router]);
+    if (isAdmin) {
+      router.push("/admin/predictions/new");
+      return;
+    }
+    router.push("/proposals");
+  }, [router, isAdmin]);
 
   const handleCloseLoginModal = useCallback(() => {
     setShowLoginModal(false);

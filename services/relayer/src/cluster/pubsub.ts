@@ -152,6 +152,22 @@ export class RedisPubSub extends EventEmitter {
       return true;
     } catch (error: any) {
       logger.error("PubSub connection failed", {}, error);
+      this.isConnected = false;
+
+      const subscriber = this.subscriber;
+      const publisher = this.publisher;
+      this.subscriber = null;
+      this.publisher = null;
+
+      await Promise.all([
+        subscriber?.quit().catch(() => undefined),
+        publisher?.quit().catch(() => undefined),
+      ]);
+
+      this.subscriptions.clear();
+      pubsubSubscriptions.set(0);
+      pubsubConnectionStatus.set({ type: "publisher" }, 0);
+      pubsubConnectionStatus.set({ type: "subscriber" }, 0);
       return false;
     }
   }

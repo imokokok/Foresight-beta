@@ -1,7 +1,7 @@
 import React from "react";
-import { useRouter } from "next/navigation";
 import { CheckCircle, Wallet } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { useWallet } from "@/contexts/WalletContext";
 
 type TrendingLoginModalProps = {
   open: boolean;
@@ -10,12 +10,16 @@ type TrendingLoginModalProps = {
 };
 
 export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginModalProps) {
-  const router = useRouter();
+  const { connectWallet, siweLogin } = useWallet();
   const primaryButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
-  const handleLoginNow = () => {
-    onClose();
-    router.push("/login");
+  const handleLoginNow = async () => {
+    try {
+      await connectWallet();
+      await siweLogin();
+    } finally {
+      onClose();
+    }
   };
 
   if (!open) return null;

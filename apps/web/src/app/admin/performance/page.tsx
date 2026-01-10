@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Clock, Zap, BarChart3, RefreshCw } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import GradientPage from "@/components/ui/GradientPage";
+import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 
 interface PerformanceStats {
   [key: string]: {
@@ -47,14 +50,28 @@ export default function PerformanceDashboard() {
  */
 function PerformanceDashboardContent() {
   const tPerf = useTranslations("adminPerformance");
+  const router = useRouter();
+  const { account } = useWallet();
+  const profileCtx = useUserProfileOptional();
   const [stats, setStats] = useState<PerformanceStats>({});
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
+
+  useEffect(() => {
+    if (!account) return;
+    if (!profileCtx?.isAdmin) {
+      router.replace("/trending");
+    }
+  }, [account, profileCtx?.isAdmin, router]);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/analytics/vitals?days=${days}`);
+      if (response.status === 401 || response.status === 403) {
+        router.replace("/trending");
+        return;
+      }
       const data = await response.json();
       if (data.success) {
         setStats(data.stats || {});
@@ -64,7 +81,7 @@ function PerformanceDashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, router]);
 
   useEffect(() => {
     fetchStats();
@@ -113,6 +130,14 @@ function PerformanceDashboardContent() {
     },
   ];
 
+  const metricColorClasses = {
+    purple: { bg: "bg-purple-50", text: "text-purple-600" },
+    blue: { bg: "bg-blue-50", text: "text-blue-600" },
+    green: { bg: "bg-green-50", text: "text-green-600" },
+    orange: { bg: "bg-orange-50", text: "text-orange-600" },
+    pink: { bg: "bg-pink-50", text: "text-pink-600" },
+  } as const;
+
   return (
     <GradientPage className="min-h-screen relative overflow-hidden p-6">
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -159,6 +184,9 @@ function PerformanceDashboardContent() {
             {metrics.map((metric, index) => {
               const stat = stats[metric.name];
               const Icon = metric.icon;
+              const metricColor =
+                metricColorClasses[metric.color as keyof typeof metricColorClasses] ||
+                metricColorClasses.purple;
 
               if (!stat) return null;
 
@@ -176,8 +204,8 @@ function PerformanceDashboardContent() {
                 >
                   {/* 头部 */}
                   <div className="flex items-center justify-between mb-4">
-                    <div className={`p-3 rounded-xl bg-${metric.color}-50`}>
-                      <Icon className={`w-6 h-6 text-${metric.color}-600`} />
+                    <div className={`p-3 rounded-xl ${metricColor.bg}`}>
+                      <Icon className={`w-6 h-6 ${metricColor.text}`} />
                     </div>
                     <div
                       className={`px-3 py-1 rounded-full text-xs font-semibold ${

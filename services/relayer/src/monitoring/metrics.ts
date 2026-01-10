@@ -230,6 +230,89 @@ export const redisConnectionStatus = new Gauge({
 });
 
 // ============================================================
+// 集群/一致性/快照相关指标
+// ============================================================
+
+export const clusterFollowerRejectedTotal = new Counter({
+  name: "foresight_cluster_follower_rejected_total",
+  help: "Total requests rejected because node is not leader",
+  labelNames: ["path"] as const,
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxiedTotal = new Counter({
+  name: "foresight_cluster_follower_proxied_total",
+  help: "Total requests proxied to leader from follower",
+  labelNames: ["path", "status"] as const, // status: success/error
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxyLatency = new Histogram({
+  name: "foresight_cluster_follower_proxy_latency_ms",
+  help: "Follower proxy-to-leader latency in milliseconds",
+  labelNames: ["path", "status"] as const,
+  buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxyErrorsTotal = new Counter({
+  name: "foresight_cluster_follower_proxy_errors_total",
+  help: "Total follower proxy errors by type",
+  labelNames: ["path", "error_type"] as const,
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxyUpstreamResponsesTotal = new Counter({
+  name: "foresight_cluster_follower_proxy_upstream_responses_total",
+  help: "Total follower proxy upstream responses",
+  labelNames: ["path", "status_code", "status_class"] as const,
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxyCircuitOpenTotal = new Counter({
+  name: "foresight_cluster_follower_proxy_circuit_open_total",
+  help: "Total requests blocked by proxy circuit breaker",
+  labelNames: ["path"] as const,
+  registers: [metricsRegistry],
+});
+
+export const clusterFollowerProxyCircuitOpen = new Gauge({
+  name: "foresight_cluster_follower_proxy_circuit_open",
+  help: "Proxy circuit open state (1=open, 0=closed)",
+  labelNames: ["path"] as const,
+  registers: [metricsRegistry],
+});
+
+export const orderbookLockBusyTotal = new Counter({
+  name: "foresight_orderbook_lock_busy_total",
+  help: "Total orderbook operations rejected due to distributed lock busy",
+  labelNames: ["market_key", "outcome_index", "operation"] as const,
+  registers: [metricsRegistry],
+});
+
+export const orderbookSnapshotLoadTotal = new Counter({
+  name: "foresight_orderbook_snapshot_load_total",
+  help: "Total Redis orderbook snapshot load attempts",
+  labelNames: ["result"] as const, // hit/miss/error
+  registers: [metricsRegistry],
+});
+
+export const orderbookSnapshotLoadLatency = new Histogram({
+  name: "foresight_orderbook_snapshot_load_latency_ms",
+  help: "Redis orderbook snapshot load latency in milliseconds",
+  labelNames: ["result"] as const,
+  buckets: [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000],
+  registers: [metricsRegistry],
+});
+
+export const orderbookSnapshotQueueThrottledTotal = new Counter({
+  name: "foresight_orderbook_snapshot_queue_throttled_total",
+  help: "Total snapshot queue operations skipped due to throttling",
+  labelNames: ["market_key", "outcome_index"] as const,
+  registers: [metricsRegistry],
+});
+
+// ============================================================
 // 数据库相关指标
 // ============================================================
 
@@ -261,6 +344,13 @@ export const systemUptime = new Gauge({
 export const systemHealthy = new Gauge({
   name: "foresight_system_healthy",
   help: "System health status (1=healthy, 0=unhealthy)",
+  registers: [metricsRegistry],
+});
+
+export const readinessCheckReady = new Gauge({
+  name: "foresight_readiness_check_ready",
+  help: "Readiness checks (1=ready, 0=not ready)",
+  labelNames: ["check"] as const,
   registers: [metricsRegistry],
 });
 

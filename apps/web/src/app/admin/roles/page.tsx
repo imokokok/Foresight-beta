@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "@/lib/i18n";
 import GradientPage from "@/components/ui/GradientPage";
+import { useWallet } from "@/contexts/WalletContext";
+import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 
 interface RoleUser {
   wallet_address: string;
@@ -16,16 +19,30 @@ interface RoleUser {
 export default function RolesPage() {
   const t = useTranslations("adminRoles");
   const tCommon = useTranslations("common");
+  const router = useRouter();
+  const { account } = useWallet();
+  const profileCtx = useUserProfileOptional();
   const [users, setUsers] = useState<RoleUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingWallet, setSavingWallet] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!account) return;
+    if (!profileCtx?.isAdmin) {
+      router.replace("/trending");
+    }
+  }, [account, profileCtx?.isAdmin, router]);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/admin/roles");
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/trending");
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         setError(data?.message || t("loadFailed"));
@@ -40,7 +57,7 @@ export default function RolesPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [router, t]);
 
   useEffect(() => {
     void loadUsers();

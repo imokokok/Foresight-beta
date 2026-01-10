@@ -2,17 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Menu,
-  Home,
-  Search,
-  TrendingUp,
-  MessageSquare,
-  User,
-  Settings,
-  LogOut,
-} from "lucide-react";
+import { X, Menu, Home, Search, TrendingUp, MessageSquare, User, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
@@ -36,7 +26,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { account, disconnectWallet, formatAddress } = useWallet();
+  const { account, disconnectWallet, formatAddress, connectWallet } = useWallet();
   const tNav = useTranslations("nav");
   const tMobileNav = useTranslations("mobileNav");
   const firstItemRef = React.useRef<HTMLAnchorElement | null>(null);
@@ -83,7 +73,6 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
     { icon: Search, label: tMobileNav("items.search"), href: "/search" },
     { icon: MessageSquare, label: tMobileNav("items.forum"), href: "/forum" },
     { icon: User, label: tMobileNav("items.me"), href: "/profile" },
-    { icon: Settings, label: tMobileNav("items.settings"), href: "/settings" },
   ];
 
   return (
@@ -211,13 +200,17 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                     <span>{tMobileNav("wallet.disconnect")}</span>
                   </button>
                 ) : (
-                  <Link
-                    href="/login"
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await connectWallet();
+                      setIsOpen(false);
+                    }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all font-medium"
                   >
                     <User className="w-5 h-5" />
                     <span>{tMobileNav("wallet.connect")}</span>
-                  </Link>
+                  </button>
                 )}
                 <p className="text-xs text-gray-400 text-center mt-3">Version 1.0.0 Beta</p>
               </div>

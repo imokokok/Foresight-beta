@@ -93,6 +93,10 @@ export interface Trade {
   outcomeIndex: number;
   maker: string;
   taker: string;
+  makerOrderId?: string;
+  takerOrderId?: string;
+  makerSalt?: string;
+  takerSalt?: string;
   isBuyerMaker: boolean; // Maker 是否是买方
   price: bigint;
   amount: bigint;
@@ -107,7 +111,7 @@ export interface Trade {
 
 export type MarketEvent =
   | { type: "order_placed"; order: Order }
-  | { type: "order_canceled"; orderId: string; marketKey: string }
+  | { type: "order_canceled"; orderId: string; marketKey: string; outcomeIndex?: number }
   | { type: "order_updated"; order: Order }
   | { type: "trade"; trade: Trade }
   | { type: "depth_update"; depth: DepthSnapshot }

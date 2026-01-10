@@ -8,6 +8,8 @@ import {
   matchesTotal,
   matchingLatency,
   wsConnectionsActive,
+  clusterFollowerProxyLatency,
+  clusterFollowerProxyErrorsTotal,
   getMetrics,
   resetMetrics,
 } from "./metrics.js";
@@ -47,6 +49,12 @@ describe("Prometheus Metrics", () => {
       expect(metrics).toContain("_sum");
       expect(metrics).toContain("_count");
     });
+
+    it("should observe clusterFollowerProxyLatency histogram", async () => {
+      clusterFollowerProxyLatency.observe({ path: "/v2/orders", status: "success" }, 12);
+      const metrics = await getMetrics();
+      expect(metrics).toContain("foresight_cluster_follower_proxy_latency_ms");
+    });
   });
 
   describe("Gauge Metrics", () => {
@@ -71,20 +79,25 @@ describe("Prometheus Metrics", () => {
     it("should export all metrics in Prometheus format", async () => {
       ordersTotal.inc({ market_key: "test:1", side: "buy", status: "success" });
       matchingLatency.observe({ market_key: "test:1" }, 5);
+      clusterFollowerProxyErrorsTotal.inc({ path: "/v2/orders", error_type: "timeout" });
 
       const metrics = await getMetrics();
-      
+
       // Check format
       expect(metrics).toContain("# HELP");
       expect(metrics).toContain("# TYPE");
     });
 
+    it("should include readiness check gauge", async () => {
+      const metrics = await getMetrics();
+      expect(metrics).toContain("foresight_readiness_check_ready");
+    });
+
     it("should include default Node.js metrics", async () => {
       const metrics = await getMetrics();
-      
+
       // Default metrics should include process info
       expect(metrics).toContain("nodejs");
     });
   });
 });
-

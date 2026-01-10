@@ -6,7 +6,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { IncomingMessage } from "http";
 import { randomUUID } from "crypto";
-import { RedisPubSub, getPubSub, CHANNELS, PubSubMessage } from "./pubsub.js";
+import { RedisPubSub, CHANNELS, PubSubMessage } from "./pubsub.js";
 import { logger } from "../monitoring/logger.js";
 import { Gauge, Counter, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
@@ -102,7 +102,7 @@ export class ClusteredWebSocketServer {
     }
 
     // 连接 Pub/Sub
-    this.pubsub = getPubSub({}, this.nodeId);
+    this.pubsub = new RedisPubSub({}, this.nodeId);
     const connected = await this.pubsub.connect();
 
     if (!connected) {
@@ -455,6 +455,55 @@ export class ClusteredWebSocketServer {
     });
   }
 
+  private serializeOrder(order: any): any {
+    return {
+      id: String(order.id),
+      marketKey: String(order.marketKey),
+      maker: String(order.maker),
+      outcomeIndex: Number(order.outcomeIndex),
+      isBuy: Boolean(order.isBuy),
+      price: order.price?.toString?.() ?? String(order.price),
+      amount: order.amount?.toString?.() ?? String(order.amount),
+      remainingAmount: order.remainingAmount?.toString?.() ?? String(order.remainingAmount),
+      salt: String(order.salt),
+      expiry: Number(order.expiry),
+      signature: String(order.signature),
+      chainId: Number(order.chainId),
+      verifyingContract: String(order.verifyingContract),
+      sequence: order.sequence?.toString?.() ?? String(order.sequence),
+      status: String(order.status),
+      createdAt: Number(order.createdAt),
+      tif: order.tif,
+      postOnly: order.postOnly,
+    };
+  }
+
+  async broadcastOrderEvent(event: MarketEvent): Promise<void> {
+    if (event.type === "order_placed" || event.type === "order_updated") {
+      const channel = `orders:${event.order.marketKey}:${event.order.outcomeIndex}`;
+      await this.clusterBroadcast(channel, "order", {
+        type: "order",
+        event: event.type,
+        order: this.serializeOrder(event.order),
+      });
+      return;
+    }
+    if (event.type === "order_canceled") {
+      const outcomeIndex = typeof event.outcomeIndex === "number" ? event.outcomeIndex : null;
+      const channel =
+        outcomeIndex === null
+          ? `orders:${event.marketKey}`
+          : `orders:${event.marketKey}:${outcomeIndex}`;
+      await this.clusterBroadcast(channel, "order", {
+        type: "order",
+        event: event.type,
+        orderId: event.orderId,
+        marketKey: event.marketKey,
+        outcomeIndex,
+      });
+    }
+  }
+
   /**
    * 处理市场事件
    */
@@ -472,7 +521,7 @@ export class ClusteredWebSocketServer {
       case "order_placed":
       case "order_canceled":
       case "order_updated":
-        // 订单事件可以按需广播
+        await this.broadcastOrderEvent(event);
         break;
     }
   }
