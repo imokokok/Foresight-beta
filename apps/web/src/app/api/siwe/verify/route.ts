@@ -47,6 +47,10 @@ export async function POST(req: NextRequest) {
       if (domain !== expectedDomain) {
         return ApiResponses.badRequest("SIWE domain 不匹配");
       }
+      const expectedOrigin = url.origin;
+      if (origin !== expectedOrigin) {
+        return ApiResponses.badRequest("SIWE uri 不匹配");
+      }
     } catch {}
 
     if (msg.issuedAt) {

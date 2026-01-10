@@ -15,8 +15,6 @@ export type MessagesListProps = {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   listRef: React.RefObject<HTMLDivElement | null>;
   setReplyTo?: (msg: ChatMessageView | null) => void;
-  activeTopic?: string;
-  onTopicChange?: (topic: string) => void;
 };
 
 export const MessagesList = memo(function MessagesList({
@@ -27,10 +25,7 @@ export const MessagesList = memo(function MessagesList({
   setInput,
   listRef,
   setReplyTo: onReply, // 重命名以避免任何潜在的作用域冲突
-  activeTopic = "all",
-  onTopicChange,
 }: MessagesListProps) {
-  const topics = ["all", "market", "meta", "offtopic"];
   const { locale } = useLocale();
 
   return (
@@ -38,36 +33,6 @@ export const MessagesList = memo(function MessagesList({
       ref={listRef}
       className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4 bg-transparent custom-scrollbar"
     >
-      <div className="sticky top-0 z-10 -mx-4 mb-2 px-4 pt-2 pb-3 bg-[var(--card-bg)]/95 backdrop-blur-md border-b border-[var(--card-border)] flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
-          {tChat("topics.sectionTitle")}
-        </span>
-        {topics.map((topic) => {
-          const isActive = activeTopic === topic;
-          const labelKey =
-            topic === "all"
-              ? "topics.all"
-              : topic === "market"
-                ? "topics.market"
-                : topic === "meta"
-                  ? "topics.meta"
-                  : "topics.offtopic";
-          return (
-            <button
-              key={topic}
-              type="button"
-              onClick={() => onTopicChange && onTopicChange(topic)}
-              className={`px-2 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                isActive
-                  ? "bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300"
-                  : "bg-[var(--card-bg)] border-[var(--card-border)] text-slate-500 hover:border-brand/30 hover:text-brand-700 dark:hover:text-brand-300"
-              }`}
-            >
-              {tChat(labelKey)}
-            </button>
-          );
-        })}
-      </div>
       {mergedMessages.length === 0 && (
         <EmptyState
           icon={MessageSquare}
@@ -154,6 +119,28 @@ export const MessagesList = memo(function MessagesList({
                         : "bg-[var(--card-bg)] text-[var(--foreground)] border-[var(--card-border)] rounded-tl-none"
                     } ${isContinuation ? (mine ? "rounded-tr-2xl" : "rounded-tl-2xl") : ""}`}
                   >
+                    {(m.debate_stance || m.debate_kind) && (
+                      <div className="mb-1 flex flex-wrap gap-1">
+                        {m.debate_stance && (
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                              m.debate_stance === "pro"
+                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                                : m.debate_stance === "con"
+                                  ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
+                                  : "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20"
+                            }`}
+                          >
+                            {tChat(`debate.stance.${m.debate_stance}`)}
+                          </span>
+                        )}
+                        {m.debate_kind && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/15 text-slate-700 dark:text-slate-200">
+                            {tChat(`debate.kind.${m.debate_kind}`)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {m.reply_to_content && (
                       <div className="mb-1 pb-1 border-b border-black/5 dark:border-white/5 text-[10px] opacity-60 italic line-clamp-1">
                         {m.reply_to_user && (

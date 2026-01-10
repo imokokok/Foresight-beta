@@ -6,12 +6,18 @@
 import { getRedisClient, RedisClient } from "./client.js";
 import { redisLogger as logger } from "../monitoring/logger.js";
 import type { Order, DepthSnapshot, OrderBookStats } from "../matching/types.js";
+import {
+  orderbookSnapshotFlushLatency,
+  orderbookSnapshotFlushTotal,
+} from "../monitoring/metrics.js";
 
 // Key 前缀
 const ORDERBOOK_PREFIX = "orderbook:";
+const ORDERBOOK_PUBLIC_PREFIX = "orderbook_public:";
 const ORDER_PREFIX = "order:";
 const STATS_PREFIX = "stats:";
 const SNAPSHOT_TTL = 3600 * 24; // 24 小时过期
+const PUBLIC_SNAPSHOT_TTL = 60; // 60 秒过期
 
 export interface SerializedOrder {
   id: string;
@@ -42,10 +48,43 @@ export interface OrderbookSnapshotData {
   updatedAt: number;
 }
 
+export interface OrderbookPublicSnapshotData {
+  marketKey: string;
+  outcomeIndex: number;
+  bids: { price: string; qty: string; count: number }[];
+  asks: { price: string; qty: string; count: number }[];
+  bestBid: string | null;
+  bestAsk: string | null;
+  spread: string | null;
+  bidDepth: string;
+  askDepth: string;
+  lastTradePrice: string | null;
+  volume24h: string;
+  updatedAt: number;
+}
+
+type QueuedFullSnapshotData = {
+  marketKey: string;
+  outcomeIndex: number;
+  bidOrders: Order[];
+  askOrders: Order[];
+  stats?: OrderBookStats;
+  updatedAt: number;
+};
+
+type QueuedPublicSnapshotData = {
+  marketKey: string;
+  outcomeIndex: number;
+  depth: DepthSnapshot;
+  stats?: OrderBookStats;
+  updatedAt: number;
+};
+
 class OrderbookSnapshotService {
   private redis: RedisClient;
   private syncInterval: NodeJS.Timeout | null = null;
-  private pendingSnapshots: Map<string, OrderbookSnapshotData> = new Map();
+  private pendingSnapshots: Map<string, QueuedFullSnapshotData> = new Map();
+  private pendingPublicSnapshots: Map<string, QueuedPublicSnapshotData> = new Map();
   private syncInProgress = false;
 
   constructor() {
@@ -132,6 +171,14 @@ class OrderbookSnapshotService {
     return `${ORDERBOOK_PREFIX}${marketKey}:${outcomeIndex}`;
   }
 
+  private getOrderbookPublicKey(marketKey: string, outcomeIndex: number): string {
+    return `${ORDERBOOK_PUBLIC_PREFIX}${marketKey}:${outcomeIndex}`;
+  }
+
+  private getStatsKey(marketKey: string, outcomeIndex: number): string {
+    return `${STATS_PREFIX}${marketKey}:${outcomeIndex}`;
+  }
+
   /**
    * 获取订单 key
    */
@@ -192,41 +239,75 @@ class OrderbookSnapshotService {
   ): void {
     const key = `${marketKey}:${outcomeIndex}`;
 
-    const snapshot: OrderbookSnapshotData = {
+    const snapshot: QueuedFullSnapshotData = {
       marketKey,
       outcomeIndex,
-      bidOrders: bidOrders.map((o) => this.serializeOrder(o)),
-      askOrders: askOrders.map((o) => this.serializeOrder(o)),
-      lastTradePrice: stats?.lastTradePrice?.toString() || null,
-      volume24h: stats?.volume24h?.toString() || "0",
+      bidOrders,
+      askOrders,
+      stats,
       updatedAt: Date.now(),
     };
 
     this.pendingSnapshots.set(key, snapshot);
   }
 
+  queuePublicSnapshot(
+    marketKey: string,
+    outcomeIndex: number,
+    depth: DepthSnapshot,
+    stats?: OrderBookStats
+  ): void {
+    const key = `${marketKey}:${outcomeIndex}`;
+    const snapshot: QueuedPublicSnapshotData = {
+      marketKey,
+      outcomeIndex,
+      depth,
+      stats,
+      updatedAt: Date.now(),
+    };
+    this.pendingPublicSnapshots.set(key, snapshot);
+  }
+
   /**
    * 批量写入待处理的快照
    */
   private async flushPendingSnapshots(): Promise<void> {
-    if (this.syncInProgress || this.pendingSnapshots.size === 0) return;
+    if (
+      this.syncInProgress ||
+      (this.pendingSnapshots.size === 0 && this.pendingPublicSnapshots.size === 0)
+    ) {
+      return;
+    }
 
     this.syncInProgress = true;
     const snapshots = new Map(this.pendingSnapshots);
+    const publicSnapshots = new Map(this.pendingPublicSnapshots);
     this.pendingSnapshots.clear();
+    this.pendingPublicSnapshots.clear();
 
     try {
-      for (const [key, snapshot] of snapshots) {
-        await this.saveSnapshotToRedis(snapshot);
+      if (snapshots.size > 0) {
+        await this.saveSnapshotsToRedis(snapshots, "full");
+      }
+      if (publicSnapshots.size > 0) {
+        await this.savePublicSnapshotsToRedis(publicSnapshots, "public");
       }
 
-      logger.debug("Flushed orderbook snapshots", { count: snapshots.size });
+      logger.debug("Flushed orderbook snapshots", {
+        fullCount: snapshots.size,
+        publicCount: publicSnapshots.size,
+      });
     } catch (error: any) {
       logger.error("Failed to flush orderbook snapshots", {}, error);
       // 失败的快照放回队列
       for (const [key, snapshot] of snapshots) {
         if (!this.pendingSnapshots.has(key)) {
           this.pendingSnapshots.set(key, snapshot);
+        }
+      }
+      for (const [key, snapshot] of publicSnapshots) {
+        if (!this.pendingPublicSnapshots.has(key)) {
+          this.pendingPublicSnapshots.set(key, snapshot);
         }
       }
     } finally {
@@ -237,10 +318,148 @@ class OrderbookSnapshotService {
   /**
    * 保存快照到 Redis
    */
+  private buildFullSnapshot(snapshot: QueuedFullSnapshotData): OrderbookSnapshotData {
+    return {
+      marketKey: snapshot.marketKey,
+      outcomeIndex: snapshot.outcomeIndex,
+      bidOrders: snapshot.bidOrders.map((o) => this.serializeOrder(o)),
+      askOrders: snapshot.askOrders.map((o) => this.serializeOrder(o)),
+      lastTradePrice: snapshot.stats?.lastTradePrice?.toString() || null,
+      volume24h: snapshot.stats?.volume24h?.toString() || "0",
+      updatedAt: snapshot.updatedAt,
+    };
+  }
+
+  private buildPublicSnapshot(snapshot: QueuedPublicSnapshotData): OrderbookPublicSnapshotData {
+    const stats = snapshot.stats;
+    return {
+      marketKey: snapshot.marketKey,
+      outcomeIndex: snapshot.outcomeIndex,
+      bids: snapshot.depth.bids.map((l) => ({
+        price: l.price.toString(),
+        qty: l.totalQuantity.toString(),
+        count: l.orderCount,
+      })),
+      asks: snapshot.depth.asks.map((l) => ({
+        price: l.price.toString(),
+        qty: l.totalQuantity.toString(),
+        count: l.orderCount,
+      })),
+      bestBid: stats?.bestBid?.toString() || null,
+      bestAsk: stats?.bestAsk?.toString() || null,
+      spread: stats?.spread?.toString() || null,
+      bidDepth: stats?.bidDepth?.toString() || "0",
+      askDepth: stats?.askDepth?.toString() || "0",
+      lastTradePrice: stats?.lastTradePrice?.toString() || null,
+      volume24h: stats?.volume24h?.toString() || "0",
+      updatedAt: snapshot.updatedAt,
+    };
+  }
+
   private async saveSnapshotToRedis(snapshot: OrderbookSnapshotData): Promise<boolean> {
     const key = this.getOrderbookKey(snapshot.marketKey, snapshot.outcomeIndex);
     const data = JSON.stringify(snapshot);
     return this.redis.set(key, data, SNAPSHOT_TTL);
+  }
+
+  private async savePublicSnapshotToRedis(snapshot: OrderbookPublicSnapshotData): Promise<boolean> {
+    const key = this.getOrderbookPublicKey(snapshot.marketKey, snapshot.outcomeIndex);
+    const data = JSON.stringify(snapshot);
+    return this.redis.set(key, data, PUBLIC_SNAPSHOT_TTL);
+  }
+
+  private async saveSnapshotsToRedis(
+    snapshots: Map<string, QueuedFullSnapshotData>,
+    snapshotType: "full"
+  ): Promise<void> {
+    const startedAt = Date.now();
+    const raw = this.redis.getRawClient();
+    const ttlSeconds = SNAPSHOT_TTL;
+    try {
+      if (!raw) {
+        for (const [, snapshot] of snapshots) {
+          await this.saveSnapshotToRedis(this.buildFullSnapshot(snapshot));
+        }
+        orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "success" });
+        orderbookSnapshotFlushLatency.observe(
+          { snapshot_type: snapshotType, result: "success" },
+          Date.now() - startedAt
+        );
+        return;
+      }
+
+      const entries = Array.from(snapshots.values());
+      const chunkSize = 50;
+      for (let i = 0; i < entries.length; i += chunkSize) {
+        const chunk = entries.slice(i, i + chunkSize);
+        const multi = raw.multi();
+        for (const s of chunk) {
+          const key = this.redis.getPrefixedKey(this.getOrderbookKey(s.marketKey, s.outcomeIndex));
+          multi.setEx(key, ttlSeconds, JSON.stringify(this.buildFullSnapshot(s)));
+        }
+        await multi.exec();
+      }
+      orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "success" });
+      orderbookSnapshotFlushLatency.observe(
+        { snapshot_type: snapshotType, result: "success" },
+        Date.now() - startedAt
+      );
+    } catch {
+      orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "error" });
+      orderbookSnapshotFlushLatency.observe(
+        { snapshot_type: snapshotType, result: "error" },
+        Date.now() - startedAt
+      );
+      throw new Error("snapshot flush failed");
+    }
+  }
+
+  private async savePublicSnapshotsToRedis(
+    snapshots: Map<string, QueuedPublicSnapshotData>,
+    snapshotType: "public"
+  ): Promise<void> {
+    const startedAt = Date.now();
+    const raw = this.redis.getRawClient();
+    const ttlSeconds = PUBLIC_SNAPSHOT_TTL;
+    try {
+      if (!raw) {
+        for (const [, snapshot] of snapshots) {
+          await this.savePublicSnapshotToRedis(this.buildPublicSnapshot(snapshot));
+        }
+        orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "success" });
+        orderbookSnapshotFlushLatency.observe(
+          { snapshot_type: snapshotType, result: "success" },
+          Date.now() - startedAt
+        );
+        return;
+      }
+
+      const entries = Array.from(snapshots.values());
+      const chunkSize = 200;
+      for (let i = 0; i < entries.length; i += chunkSize) {
+        const chunk = entries.slice(i, i + chunkSize);
+        const multi = raw.multi();
+        for (const s of chunk) {
+          const key = this.redis.getPrefixedKey(
+            this.getOrderbookPublicKey(s.marketKey, s.outcomeIndex)
+          );
+          multi.setEx(key, ttlSeconds, JSON.stringify(this.buildPublicSnapshot(s)));
+        }
+        await multi.exec();
+      }
+      orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "success" });
+      orderbookSnapshotFlushLatency.observe(
+        { snapshot_type: snapshotType, result: "success" },
+        Date.now() - startedAt
+      );
+    } catch {
+      orderbookSnapshotFlushTotal.inc({ snapshot_type: snapshotType, result: "error" });
+      orderbookSnapshotFlushLatency.observe(
+        { snapshot_type: snapshotType, result: "error" },
+        Date.now() - startedAt
+      );
+      throw new Error("public snapshot flush failed");
+    }
   }
 
   /**
@@ -324,6 +543,66 @@ class OrderbookSnapshotService {
     }
   }
 
+  async loadPublicSnapshot(
+    marketKey: string,
+    outcomeIndex: number
+  ): Promise<OrderbookPublicSnapshotData | null> {
+    const key = this.getOrderbookPublicKey(marketKey, outcomeIndex);
+    const data = await this.redis.get(key);
+    if (!data) return null;
+    try {
+      const parsed = JSON.parse(data) as OrderbookPublicSnapshotData;
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        parsed.marketKey !== marketKey ||
+        parsed.outcomeIndex !== outcomeIndex ||
+        !Array.isArray(parsed.bids) ||
+        !Array.isArray(parsed.asks)
+      ) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  clearPendingSnapshots(marketKey: string, outcomeIndex: number): void {
+    const key = `${marketKey}:${outcomeIndex}`;
+    this.pendingSnapshots.delete(key);
+    this.pendingPublicSnapshots.delete(key);
+  }
+
+  async deleteOrderbookState(
+    marketKey: string,
+    outcomeIndex: number
+  ): Promise<{ full: boolean; public: boolean; stats: boolean }> {
+    this.clearPendingSnapshots(marketKey, outcomeIndex);
+    const fullKey = this.getOrderbookKey(marketKey, outcomeIndex);
+    const publicKey = this.getOrderbookPublicKey(marketKey, outcomeIndex);
+    const statsKey = this.getStatsKey(marketKey, outcomeIndex);
+    const [full, pub, stats] = await Promise.all([
+      this.redis.del(fullKey),
+      this.redis.del(publicKey),
+      this.redis.del(statsKey),
+    ]);
+    return { full, public: pub, stats };
+  }
+
+  async deleteMarketOrderbooks(
+    marketKey: string,
+    outcomeIndices: number[]
+  ): Promise<{ deleted: number }> {
+    const unique = Array.from(new Set(outcomeIndices)).filter((n) => Number.isInteger(n) && n >= 0);
+    let deleted = 0;
+    for (const outcomeIndex of unique) {
+      const result = await this.deleteOrderbookState(marketKey, outcomeIndex);
+      if (result.full || result.public || result.stats) deleted++;
+    }
+    return { deleted };
+  }
+
   /**
    * 列出所有订单簿 key
    */
@@ -392,9 +671,10 @@ class OrderbookSnapshotService {
   async shutdown(): Promise<void> {
     this.stopSync();
 
-    if (this.pendingSnapshots.size > 0) {
+    if (this.pendingSnapshots.size > 0 || this.pendingPublicSnapshots.size > 0) {
       logger.info("Flushing pending snapshots before shutdown", {
-        count: this.pendingSnapshots.size,
+        fullCount: this.pendingSnapshots.size,
+        publicCount: this.pendingPublicSnapshots.size,
       });
       await this.flushPendingSnapshots();
     }

@@ -157,6 +157,10 @@ class RedisClient {
     return `${this.config.keyPrefix}${key}`;
   }
 
+  getPrefixedKey(key: string): string {
+    return this.prefixKey(key);
+  }
+
   // ============================================================
   // 基础操作
   // ============================================================

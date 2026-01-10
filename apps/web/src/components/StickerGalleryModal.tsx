@@ -4,6 +4,7 @@ import { X, Lock, Search, Filter } from "lucide-react";
 import { OFFICIAL_STICKERS, StickerItem, resolveStickerImage } from "./StickerRevealModal";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { VirtualizedGrid } from "@/components/ui/VirtualizedGrid";
+import { createPortal } from "react-dom";
 
 interface StickerGalleryModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function StickerGalleryModal({
   stickers = [],
 }: StickerGalleryModalProps) {
   const tGallery = useTranslations("stickerGallery");
+  const [mounted, setMounted] = useState(false);
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "unlocked" | "locked">("all");
@@ -37,6 +39,10 @@ export default function StickerGalleryModal({
       setRarityFilter("all");
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getRarityColor = (r: string) => {
     switch (r) {
@@ -125,7 +131,9 @@ export default function StickerGalleryModal({
   const collected = collectedIds.length;
   const progress = total > 0 ? Math.round((collected / total) * 100) : 0;
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -133,14 +141,14 @@ export default function StickerGalleryModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
             onClick={onClose}
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl z-[60] p-6 lg:p-8 max-h-[85vh] flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl z-[9999] p-6 lg:p-8 max-h-[85vh] flex flex-col"
           >
             <div className="flex items-start justify-between gap-4 mb-4 lg:mb-6 shrink-0">
               <div className="flex-1 min-w-0">
@@ -453,6 +461,7 @@ export default function StickerGalleryModal({
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

@@ -463,10 +463,47 @@
     },
     "topics": {
       "sectionTitle": "Topics",
+      "chat": "Chat",
+      "debate": "Debate",
       "all": "All",
       "market": "Market",
       "meta": "Meta",
       "offtopic": "Off-topic"
+    },
+    "debate": {
+      "toggle": "Debate mode",
+      "stance": {
+        "pro": "For",
+        "con": "Against",
+        "uncertain": "Uncertain"
+      },
+      "kind": {
+        "claim": "Claim",
+        "evidence": "Evidence",
+        "rebuttal": "Rebuttal",
+        "question": "Question",
+        "summary": "Summary"
+      },
+      "filters": {
+        "sectionTitle": "Filter",
+        "stanceLabel": "Stance",
+        "kindLabel": "Type",
+        "count": "{count}",
+        "all": "All",
+        "debate": "Debate only",
+        "normal": "Normal only"
+      },
+      "actions": {
+        "rebuttal": "Rebut",
+        "question": "Ask"
+      },
+      "panel": {
+        "on": "On",
+        "off": "Off",
+        "offHint": "When on, your text/images will carry debate labels",
+        "hide": "Hide",
+        "close": "Close"
+      }
     },
     "header": {
       "title": "Chat room",

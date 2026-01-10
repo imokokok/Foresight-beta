@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { useTranslations } from "@/lib/i18n";
+import { createPortal } from "react-dom";
 
 export interface StickerItem {
   id: string;
@@ -186,8 +187,13 @@ export default function StickerRevealModal({
   mode = "interactive",
 }: StickerRevealModalProps) {
   const tStickerGallery = useTranslations("stickerGallery");
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<"box" | "open" | "revealed">("box");
   const [currentSticker, setCurrentSticker] = useState<StickerItem | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -259,7 +265,9 @@ export default function StickerRevealModal({
     return sticker.desc;
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -267,10 +275,10 @@ export default function StickerRevealModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60]"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9998]"
             onClick={step === "revealed" ? onClose : undefined}
           />
-          <div className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-none">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -326,7 +334,6 @@ export default function StickerRevealModal({
                   transition={{ type: "spring", damping: 12 }}
                   className="bg-white rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden text-center"
                 >
-                  {/* Background Rays */}
                   <div className="absolute inset-0 z-0 animate-[spin_10s_linear_infinite] opacity-10">
                     <div
                       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-transparent via-purple-500 to-transparent"
@@ -401,6 +408,7 @@ export default function StickerRevealModal({
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

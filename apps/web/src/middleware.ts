@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { checkRateLimit, getIP, RateLimits } from "./lib/rateLimit";
+import { createRefreshToken, createToken, verifyToken } from "./lib/jwt";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -64,8 +65,59 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    // 添加限流头部到响应
-    const response = NextResponse.next();
+    const sessionCookie = request.cookies.get("fs_session")?.value || "";
+    const refreshCookie = request.cookies.get("fs_refresh")?.value || "";
+
+    let refreshedSession: string | null = null;
+    let refreshedRefresh: string | null = null;
+
+    if (refreshCookie) {
+      const sessionPayload = sessionCookie ? await verifyToken(sessionCookie) : null;
+      if (!sessionPayload) {
+        const refreshPayload = await verifyToken(refreshCookie);
+        if (refreshPayload?.address) {
+          refreshedSession = await createToken(refreshPayload.address, refreshPayload.chainId);
+          refreshedRefresh = await createRefreshToken(
+            refreshPayload.address,
+            refreshPayload.chainId
+          );
+        }
+      }
+    }
+
+    const response =
+      refreshedSession && refreshedRefresh
+        ? (() => {
+            const requestHeaders = new Headers(request.headers);
+            const cookieHeader = requestHeaders.get("cookie") || "";
+            const parts = cookieHeader
+              .split(";")
+              .map((p) => p.trim())
+              .filter((p) => p.length > 0)
+              .filter((p) => !p.startsWith("fs_session=") && !p.startsWith("fs_refresh="));
+
+            parts.push(`fs_session=${refreshedSession}`, `fs_refresh=${refreshedRefresh}`);
+            requestHeaders.set("cookie", parts.join("; "));
+
+            const res = NextResponse.next({ request: { headers: requestHeaders } });
+            res.cookies.set("fs_session", refreshedSession, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              path: "/",
+              maxAge: 7 * 24 * 60 * 60,
+            });
+            res.cookies.set("fs_refresh", refreshedRefresh, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              path: "/",
+              maxAge: 30 * 24 * 60 * 60,
+            });
+            return res;
+          })()
+        : NextResponse.next();
+
     response.headers.set("X-RateLimit-Limit", rateLimitConfig.limit.toString());
     response.headers.set("X-RateLimit-Remaining", result.remaining.toString());
     response.headers.set("X-RateLimit-Reset", new Date(result.resetAt).toISOString());

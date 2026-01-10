@@ -651,10 +651,47 @@
     },
     "topics": {
       "sectionTitle": "주제 구분",
+      "chat": "채팅",
+      "debate": "토론",
       "all": "전체",
       "market": "이벤트 이야기",
       "meta": "규칙·메커니즘",
       "offtopic": "가벼운 잡담"
+    },
+    "debate": {
+      "toggle": "토론 모드",
+      "stance": {
+        "pro": "찬성",
+        "con": "반대",
+        "uncertain": "확실치 않음"
+      },
+      "kind": {
+        "claim": "주장",
+        "evidence": "근거",
+        "rebuttal": "반박",
+        "question": "질문",
+        "summary": "요약"
+      },
+      "filters": {
+        "sectionTitle": "필터",
+        "stanceLabel": "입장",
+        "kindLabel": "유형",
+        "count": "{count}개",
+        "all": "전체",
+        "debate": "토론만",
+        "normal": "일반만"
+      },
+      "actions": {
+        "rebuttal": "반박",
+        "question": "질문"
+      },
+      "panel": {
+        "on": "켜짐",
+        "off": "꺼짐",
+        "offHint": "켜면 텍스트/이미지에 토론 라벨이 붙어요",
+        "hide": "접기",
+        "close": "닫기"
+      }
     },
     "header": {
       "title": "채팅방",

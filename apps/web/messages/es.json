@@ -463,10 +463,47 @@
     },
     "topics": {
       "sectionTitle": "Temas",
+      "chat": "Chat",
+      "debate": "Debate",
       "all": "Todos",
       "market": "Mercado",
       "meta": "Meta",
       "offtopic": "Off-topic"
+    },
+    "debate": {
+      "toggle": "Modo debate",
+      "stance": {
+        "pro": "A favor",
+        "con": "En contra",
+        "uncertain": "No seguro"
+      },
+      "kind": {
+        "claim": "Afirmación",
+        "evidence": "Evidencia",
+        "rebuttal": "Refutación",
+        "question": "Pregunta",
+        "summary": "Resumen"
+      },
+      "filters": {
+        "sectionTitle": "Filtro",
+        "stanceLabel": "Postura",
+        "kindLabel": "Tipo",
+        "count": "{count}",
+        "all": "Todos",
+        "debate": "Solo debate",
+        "normal": "Solo normal"
+      },
+      "actions": {
+        "rebuttal": "Rebatir",
+        "question": "Preguntar"
+      },
+      "panel": {
+        "on": "Activado",
+        "off": "Desactivado",
+        "offHint": "Al activarlo, tu texto/imágenes llevarán etiquetas de debate",
+        "hide": "Ocultar",
+        "close": "Cerrar"
+      }
     },
     "header": {
       "title": "Sala de chat",

@@ -15,6 +15,8 @@ vi.mock("../supabase.js", () => ({
 let redisReady = false;
 const loadSnapshotMock = vi.fn();
 const queueSnapshotMock = vi.fn();
+const queuePublicSnapshotMock = vi.fn();
+const deleteOrderbookStateMock = vi.fn();
 const lRangeMock = vi.fn();
 
 vi.mock("../redis/client.js", () => ({
@@ -35,6 +37,8 @@ vi.mock("../redis/orderbookSnapshot.js", () => ({
   getOrderbookSnapshotService: () => ({
     loadSnapshot: loadSnapshotMock,
     queueSnapshot: queueSnapshotMock,
+    queuePublicSnapshot: queuePublicSnapshotMock,
+    deleteOrderbookState: deleteOrderbookStateMock,
     startSync: () => {},
     shutdown: async () => {},
   }),
@@ -47,6 +51,7 @@ describe("MatchingEngine", () => {
     redisReady = false;
     loadSnapshotMock.mockReset();
     queueSnapshotMock.mockReset();
+    queuePublicSnapshotMock.mockReset();
     lRangeMock.mockReset();
     engine = new MatchingEngine({
       makerFeeBps: 0,
@@ -140,15 +145,18 @@ describe("MatchingEngine", () => {
       book.addOrder(order);
 
       (engine as any).emitDepthUpdate(book);
+      expect(queuePublicSnapshotMock).toHaveBeenCalledTimes(1);
       expect(queueSnapshotMock).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(500);
       (engine as any).emitDepthUpdate(book);
+      expect(queuePublicSnapshotMock).toHaveBeenCalledTimes(1);
       expect(queueSnapshotMock).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(600);
       (engine as any).emitDepthUpdate(book);
-      expect(queueSnapshotMock).toHaveBeenCalledTimes(2);
+      expect(queuePublicSnapshotMock).toHaveBeenCalledTimes(2);
+      expect(queueSnapshotMock).toHaveBeenCalledTimes(1);
 
       vi.useRealTimers();
     });
@@ -934,6 +942,58 @@ describe("MatchingEngine", () => {
       expect(result.error).toContain("Market short exposure limit exceeded");
 
       await engineWithLimit.shutdown();
+    });
+  });
+
+  describe("Market close", () => {
+    it("should clear in-memory books and delete snapshots", async () => {
+      redisReady = true;
+      deleteOrderbookStateMock.mockResolvedValue({ full: true, public: true, stats: true });
+
+      const marketKey = "80002:close-market";
+      const outcomeIndex = 0;
+      const book = (engine as any).bookManager.getOrCreateBook(
+        marketKey,
+        outcomeIndex
+      ) as OrderBook;
+      const order: Order = {
+        id: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-1",
+        marketKey,
+        maker: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        outcomeIndex,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        salt: "1",
+        expiry: 0,
+        signature: "0x",
+        chainId: 80002,
+        verifyingContract: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        sequence: 1n,
+        status: "open",
+        createdAt: Date.now(),
+      };
+      book.addOrder(order);
+
+      const events: any[] = [];
+      engine.on("market_event", (e) => events.push(e));
+
+      const result = await engine.closeMarket(marketKey, { reason: "deadline passed" });
+      expect(result.marketKey).toBe(marketKey);
+      expect(result.outcomes).toEqual([0]);
+      expect(result.clearedBooks).toBe(1);
+      expect(result.canceledOrders).toBe(1);
+
+      const snapshot = engine.getOrderBookSnapshot(marketKey, outcomeIndex, 10);
+      expect(snapshot).toBeNull();
+
+      expect(deleteOrderbookStateMock).toHaveBeenCalledTimes(1);
+      expect(deleteOrderbookStateMock).toHaveBeenCalledWith(marketKey, outcomeIndex);
+
+      expect(events.some((e) => e.type === "order_canceled")).toBe(true);
+      expect(events.some((e) => e.type === "depth_update")).toBe(true);
+      expect(events.some((e) => e.type === "stats_update")).toBe(true);
     });
   });
 });

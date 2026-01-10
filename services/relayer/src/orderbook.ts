@@ -431,15 +431,68 @@ export async function ingestTradesByLogs(
     return { fromBlock, toBlock, ingestedCount: 0, ingested: [] as any[] };
   }
 
-  const block = await rpcProvider.getBlock(fromBlock);
-  if (!block) throw new Error("Block not found for trade logs");
-  const ts = (block as any).timestamp;
-  const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
-  const blockTsIso = new Date(tsNum * 1000).toISOString();
-
   const ingested: any[] = [];
   const jobs: Promise<void>[] = [];
   const limit = Math.max(1, maxConcurrent);
+
+  const blockTimestampCache = new Map<number, string>();
+
+  const fetchBlockTimestampIso = async (blockNumber: number): Promise<string | null> => {
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      attempt += 1;
+      try {
+        const block = await rpcProvider.getBlock(blockNumber);
+        if (!block) return null;
+        const ts = (block as any).timestamp;
+        const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
+        if (!Number.isFinite(tsNum) || tsNum <= 0) return null;
+        return new Date(tsNum * 1000).toISOString();
+      } catch (e: any) {
+        console.warn(
+          "[ingestTradesByLogs] getBlock error",
+          String(e?.message || e),
+          chainId,
+          blockNumber,
+          "attempt",
+          attempt
+        );
+      }
+      if (attempt < maxAttempts) {
+        const delay = Math.min(baseDelayMs * 2 ** (attempt - 1), 5000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    return null;
+  };
+
+  const blockNumbers: number[] = [];
+  const blockNumberSet = new Set<number>();
+  for (const l of logs as any[]) {
+    const bnRaw = (l as any)?.blockNumber;
+    const bn = typeof bnRaw === "number" ? bnRaw : typeof bnRaw === "bigint" ? Number(bnRaw) : NaN;
+    if (!Number.isFinite(bn) || bn <= 0) continue;
+    if (blockNumberSet.has(bn)) continue;
+    blockNumberSet.add(bn);
+    blockNumbers.push(bn);
+  }
+
+  const blockFetchLimit = Math.max(1, Math.min(10, limit));
+  const blockFetchJobs: Promise<void>[] = [];
+  for (const bn of blockNumbers) {
+    const job = (async () => {
+      const iso = await fetchBlockTimestampIso(bn);
+      if (iso) blockTimestampCache.set(bn, iso);
+    })();
+    blockFetchJobs.push(job);
+    if (blockFetchJobs.length >= blockFetchLimit) {
+      await Promise.all(blockFetchJobs);
+      blockFetchJobs.length = 0;
+    }
+  }
+  if (blockFetchJobs.length > 0) {
+    await Promise.all(blockFetchJobs);
+  }
 
   for (let i = 0; i < logs.length; i++) {
     const log = logs[i] as any;
@@ -470,6 +523,17 @@ export async function ingestTradesByLogs(
       const logIndex = Number.isFinite(logIndexRaw) ? Number(logIndexRaw) : i;
 
       const txHash = String(log.transactionHash || "");
+      const bnRaw = log.blockNumber;
+      const bn =
+        typeof bnRaw === "number" ? bnRaw : typeof bnRaw === "bigint" ? Number(bnRaw) : NaN;
+      if (!Number.isFinite(bn) || bn <= 0) return;
+
+      let blockTsIso = blockTimestampCache.get(bn) || null;
+      if (!blockTsIso) {
+        blockTsIso = await fetchBlockTimestampIso(bn);
+        if (!blockTsIso) return;
+        blockTimestampCache.set(bn, blockTsIso);
+      }
 
       let attempt = 0;
       let done = false;

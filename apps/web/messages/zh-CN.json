@@ -467,10 +467,47 @@
     },
     "topics": {
       "sectionTitle": "话题分区",
+      "chat": "聊天",
+      "debate": "辩论",
       "all": "全部",
       "market": "围绕事件本身",
       "meta": "规则与玩法",
       "offtopic": "轻松闲聊"
+    },
+    "debate": {
+      "toggle": "辩论模式",
+      "stance": {
+        "pro": "支持",
+        "con": "反对",
+        "uncertain": "不确定"
+      },
+      "kind": {
+        "claim": "论点",
+        "evidence": "证据",
+        "rebuttal": "反驳",
+        "question": "提问",
+        "summary": "总结"
+      },
+      "filters": {
+        "sectionTitle": "筛选",
+        "stanceLabel": "立场",
+        "kindLabel": "类型",
+        "count": "{count} 条",
+        "all": "全部",
+        "debate": "仅辩论",
+        "normal": "仅普通"
+      },
+      "actions": {
+        "rebuttal": "反驳",
+        "question": "提问"
+      },
+      "panel": {
+        "on": "已开启",
+        "off": "已关闭",
+        "offHint": "开启后，你发出的文字/图片都会带上辩论标签",
+        "hide": "收起",
+        "close": "关闭"
+      }
     },
     "header": {
       "title": "聊天室",

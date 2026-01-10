@@ -62,7 +62,12 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     return payload as unknown as JWTPayload;
   } catch (error) {
     const code = (error as any)?.code;
-    if (code !== "ERR_JWS_INVALID" && code !== "ERR_JWS_SIGNATURE_VERIFICATION_FAILED") {
+    if (
+      code !== "ERR_JWS_INVALID" &&
+      code !== "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" &&
+      code !== "ERR_JWT_EXPIRED" &&
+      code !== "ERR_JWT_CLAIM_VALIDATION_FAILED"
+    ) {
       console.error("JWT verification failed:", error);
     }
     return null;

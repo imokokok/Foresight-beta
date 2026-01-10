@@ -158,6 +158,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [walletState.account, walletState.chainId, rawProvider, refreshBalance]);
 
   const normalizedAccount = walletState.account ? normalizeAddress(walletState.account) : null;
+  const normalizedAuthAddress = authAddress ? normalizeAddress(authAddress) : null;
+
+  useEffect(() => {
+    checkAuth();
+  }, [walletState.account, walletState.chainId, checkAuth]);
+
+  useEffect(() => {
+    if (!walletState.account) return;
+    if (!isAuthenticated || !normalizedAuthAddress) return;
+    if (normalizedAccount && normalizedAccount !== normalizedAuthAddress) {
+      void (async () => {
+        try {
+          await fetch("/api/siwe/logout", { method: "POST" });
+        } catch {
+        } finally {
+          setIsAuthenticated(false);
+          setAuthAddress(null);
+        }
+      })();
+    }
+  }, [walletState.account, isAuthenticated, normalizedAccount, normalizedAuthAddress]);
+
+  const disconnectWalletWithLogout = useCallback(async () => {
+    try {
+      await fetch("/api/siwe/logout", { method: "POST" });
+    } catch {}
+    setIsAuthenticated(false);
+    setAuthAddress(null);
+    await disconnectWallet();
+  }, [disconnectWallet]);
 
   const requestWalletPermissions = async (): Promise<{ success: boolean; error?: string }> => {
     return requestWalletPermissionsImpl(rawProvider);
@@ -192,7 +222,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     balanceLoading,
     connectWallet,
     connectWalletWithResult,
-    disconnectWallet,
+    disconnectWallet: disconnectWalletWithLogout,
     formatAddress,
     detectWallets,
     identifyWalletType,

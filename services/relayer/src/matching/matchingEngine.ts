@@ -57,6 +57,7 @@ export class MatchingEngine extends EventEmitter {
   private sequenceCounter: bigint = 0n;
   private redisSnapshotLoadAttempts: Set<string> = new Set();
   private snapshotQueueLastAtMs: Map<string, number> = new Map();
+  private snapshotFullLastAtMs: Map<string, number> = new Map();
   private clientOrderIdCache: Map<string, { expiresAtMs: number; result: MatchResult }> = new Map();
 
   // 🚀 批量结算器 (Polymarket 模式)
@@ -101,6 +102,49 @@ export class MatchingEngine extends EventEmitter {
         throw new Error("Orderbook busy");
       }
       await this.loadSnapshotIfNeeded(marketKey, outcomeIndex);
+      return await fn();
+    } finally {
+      if (distributedLockToken) {
+        await redis.releaseLock(distributedLockKey, distributedLockToken);
+      }
+      release();
+      if (this.bookLocks.get(lockKey) === current) {
+        this.bookLocks.delete(lockKey);
+      }
+    }
+  }
+
+  private async withBookLockNoWarmup<T>(
+    marketKey: string,
+    outcomeIndex: number,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    const lockKey = `${marketKey}:${outcomeIndex}`;
+    const previous = this.bookLocks.get(lockKey) || Promise.resolve();
+
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    this.bookLocks.set(lockKey, current);
+    await previous;
+
+    const redis = getRedisClient();
+    const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
+    const distributedLockToken = redis.isReady()
+      ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
+      : null;
+
+    try {
+      if (redis.isReady() && !distributedLockToken) {
+        orderbookLockBusyTotal.inc({
+          market_key: marketKey,
+          outcome_index: String(outcomeIndex),
+          operation: "book_lock",
+        });
+        throw new Error("Orderbook busy");
+      }
       return await fn();
     } finally {
       if (distributedLockToken) {
@@ -1419,8 +1463,13 @@ export class MatchingEngine extends EventEmitter {
    * 广播深度更新
    */
   private emitDepthUpdate(book: OrderBook): void {
-    const depth = book.getDepthSnapshot(20);
-    this.emitEvent({ type: "depth_update", depth });
+    const depth50 = book.getDepthSnapshot(50);
+    const depth20 = {
+      ...depth50,
+      bids: depth50.bids.slice(0, 20),
+      asks: depth50.asks.slice(0, 20),
+    };
+    this.emitEvent({ type: "depth_update", depth: depth20 });
 
     const redis = getRedisClient();
     if (!redis.isReady()) return;
@@ -1438,14 +1487,19 @@ export class MatchingEngine extends EventEmitter {
     this.snapshotQueueLastAtMs.set(queueKey, now);
 
     const snapshotService = getOrderbookSnapshotService();
-    const { bidOrders, askOrders } = book.getAllOrders();
-    snapshotService.queueSnapshot(
-      book.marketKey,
-      book.outcomeIndex,
-      bidOrders,
-      askOrders,
-      book.getStats()
+    const stats = book.getStats();
+    snapshotService.queuePublicSnapshot(book.marketKey, book.outcomeIndex, depth50, stats);
+
+    const fullIntervalMs = Math.max(
+      1000,
+      Number(process.env.RELAYER_ORDERBOOK_FULL_SNAPSHOT_INTERVAL_MS || "30000")
     );
+    const lastFullAt = this.snapshotFullLastAtMs.get(queueKey) || 0;
+    if (now - lastFullAt < fullIntervalMs) return;
+    this.snapshotFullLastAtMs.set(queueKey, now);
+
+    const { bidOrders, askOrders } = book.getAllOrders();
+    snapshotService.queueSnapshot(book.marketKey, book.outcomeIndex, bidOrders, askOrders, stats);
   }
 
   /**
@@ -1493,6 +1547,119 @@ export class MatchingEngine extends EventEmitter {
     const book = this.bookManager.getBook(marketKey, outcomeIndex);
     if (!book) return null;
     return book.getStats();
+  }
+
+  async closeMarket(
+    marketKey: string,
+    options?: { reason?: string }
+  ): Promise<{
+    marketKey: string;
+    outcomes: number[];
+    canceledOrders: number;
+    clearedBooks: number;
+    reason: string | null;
+  }> {
+    const normalizedMarketKey = String(marketKey || "").trim();
+    if (!normalizedMarketKey) {
+      throw new Error("Invalid marketKey");
+    }
+
+    const outcomeSet = new Set<number>();
+    for (const book of this.bookManager.getAllBooks()) {
+      if (book.marketKey === normalizedMarketKey) {
+        outcomeSet.add(book.outcomeIndex);
+      }
+    }
+
+    const orderIdsByOutcome = new Map<number, string[]>();
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from("orders")
+        .select("maker_address,maker_salt,outcome_index,status")
+        .eq("market_key", normalizedMarketKey)
+        .in("status", ["open", "partially_filled", "filled_partial"])
+        .limit(10000);
+
+      if (!error && data) {
+        for (const row of data as any[]) {
+          const outcomeIndex = Number(row.outcome_index);
+          const maker = String(row.maker_address || "").toLowerCase();
+          const salt = String(row.maker_salt || "");
+          if (!Number.isInteger(outcomeIndex) || outcomeIndex < 0) continue;
+          if (!maker || !salt) continue;
+          outcomeSet.add(outcomeIndex);
+          const id = `${maker}-${salt}`;
+          const arr = orderIdsByOutcome.get(outcomeIndex);
+          if (arr) arr.push(id);
+          else orderIdsByOutcome.set(outcomeIndex, [id]);
+        }
+      }
+
+      await supabaseAdmin
+        .from("orders")
+        .update({ status: "canceled", remaining: "0" })
+        .eq("market_key", normalizedMarketKey)
+        .in("status", ["open", "partially_filled", "filled_partial"]);
+    }
+
+    const outcomes = Array.from(outcomeSet).sort((a, b) => a - b);
+    const snapshotService = getOrderbookSnapshotService();
+    const emitted = new Set<string>();
+    let clearedBooks = 0;
+    let canceledOrders = 0;
+
+    for (const outcomeIndex of outcomes) {
+      await this.withBookLockNoWarmup(normalizedMarketKey, outcomeIndex, async () => {
+        const book = this.bookManager.getBook(normalizedMarketKey, outcomeIndex);
+
+        const ids = new Set<string>();
+        const fromDb = orderIdsByOutcome.get(outcomeIndex) || [];
+        for (const id of fromDb) ids.add(id);
+
+        if (book) {
+          const { bidOrders, askOrders } = book.getAllOrders();
+          for (const o of [...bidOrders, ...askOrders]) {
+            if (o) ids.add(o.id);
+          }
+        }
+
+        for (const id of ids) {
+          if (emitted.has(id)) continue;
+          emitted.add(id);
+          canceledOrders++;
+          this.emitEvent({
+            type: "order_canceled",
+            orderId: id,
+            marketKey: normalizedMarketKey,
+            outcomeIndex,
+          });
+        }
+
+        if (book) {
+          book.clear();
+          this.emitEvent({ type: "depth_update", depth: book.getDepthSnapshot(20) });
+          this.emitEvent({ type: "stats_update", stats: book.getStats() });
+          this.bookManager.removeBook(normalizedMarketKey, outcomeIndex);
+          clearedBooks++;
+        }
+
+        this.snapshotQueueLastAtMs.delete(`${normalizedMarketKey}:${outcomeIndex}`);
+        this.snapshotFullLastAtMs.delete(`${normalizedMarketKey}:${outcomeIndex}`);
+        this.redisSnapshotLoadAttempts.delete(`${normalizedMarketKey}:${outcomeIndex}`);
+
+        try {
+          await snapshotService.deleteOrderbookState(normalizedMarketKey, outcomeIndex);
+        } catch {}
+      });
+    }
+
+    return {
+      marketKey: normalizedMarketKey,
+      outcomes,
+      canceledOrders,
+      clearedBooks,
+      reason: typeof options?.reason === "string" ? options.reason : null,
+    };
   }
 
   /**

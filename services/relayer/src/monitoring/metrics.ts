@@ -204,6 +204,27 @@ export const apiRateLimitHits = new Counter({
   registers: [metricsRegistry],
 });
 
+export const apiAuthFailuresTotal = new Counter({
+  name: "foresight_api_auth_failures_total",
+  help: "Total API authentication failures",
+  labelNames: ["path", "reason"] as const,
+  registers: [metricsRegistry],
+});
+
+export const adminActionsTotal = new Counter({
+  name: "foresight_admin_actions_total",
+  help: "Total admin actions",
+  labelNames: ["action", "result"] as const,
+  registers: [metricsRegistry],
+});
+
+export const apiKeyRequestsTotal = new Counter({
+  name: "foresight_api_key_requests_total",
+  help: "Total requests gated by API keys",
+  labelNames: ["action", "path", "result", "key_id"] as const,
+  registers: [metricsRegistry],
+});
+
 // ============================================================
 // Redis 相关指标
 // ============================================================
@@ -309,6 +330,21 @@ export const orderbookSnapshotQueueThrottledTotal = new Counter({
   name: "foresight_orderbook_snapshot_queue_throttled_total",
   help: "Total snapshot queue operations skipped due to throttling",
   labelNames: ["market_key", "outcome_index"] as const,
+  registers: [metricsRegistry],
+});
+
+export const orderbookSnapshotFlushTotal = new Counter({
+  name: "foresight_orderbook_snapshot_flush_total",
+  help: "Total Redis snapshot flush attempts",
+  labelNames: ["snapshot_type", "result"] as const, // full/public success/error
+  registers: [metricsRegistry],
+});
+
+export const orderbookSnapshotFlushLatency = new Histogram({
+  name: "foresight_orderbook_snapshot_flush_latency_ms",
+  help: "Redis snapshot flush latency in milliseconds",
+  labelNames: ["snapshot_type", "result"] as const,
+  buckets: [0.1, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
   registers: [metricsRegistry],
 });
 

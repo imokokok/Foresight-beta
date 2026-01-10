@@ -8,12 +8,87 @@ import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
 import { useNameMap } from "./chatPanel/hooks/useNameMap";
-import { catCls, getAccentClass } from "./chatPanel/utils/colors";
+import { getAccentClass } from "./chatPanel/utils/colors";
 import { mergeMessages } from "./chatPanel/utils/mergeMessages";
 import { ChatHeader } from "./chatPanel/ui/ChatHeader";
-import { AnnouncementBar } from "./chatPanel/ui/AnnouncementBar";
 import { MessagesList } from "./chatPanel/ui/MessagesList";
 import { ChatInputArea } from "./chatPanel/ui/ChatInputArea";
+
+function buildDebatePrefix(
+  stance: NonNullable<ChatMessageView["debate_stance"]>,
+  kind: NonNullable<ChatMessageView["debate_kind"]>
+) {
+  return `[debate:stance=${stance};kind=${kind}]`;
+}
+
+function parseDebatePrefs(raw: string | null) {
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw) as Partial<{
+      debateMode: boolean;
+      debateStance: ChatMessageView["debate_stance"];
+      debateKind: ChatMessageView["debate_kind"];
+      debateFilter: "all" | "debate" | "normal";
+      partition: "chat" | "debate";
+      stanceFilter: "all" | "pro" | "con" | "uncertain";
+      kindFilter: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
+    }>;
+    if (typeof obj !== "object" || obj === null) return null;
+    const next: {
+      debateMode?: boolean;
+      debateStance?: NonNullable<ChatMessageView["debate_stance"]>;
+      debateKind?: NonNullable<ChatMessageView["debate_kind"]>;
+      partition?: "chat" | "debate";
+      stanceFilter?: "all" | "pro" | "con" | "uncertain";
+      kindFilter?: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
+    } = {};
+    if (typeof obj.debateMode === "boolean") next.debateMode = obj.debateMode;
+    if (
+      obj.debateStance === "pro" ||
+      obj.debateStance === "con" ||
+      obj.debateStance === "uncertain"
+    ) {
+      next.debateStance = obj.debateStance;
+    }
+    if (
+      obj.debateKind === "claim" ||
+      obj.debateKind === "evidence" ||
+      obj.debateKind === "rebuttal" ||
+      obj.debateKind === "question" ||
+      obj.debateKind === "summary"
+    ) {
+      next.debateKind = obj.debateKind;
+    }
+    if (obj.partition === "chat" || obj.partition === "debate") {
+      next.partition = obj.partition;
+    } else if (obj.debateFilter === "debate") {
+      next.partition = "debate";
+    } else if (obj.debateFilter === "normal" || obj.debateFilter === "all") {
+      next.partition = "chat";
+    }
+    if (
+      obj.stanceFilter === "all" ||
+      obj.stanceFilter === "pro" ||
+      obj.stanceFilter === "con" ||
+      obj.stanceFilter === "uncertain"
+    ) {
+      next.stanceFilter = obj.stanceFilter;
+    }
+    if (
+      obj.kindFilter === "all" ||
+      obj.kindFilter === "claim" ||
+      obj.kindFilter === "evidence" ||
+      obj.kindFilter === "rebuttal" ||
+      obj.kindFilter === "question" ||
+      obj.kindFilter === "summary"
+    ) {
+      next.kindFilter = obj.kindFilter;
+    }
+    return next;
+  } catch {
+    return null;
+  }
+}
 
 export default function ChatPanel({
   eventId,
@@ -33,7 +108,7 @@ export default function ChatPanel({
   const tChat = useTranslations("chat");
 
   const { messages } = useDiscussionMessages(eventId);
-  const { forumThreads, forumMessages } = useForumThreads(eventId);
+  const { forumMessages } = useForumThreads(eventId);
   const { nameMap } = useNameMap({ messages, forumMessages, account });
 
   const [input, setInput] = useState("");
@@ -42,7 +117,16 @@ export default function ChatPanel({
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
-  const [activeTopic, setActiveTopic] = useState<string>("all");
+  const [partition, setPartition] = useState<"chat" | "debate">("chat");
+  const [stanceFilter, setStanceFilter] = useState<"all" | "pro" | "con" | "uncertain">("all");
+  const [kindFilter, setKindFilter] = useState<
+    "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary"
+  >("all");
+  const [debateMode, setDebateMode] = useState(false);
+  const [debateStance, setDebateStance] =
+    useState<NonNullable<ChatMessageView["debate_stance"]>>("pro");
+  const [debateKind, setDebateKind] =
+    useState<NonNullable<ChatMessageView["debate_kind"]>>("claim");
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
@@ -58,6 +142,46 @@ export default function ChatPanel({
     }
   }, [messages.length]);
 
+  useEffect(() => {
+    const key = `chat:debatePrefs:${eventId}`;
+    const prefs = parseDebatePrefs(
+      typeof window !== "undefined" ? window.localStorage.getItem(key) : null
+    );
+    if (!prefs) return;
+    if (prefs.debateMode !== undefined) setDebateMode(prefs.debateMode);
+    if (prefs.debateStance) setDebateStance(prefs.debateStance);
+    if (prefs.debateKind) setDebateKind(prefs.debateKind);
+    if (prefs.partition) setPartition(prefs.partition);
+    if (prefs.stanceFilter) setStanceFilter(prefs.stanceFilter);
+    if (prefs.kindFilter) setKindFilter(prefs.kindFilter);
+  }, [eventId]);
+
+  useEffect(() => {
+    const key = `chat:debatePrefs:${eventId}`;
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        key,
+        JSON.stringify({
+          debateMode,
+          debateStance,
+          debateKind,
+          partition,
+          stanceFilter,
+          kindFilter,
+        })
+      );
+    } catch {}
+  }, [eventId, debateMode, debateStance, debateKind, partition, stanceFilter, kindFilter]);
+
+  useEffect(() => {
+    if (partition === "debate") {
+      setDebateMode(true);
+    } else {
+      setDebateMode(false);
+    }
+  }, [partition]);
+
   const mergedMessages = useMemo(
     () => mergeMessages(messages, forumMessages),
     [messages, forumMessages]
@@ -65,10 +189,18 @@ export default function ChatPanel({
 
   const filteredMessages = useMemo(
     () =>
-      activeTopic === "all"
-        ? mergedMessages
-        : mergedMessages.filter((m) => m.topic === activeTopic),
-    [mergedMessages, activeTopic]
+      mergedMessages
+        .filter((m) => {
+          const isDebate = !!(m.debate_kind || m.debate_stance);
+          return partition === "debate" ? isDebate : !isDebate;
+        })
+        .filter((m) => {
+          if (partition !== "debate") return true;
+          if (stanceFilter !== "all" && m.debate_stance !== stanceFilter) return false;
+          if (kindFilter !== "all" && m.debate_kind !== kindFilter) return false;
+          return true;
+        }),
+    [mergedMessages, partition, stanceFilter, kindFilter]
   );
 
   const roomLabel = useMemo(() => {
@@ -83,6 +215,10 @@ export default function ChatPanel({
       setError(tChat("errors.walletRequired"));
       return;
     }
+    const effectiveDebateMode = partition === "debate" || debateMode;
+    const contentToSend = effectiveDebateMode
+      ? `${buildDebatePrefix(debateStance, debateKind)} ${input}`
+      : input;
     setSending(true);
     setError(null);
     try {
@@ -91,13 +227,13 @@ export default function ChatPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           proposalId: eventId,
-          content: input,
+          content: contentToSend,
           userId: account,
           image_url: imageUrl,
           replyToId: replyTo?.id,
           replyToUser: replyTo?.user_id,
           replyToContent: replyTo?.content.slice(0, 100), // 存储前100个字符作为摘要
-          topic: activeTopic === "all" ? null : activeTopic,
+          topic: null,
         }),
       });
       if (!res.ok) {
@@ -105,6 +241,7 @@ export default function ChatPanel({
       }
       setInput("");
       setReplyTo(null);
+      setPartition(effectiveDebateMode ? "debate" : "chat");
     } catch (e: any) {
       setError(tChat("errors.sendFailed"));
     } finally {
@@ -133,12 +270,33 @@ export default function ChatPanel({
         />
       )}
 
-      <AnnouncementBar
-        roomCategory={roomCategory}
-        forumThreads={forumThreads}
-        tChat={tChat}
-        badgeClass={catCls(roomCategory)}
-      />
+      <div className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]/60 backdrop-blur-md flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+          {tChat("topics.sectionTitle")}
+        </span>
+        {(
+          [
+            { value: "chat", labelKey: "topics.chat" },
+            { value: "debate", labelKey: "topics.debate" },
+          ] as const
+        ).map((t) => {
+          const isActive = partition === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setPartition(t.value)}
+              className={`px-2 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                isActive
+                  ? "bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300"
+                  : "bg-[var(--card-bg)] border-[var(--card-border)] text-slate-500 hover:border-brand/30 hover:text-brand-700 dark:hover:text-brand-300"
+              }`}
+            >
+              {tChat(t.labelKey)}
+            </button>
+          );
+        })}
+      </div>
 
       <MessagesList
         mergedMessages={filteredMessages}
@@ -148,8 +306,6 @@ export default function ChatPanel({
         setInput={setInput}
         listRef={listRef}
         setReplyTo={setReplyTo} // 确保正确传递状态设置函数
-        activeTopic={activeTopic}
-        onTopicChange={setActiveTopic}
       />
 
       <ChatInputArea
@@ -170,6 +326,13 @@ export default function ChatPanel({
         setReplyTo={setReplyTo}
         displayName={displayName}
         error={error}
+        debateMode={debateMode}
+        setDebateMode={setDebateMode}
+        debateStance={debateStance}
+        setDebateStance={setDebateStance}
+        debateKind={debateKind}
+        setDebateKind={setDebateKind}
+        forceDebateMode={partition === "debate"}
       />
     </div>
   );

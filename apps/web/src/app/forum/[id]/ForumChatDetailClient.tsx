@@ -8,7 +8,7 @@ import { ProposalChatShell } from "@/app/proposals/[id]/components/chat/Proposal
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations, formatTranslation, t, useLocale } from "@/lib/i18n";
+import { useTranslations, t, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 
 type ForumChatDetailClientProps = {
@@ -46,7 +46,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
 
   return (
     <ProposalChatShell>
-      <div className="w-full flex flex-col lg:flex-row gap-4 lg:gap-0 px-4 sm:px-6 lg:px-10 py-4">
+      <div className="w-full flex-1 min-h-0 flex flex-col px-4 sm:px-6 lg:px-10 py-4">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
             animate={{ opacity: 1, y: 0 }}
             className="flex-1 flex flex-col min-h-0"
           >
-            <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col lg:flex-row h-full overflow-hidden">
+            <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col h-full overflow-hidden">
               <section className="flex-1 flex flex-col">
                 <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 min-w-0">
@@ -108,6 +108,17 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
                       )}
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/prediction/${id}`)}
+                      className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all inline-flex items-center justify-center gap-2"
+                    >
+                      {tForum("viewMarket")}
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 flex flex-col min-h-[280px]">
@@ -120,47 +131,6 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
                   />
                 </div>
               </section>
-
-              <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 p-4 sm:p-6 flex flex-col gap-4 max-h-[520px] lg:self-start bg-white/90">
-                <div>
-                  <h2 className="text-base font-black text-slate-900 leading-tight mb-2">
-                    {roomTitle}
-                  </h2>
-                  <p className="text-xs text-slate-500 line-clamp-3">
-                    {prediction?.description || tForum("chatSidebarDescription")}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                      <div className="text-lg font-black text-slate-900">{followers}</div>
-                      <div className="text-[10px] text-slate-500 font-medium uppercase">
-                        {tForum("followersLabelShort")}
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-center">
-                      <div className="text-lg font-black text-slate-900">#{id}</div>
-                      <div className="text-[10px] text-slate-500 font-medium uppercase">
-                        {tForum("roomIdLabel")}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/prediction/${id}`)}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all inline-flex items-center justify-center gap-2"
-                  >
-                    {tForum("viewMarket")}
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="mt-auto text-[10px] text-slate-400 text-center pt-1">
-                  {formatTranslation(tForum("roomIdFooter"), { id })}
-                </div>
-              </aside>
             </div>
           </motion.div>
         </div>

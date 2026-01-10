@@ -2,7 +2,16 @@
 
 import React, { memo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
-import { Loader2, Smile, X, MessageSquare, Image as ImageIcon, Sticker, Lock } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  MessageSquare,
+  Smile,
+  Sparkles,
+  Sticker,
+  X,
+  Image as ImageIcon,
+} from "lucide-react";
 import type { ChatMessageView } from "../types";
 import { OFFICIAL_STICKERS, isImageUrl } from "@/components/StickerRevealModal";
 
@@ -28,6 +37,15 @@ export type ChatInputAreaProps = {
   setReplyTo?: (msg: ChatMessageView | null) => void;
   displayName?: (addr: string) => string;
   error: string | null;
+  debateMode: boolean;
+  setDebateMode: React.Dispatch<React.SetStateAction<boolean>>;
+  debateStance: NonNullable<ChatMessageView["debate_stance"]>;
+  setDebateStance: React.Dispatch<
+    React.SetStateAction<NonNullable<ChatMessageView["debate_stance"]>>
+  >;
+  debateKind: NonNullable<ChatMessageView["debate_kind"]>;
+  setDebateKind: React.Dispatch<React.SetStateAction<NonNullable<ChatMessageView["debate_kind"]>>>;
+  forceDebateMode?: boolean;
 };
 
 export const ChatInputArea = memo(function ChatInputArea({
@@ -48,11 +66,37 @@ export const ChatInputArea = memo(function ChatInputArea({
   setReplyTo,
   displayName,
   error,
+  debateMode,
+  setDebateMode,
+  debateStance,
+  setDebateStance,
+  debateKind,
+  setDebateKind,
+  forceDebateMode = false,
 }: ChatInputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showDebatePanel, setShowDebatePanel] = useState(false);
+
+  const setDebateFromReply = (kind: NonNullable<ChatMessageView["debate_kind"]>) => {
+    setDebateMode(true);
+    setDebateKind(kind);
+    const nextStance =
+      replyTo?.debate_stance === "pro" ? "con" : replyTo?.debate_stance === "con" ? "pro" : null;
+    if (nextStance) setDebateStance(nextStance);
+    try {
+      textareaRef.current?.focus();
+    } catch {}
+  };
+
+  const closePanels = () => {
+    setShowDebatePanel(false);
+    setShowEmojis(false);
+    setShowStickers(false);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,12 +181,28 @@ export const ChatInputArea = memo(function ChatInputArea({
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setReplyTo?.(null)}
-                  className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-slate-400"
-                >
-                  <X size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setDebateFromReply("rebuttal")}
+                    className="px-2 py-1 rounded-full border border-[var(--card-border)] text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10 transition-colors"
+                  >
+                    {tChat("debate.actions.rebuttal")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDebateFromReply("question")}
+                    className="px-2 py-1 rounded-full border border-[var(--card-border)] text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10 transition-colors"
+                  >
+                    {tChat("debate.actions.question")}
+                  </button>
+                  <button
+                    onClick={() => setReplyTo?.(null)}
+                    className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-slate-400"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -175,18 +235,41 @@ export const ChatInputArea = memo(function ChatInputArea({
                   onClick={() => {
                     setShowStickers(!showStickers);
                     setShowEmojis(false);
+                    setShowDebatePanel(false);
                   }}
                   title={tChat("input.stickers")}
                 >
                   <Sticker className="w-4 h-4" />
                 </button>
+                <button
+                  type="button"
+                  disabled={!account}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-brand transition-colors disabled:opacity-50 ${
+                    debateMode ? "text-brand bg-brand/5" : ""
+                  }`}
+                  onClick={() => {
+                    setDebateMode(true);
+                    setShowDebatePanel((v) => !v);
+                    setShowEmojis(false);
+                    setShowStickers(false);
+                  }}
+                  title={tChat("debate.toggle")}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
               </div>
 
               <div className="flex-1 relative">
                 <textarea
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      closePanels();
+                      return;
+                    }
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       sendMessage();
@@ -203,6 +286,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                     onClick={() => {
                       setShowEmojis((v) => !v);
                       setShowStickers(false);
+                      setShowDebatePanel(false);
                     }}
                     aria-label={tChat("input.toggleEmojisAria")}
                   >
@@ -244,6 +328,124 @@ export const ChatInputArea = memo(function ChatInputArea({
                         {emo}
                       </button>
                     ))}
+                  </div>
+                )}
+                {showDebatePanel && (
+                  <div className="absolute left-0 bottom-14 z-10 w-[min(520px,100%)] bg-[var(--card-bg)] backdrop-blur-md border border-[var(--card-border)] rounded-2xl shadow-xl p-3 animate-in fade-in zoom-in duration-200">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                        <Sparkles className="w-4 h-4 text-brand" />
+                        <span>{tChat("debate.toggle")}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-brand transition-colors"
+                        onClick={() => setShowDebatePanel(false)}
+                      >
+                        <span>
+                          {debateMode ? tChat("debate.panel.hide") : tChat("debate.panel.close")}
+                        </span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(
+                          [
+                            { value: "pro", label: tChat("debate.stance.pro") },
+                            { value: "con", label: tChat("debate.stance.con") },
+                            { value: "uncertain", label: tChat("debate.stance.uncertain") },
+                          ] as const
+                        ).map((opt) => {
+                          const active = debateStance === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setDebateMode(true);
+                                setDebateStance(opt.value);
+                              }}
+                              className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                                active
+                                  ? "bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/15 text-slate-800 dark:text-slate-100"
+                                  : "bg-transparent border-[var(--card-border)] text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <span className="mx-1 h-3 w-px bg-[var(--card-border)]" />
+
+                      <div className="flex flex-wrap items-center gap-1">
+                        {(
+                          [
+                            { value: "claim", label: tChat("debate.kind.claim") },
+                            { value: "evidence", label: tChat("debate.kind.evidence") },
+                            { value: "rebuttal", label: tChat("debate.kind.rebuttal") },
+                            { value: "question", label: tChat("debate.kind.question") },
+                            { value: "summary", label: tChat("debate.kind.summary") },
+                          ] as const
+                        ).map((opt) => {
+                          const active = debateKind === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setDebateMode(true);
+                                setDebateKind(opt.value);
+                              }}
+                              className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                                active
+                                  ? "bg-black/5 dark:bg-white/10 border-black/10 dark:border-white/15 text-slate-800 dark:text-slate-100"
+                                  : "bg-transparent border-[var(--card-border)] text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {debateMode ? (
+                          <span>
+                            {tChat("debate.stance." + debateStance)} ·{" "}
+                            {tChat("debate.kind." + debateKind)}
+                          </span>
+                        ) : (
+                          <span>{tChat("debate.panel.offHint")}</span>
+                        )}
+                      </div>
+                      {forceDebateMode ? (
+                        <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full border text-[11px] bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300">
+                          <Sparkles className="w-3 h-3" />
+                          <span>{tChat("debate.panel.on")}</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`inline-flex items-center gap-2 px-2 py-1 rounded-full border text-[11px] transition-colors ${
+                            debateMode
+                              ? "bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300"
+                              : "bg-[var(--card-bg)] border-[var(--card-border)] text-slate-600 dark:text-slate-300 hover:border-brand/25 hover:bg-brand/10"
+                          }`}
+                          onClick={() => setDebateMode((v) => !v)}
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          <span>
+                            {debateMode ? tChat("debate.panel.on") : tChat("debate.panel.off")}
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {showStickers && (

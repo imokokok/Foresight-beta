@@ -6,7 +6,6 @@ import { ProposalHeaderNav } from "./ProposalHeaderNav";
 import { ErrorState, InvalidProposalFallback, LoadingState } from "./States";
 import { ProposalDiscussionSection } from "./ProposalDiscussionSection";
 import { ProposalChatShell } from "./chat/ProposalChatShell";
-import { ChatSidebar } from "./chat/ChatSidebar";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 
 // 提取动画配置为模块级常量，避免每次渲染重新创建
@@ -79,7 +78,7 @@ export function ProposalDetailClientView({
         </>
       )}
 
-      <div className="w-full flex flex-col lg:flex-row gap-4 lg:gap-0 px-4 sm:px-6 lg:px-10 py-4">
+      <div className="w-full flex-1 min-h-0 flex flex-col px-4 sm:px-6 lg:px-10 py-4">
         <div className="flex-1 flex flex-col min-w-0">
           <div className="mb-4 flex items-center justify-between gap-3">
             <ProposalHeaderNav onBack={onBack} onCopyLink={onCopyLink} />
@@ -111,7 +110,7 @@ export function ProposalDetailClientView({
               animate={FADE_IN_ANIMATION.animate}
               className="flex-1 flex flex-col min-h-0"
             >
-              <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col lg:flex-row h-full overflow-hidden">
+              <div className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg shadow-slate-200/40 flex flex-col h-full overflow-hidden">
                 <div className="flex-1 flex flex-col">
                   <ProposalDiscussionSection
                     thread={thread}
@@ -129,7 +128,6 @@ export function ProposalDetailClientView({
                     onResubmit={onResubmit}
                   />
                 </div>
-                <ChatSidebar thread={thread} displayName={displayName} stats={stats} />
               </div>
             </motion.div>
           ) : null}

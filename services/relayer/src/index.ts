@@ -2,6 +2,7 @@ import { z } from "zod";
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..", "..", "..");
@@ -11,12 +12,12 @@ dotenv.config({ path: path.join(repoRoot, ".env.local") });
 // 🚀 Phase 1: 导入监控和日志模块
 import { logger, matchingLogger } from "./monitoring/logger.js";
 import {
-  ordersTotal,
   matchesTotal,
-  matchingLatency,
   matchedVolumeTotal,
-  wsConnectionsActive,
-  wsSubscriptionsActive,
+  apiKeyRequestsTotal,
+  apiRateLimitHits,
+  apiAuthFailuresTotal,
+  adminActionsTotal,
   stopMetricsTimers,
 } from "./monitoring/metrics.js";
 import {
@@ -31,6 +32,7 @@ import {
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
 import { closeRateLimiter } from "./ratelimit/index.js";
+import { RedisSlidingWindowLimiter, type RateLimitRequest } from "./ratelimit/slidingWindow.js";
 import { healthRoutes, clusterRoutes } from "./routes/index.js";
 import {
   metricsMiddleware,
@@ -119,10 +121,13 @@ export const app = express();
 
 // 🚀 初始化撮合引擎和 WebSocket 服务器
 const matchingEngine = new MatchingEngine({
-  makerFeeBps: Number(process.env.MAKER_FEE_BPS || "0"),
-  takerFeeBps: Number(process.env.TAKER_FEE_BPS || "0"),
-  maxMarketLongExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_LONG_EXPOSURE_USDC || "0"),
-  maxMarketShortExposureUsdc: Number(process.env.RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC || "0"),
+  makerFeeBps: Math.max(0, readIntEnv("MAKER_FEE_BPS", 0)),
+  takerFeeBps: Math.max(0, readIntEnv("TAKER_FEE_BPS", 0)),
+  maxMarketLongExposureUsdc: Math.max(0, readNumberEnv("RELAYER_MAX_MARKET_LONG_EXPOSURE_USDC", 0)),
+  maxMarketShortExposureUsdc: Math.max(
+    0,
+    readNumberEnv("RELAYER_MAX_MARKET_SHORT_EXPOSURE_USDC", 0)
+  ),
 });
 
 let wsServer: MarketWebSocketServer | ClusteredWebSocketServer | null = null;
@@ -156,10 +161,12 @@ matchingEngine.on(
     matchesTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) });
     const volumeBigInt = (trade.amount * trade.price) / 1_000_000_000_000_000_000n;
     const volume = Number(volumeBigInt) / 1000000;
-    matchedVolumeTotal.inc(
-      { market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) },
-      volume
-    );
+    if (Number.isFinite(volume) && volume >= 0) {
+      matchedVolumeTotal.inc(
+        { market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) },
+        volume
+      );
+    }
   }
 );
 
@@ -168,40 +175,375 @@ matchingEngine.on("settlement_event", (event) => {
   logger.info("Settlement event", { type: event.type, ...event });
 });
 
-type RateLimitBucket = {
-  count: number;
-  windowStart: number;
+function readNumberEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (typeof raw !== "string") return fallback;
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function readIntEnv(name: string, fallback: number): number {
+  return Math.trunc(readNumberEnv(name, fallback));
+}
+
+function clampNumber(n: number, min: number, max: number): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+type ApiKeyEntry = {
+  keyId: string;
+  keyHash: string;
+  keyBytes: Uint8Array;
+  scopes: Set<string>;
 };
 
-function createRateLimiter(envPrefix: string, defaultMax: number, defaultWindowMs: number) {
-  const max = Math.max(1, Number(process.env[`${envPrefix}_MAX`] || String(defaultMax)));
-  const windowMs = Math.max(
-    100,
-    Number(process.env[`${envPrefix}_WINDOW_MS`] || String(defaultWindowMs))
+function buildApiKeyHash(rawKey: string): string {
+  return createHash("sha256").update(rawKey).digest("hex");
+}
+
+function buildApiKeyIdFromHash(keyHash: string): string {
+  return keyHash.slice(0, 16);
+}
+
+function parseApiKeysEnv(): ApiKeyEntry[] {
+  const raw = String(process.env.RELAYER_API_KEYS || "").trim();
+  if (!raw) return [];
+  const entries: ApiKeyEntry[] = [];
+  for (const token of raw
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0)) {
+    const parts = token.split(":");
+    const key = (parts[0] || "").trim();
+    if (!key) continue;
+    const scopesRaw = parts.slice(1).join(":").trim();
+    const scopes =
+      scopesRaw.length > 0
+        ? new Set(
+            scopesRaw
+              .split("|")
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0)
+          )
+        : new Set<string>(["*"]);
+    const keyHash = buildApiKeyHash(key);
+    entries.push({
+      keyId: buildApiKeyIdFromHash(keyHash),
+      keyHash,
+      keyBytes: Buffer.from(key),
+      scopes,
+    });
+  }
+  return entries;
+}
+
+const apiKeys: ApiKeyEntry[] = parseApiKeysEnv();
+
+function getClientIp(req: express.Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
+    const ip = String(ips || "").trim();
+    if (ip) return ip;
+  }
+  const realIp = req.headers["x-real-ip"];
+  if (realIp) {
+    const ip = Array.isArray(realIp) ? realIp[0] : realIp;
+    const v = String(ip || "").trim();
+    if (v) return v;
+  }
+  const ip = (req.ip || req.socket.remoteAddress || "").toString().trim();
+  return ip || "unknown";
+}
+
+function getApiKeyFromRequest(req: express.Request): string | null {
+  const direct = req.headers["x-api-key"];
+  if (typeof direct === "string") {
+    const v = direct.trim();
+    if (v) return v;
+  }
+  const auth = req.headers.authorization;
+  if (typeof auth === "string") {
+    const m = auth.match(/^ApiKey\s+(.+)$/i);
+    if (m) {
+      const v = String(m[1] || "").trim();
+      if (v) return v;
+    }
+  }
+  return null;
+}
+
+function verifyApiKeyEnv(rawKey: string): ApiKeyEntry | null {
+  const candidate = Buffer.from(rawKey);
+  for (const entry of apiKeys) {
+    if (candidate.length !== entry.keyBytes.length) continue;
+    if (timingSafeEqual(candidate, entry.keyBytes)) return entry;
+  }
+  return null;
+}
+
+function hasScope(scopes: Set<string>, scope: string): boolean {
+  if (scopes.has("*")) return true;
+  if (scopes.has("admin")) return true;
+  return scopes.has(scope);
+}
+
+type ResolvedApiKey = {
+  keyId: string;
+  keyHash: string;
+  scopes: Set<string>;
+  source: "env" | "redis";
+};
+
+const apiKeyPositiveCache = new Map<string, MicroCacheEntry<ResolvedApiKey>>();
+const apiKeyNegativeCache = new Map<string, MicroCacheEntry<true>>();
+
+function authIsEnabled(): boolean {
+  const envKeysEnabled = apiKeys.length > 0;
+  const redisEnabled =
+    String(process.env.RELAYER_API_KEYS_REDIS || "")
+      .trim()
+      .toLowerCase() === "true";
+  return envKeysEnabled || redisEnabled;
+}
+
+function parseScopesValue(raw: string): Set<string> {
+  const trimmed = raw.trim();
+  if (!trimmed) return new Set<string>();
+  try {
+    const parsed = JSON.parse(trimmed) as any;
+    if (Array.isArray(parsed)) {
+      return new Set<string>(parsed.map((v) => String(v || "").trim()).filter((v) => v.length > 0));
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.scopes)) {
+      return new Set<string>(
+        parsed.scopes.map((v: any) => String(v || "").trim()).filter((v: string) => v.length > 0)
+      );
+    }
+  } catch {}
+  return new Set<string>(
+    trimmed
+      .split("|")
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0)
   );
-  const buckets = new Map<string, RateLimitBucket>();
-  return function rateLimit(
+}
+
+async function resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
+  const keyHash = buildApiKeyHash(rawKey);
+  const cached = microCacheGet(apiKeyPositiveCache, keyHash);
+  if (cached) return cached;
+  const negCached = microCacheGet(apiKeyNegativeCache, keyHash);
+  if (negCached) return null;
+
+  const envHit = verifyApiKeyEnv(rawKey);
+  if (envHit) {
+    const resolved: ResolvedApiKey = {
+      keyId: envHit.keyId,
+      keyHash: envHit.keyHash,
+      scopes: envHit.scopes,
+      source: "env",
+    };
+    microCacheSet(
+      apiKeyPositiveCache,
+      keyHash,
+      Math.max(50, readIntEnv("RELAYER_API_KEY_CACHE_MS", 5000)),
+      resolved,
+      20000
+    );
+    return resolved;
+  }
+
+  const redisEnabled =
+    String(process.env.RELAYER_API_KEYS_REDIS || "")
+      .trim()
+      .toLowerCase() === "true";
+  if (!redisEnabled) {
+    microCacheSet(
+      apiKeyNegativeCache,
+      keyHash,
+      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
+      true,
+      20000
+    );
+    return null;
+  }
+
+  const redis = getRedisClient();
+  if (!redis.isReady()) {
+    microCacheSet(
+      apiKeyNegativeCache,
+      keyHash,
+      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
+      true,
+      20000
+    );
+    return null;
+  }
+
+  const rawScopes = await redis.hGet("relayer:api_keys", keyHash);
+  if (!rawScopes) {
+    microCacheSet(
+      apiKeyNegativeCache,
+      keyHash,
+      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
+      true,
+      20000
+    );
+    return null;
+  }
+
+  const scopes = parseScopesValue(rawScopes);
+  if (scopes.size === 0) scopes.add("*");
+  const resolved: ResolvedApiKey = {
+    keyId: buildApiKeyIdFromHash(keyHash),
+    keyHash,
+    scopes,
+    source: "redis",
+  };
+  microCacheSet(
+    apiKeyPositiveCache,
+    keyHash,
+    Math.max(50, readIntEnv("RELAYER_API_KEY_CACHE_MS", 5000)),
+    resolved,
+    20000
+  );
+  return resolved;
+}
+
+function requireApiKey(scope: string, action: string) {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!authIsEnabled()) return next();
+    const raw = getApiKeyFromRequest(req);
+    if (!raw) {
+      apiAuthFailuresTotal.inc({ path: req.path, reason: "missing" });
+      apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: "missing" });
+      adminActionsTotal.inc({ action, result: "denied" });
+      return res.status(401).json({ success: false, message: "API key required" });
+    }
+    const entry = await resolveApiKey(raw);
+    if (!entry) {
+      apiAuthFailuresTotal.inc({ path: req.path, reason: "invalid" });
+      apiKeyRequestsTotal.inc({
+        action,
+        path: req.path,
+        result: "denied",
+        key_id: buildApiKeyIdFromHash(buildApiKeyHash(raw)),
+      });
+      adminActionsTotal.inc({ action, result: "denied" });
+      return res.status(401).json({ success: false, message: "API key invalid" });
+    }
+    if (!hasScope(entry.scopes, scope)) {
+      apiAuthFailuresTotal.inc({ path: req.path, reason: "forbidden" });
+      apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: entry.keyId });
+      adminActionsTotal.inc({ action, result: "denied" });
+      return res.status(403).json({ success: false, message: "API key forbidden" });
+    }
+    (req as any).apiKeyId = entry.keyId;
+    (req as any).apiKeyScopes = Array.from(entry.scopes);
+    apiKeyRequestsTotal.inc({ action, path: req.path, result: "allowed", key_id: entry.keyId });
+    adminActionsTotal.inc({ action, result: "allowed" });
+    return next();
+  };
+}
+
+function getRateLimitIdentityFromResolvedKey(
+  key: ResolvedApiKey | null,
+  req: express.Request
+): string {
+  if (key) return `api:${key.keyId}`;
+  const raw = getApiKeyFromRequest(req);
+  if (raw) {
+    const keyHash = buildApiKeyHash(raw);
+    return `api:${buildApiKeyIdFromHash(keyHash)}`;
+  }
+  return `ip:${getClientIp(req)}`;
+}
+
+type RateTier = "admin" | "trader" | "anon";
+
+function getRateTierFromScopes(scopes: Set<string> | null): RateTier {
+  if (!scopes) return "anon";
+  if (scopes.has("admin")) return "admin";
+  return "trader";
+}
+
+function createRoleBasedLimiter(
+  envPrefix: string,
+  defaults: { admin: number; trader: number; anon: number; windowMs: number }
+) {
+  const windowMs = Math.max(100, readIntEnv(`${envPrefix}_WINDOW_MS`, defaults.windowMs));
+  const adminMax = Math.max(1, readIntEnv(`${envPrefix}_ADMIN_MAX`, defaults.admin));
+  const traderMax = Math.max(1, readIntEnv(`${envPrefix}_TRADER_MAX`, defaults.trader));
+  const anonMax = Math.max(1, readIntEnv(`${envPrefix}_ANON_MAX`, defaults.anon));
+
+  const adminLimiter = new RedisSlidingWindowLimiter({
+    windowMs,
+    maxRequests: adminMax,
+    keyPrefix: `ratelimit:${envPrefix}:admin:`,
+  });
+  const traderLimiter = new RedisSlidingWindowLimiter({
+    windowMs,
+    maxRequests: traderMax,
+    keyPrefix: `ratelimit:${envPrefix}:trader:`,
+  });
+  const anonLimiter = new RedisSlidingWindowLimiter({
+    windowMs,
+    maxRequests: anonMax,
+    keyPrefix: `ratelimit:${envPrefix}:anon:`,
+  });
+
+  return async function roleBasedRateLimit(
     req: express.Request,
     res: express.Response,
     next: express.NextFunction
   ) {
-    const ip = (req.ip || "").toString() || "unknown";
-    const now = Date.now();
-    const bucket = buckets.get(ip);
-    if (!bucket || now - bucket.windowStart >= windowMs) {
-      buckets.set(ip, { count: 1, windowStart: now });
-      return next();
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) return next();
     }
-    if (bucket.count < max) {
-      bucket.count += 1;
-      return next();
+
+    const raw = getApiKeyFromRequest(req);
+    const resolved = raw ? await resolveApiKey(raw) : null;
+    const identity = getRateLimitIdentityFromResolvedKey(resolved, req);
+    const tier = getRateTierFromScopes(resolved?.scopes || null);
+
+    const rateReq: RateLimitRequest = { ip: identity, path: req.path, method: req.method };
+    const limiter =
+      tier === "admin" ? adminLimiter : tier === "trader" ? traderLimiter : anonLimiter;
+    const result = await limiter.check(rateReq);
+    res.setHeader(
+      "X-RateLimit-Limit",
+      tier === "admin" ? adminMax : tier === "trader" ? traderMax : anonMax
+    );
+    res.setHeader("X-RateLimit-Remaining", Math.max(0, result.remaining));
+    res.setHeader("X-RateLimit-Reset", result.resetAt ? Math.ceil(result.resetAt / 1000) : 0);
+    if (!result.allowed) {
+      if (result.retryAfter) res.setHeader("Retry-After", result.retryAfter);
+      apiRateLimitHits.inc({ path: req.path });
+      return res
+        .status(429)
+        .json({ success: false, message: "Too many requests", retryAfter: result.retryAfter });
     }
-    res.status(429).json({ success: false, message: "Too many requests" });
+    return next();
   };
 }
 
-const limitOrders = createRateLimiter("RELAYER_RATE_LIMIT_ORDERS", 30, 60000);
-const limitReportTrade = createRateLimiter("RELAYER_RATE_LIMIT_REPORT_TRADE", 60, 60000);
+const limitOrders = createRoleBasedLimiter("RELAYER_RATE_LIMIT_ORDERS", {
+  admin: 1000,
+  trader: 120,
+  anon: 30,
+  windowMs: 60000,
+});
+const limitReportTrade = createRoleBasedLimiter("RELAYER_RATE_LIMIT_REPORT_TRADE", {
+  admin: 2000,
+  trader: 240,
+  anon: 60,
+  windowMs: 60000,
+});
 
 type IdempotencyEntry = {
   expiresAtMs: number;
@@ -210,6 +552,23 @@ type IdempotencyEntry = {
 };
 
 const idempotencyStore = new Map<string, IdempotencyEntry>();
+let idempotencyCleanupIter: IterableIterator<[string, IdempotencyEntry]> | null = null;
+let idempotencyLastCleanupAtMs = 0;
+
+function cleanupIdempotencyStore(nowMs: number, maxScan: number) {
+  if (!idempotencyCleanupIter) idempotencyCleanupIter = idempotencyStore.entries();
+  let scanned = 0;
+  while (scanned < maxScan) {
+    const n = idempotencyCleanupIter.next();
+    if (n.done) {
+      idempotencyCleanupIter = null;
+      break;
+    }
+    scanned += 1;
+    const [k, v] = n.value;
+    if (v.expiresAtMs <= nowMs) idempotencyStore.delete(k);
+  }
+}
 
 function getIdempotencyKey(req: express.Request, extra: string): string | null {
   const headerKey = String(req.headers["x-idempotency-key"] || "").trim();
@@ -259,13 +618,24 @@ async function getIdempotencyEntry(key: string): Promise<IdempotencyEntry | null
 }
 
 async function setIdempotencyEntry(key: string, status: number, body: any): Promise<void> {
-  const ttlMs = Math.max(1000, Number(process.env.RELAYER_IDEMPOTENCY_TTL_MS || "60000"));
+  const ttlMs = Math.max(1000, readIntEnv("RELAYER_IDEMPOTENCY_TTL_MS", 60000));
   const entry: IdempotencyEntry = { expiresAtMs: Date.now() + ttlMs, status, body };
   idempotencyStore.set(key, entry);
-  if (idempotencyStore.size > 5000) {
-    const now = Date.now();
-    for (const [k, v] of idempotencyStore.entries()) {
-      if (v.expiresAtMs <= now) idempotencyStore.delete(k);
+  const now = Date.now();
+  if (
+    (idempotencyStore.size > 2000 && now - idempotencyLastCleanupAtMs > 1000) ||
+    idempotencyStore.size > 8000
+  ) {
+    idempotencyLastCleanupAtMs = now;
+    cleanupIdempotencyStore(now, idempotencyStore.size > 8000 ? 2000 : 200);
+  }
+  const hardCap = Math.max(1000, readIntEnv("RELAYER_IDEMPOTENCY_MAX_KEYS", 10000));
+  if (idempotencyStore.size > hardCap) {
+    cleanupIdempotencyStore(now, 5000);
+    while (idempotencyStore.size > hardCap) {
+      const oldestKey = idempotencyStore.keys().next().value;
+      if (!oldestKey) break;
+      idempotencyStore.delete(oldestKey);
     }
   }
 
@@ -284,6 +654,64 @@ function getLeaderProxyUrl(): string {
     process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
   ).trim();
 }
+
+type LeaderIdCache = {
+  leaderId: string | null;
+  expiresAtMs: number;
+  inFlight: Promise<string | null> | null;
+};
+
+const leaderIdCache: LeaderIdCache = { leaderId: null, expiresAtMs: 0, inFlight: null };
+
+async function getCachedLeaderId(
+  cluster: ReturnType<typeof getClusterManager>
+): Promise<string | null> {
+  const known = cluster.getKnownLeaderId();
+  if (known) return known;
+  const now = Date.now();
+  const ttlMs = Math.max(200, readIntEnv("RELAYER_LEADER_ID_CACHE_MS", 1000));
+  if (leaderIdCache.leaderId && now < leaderIdCache.expiresAtMs) return leaderIdCache.leaderId;
+  if (leaderIdCache.inFlight) return leaderIdCache.inFlight;
+  leaderIdCache.inFlight = cluster
+    .getLeaderId()
+    .catch(() => null)
+    .then((id) => {
+      leaderIdCache.leaderId = id;
+      leaderIdCache.expiresAtMs = Date.now() + ttlMs;
+      leaderIdCache.inFlight = null;
+      return id;
+    });
+  return leaderIdCache.inFlight;
+}
+
+type MicroCacheEntry<T> = { expiresAtMs: number; value: T };
+function microCacheGet<T>(cache: Map<string, MicroCacheEntry<T>>, key: string): T | null {
+  const hit = cache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAtMs <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function microCacheSet<T>(
+  cache: Map<string, MicroCacheEntry<T>>,
+  key: string,
+  ttlMs: number,
+  value: T,
+  maxSize: number
+) {
+  if (!Number.isFinite(ttlMs) || ttlMs <= 0) return;
+  cache.set(key, { expiresAtMs: Date.now() + ttlMs, value });
+  if (cache.size > maxSize) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey) cache.delete(oldestKey);
+  }
+}
+
+const depthMicroCache = new Map<string, MicroCacheEntry<any>>();
+const statsMicroCache = new Map<string, MicroCacheEntry<any>>();
 
 function sendNotLeader(
   res: express.Response,
@@ -356,7 +784,7 @@ try {
   bundlerWallet = null;
 }
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.send("Foresight Relayer is running!");
 });
@@ -366,7 +794,7 @@ app.post("/", async (req, res) => {
     if (clusterIsActive) {
       const cluster = getClusterManager();
       if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const leaderId = await getCachedLeaderId(cluster);
         const proxyUrl = getLeaderProxyUrl();
         if (proxyUrl) {
           const ok = await proxyToLeader(proxyUrl, req, res, "/");
@@ -412,56 +840,210 @@ app.post("/", async (req, res) => {
 });
 
 // Off-chain orderbook API (legacy - 保留兼容)
-app.post("/orderbook/orders", limitOrders, async (req, res) => {
-  try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/orders");
-          if (ok) return;
+app.post(
+  "/orderbook/orders",
+  limitOrders,
+  requireApiKey("orders", "orderbook_orders"),
+  async (req, res) => {
+    try {
+      if (!supabaseAdmin)
+        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/orders");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/orderbook/orders" });
+          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/orderbook/orders" });
+          return;
         }
-        clusterFollowerRejectedTotal.inc({ path: "/orderbook/orders" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/orderbook/orders" });
-        return;
       }
+      const idemKey = getIdempotencyKey(req, "/orderbook/orders");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+      const body = req.body || {};
+      const data = await placeSignedOrder(body);
+      const responseBody = { success: true, data };
+      logger.info("orderbook order accepted", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      return sendApiError(req, res, 400, {
+        message: "place order failed",
+        detail: String(e?.message || e),
+      });
     }
-    const idemKey = getIdempotencyKey(req, "/orderbook/orders");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
-    const body = req.body || {};
-    const data = await placeSignedOrder(body);
-    const responseBody = { success: true, data };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (e: any) {
-    return sendApiError(req, res, 400, {
-      message: "place order failed",
-      detail: String(e?.message || e),
-    });
   }
-});
+);
 
 // ============================================================
 // 🚀 新撮合引擎 API v2 - 高性能链下撮合
 // ============================================================
 
+const HexAddressSchema = z
+  .string()
+  .trim()
+  .regex(/^0x[0-9a-fA-F]{40}$/)
+  .transform((v) => v.toLowerCase());
+
+const BigIntFromNumberishSchema = z.preprocess((v) => {
+  if (typeof v === "bigint") return v;
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return v;
+    return BigInt(Math.trunc(v));
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return v;
+    try {
+      return BigInt(s);
+    } catch {
+      return v;
+    }
+  }
+  return v;
+}, z.bigint());
+
+const OrderInputSchema = z.object({
+  marketKey: z.string().min(1),
+  maker: HexAddressSchema,
+  outcomeIndex: z.number().int().min(0),
+  isBuy: z.boolean(),
+  price: BigIntFromNumberishSchema,
+  amount: BigIntFromNumberishSchema,
+  salt: z.string().min(1),
+  expiry: z.number().int().min(0),
+  signature: z.string().min(1),
+  chainId: z.number().int().positive(),
+  verifyingContract: HexAddressSchema,
+  tif: z.enum(["GTC", "IOC", "FOK"]).optional(),
+  postOnly: z.boolean().optional(),
+  clientOrderId: z.string().min(1).max(128).optional(),
+});
+
+function pickString(...candidates: any[]): string {
+  for (const c of candidates) {
+    if (typeof c === "string") {
+      const v = c.trim();
+      if (v) return v;
+      continue;
+    }
+    if (typeof c === "number") {
+      if (Number.isFinite(c)) return String(c);
+      continue;
+    }
+    if (typeof c === "bigint") return c.toString();
+  }
+  return "";
+}
+
+function toBool(v: any): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    return s === "true" || s === "1" || s === "yes" || s === "y";
+  }
+  return false;
+}
+
+function parseV2OrderInput(body: any): OrderInput {
+  const root = body && typeof body === "object" ? body : {};
+  const orderBody =
+    (root.order || root.order_data) && typeof (root.order || root.order_data) === "object"
+      ? root.order || root.order_data
+      : {};
+
+  const chainIdRaw = pickString(
+    root.chainId,
+    root.chain_id,
+    orderBody.chainId,
+    orderBody.chain_id,
+    0
+  );
+  const chainId = Number(chainIdRaw);
+  const marketKey = pickString(
+    root.marketKey,
+    root.market_key,
+    `${pickString(root.chainId, root.chain_id, orderBody.chainId, orderBody.chain_id, 0)}:${pickString(
+      root.eventId,
+      root.event_id,
+      "unknown"
+    )}`
+  );
+
+  const verifyingContract = pickString(
+    root.verifyingContract,
+    orderBody.verifyingContract,
+    root.verifying_contract,
+    orderBody.verifying_contract,
+    root.verifying_contract_address,
+    orderBody.verifying_contract_address,
+    root.contract,
+    orderBody.contract,
+    root.contractAddress,
+    orderBody.contractAddress,
+    root.marketAddress,
+    orderBody.marketAddress
+  );
+
+  const tifRaw = pickString(orderBody.tif, root.tif);
+  const tif = tifRaw ? (tifRaw.trim().toUpperCase() as any) : undefined;
+
+  const normalized = {
+    marketKey,
+    maker: pickString(orderBody.maker, root.maker),
+    outcomeIndex: Number(
+      pickString(
+        orderBody.outcomeIndex,
+        orderBody.outcome_index,
+        root.outcomeIndex,
+        root.outcome_index,
+        0
+      )
+    ),
+    isBuy: toBool(orderBody.isBuy ?? orderBody.is_buy ?? root.isBuy ?? root.is_buy),
+    price: pickString(orderBody.price, root.price),
+    amount: pickString(orderBody.amount, root.amount),
+    salt: pickString(orderBody.salt, root.salt),
+    expiry: Number(pickString(orderBody.expiry, orderBody.expiresAt, root.expiry, 0)),
+    signature: pickString(root.signature, orderBody.signature),
+    chainId,
+    verifyingContract,
+    tif,
+    postOnly:
+      typeof (orderBody.postOnly ?? orderBody.post_only) !== "undefined"
+        ? toBool(orderBody.postOnly ?? orderBody.post_only)
+        : undefined,
+    clientOrderId:
+      typeof (orderBody.clientOrderId ?? orderBody.client_order_id ?? root.clientOrderId) ===
+      "string"
+        ? String(orderBody.clientOrderId ?? orderBody.client_order_id ?? root.clientOrderId)
+        : undefined,
+  };
+
+  return OrderInputSchema.parse(normalized) as OrderInput;
+}
+
 /**
  * POST /v2/orders - 提交订单并撮合
  * 新的撮合引擎入口，支持即时撮合
  */
-app.post("/v2/orders", limitOrders, async (req, res) => {
+app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async (req, res) => {
   try {
     if (clusterIsActive) {
       const cluster = getClusterManager();
       if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
+        const leaderId = await getCachedLeaderId(cluster);
         const proxyUrl = getLeaderProxyUrl();
         if (proxyUrl) {
           const ok = await proxyToLeader(proxyUrl, req, res, "/v2/orders");
@@ -479,56 +1061,23 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
       if (hit) return res.status(hit.status).json(hit.body);
     }
 
-    const body = req.body || {};
-    const orderBody = body.order || body.order_data || {};
-
-    // 构建订单输入
-    const orderInput: OrderInput = {
-      marketKey:
-        body.marketKey ||
-        body.market_key ||
-        `${body.chainId || body.chain_id}:${body.eventId || body.event_id || "unknown"}`,
-      maker: String(orderBody?.maker || body.maker || ""),
-      outcomeIndex: Number(
-        orderBody?.outcomeIndex ?? orderBody?.outcome_index ?? body.outcomeIndex ?? 0
-      ),
-      isBuy: Boolean(orderBody?.isBuy ?? orderBody?.is_buy ?? body.isBuy),
-      price: BigInt(String(orderBody?.price ?? body.price ?? "0")),
-      amount: BigInt(String(orderBody?.amount ?? body.amount ?? "0")),
-      salt: String(orderBody?.salt || body.salt || ""),
-      expiry: Number(orderBody?.expiry ?? orderBody?.expiresAt ?? body.expiry ?? 0),
-      signature: String(body.signature || orderBody?.signature || ""),
-      chainId: Number(
-        body.chainId || body.chain_id || orderBody?.chainId || orderBody?.chain_id || 0
-      ),
-      verifyingContract: String(
-        body.verifyingContract ||
-          orderBody?.verifyingContract ||
-          body.verifying_contract ||
-          orderBody?.verifying_contract ||
-          body.verifying_contract_address ||
-          orderBody?.verifying_contract_address ||
-          body.contract ||
-          orderBody?.contract ||
-          body.contractAddress ||
-          orderBody?.contractAddress ||
-          body.marketAddress ||
-          orderBody?.marketAddress ||
-          ""
-      ),
-      tif:
-        typeof (orderBody?.tif ?? body.tif) === "string"
-          ? ((String(orderBody?.tif ?? body.tif)
-              .trim()
-              .toUpperCase() as any) ?? undefined)
-          : undefined,
-      postOnly: Boolean(orderBody?.postOnly ?? orderBody?.post_only),
-      clientOrderId:
-        typeof (orderBody?.clientOrderId ?? orderBody?.client_order_id ?? body.clientOrderId) ===
-        "string"
-          ? String(orderBody?.clientOrderId ?? orderBody?.client_order_id ?? body.clientOrderId)
-          : undefined,
-    };
+    let orderInput: OrderInput;
+    try {
+      orderInput = parseV2OrderInput(req.body);
+    } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        return sendApiError(req, res, 400, {
+          message: "order validation failed",
+          detail: e.flatten(),
+          errorCode: "VALIDATION_ERROR",
+        });
+      }
+      return sendApiError(req, res, 400, {
+        message: "order validation failed",
+        detail: String(e?.message || e),
+        errorCode: "VALIDATION_ERROR",
+      });
+    }
 
     // 提交到撮合引擎
     const result = await matchingEngine.submitOrder(orderInput);
@@ -583,13 +1132,25 @@ app.post("/v2/orders", limitOrders, async (req, res) => {
         filledAmount: filledAmount.toString(),
       },
     };
+    logger.info("v2 order accepted", {
+      requestId: (req as any).requestId || null,
+      apiKeyId: (req as any).apiKeyId || null,
+      marketKey: orderInput.marketKey,
+      outcomeIndex: orderInput.outcomeIndex,
+      maker: orderInput.maker,
+      isBuy: orderInput.isBuy,
+      amount: orderInput.amount.toString(),
+      price: orderInput.price.toString(),
+      status,
+    });
     res.json(responseBody);
     if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (e: any) {
-    console.error("[v2/orders] Error:", e);
-    return sendApiError(req, res, 400, {
+    logger.error("v2 orders failed", { path: "/v2/orders" }, e);
+    return sendApiError(req, res, 500, {
       message: "Order submission failed",
       detail: String(e?.message || e),
+      errorCode: "INTERNAL_ERROR",
     });
   }
 });
@@ -646,63 +1207,98 @@ const CancelV2Schema = z
     path: ["verifyingContract"],
   });
 
-app.post("/v2/cancel-salt", limitOrders, async (req, res) => {
-  try {
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/v2/cancel-salt");
-          if (ok) return;
+app.post(
+  "/v2/cancel-salt",
+  limitOrders,
+  requireApiKey("orders", "v2_cancel_salt"),
+  async (req, res) => {
+    try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/v2/cancel-salt");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/v2/cancel-salt" });
+          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/cancel-salt" });
+          return;
         }
-        clusterFollowerRejectedTotal.inc({ path: "/v2/cancel-salt" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/cancel-salt" });
+      }
+
+      const idemKey = getIdempotencyKey(req, "/v2/cancel-salt");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+
+      const parsed = CancelV2Schema.parse(req.body || {});
+      const result = await matchingEngine.cancelOrder(
+        parsed.marketKey,
+        parsed.outcomeIndex,
+        parsed.chainId,
+        parsed.verifyingContract,
+        parsed.maker,
+        parsed.salt,
+        parsed.signature
+      );
+      if (!result.success) {
+        const responseBody = {
+          success: false,
+          message: result.error || "Cancel failed",
+        };
+        res.status(400).json(responseBody);
+        if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
         return;
       }
-    }
-
-    const idemKey = getIdempotencyKey(req, "/v2/cancel-salt");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
-
-    const parsed = CancelV2Schema.parse(req.body || {});
-    const result = await matchingEngine.cancelOrder(
-      parsed.marketKey,
-      parsed.outcomeIndex,
-      parsed.chainId,
-      parsed.verifyingContract,
-      parsed.maker,
-      parsed.salt,
-      parsed.signature
-    );
-    if (!result.success) {
-      const responseBody = {
-        success: false,
-        message: result.error || "Cancel failed",
-      };
-      res.status(400).json(responseBody);
-      if (idemKey) void setIdempotencyEntry(idemKey, 400, responseBody);
-      return;
-    }
-    const responseBody = { success: true, data: { ok: true } };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (e: any) {
-    if (e instanceof z.ZodError) {
+      const responseBody = { success: true, data: { ok: true } };
+      logger.info("v2 cancel salt accepted", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+        marketKey: parsed.marketKey,
+        outcomeIndex: parsed.outcomeIndex,
+        chainId: parsed.chainId,
+        maker: parsed.maker,
+        salt: parsed.salt,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        return sendApiError(req, res, 400, {
+          message: "cancel validation failed",
+          detail: e.flatten(),
+        });
+      }
       return sendApiError(req, res, 400, {
-        message: "cancel validation failed",
-        detail: e.flatten(),
+        message: "Cancel failed",
+        detail: String(e?.message || e),
       });
     }
-    return sendApiError(req, res, 400, {
-      message: "Cancel failed",
-      detail: String(e?.message || e),
-    });
   }
+);
+
+const V2DepthQuerySchema = z.object({
+  marketKey: z.string().min(1),
+  outcomeIndex: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
+  levels: z.preprocess((v) => {
+    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
+    if (!Number.isFinite(n)) return 20;
+    return Math.max(1, Math.min(50, n));
+  }, z.number().int().min(1).max(50)),
+});
+
+const V2StatsQuerySchema = z.object({
+  marketKey: z.string().min(1),
+  outcomeIndex: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().min(0)
+  ),
 });
 
 /**
@@ -711,12 +1307,26 @@ app.post("/v2/cancel-salt", limitOrders, async (req, res) => {
  */
 app.get("/v2/depth", async (req, res) => {
   try {
-    const marketKey = String(req.query.marketKey || req.query.market_key || "");
-    const outcomeIndex = Number(req.query.outcome || 0);
-    const levels = Math.min(50, Math.max(1, Number(req.query.levels || 20)));
-
-    if (!marketKey) {
-      return res.status(400).json({ success: false, message: "marketKey required" });
+    const parsed = V2DepthQuerySchema.parse({
+      marketKey: req.query.marketKey || req.query.market_key,
+      outcomeIndex: req.query.outcomeIndex ?? req.query.outcome_index ?? req.query.outcome ?? 0,
+      levels: req.query.levels ?? 20,
+    });
+    const marketKey = parsed.marketKey;
+    const outcomeIndex = parsed.outcomeIndex;
+    const levels = parsed.levels;
+    const microCacheMs = clampNumber(readIntEnv("RELAYER_MICROCACHE_MS", 200), 0, 1000);
+    const roleKey =
+      clusterIsActive && !getClusterManager().isLeader()
+        ? "follower"
+        : clusterIsActive
+          ? "leader"
+          : "standalone";
+    const cacheKey = `${roleKey}:${marketKey}:${outcomeIndex}:${levels}`;
+    const cached = microCacheGet(depthMicroCache, cacheKey);
+    if (cached) {
+      res.setHeader("Cache-Control", "public, max-age=1");
+      return res.json(cached);
     }
 
     if (clusterIsActive) {
@@ -725,6 +1335,24 @@ app.get("/v2/depth", async (req, res) => {
       if (!cluster.isLeader() && redis.isReady()) {
         try {
           const snapshotService = getOrderbookSnapshotService();
+          const pub = await snapshotService.loadPublicSnapshot(marketKey, outcomeIndex);
+          if (pub) {
+            const responseBody = {
+              success: true,
+              data: {
+                marketKey,
+                outcomeIndex,
+                bids: pub.bids.slice(0, levels),
+                asks: pub.asks.slice(0, levels),
+                timestamp: pub.updatedAt || Date.now(),
+                source: "redis_public_snapshot",
+              },
+            };
+            res.setHeader("Cache-Control", "public, max-age=1");
+            res.json(responseBody);
+            microCacheSet(depthMicroCache, cacheKey, microCacheMs, responseBody, 500);
+            return;
+          }
           const loaded = await snapshotService.loadSnapshot(marketKey, outcomeIndex);
           if (loaded) {
             const bidLevels = new Map<string, { price: bigint; qty: bigint; count: number }>();
@@ -751,7 +1379,7 @@ app.get("/v2/depth", async (req, res) => {
             );
 
             res.setHeader("Cache-Control", "public, max-age=1");
-            return res.json({
+            const responseBody = {
               success: true,
               data: {
                 marketKey,
@@ -769,49 +1397,77 @@ app.get("/v2/depth", async (req, res) => {
                 timestamp: Date.now(),
                 source: "redis_snapshot",
               },
-            });
+            };
+            res.json(responseBody);
+            microCacheSet(depthMicroCache, cacheKey, microCacheMs, responseBody, 500);
+            return;
           }
         } catch {}
       }
     }
 
     try {
-      await matchingEngine.warmupOrderBook(marketKey, outcomeIndex);
-    } catch {}
+      let snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
+      if (!snapshot) {
+        await matchingEngine.warmupOrderBook(marketKey, outcomeIndex);
+        snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
+      }
 
-    const snapshot = matchingEngine.getOrderBookSnapshot(marketKey, outcomeIndex, levels);
+      if (!snapshot) {
+        const responseBody = {
+          success: true,
+          data: { bids: [], asks: [], timestamp: Date.now() },
+        };
+        res.setHeader("Cache-Control", "public, max-age=1");
+        res.json(responseBody);
+        microCacheSet(depthMicroCache, cacheKey, microCacheMs, responseBody, 500);
+        return;
+      }
 
-    if (!snapshot) {
-      return res.json({
+      const responseBody = {
+        success: true,
+        data: {
+          marketKey: snapshot.marketKey,
+          outcomeIndex: snapshot.outcomeIndex,
+          bids: snapshot.bids.map((l) => ({
+            price: l.price.toString(),
+            qty: l.totalQuantity.toString(),
+            count: l.orderCount,
+          })),
+          asks: snapshot.asks.map((l) => ({
+            price: l.price.toString(),
+            qty: l.totalQuantity.toString(),
+            count: l.orderCount,
+          })),
+          timestamp: snapshot.timestamp,
+        },
+      };
+      res.setHeader("Cache-Control", "public, max-age=1");
+      res.json(responseBody);
+      microCacheSet(depthMicroCache, cacheKey, microCacheMs, responseBody, 500);
+      return;
+    } catch {
+      const responseBody = {
         success: true,
         data: { bids: [], asks: [], timestamp: Date.now() },
+      };
+      res.setHeader("Cache-Control", "public, max-age=1");
+      res.json(responseBody);
+      microCacheSet(depthMicroCache, cacheKey, microCacheMs, responseBody, 500);
+      return;
+    }
+  } catch (e: any) {
+    if (e instanceof z.ZodError) {
+      return sendApiError(req, res, 400, {
+        message: "Depth query validation failed",
+        detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
       });
     }
-
-    res.setHeader("Cache-Control", "public, max-age=1");
-    res.json({
-      success: true,
-      data: {
-        marketKey: snapshot.marketKey,
-        outcomeIndex: snapshot.outcomeIndex,
-        bids: snapshot.bids.map((l) => ({
-          price: l.price.toString(),
-          qty: l.totalQuantity.toString(),
-          count: l.orderCount,
-        })),
-        asks: snapshot.asks.map((l) => ({
-          price: l.price.toString(),
-          qty: l.totalQuantity.toString(),
-          count: l.orderCount,
-        })),
-        timestamp: snapshot.timestamp,
-      },
-    });
-  } catch (e: any) {
-    res.status(400).json({
-      success: false,
+    return sendApiError(req, res, 400, {
       message: "Depth query failed",
       detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
     });
   }
 });
@@ -821,11 +1477,24 @@ app.get("/v2/depth", async (req, res) => {
  */
 app.get("/v2/stats", async (req, res) => {
   try {
-    const marketKey = String(req.query.marketKey || req.query.market_key || "");
-    const outcomeIndex = Number(req.query.outcome || 0);
-
-    if (!marketKey) {
-      return res.status(400).json({ success: false, message: "marketKey required" });
+    const parsed = V2StatsQuerySchema.parse({
+      marketKey: req.query.marketKey || req.query.market_key,
+      outcomeIndex: req.query.outcomeIndex ?? req.query.outcome_index ?? req.query.outcome ?? 0,
+    });
+    const marketKey = parsed.marketKey;
+    const outcomeIndex = parsed.outcomeIndex;
+    const microCacheMs = clampNumber(readIntEnv("RELAYER_MICROCACHE_MS", 200), 0, 1000);
+    const roleKey =
+      clusterIsActive && !getClusterManager().isLeader()
+        ? "follower"
+        : clusterIsActive
+          ? "leader"
+          : "standalone";
+    const cacheKey = `${roleKey}:${marketKey}:${outcomeIndex}`;
+    const cached = microCacheGet(statsMicroCache, cacheKey);
+    if (cached) {
+      res.setHeader("Cache-Control", "public, max-age=1");
+      return res.json(cached);
     }
 
     if (clusterIsActive) {
@@ -834,6 +1503,28 @@ app.get("/v2/stats", async (req, res) => {
       if (!cluster.isLeader() && redis.isReady()) {
         try {
           const snapshotService = getOrderbookSnapshotService();
+          const pub = await snapshotService.loadPublicSnapshot(marketKey, outcomeIndex);
+          if (pub) {
+            const responseBody = {
+              success: true,
+              data: {
+                marketKey,
+                outcomeIndex,
+                bestBid: pub.bestBid,
+                bestAsk: pub.bestAsk,
+                spread: pub.spread,
+                bidDepth: pub.bidDepth,
+                askDepth: pub.askDepth,
+                lastTradePrice: pub.lastTradePrice,
+                volume24h: pub.volume24h,
+                source: "redis_public_snapshot",
+              },
+            };
+            res.setHeader("Cache-Control", "public, max-age=1");
+            res.json(responseBody);
+            microCacheSet(statsMicroCache, cacheKey, microCacheMs, responseBody, 500);
+            return;
+          }
           const loaded = await snapshotService.loadSnapshot(marketKey, outcomeIndex);
           if (loaded) {
             let bestBid: bigint | null = null;
@@ -859,7 +1550,7 @@ app.get("/v2/stats", async (req, res) => {
             const spread = bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null;
 
             res.setHeader("Cache-Control", "public, max-age=1");
-            return res.json({
+            const responseBody = {
               success: true,
               data: {
                 marketKey,
@@ -873,16 +1564,25 @@ app.get("/v2/stats", async (req, res) => {
                 volume24h: volume24h.toString(),
                 source: "redis_snapshot",
               },
-            });
+            };
+            res.json(responseBody);
+            microCacheSet(statsMicroCache, cacheKey, microCacheMs, responseBody, 500);
+            return;
           }
         } catch {}
       }
     }
 
-    const stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
+    let stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
+    if (!stats) {
+      try {
+        await matchingEngine.warmupOrderBook(marketKey, outcomeIndex);
+        stats = matchingEngine.getOrderBookStats(marketKey, outcomeIndex);
+      } catch {}
+    }
 
     if (!stats) {
-      return res.json({
+      const responseBody = {
         success: true,
         data: {
           bestBid: null,
@@ -893,11 +1593,15 @@ app.get("/v2/stats", async (req, res) => {
           lastTradePrice: null,
           volume24h: "0",
         },
-      });
+      };
+      res.setHeader("Cache-Control", "public, max-age=1");
+      res.json(responseBody);
+      microCacheSet(statsMicroCache, cacheKey, microCacheMs, responseBody, 500);
+      return;
     }
 
     res.setHeader("Cache-Control", "public, max-age=1");
-    res.json({
+    const responseBody = {
       success: true,
       data: {
         marketKey: stats.marketKey,
@@ -910,12 +1614,21 @@ app.get("/v2/stats", async (req, res) => {
         lastTradePrice: stats.lastTradePrice?.toString() || null,
         volume24h: stats.volume24h.toString(),
       },
-    });
+    };
+    res.json(responseBody);
+    microCacheSet(statsMicroCache, cacheKey, microCacheMs, responseBody, 500);
   } catch (e: any) {
-    res.status(400).json({
-      success: false,
+    if (e instanceof z.ZodError) {
+      return sendApiError(req, res, 400, {
+        message: "Stats query validation failed",
+        detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+    }
+    return sendApiError(req, res, 400, {
       message: "Stats query failed",
       detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
     });
   }
 });
@@ -923,12 +1636,13 @@ app.get("/v2/stats", async (req, res) => {
 /**
  * GET /v2/ws-info - WebSocket 连接信息
  */
-app.get("/v2/ws-info", (req, res) => {
+app.get("/v2/ws-info", (_req, res) => {
   const stats = wsServer ? (wsServer as any).getStats?.() : { connections: 0, subscriptions: 0 };
+  const wsPort = clampNumber(readIntEnv("WS_PORT", 3006), 1, 65535);
   res.json({
     success: true,
     data: {
-      wsPort: Number(process.env.WS_PORT || "3006"),
+      wsPort,
       connections: stats.connections,
       subscriptions: stats.subscriptions,
       channels: [
@@ -941,96 +1655,196 @@ app.get("/v2/ws-info", (req, res) => {
   });
 });
 
+const V2RegisterSettlerSchema = z.object({
+  marketKey: z.string().min(1),
+  chainId: z.preprocess(
+    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
+    z.number().int().positive()
+  ),
+  marketAddress: HexAddressSchema,
+});
+
+const V2CloseMarketSchema = z.object({
+  marketKey: z.string().min(1),
+  reason: z.string().optional(),
+});
+
 /**
  * POST /v2/register-settler - 注册市场结算器
  * 由管理员调用,为市场配置 Operator
  */
-app.post("/v2/register-settler", async (req, res) => {
-  try {
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/v2/register-settler");
-          if (ok) return;
+app.post(
+  "/v2/register-settler",
+  limitOrders,
+  requireApiKey("admin", "v2_register_settler"),
+  async (req, res) => {
+    try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/v2/register-settler");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/v2/register-settler" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/v2/register-settler",
+          });
+          return;
         }
-        clusterFollowerRejectedTotal.inc({ path: "/v2/register-settler" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/register-settler" });
-        return;
       }
-    }
 
-    const idemKey = getIdempotencyKey(req, "/v2/register-settler");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
+      const idemKey = getIdempotencyKey(req, "/v2/register-settler");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
 
-    const { marketKey, chainId, marketAddress } = req.body;
+      const parsed = V2RegisterSettlerSchema.parse(req.body || {});
 
-    // 验证必要参数
-    if (!marketKey || !chainId || !marketAddress) {
-      return sendApiError(req, res, 400, {
-        message: "Missing required fields: marketKey, chainId, marketAddress",
+      // 从环境变量获取 Operator 配置
+      const operatorKey = process.env.OPERATOR_PRIVATE_KEY || process.env.BUNDLER_PRIVATE_KEY;
+      const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
+
+      if (!operatorKey) {
+        return sendApiError(req, res, 500, {
+          message: "Operator private key not configured",
+          errorCode: "CONFIG_ERROR",
+        });
+      }
+
+      const settler = matchingEngine.registerSettler(
+        parsed.marketKey,
+        parsed.chainId,
+        parsed.marketAddress,
+        operatorKey,
+        rpcUrl
+      );
+
+      const responseBody = {
+        success: true,
+        data: {
+          marketKey: parsed.marketKey,
+          operatorAddress: settler.getOperatorAddress(),
+          status: "registered",
+        },
+      };
+      logger.info("settler registered", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+        marketKey: parsed.marketKey,
+        chainId: parsed.chainId,
+        marketAddress: parsed.marketAddress,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        return sendApiError(req, res, 400, {
+          message: "register settler validation failed",
+          detail: e.flatten(),
+          errorCode: "VALIDATION_ERROR",
+        });
+      }
+      logger.error("register settler failed", { path: "/v2/register-settler" }, e);
+      return sendApiError(req, res, 500, {
+        message: "Failed to register settler",
+        detail: String(e?.message || e),
+        errorCode: "INTERNAL_ERROR",
       });
     }
-
-    // 从环境变量获取 Operator 配置
-    const operatorKey = process.env.OPERATOR_PRIVATE_KEY || process.env.BUNDLER_PRIVATE_KEY;
-    const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
-
-    if (!operatorKey) {
-      return sendApiError(req, res, 500, { message: "Operator private key not configured" });
-    }
-
-    const settler = matchingEngine.registerSettler(
-      marketKey,
-      Number(chainId),
-      marketAddress,
-      operatorKey,
-      rpcUrl
-    );
-
-    const responseBody = {
-      success: true,
-      data: {
-        marketKey,
-        operatorAddress: settler.getOperatorAddress(),
-        status: "registered",
-      },
-    };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (e: any) {
-    return sendApiError(req, res, 400, {
-      message: "Failed to register settler",
-      detail: String(e?.message || e),
-    });
   }
-});
+);
 
 /**
  * GET /v2/settlement-stats - 获取结算统计
  */
-app.get("/v2/settlement-stats", (req, res) => {
+app.get("/v2/settlement-stats", (_req, res) => {
   const stats = matchingEngine.getSettlementStats();
   res.json({ success: true, data: stats });
 });
+
+/**
+ * POST /v2/market/close - 关闭市场并清理订单簿
+ */
+app.post(
+  "/v2/market/close",
+  limitOrders,
+  requireApiKey("admin", "v2_market_close"),
+  async (req, res) => {
+    try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/v2/market/close");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/v2/market/close" });
+          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/market/close" });
+          return;
+        }
+      }
+
+      const idemKey = getIdempotencyKey(req, "/v2/market/close");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+
+      const parsed = V2CloseMarketSchema.parse(req.body || {});
+      const result = await matchingEngine.closeMarket(parsed.marketKey, { reason: parsed.reason });
+
+      const responseBody = { success: true, data: result };
+      logger.info("market closed", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+        marketKey: parsed.marketKey,
+        outcomes: result.outcomes.length,
+        canceledOrders: result.canceledOrders,
+        clearedBooks: result.clearedBooks,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        return sendApiError(req, res, 400, {
+          message: "market close validation failed",
+          detail: e.flatten(),
+          errorCode: "VALIDATION_ERROR",
+        });
+      }
+      logger.error("market close failed", { path: "/v2/market/close" }, e);
+      return sendApiError(req, res, 500, {
+        message: "Failed to close market",
+        detail: String(e?.message || e),
+        errorCode: "INTERNAL_ERROR",
+      });
+    }
+  }
+);
 
 /**
  * GET /v2/operator-status - 获取 Operator 状态
  */
 app.get("/v2/operator-status", async (req, res) => {
   try {
-    const marketKey = String(req.query.marketKey || "");
+    const marketKey = z
+      .string()
+      .min(1)
+      .parse(req.query.marketKey || "");
     const settler = matchingEngine.getSettler(marketKey);
 
     if (!settler) {
-      return res.status(404).json({
-        success: false,
+      return sendApiError(req, res, 404, {
         message: "Settler not found for this market",
+        errorCode: "NOT_FOUND",
       });
     }
 
@@ -1047,53 +1861,69 @@ app.get("/v2/operator-status", async (req, res) => {
       },
     });
   } catch (e: any) {
-    res.status(400).json({
-      success: false,
+    if (e instanceof z.ZodError) {
+      return sendApiError(req, res, 400, {
+        message: "operator status validation failed",
+        detail: e.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+    }
+    return sendApiError(req, res, 400, {
       message: "Failed to get operator status",
       detail: String(e?.message || e),
+      errorCode: "BAD_REQUEST",
     });
   }
 });
 
-app.post("/orderbook/cancel-salt", async (req, res) => {
-  try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/cancel-salt");
-          if (ok) return;
+app.post(
+  "/orderbook/cancel-salt",
+  limitOrders,
+  requireApiKey("orders", "orderbook_cancel_salt"),
+  async (req, res) => {
+    try {
+      if (!supabaseAdmin)
+        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/cancel-salt");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/orderbook/cancel-salt" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/orderbook/cancel-salt",
+          });
+          return;
         }
-        clusterFollowerRejectedTotal.inc({ path: "/orderbook/cancel-salt" });
-        sendNotLeader(res, {
-          leaderId,
-          nodeId: cluster.getNodeId(),
-          path: "/orderbook/cancel-salt",
-        });
-        return;
       }
+      const idemKey = getIdempotencyKey(req, "/orderbook/cancel-salt");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+      const body = req.body || {};
+      const data = await cancelSalt(body);
+      const responseBody = { success: true, data };
+      logger.info("orderbook cancel salt accepted", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      return sendApiError(req, res, 400, {
+        message: "cancel salt failed",
+        detail: String(e?.message || e),
+      });
     }
-    const idemKey = getIdempotencyKey(req, "/orderbook/cancel-salt");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
-    const body = req.body || {};
-    const data = await cancelSalt(body);
-    const responseBody = { success: true, data };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (e: any) {
-    return sendApiError(req, res, 400, {
-      message: "cancel salt failed",
-      detail: String(e?.message || e),
-    });
   }
-});
+);
 
 const DepthQuerySchema = z.object({
   contract: z
@@ -1278,46 +2108,57 @@ app.get("/orderbook/queue", async (req, res) => {
   }
 });
 
-app.post("/orderbook/report-trade", limitReportTrade, async (req, res) => {
-  try {
-    if (!supabaseAdmin)
-      return res.status(500).json({ success: false, message: "Supabase not configured" });
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await cluster.getLeaderId().catch(() => null);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/report-trade");
-          if (ok) return;
+app.post(
+  "/orderbook/report-trade",
+  limitReportTrade,
+  requireApiKey("report_trade", "orderbook_report_trade"),
+  async (req, res) => {
+    try {
+      if (!supabaseAdmin)
+        return res.status(500).json({ success: false, message: "Supabase not configured" });
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) {
+          const leaderId = await getCachedLeaderId(cluster);
+          const proxyUrl = getLeaderProxyUrl();
+          if (proxyUrl) {
+            const ok = await proxyToLeader(proxyUrl, req, res, "/orderbook/report-trade");
+            if (ok) return;
+          }
+          clusterFollowerRejectedTotal.inc({ path: "/orderbook/report-trade" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/orderbook/report-trade",
+          });
+          return;
         }
-        clusterFollowerRejectedTotal.inc({ path: "/orderbook/report-trade" });
-        sendNotLeader(res, {
-          leaderId,
-          nodeId: cluster.getNodeId(),
-          path: "/orderbook/report-trade",
-        });
-        return;
       }
+      const idemKey = getIdempotencyKey(req, "/orderbook/report-trade");
+      if (idemKey) {
+        const hit = await getIdempotencyEntry(idemKey);
+        if (hit) return res.status(hit.status).json(hit.body);
+      }
+      const body = TradeReportSchema.parse(req.body || {});
+      const data = await ingestTrade(body.chainId, body.txHash);
+      const responseBody = { success: true, data };
+      logger.info("orderbook trade reported", {
+        requestId: (req as any).requestId || null,
+        apiKeyId: (req as any).apiKeyId || null,
+        chainId: body.chainId,
+        txHash: body.txHash,
+      });
+      res.json(responseBody);
+      if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
+    } catch (e: any) {
+      logger.error("orderbook report trade failed", { path: "/orderbook/report-trade" }, e);
+      return sendApiError(req, res, 400, {
+        message: "trade report failed",
+        detail: String(e?.message || e),
+      });
     }
-    const idemKey = getIdempotencyKey(req, "/orderbook/report-trade");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
-    const body = TradeReportSchema.parse(req.body || {});
-    const data = await ingestTrade(body.chainId, body.txHash);
-    const responseBody = { success: true, data };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (e: any) {
-    console.error(e);
-    return sendApiError(req, res, 400, {
-      message: "trade report failed",
-      detail: String(e?.message || e),
-    });
   }
-});
+);
 
 app.get("/orderbook/candles", async (req, res) => {
   try {
@@ -1355,7 +2196,7 @@ app.get("/orderbook/candles", async (req, res) => {
   }
 });
 
-app.get("/orderbook/types", (req, res) => {
+app.get("/orderbook/types", (_req, res) => {
   res.setHeader("Cache-Control", "public, max-age=60");
   res.json({ success: true, types: getOrderTypes() });
 });
@@ -1393,12 +2234,13 @@ async function startAutoIngestLoop() {
   }
 
   const cursorKey = "order_filled_signed";
-  const configuredFrom = Number(process.env.RELAYER_AUTO_INGEST_FROM_BLOCK || "0") || 0;
-  const lookback = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_REORG_LOOKBACK || "20"));
+  const configuredFrom = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_FROM_BLOCK", 0));
+  const lookback = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_REORG_LOOKBACK", 20));
   let last = 0;
-  const confirmations = Math.max(0, Number(process.env.RELAYER_AUTO_INGEST_CONFIRMATIONS || "1"));
-  const pollMs = Math.max(2000, Number(process.env.RELAYER_AUTO_INGEST_POLL_MS || "5000"));
-  const maxConcurrent = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_CONCURRENCY || "3"));
+  const confirmations = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_CONFIRMATIONS", 1));
+  const pollMs = Math.max(2000, readIntEnv("RELAYER_AUTO_INGEST_POLL_MS", 5000));
+  const maxConcurrent = Math.max(1, readIntEnv("RELAYER_AUTO_INGEST_CONCURRENCY", 3));
+  let ingestRunning = false;
 
   if (autoIngestTimer) {
     clearInterval(autoIngestTimer);
@@ -1457,6 +2299,8 @@ async function startAutoIngestLoop() {
   }
 
   const loop = async () => {
+    if (ingestRunning) return;
+    ingestRunning = true;
     try {
       if (clusterIsActive) {
         const cluster = getClusterManager();
@@ -1468,7 +2312,7 @@ async function startAutoIngestLoop() {
       if (last === 0) last = target;
       if (target <= last) return;
 
-      const maxStep = Math.max(1, Number(process.env.RELAYER_AUTO_INGEST_MAX_STEP || "20"));
+      const maxStep = Math.max(1, readIntEnv("RELAYER_AUTO_INGEST_MAX_STEP", 20));
       const to = Math.min(target, last + maxStep);
 
       const fromBlock = last + 1;
@@ -1477,21 +2321,36 @@ async function startAutoIngestLoop() {
       const startTime = Date.now();
       let totalIngested = 0;
       let processedTo = last;
-      for (let b = fromBlock; b <= to; b++) {
-        try {
-          const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
-          totalIngested += r.ingestedCount || 0;
-          processedTo = b;
-          last = processedTo;
-          await saveCursor(processedTo);
-        } catch (e: any) {
-          console.warn(
-            "[auto-ingest] ingestTradesByLogs error:",
-            String(e?.message || e),
-            chainId,
-            b
-          );
-          break;
+      try {
+        const r = await ingestTradesByLogs(chainId, fromBlock, to, maxConcurrent);
+        totalIngested += r.ingestedCount || 0;
+        processedTo = to;
+        last = processedTo;
+        await saveCursor(processedTo);
+      } catch (e: any) {
+        console.warn(
+          "[auto-ingest] ingestTradesByLogs range error:",
+          String(e?.message || e),
+          chainId,
+          fromBlock,
+          to
+        );
+        for (let b = fromBlock; b <= to; b++) {
+          try {
+            const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
+            totalIngested += r.ingestedCount || 0;
+            processedTo = b;
+            last = processedTo;
+            await saveCursor(processedTo);
+          } catch (e: any) {
+            console.warn(
+              "[auto-ingest] ingestTradesByLogs error:",
+              String(e?.message || e),
+              chainId,
+              b
+            );
+            break;
+          }
         }
       }
       const duration = Date.now() - startTime;
@@ -1507,6 +2366,8 @@ async function startAutoIngestLoop() {
       );
     } catch (e: any) {
       console.warn("[auto-ingest] loop error:", String(e?.message || e));
+    } finally {
+      ingestRunning = false;
     }
   };
 
@@ -1560,8 +2421,8 @@ if (process.env.NODE_ENV !== "test") {
         await initChainReconciler({
           rpcUrl: process.env.RPC_URL!,
           marketAddress: process.env.MARKET_ADDRESS!,
-          chainId: Number(process.env.CHAIN_ID || "80002"),
-          intervalMs: Number(process.env.RECONCILIATION_INTERVAL_MS || "300000"),
+          chainId: Math.max(1, readIntEnv("CHAIN_ID", 80002)),
+          intervalMs: Math.max(1000, readIntEnv("RECONCILIATION_INTERVAL_MS", 300000)),
           autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
         });
         reconcilerStarted = true;
@@ -1659,13 +2520,14 @@ if (process.env.NODE_ENV !== "test") {
     // 🚀 启动 WebSocket 服务器
     try {
       const useClusteredWs = clusterEnabled;
+      const wsPort = clampNumber(readIntEnv("WS_PORT", 3006), 1, 65535);
       if (useClusteredWs) {
-        wsServer = new ClusteredWebSocketServer(Number(process.env.WS_PORT || "3006"));
+        wsServer = new ClusteredWebSocketServer(wsPort);
       } else {
-        wsServer = new MarketWebSocketServer(Number(process.env.WS_PORT || "3006"));
+        wsServer = new MarketWebSocketServer(wsPort);
       }
       await Promise.resolve(wsServer.start());
-      logger.info("WebSocket server started", { port: process.env.WS_PORT || 3006 });
+      logger.info("WebSocket server started", { port: wsPort });
     } catch (e: any) {
       logger.error("WebSocket server failed to start", {}, e);
     }
@@ -1692,7 +2554,7 @@ if (process.env.NODE_ENV !== "test") {
 
     logger.info("Relayer server started successfully", {
       port: PORT,
-      wsPort: process.env.WS_PORT || 3006,
+      wsPort: clampNumber(readIntEnv("WS_PORT", 3006), 1, 65535),
       redisEnabled,
       clusterEnabled,
       reconciliationEnabled,
