@@ -1257,6 +1257,8 @@
       "fieldDescriptionPlaceholder": "Describe the background, scope and other key information of this prediction in detail...",
       "fieldCriteria": "Resolution criteria (Oracle Criteria)",
       "fieldCriteriaPlaceholder": "For example: CoinMarketCap closing price at the deadline will be used as reference",
+      "fieldReferenceUrl": "Reference link (optional)",
+      "fieldReferenceUrlPlaceholder": "For example: https://coinmarketcap.com/ ...",
       "confirmDelete": "Are you sure you want to delete this event?",
       "updateFailed": "Update failed",
       "deleteFailed": "Delete failed",

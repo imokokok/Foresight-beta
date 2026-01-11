@@ -1261,6 +1261,8 @@
       "fieldDescriptionPlaceholder": "请详细描述预测事件的背景、范围以及其他重要信息...",
       "fieldCriteria": "判定标准（预言机规则）",
       "fieldCriteriaPlaceholder": "例如：以 CoinMarketCap 在截止时刻的收盘价格为准",
+      "fieldReferenceUrl": "参考链接（可选）",
+      "fieldReferenceUrlPlaceholder": "例如：https://coinmarketcap.com/ ...",
       "confirmDelete": "确定删除该事件？",
       "updateFailed": "更新失败",
       "deleteFailed": "删除失败",

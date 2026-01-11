@@ -26,16 +26,73 @@ interface RateLimitEntry {
 // 内存存储（开发环境）
 const store = new Map<string, RateLimitEntry>();
 
-// 定期清理过期记录（每分钟）
-if (typeof setInterval !== "undefined") {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store.entries()) {
-      if (entry.resetAt < now) {
-        store.delete(key);
-      }
-    }
-  }, 60 * 1000);
+type UpstashLimiter = {
+  limit: (identifier: string) => Promise<{ success: boolean; remaining: number; reset?: number }>;
+};
+
+const upstashLimiterCache = new Map<string, UpstashLimiter>();
+
+function resolveUpstashEnv() {
+  const url = (
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL ||
+    process.env.REDIS_REST_URL ||
+    ""
+  ).trim();
+  const token = (
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN ||
+    process.env.REDIS_REST_TOKEN ||
+    ""
+  ).trim();
+  if (!url || !token) return null;
+  return { url, token };
+}
+
+function intervalMsToWindow(intervalMs: number): `${number} s` {
+  const sec = Math.max(1, Math.floor(intervalMs / 1000));
+  return `${sec} s`;
+}
+
+async function getUpstashLimiter(
+  namespace: string,
+  config: RateLimitConfig
+): Promise<UpstashLimiter | null> {
+  const env = resolveUpstashEnv();
+  if (!env) return null;
+
+  const cacheKey = `${namespace}:${config.limit}:${config.interval}`;
+  const cached = upstashLimiterCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const [{ Redis }, { Ratelimit }] = await Promise.all([
+      import("@upstash/redis"),
+      import("@upstash/ratelimit"),
+    ]);
+
+    const redis = new Redis({ url: env.url, token: env.token });
+    const ratelimit = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(config.limit, intervalMsToWindow(config.interval)),
+      prefix: `ratelimit:${namespace}`,
+    });
+
+    const limiter: UpstashLimiter = {
+      limit: async (identifier: string) => {
+        const result = await ratelimit.limit(identifier);
+        return {
+          success: !!result.success,
+          remaining: typeof result.remaining === "number" ? result.remaining : 0,
+          reset: typeof (result as any).reset === "number" ? (result as any).reset : undefined,
+        };
+      },
+    };
+    upstashLimiterCache.set(cacheKey, limiter);
+    return limiter;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -49,6 +106,17 @@ export async function checkRateLimit(
   config: RateLimitConfig = { interval: 60 * 1000, limit: 60 },
   namespace: string = "default"
 ): Promise<{ success: boolean; remaining: number; resetAt: number }> {
+  const upstash = await getUpstashLimiter(namespace, config);
+  if (upstash) {
+    const res = await upstash.limit(identifier);
+    const resetAt = typeof res.reset === "number" ? res.reset : Date.now() + config.interval;
+    return {
+      success: res.success,
+      remaining: Math.max(0, res.remaining),
+      resetAt,
+    };
+  }
+
   const now = Date.now();
   const key = `ratelimit:${namespace}:${identifier}`;
 

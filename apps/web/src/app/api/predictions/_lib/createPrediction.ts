@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase";
 import type { PredictionRow } from "./types";
 import { buildDiceBearUrl } from "@/lib/dicebear";
+import { normalizeCategory } from "@/features/trending/trendingModel";
 import { ethers } from "ethers";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -296,7 +297,37 @@ export async function createPredictionFromRequest(
 ): Promise<CreatePredictionResult> {
   const body = await request.json().catch(() => ({}) as Record<string, unknown>);
 
-  const { walletAddress } = await resolveAndVerifyWalletAddress(request, body);
+  const { walletAddress, sessionAddress } = await resolveAndVerifyWalletAddress(request, body);
+  if (!sessionAddress) {
+    const err = new Error("Unauthorized");
+    (err as any).status = 401;
+    throw err;
+  }
+
+  const rawTitle = String((body as Record<string, unknown>).title || "");
+  const rawDescription = String((body as Record<string, unknown>).description || "");
+  const rawCriteria = String((body as Record<string, unknown>).criteria || "");
+  const rawCategory = String((body as Record<string, unknown>).category || "");
+  const rawDeadline = String((body as Record<string, unknown>).deadline || "");
+
+  const title = rawTitle.trim();
+  const description = rawDescription.trim();
+  const criteria = rawCriteria.trim();
+  const category = normalizeCategory(rawCategory);
+  const deadline = rawDeadline.trim();
+
+  const rawMinStake = (body as Record<string, unknown>).minStake;
+  const minStake = typeof rawMinStake === "string" ? Number(rawMinStake) : rawMinStake;
+
+  const normalizedBody: Record<string, unknown> = {
+    ...body,
+    title,
+    description,
+    criteria,
+    category,
+    deadline,
+    minStake,
+  };
 
   assertRequiredFields(body as Record<string, unknown>, [
     "title",
@@ -306,8 +337,8 @@ export async function createPredictionFromRequest(
     "minStake",
     "criteria",
   ]);
-  assertPositiveNumber((body as Record<string, unknown>).minStake, "minStake");
-  const resolutionTimeSec = parseResolutionTimeSeconds((body as Record<string, unknown>).deadline);
+  assertPositiveNumber(minStake, "minStake");
+  const resolutionTimeSec = parseResolutionTimeSeconds(deadline);
 
   const { data: prof, error: profErr } = await (client as any)
     .from("user_profiles")
@@ -326,7 +357,7 @@ export async function createPredictionFromRequest(
   const { data: existingPredictions, error: checkError } = await (client as any)
     .from("predictions")
     .select("id, title, description, category, deadline, status")
-    .eq("title", (body as Record<string, unknown>).title);
+    .eq("title", title);
 
   if (checkError) {
     const err = new Error("Failed to check prediction");
@@ -349,22 +380,34 @@ export async function createPredictionFromRequest(
     throw err;
   }
 
-  const imageUrl = resolveImageUrl(body as Record<string, unknown>, buildDiceBearUrl);
-  const { type, outcomes } = assertValidOutcomes(body as Record<string, unknown>);
+  const imageUrl = resolveImageUrl(normalizedBody, buildDiceBearUrl);
+  const { type, outcomes } = assertValidOutcomes(normalizedBody);
 
   const nextId = await getNextPredictionId(client);
+
+  const referenceUrl =
+    String(
+      (normalizedBody as Record<string, unknown>).reference_url ||
+        (normalizedBody as Record<string, unknown>).referenceUrl ||
+        ""
+    ).trim() || "";
+  if (referenceUrl && !/^https?:\/\//i.test(referenceUrl)) {
+    const err = new Error("Invalid reference_url format");
+    (err as any).status = 400;
+    throw err;
+  }
 
   const { data: newPrediction, error } = await (client as any)
     .from("predictions")
     .insert({
       id: nextId,
-      title: (body as Record<string, unknown>).title,
-      description: (body as Record<string, unknown>).description,
-      category: (body as Record<string, unknown>).category,
-      deadline: (body as Record<string, unknown>).deadline,
-      min_stake: (body as Record<string, unknown>).minStake,
-      criteria: (body as Record<string, unknown>).criteria,
-      reference_url: (body as Record<string, unknown>).reference_url || "",
+      title,
+      description,
+      category,
+      deadline,
+      min_stake: minStake,
+      criteria,
+      reference_url: referenceUrl,
       image_url: imageUrl,
       status: "active",
       type: type === "multi" ? "multi" : "binary",
@@ -389,7 +432,7 @@ export async function createPredictionFromRequest(
       market: binding.market,
       collateral_token: binding.collateralToken || null,
       tick_size: binding.tickSize,
-      resolution_time: (body as Record<string, unknown>).deadline || null,
+      resolution_time: deadline || null,
       status: "open",
     };
 
@@ -432,27 +475,21 @@ async function insertOutcomes(
   type: "binary" | "multi",
   outcomes: any[]
 ) {
-  try {
-    const items =
-      type === "multi"
-        ? outcomes.map((o: any, i: number) => ({
-            prediction_id: predictionId,
-            outcome_index: i,
-            label: String(o?.label || "").trim(),
-            description: o?.description || null,
-            color: o?.color || null,
-            image_url: o?.image_url || null,
-          }))
-        : [
-            { prediction_id: predictionId, outcome_index: 0, label: "Yes" },
-            { prediction_id: predictionId, outcome_index: 1, label: "No" },
-          ];
+  const items =
+    type === "multi"
+      ? outcomes.map((o: any, i: number) => ({
+          prediction_id: predictionId,
+          outcome_index: i,
+          label: String(o?.label || "").trim(),
+          description: o?.description || null,
+          color: o?.color || null,
+          image_url: o?.image_url || null,
+        }))
+      : [
+          { prediction_id: predictionId, outcome_index: 0, label: "Yes" },
+          { prediction_id: predictionId, outcome_index: 1, label: "No" },
+        ];
 
-    const { error } = await (client as any).from("prediction_outcomes").insert(items);
-    if (error) {
-      console.warn("Failed to insert prediction outcomes:", error);
-    }
-  } catch (e) {
-    console.warn("Unexpected error while inserting prediction outcomes:", e);
-  }
+  const { error } = await (client as any).from("prediction_outcomes").insert(items);
+  if (error) throw error;
 }

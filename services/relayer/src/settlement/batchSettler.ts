@@ -17,6 +17,7 @@ import { DEFAULT_SETTLEMENT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
 import { getRedisClient } from "../redis/client.js";
 import { generateRandomId } from "../monitoring/index.js";
+import { settlementLogger } from "../monitoring/logger.js";
 
 // 合约 ABI (只需要 batchFill 函数)
 const MARKET_ABI = [
@@ -76,8 +77,11 @@ export class BatchSettler extends EventEmitter {
     this.wallet = new Wallet(privateKey, this.provider);
     this.config = { ...DEFAULT_SETTLEMENT_CONFIG, ...config };
 
-    console.log(`[BatchSettler] Initialized for market ${marketAddress} on chain ${chainId}`);
-    console.log(`[BatchSettler] Operator address: ${this.wallet.address}`);
+    settlementLogger.info("BatchSettler initialized", {
+      marketAddress,
+      chainId,
+      operatorAddress: this.wallet.address,
+    });
   }
 
   /**
@@ -87,24 +91,24 @@ export class BatchSettler extends EventEmitter {
     // 定期检查是否需要创建批次
     this.batchTimer = setInterval(() => {
       void this.checkAndCreateBatch().catch((error) => {
-        console.error("[BatchSettler] checkAndCreateBatch failed", error);
+        settlementLogger.error("BatchSettler checkAndCreateBatch failed", undefined, error);
       });
     }, 1000);
 
     // 定期检查待确认的交易
     this.confirmTimer = setInterval(() => {
       void this.checkConfirmations().catch((error) => {
-        console.error("[BatchSettler] checkConfirmations failed", error);
+        settlementLogger.error("BatchSettler checkConfirmations failed", undefined, error);
       });
     }, 3000);
 
     this.failedFillTimer = setInterval(() => {
       void this.retryFailedFills().catch((error) => {
-        console.error("[BatchSettler] retryFailedFills failed", error);
+        settlementLogger.error("BatchSettler retryFailedFills failed", undefined, error);
       });
     }, this.config.failedFillRetryIntervalMs);
 
-    console.log("[BatchSettler] Started");
+    settlementLogger.info("BatchSettler started");
   }
 
   /**
@@ -118,7 +122,10 @@ export class BatchSettler extends EventEmitter {
     this.pendingFills.set(fill.id, fill);
     this.stats.pendingFills = this.pendingFills.size;
 
-    console.log(`[BatchSettler] Added fill ${fill.id}, pending: ${this.pendingFills.size}`);
+    settlementLogger.info("BatchSettler fill queued", {
+      fillId: fill.id,
+      pending: this.pendingFills.size,
+    });
 
     // 检查是否达到批量大小
     if (this.pendingFills.size >= this.config.maxBatchSize) {
@@ -186,7 +193,10 @@ export class BatchSettler extends EventEmitter {
 
       this.emitEvent({ type: "batch_created", batch });
 
-      console.log(`[BatchSettler] Created batch ${batch.id} with ${fills.length} fills`);
+      settlementLogger.info("BatchSettler batch created", {
+        batchId: batch.id,
+        fills: fills.length,
+      });
 
       // 异步提交
       void this.submitBatch(batch);
@@ -208,9 +218,11 @@ export class BatchSettler extends EventEmitter {
       const gasPrice = feeData.gasPrice || 0n;
 
       if (gasPrice > this.config.maxGasPrice) {
-        console.warn(
-          `[BatchSettler] Gas price too high: ${gasPrice}, max: ${this.config.maxGasPrice}`
-        );
+        settlementLogger.warn("BatchSettler gas price too high", {
+          batchId: batch.id,
+          gasPrice: gasPrice.toString(),
+          maxGasPrice: this.config.maxGasPrice.toString(),
+        });
         batch.retryCount++;
         if (batch.retryCount < this.config.maxRetries) {
           batch.status = "retrying";
@@ -245,7 +257,10 @@ export class BatchSettler extends EventEmitter {
       const signatures = batch.fills.map((fill) => fill.signature);
       const fillAmounts = batch.fills.map((fill) => fill.fillAmount);
 
-      console.log(`[BatchSettler] Submitting batch ${batch.id} with ${orders.length} orders`);
+      settlementLogger.info("BatchSettler submitting batch", {
+        batchId: batch.id,
+        orders: orders.length,
+      });
 
       // 估算 Gas
       let gasEstimate: bigint;
@@ -254,9 +269,10 @@ export class BatchSettler extends EventEmitter {
         // 加 20% 余量
         gasEstimate = (gasEstimate * 120n) / 100n;
       } catch (estimateError: any) {
-        console.error(
-          `[BatchSettler] Gas estimation failed for batch ${batch.id}:`,
-          estimateError.message
+        settlementLogger.error(
+          "BatchSettler gas estimation failed",
+          { batchId: batch.id, error: String(estimateError?.message || estimateError) },
+          estimateError
         );
         batch.status = "failed";
         batch.error = `Gas estimation failed: ${estimateError.message}`;
@@ -280,13 +296,17 @@ export class BatchSettler extends EventEmitter {
       this.stats.submittedBatches++;
       this.stats.pendingBatches--;
 
-      console.log(`[BatchSettler] Batch ${batch.id} submitted: ${tx.hash}`);
+      settlementLogger.info("BatchSettler batch submitted", { batchId: batch.id, txHash: tx.hash });
       this.emitEvent({ type: "batch_submitted", batchId: batch.id, txHash: tx.hash });
 
       // 保存到数据库
       await this.saveBatchToDb(batch);
     } catch (error: any) {
-      console.error(`[BatchSettler] Failed to submit batch ${batch.id}:`, error.message);
+      settlementLogger.error(
+        "BatchSettler failed to submit batch",
+        { batchId: batch.id, error: String(error?.message || error) },
+        error
+      );
 
       batch.retryCount++;
 
@@ -296,9 +316,12 @@ export class BatchSettler extends EventEmitter {
           this.config.retryDelayMs *
           Math.pow(this.config.retryBackoffMultiplier, batch.retryCount - 1);
 
-        console.log(
-          `[BatchSettler] Retrying batch ${batch.id} in ${delay}ms (attempt ${batch.retryCount}/${this.config.maxRetries})`
-        );
+        settlementLogger.info("BatchSettler retrying batch", {
+          batchId: batch.id,
+          delayMs: delay,
+          attempt: batch.retryCount,
+          maxRetries: this.config.maxRetries,
+        });
 
         setTimeout(() => void this.submitBatch(batch), delay);
       } else {
@@ -357,9 +380,10 @@ export class BatchSettler extends EventEmitter {
                 (this.stats.averageConfirmationTime * (totalBatches - 1) + confirmTime) /
                 totalBatches;
 
-              console.log(
-                `[BatchSettler] Batch ${batch.id} confirmed at block ${receipt.blockNumber}`
-              );
+              settlementLogger.info("BatchSettler batch confirmed", {
+                batchId: batch.id,
+                blockNumber: receipt.blockNumber,
+              });
               this.emitEvent({
                 type: "batch_confirmed",
                 batchId: batch.id,
@@ -381,7 +405,7 @@ export class BatchSettler extends EventEmitter {
             // 检查超时
             const elapsed = Date.now() - batch.submittedAt!;
             if (elapsed > this.config.confirmationTimeoutMs) {
-              console.warn(`[BatchSettler] Batch ${batch.id} confirmation timeout`);
+              settlementLogger.warn("BatchSettler confirmation timeout", { batchId: batch.id });
               batch.status = "failed";
               batch.error = "Confirmation timeout";
               this.stats.failedBatches++;
@@ -397,9 +421,10 @@ export class BatchSettler extends EventEmitter {
             }
           }
         } catch (error: any) {
-          console.error(
-            `[BatchSettler] Error checking confirmation for batch ${batch.id}:`,
-            error.message
+          settlementLogger.error(
+            "BatchSettler error checking confirmation",
+            { batchId: batch.id, error: String(error?.message || error) },
+            error
           );
         }
       }
@@ -582,7 +607,9 @@ export class BatchSettler extends EventEmitter {
         .limit(this.config.failedFillRetryBatchSize);
 
       if (error) {
-        console.warn("[BatchSettler] Failed to load failed fills", error.message);
+        settlementLogger.warn("BatchSettler failed to load failed fills", {
+          error: String((error as any)?.message || error),
+        });
         return;
       }
 
@@ -745,7 +772,7 @@ export class BatchSettler extends EventEmitter {
    * 优雅关闭
    */
   async shutdown(): Promise<void> {
-    console.log("[BatchSettler] Shutting down...");
+    settlementLogger.info("BatchSettler shutting down");
     this.isShuttingDown = true;
 
     // 停止定时器
@@ -764,7 +791,9 @@ export class BatchSettler extends EventEmitter {
 
     // 处理剩余的 pending fills
     if (this.pendingFills.size > 0) {
-      console.log(`[BatchSettler] Processing ${this.pendingFills.size} remaining fills...`);
+      settlementLogger.info("BatchSettler processing remaining fills", {
+        fills: this.pendingFills.size,
+      });
       await this.createBatch();
     }
 
@@ -775,6 +804,6 @@ export class BatchSettler extends EventEmitter {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
-    console.log("[BatchSettler] Shutdown complete");
+    settlementLogger.info("BatchSettler shutdown complete");
   }
 }

@@ -72,6 +72,7 @@ export function useProfileAggregates(args: {
     history,
     setHistory,
     username,
+    profileInfo: info,
     positions,
     portfolioStats,
     positionsCount,

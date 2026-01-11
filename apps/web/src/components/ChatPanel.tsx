@@ -154,7 +154,7 @@ export default function ChatPanel({
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-  }, [messages.length]);
+  }, [messages.length, forumMessages.length]);
 
   useEffect(() => {
     const key = `chat:debatePrefs:${eventId}`;

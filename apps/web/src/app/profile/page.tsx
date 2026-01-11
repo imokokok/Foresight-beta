@@ -22,6 +22,7 @@ export default function ProfilePage() {
     history,
     username,
     positions,
+    profileInfo,
     portfolioStats,
     positionsCount,
     historyLoading,
@@ -46,6 +47,7 @@ export default function ProfilePage() {
     <ProfilePageView
       account={account}
       username={username}
+      profileInfo={profileInfo}
       tProfile={tProfile}
       activeTab={activeTab}
       setActiveTab={setActiveTab}

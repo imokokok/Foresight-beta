@@ -58,7 +58,7 @@ export type EventFollow = Database["public"]["Tables"]["event_follows"]["Row"];
 
 export type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
-export function getClient(_id?: string) {
+export function getClient(_id?: string): SupabaseClient<Database> | null {
   // 服务端优先使用 admin 客户端，客户端使用普通客户端
-  return (isServer ? supabaseAdmin || supabase : supabase) as SupabaseClient<Database>;
+  return isServer ? supabaseAdmin || supabase : supabase;
 }

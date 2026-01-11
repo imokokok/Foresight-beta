@@ -10,20 +10,17 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslations, t, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
+import type { Database } from "@/lib/supabase";
 
 type ForumChatDetailClientProps = {
-  id: number;
-  prediction: {
-    id: number;
-    title?: string | null;
-    category?: string | null;
-    description?: string | null;
-    followers_count?: number | null;
-    created_at?: string | null;
-  } | null;
+  eventId: number;
+  prediction: Pick<
+    Database["public"]["Tables"]["predictions"]["Row"],
+    "id" | "title" | "category" | "description" | "followers_count" | "created_at"
+  > | null;
 };
 
-export default function ForumChatDetailClient({ id, prediction }: ForumChatDetailClientProps) {
+export default function ForumChatDetailClient({ eventId, prediction }: ForumChatDetailClientProps) {
   const router = useRouter();
   const { account } = useWallet();
   const { user } = useAuth();
@@ -60,7 +57,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
               </button>
               <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500">
                 <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
-                  #{id}
+                  #{eventId}
                 </span>
                 <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
                   {followers} {tForum("followersLabelShort")}
@@ -112,7 +109,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
-                      onClick={() => router.push(`/prediction/${id}`)}
+                      onClick={() => router.push(`/prediction/${eventId}`)}
                       className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:-translate-y-0.5 transition-all inline-flex items-center justify-center gap-2"
                     >
                       {tForum("viewMarket")}
@@ -123,7 +120,7 @@ export default function ForumChatDetailClient({ id, prediction }: ForumChatDetai
 
                 <div className="flex-1 flex flex-col min-h-[280px]">
                   <ChatPanel
-                    eventId={id}
+                    eventId={eventId}
                     roomTitle={roomTitle}
                     roomCategory={category}
                     hideHeader={true}

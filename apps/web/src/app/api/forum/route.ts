@@ -44,10 +44,20 @@ async function isUnderDailyAutoMarketLimit(client: any): Promise<boolean> {
 }
 
 function actionLabel(v: string): string {
-  const s = String(v || "");
-  if (s === "价格达到") return "价格是否会达到";
-  if (s === "将会发生") return "是否将会发生";
-  if (s === "将会赢得") return "是否将会赢得";
+  const normalized = normalizeActionVerb(v);
+  if (normalized === "价格达到") return "价格是否会达到";
+  if (normalized === "将会发生") return "是否将会发生";
+  if (normalized === "将会赢得") return "是否将会赢得";
+  if (!normalized) return "是否将会发生";
+  if (normalized.includes("是否")) return normalized;
+  return `是否${normalized}`;
+}
+
+function normalizeActionVerb(v: string): string {
+  const s = String(v || "").trim();
+  if (s === "priceReach") return "价格达到";
+  if (s === "willHappen") return "将会发生";
+  if (s === "willWin") return "将会赢得";
   return s;
 }
 
@@ -208,6 +218,12 @@ export async function GET(req: NextRequest) {
       upvotes: Number(t.upvotes || 0),
       downvotes: Number(t.downvotes || 0),
       category: t.category ? normalizeCategory(String(t.category)) : undefined,
+      subject_name: t.subject_name == null ? null : String(t.subject_name || ""),
+      action_verb: t.action_verb == null ? null : String(t.action_verb || ""),
+      target_value: t.target_value == null ? null : String(t.target_value || ""),
+      deadline: t.deadline == null ? null : String(t.deadline || ""),
+      title_preview: t.title_preview == null ? null : String(t.title_preview || ""),
+      criteria_preview: t.criteria_preview == null ? null : String(t.criteria_preview || ""),
       created_prediction_id:
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       review_status: String(t.review_status || "pending_review"),
@@ -277,7 +293,7 @@ export async function POST(req: NextRequest) {
     const body = await parseRequestBody(req);
     const eventId = normalizeId(body?.eventId);
     const title = String(body?.title || "");
-    const content = String(body?.content || "");
+    const rawContent = String(body?.content || "");
     const rawWalletAddress = String(body?.walletAddress || "");
     if (eventId === null || eventId <= 0) {
       return ApiResponses.invalidParameters("eventId 必填且必须为正整数");
@@ -287,9 +303,6 @@ export async function POST(req: NextRequest) {
     }
     if (textLengthWithoutSpaces(title) < 5) {
       return ApiResponses.invalidParameters("标题过短，请补充关键信息");
-    }
-    if (textLengthWithoutSpaces(content) < 40) {
-      return ApiResponses.invalidParameters("内容信息量不足，请至少补充 40 个字符");
     }
     const client = (supabaseAdmin || getClient()) as any;
     if (!client) {
@@ -316,14 +329,41 @@ export async function POST(req: NextRequest) {
       );
     }
     if (!ok) return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
-    const subject_name = String(body?.subjectName || "");
-    const action_verb = String(body?.actionVerb || "");
-    const target_value = String(body?.targetValue || "");
+    const subject_name = String(body?.subjectName ?? body?.subject_name ?? "").trim();
+    const action_verb = normalizeActionVerb(String(body?.actionVerb ?? body?.action_verb ?? ""));
+    const target_value = String(body?.targetValue ?? body?.target_value ?? "").trim();
     const categoryRaw = String(body?.category || "");
     const category = categoryRaw ? normalizeCategory(categoryRaw) : "";
-    const deadline = body?.deadline ? new Date(String(body.deadline)).toISOString() : null;
-    const title_preview = String(body?.titlePreview || "");
-    const criteria_preview = String(body?.criteriaPreview || "");
+    const deadlineRaw = body?.deadline ?? body?.deadline_at ?? body?.resolutionTime;
+    const deadline = deadlineRaw ? new Date(String(deadlineRaw)).toISOString() : null;
+    const title_preview = String(body?.titlePreview ?? body?.title_preview ?? "").trim();
+    const criteria_preview = String(body?.criteriaPreview ?? body?.criteria_preview ?? "").trim();
+
+    let content = rawContent;
+    if (textLengthWithoutSpaces(content) < 40) {
+      const hasMetadata =
+        !!title_preview ||
+        !!criteria_preview ||
+        !!subject_name ||
+        !!action_verb ||
+        !!target_value ||
+        !!deadline;
+      if (hasMetadata) {
+        const parts: string[] = [];
+        parts.push(title_preview || title.trim());
+        parts.push("---");
+        if (subject_name) parts.push(`Subject Name: ${subject_name}`);
+        if (action_verb) parts.push(`Action Verb: ${action_verb}`);
+        if (target_value) parts.push(`Target Value: ${target_value}`);
+        if (deadline) parts.push(`Deadline: ${deadline}`);
+        if (criteria_preview) parts.push(`Criteria: ${criteria_preview}`);
+        content = parts.join("\n");
+      }
+    }
+
+    if (textLengthWithoutSpaces(content) < 40) {
+      return ApiResponses.invalidParameters("内容信息量不足，请至少补充 40 个字符");
+    }
     const { data, error } = await client
       .from("forum_threads")
       .insert({

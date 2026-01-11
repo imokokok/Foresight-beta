@@ -28,6 +28,7 @@ import {
   RotateCcw,
   ChevronUp,
   FileText,
+  Link2,
 } from "lucide-react";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatTime } from "@/lib/format";
@@ -202,6 +203,18 @@ function DetailsSection({ form, setField, tTrendingAdmin }: DetailsSectionProps)
             placeholder={tTrendingAdmin("fieldCriteriaPlaceholder")}
           />
         </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-black text-slate-400 uppercase tracking-wider ml-1 flex items-center gap-2">
+            <Link2 className="w-3.5 h-3.5" /> {tTrendingAdmin("fieldReferenceUrl")}
+          </label>
+          <input
+            value={form.referenceUrl}
+            onChange={(event) => setField("referenceUrl", event.target.value)}
+            className="input-base !bg-white/60 font-bold"
+            placeholder={tTrendingAdmin("fieldReferenceUrlPlaceholder")}
+          />
+        </div>
       </div>
     </div>
   );
@@ -210,7 +223,7 @@ function DetailsSection({ form, setField, tTrendingAdmin }: DetailsSectionProps)
 type TypeAndOutcomesSectionProps = {
   type: PredictionForm["type"];
   outcomes: Outcome[];
-  setField: (key: keyof PredictionForm, value: PredictionForm[keyof PredictionForm]) => void;
+  setType: (type: PredictionForm["type"]) => void;
   onAddOutcome: () => void;
   onDelOutcome: (index: number) => void;
   onOutcomeChange: (index: number, key: keyof Outcome, value: any) => void;
@@ -220,7 +233,7 @@ type TypeAndOutcomesSectionProps = {
 function TypeAndOutcomesSection({
   type,
   outcomes,
-  setField,
+  setType,
   onAddOutcome,
   onDelOutcome,
   onOutcomeChange,
@@ -237,7 +250,7 @@ function TypeAndOutcomesSection({
       <div className="space-y-6">
         <div className="flex gap-2 p-1.5 bg-slate-100/50 rounded-2xl w-fit border border-slate-200/60">
           <button
-            onClick={() => setField("type", "binary")}
+            onClick={() => setType("binary")}
             className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
               type === "binary"
                 ? "bg-white text-brand shadow-soft border border-white"
@@ -247,7 +260,7 @@ function TypeAndOutcomesSection({
             {tTrendingAdmin("type.binary")}
           </button>
           <button
-            onClick={() => setField("type", "multi")}
+            onClick={() => setType("multi")}
             className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${
               type === "multi"
                 ? "bg-white text-brand shadow-soft border border-white"
@@ -482,6 +495,7 @@ export default function AdminCreatePredictionPage() {
     closeDraftConfirm,
     confirmDraft,
     setField,
+    setType,
     onAddOutcome,
     onDelOutcome,
     onOutcomeChange,
@@ -562,7 +576,7 @@ export default function AdminCreatePredictionPage() {
             <TypeAndOutcomesSection
               type={form.type}
               outcomes={outcomes}
-              setField={setField}
+              setType={setType}
               onAddOutcome={onAddOutcome}
               onDelOutcome={onDelOutcome}
               onOutcomeChange={onOutcomeChange}

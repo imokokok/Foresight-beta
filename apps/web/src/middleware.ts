@@ -9,6 +9,9 @@ export async function middleware(request: NextRequest) {
   // 仅对 API 路由应用限流
   if (pathname.startsWith("/api")) {
     const ip = getIP(request);
+    const sessionCookie = request.cookies.get("fs_session")?.value || "";
+    const sessionPayload = sessionCookie ? await verifyToken(sessionCookie) : null;
+    const identifier = sessionPayload?.address ? `addr:${sessionPayload.address}` : `ip:${ip}`;
 
     // 根据不同的 API 路由应用不同的限流策略
     let rateLimitConfig = RateLimits.moderate;
@@ -41,7 +44,7 @@ export async function middleware(request: NextRequest) {
       rateLimitNamespace = "read";
     }
 
-    const result = await checkRateLimit(ip, rateLimitConfig, rateLimitNamespace);
+    const result = await checkRateLimit(identifier, rateLimitConfig, rateLimitNamespace);
 
     if (!result.success) {
       return NextResponse.json(
@@ -65,14 +68,12 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    const sessionCookie = request.cookies.get("fs_session")?.value || "";
     const refreshCookie = request.cookies.get("fs_refresh")?.value || "";
 
     let refreshedSession: string | null = null;
     let refreshedRefresh: string | null = null;
 
     if (refreshCookie) {
-      const sessionPayload = sessionCookie ? await verifyToken(sessionCookie) : null;
       if (!sessionPayload) {
         const refreshPayload = await verifyToken(refreshCookie);
         if (refreshPayload?.address) {

@@ -9,6 +9,7 @@ export const DEFAULT_FORM: PredictionForm = {
   deadline: "",
   minStake: 1,
   criteria: "",
+  referenceUrl: "",
   type: "binary",
 };
 

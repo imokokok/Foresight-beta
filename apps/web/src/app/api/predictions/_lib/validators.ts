@@ -44,7 +44,7 @@ export function assertRequiredFields(body: Record<string, unknown>, requiredFiel
 }
 
 export function assertPositiveNumber(value: any, fieldName: string) {
-  if (typeof value !== "number" || value <= 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     const err = new Error(`${fieldName} must be a positive number`);
     (err as any).status = 400;
     throw err;

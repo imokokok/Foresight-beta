@@ -164,17 +164,29 @@ export function useSiweAuth(params: Params) {
         }
       }
 
-      const verifyRes = await fetch("/api/siwe/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: prepared,
-          signature,
-          domain: typeof window !== "undefined" ? window.location.host : undefined,
-          uri: typeof window !== "undefined" ? window.location.origin : undefined,
-        }),
-      });
-      const verifyJson = await verifyRes.json();
+      let verifyRes: Response | null = null;
+      let verifyJson: any = null;
+      try {
+        verifyRes = await fetch("/api/siwe/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: prepared,
+            signature,
+            domain: typeof window !== "undefined" ? window.location.host : undefined,
+            uri: typeof window !== "undefined" ? window.location.origin : undefined,
+          }),
+        });
+        verifyJson = await verifyRes.json().catch(() => null);
+      } catch {
+        return { success: false, error: t("errors.wallet.verifyFailed") };
+      } finally {
+        nonceCache.value = null;
+        nonceCache.expiresAt = 0;
+      }
+      if (!verifyRes) {
+        return { success: false, error: t("errors.wallet.verifyFailed") };
+      }
       if (!verifyRes.ok || !verifyJson?.success) {
         return {
           success: false,

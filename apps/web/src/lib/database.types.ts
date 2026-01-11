@@ -151,6 +151,50 @@ export interface Database {
           updated_at?: string;
         };
       };
+      email_otps: {
+        Row: {
+          wallet_address: string;
+          email: string;
+          code_hash: string;
+          expires_at: string;
+          last_sent_at: string;
+          sent_window_start_at: string;
+          sent_in_window: number;
+          fail_count: number;
+          lock_until: string | null;
+          created_ip: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          wallet_address: string;
+          email: string;
+          code_hash: string;
+          expires_at: string;
+          last_sent_at?: string;
+          sent_window_start_at?: string;
+          sent_in_window?: number;
+          fail_count?: number;
+          lock_until?: string | null;
+          created_ip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          wallet_address?: string;
+          email?: string;
+          code_hash?: string;
+          expires_at?: string;
+          last_sent_at?: string;
+          sent_window_start_at?: string;
+          sent_in_window?: number;
+          fail_count?: number;
+          lock_until?: string | null;
+          created_ip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       orders: {
         Row: {
           id: number;

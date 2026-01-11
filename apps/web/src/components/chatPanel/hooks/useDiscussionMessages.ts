@@ -34,6 +34,7 @@ export function useDiscussionMessages(eventId: number) {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const load = async () => {
       try {
         if (cancelled) return;
@@ -66,7 +67,9 @@ export function useDiscussionMessages(eventId: number) {
           }
         }
 
-        const res = await fetch(`/api/discussions?proposalId=${eventId}`);
+        const res = await fetch(`/api/discussions?proposalId=${eventId}`, {
+          signal: controller.signal,
+        });
         if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
         if (cancelled) return;
@@ -98,6 +101,7 @@ export function useDiscussionMessages(eventId: number) {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [eventId, reloadKey]);
 
@@ -190,8 +194,8 @@ export function useDiscussionMessages(eventId: number) {
           channel.unsubscribe();
           supabase?.removeChannel(channel);
           channel = null;
-        } catch (error) {
-          console.error("Failed to cleanup WebSocket channel:", error);
+        } catch {
+          return;
         }
       }
     };

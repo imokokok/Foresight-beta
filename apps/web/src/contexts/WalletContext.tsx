@@ -115,10 +115,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           return;
         }
       }
+      if (siweLoggingInRef.current) return;
       setIsAuthenticated(false);
       setAuthAddress(null);
     } catch {
       if (requestId !== authRequestIdRef.current) return;
+      if (siweLoggingInRef.current) return;
       setIsAuthenticated(false);
       setAuthAddress(null);
     }
@@ -133,6 +135,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
     siweLoggingInRef.current = true;
     try {
+      authRequestIdRef.current += 1;
       const result = await siweLoginBase();
       if (result.success && result.address) {
         setIsAuthenticated(true);

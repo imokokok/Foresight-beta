@@ -145,6 +145,15 @@ export async function POST(request: NextRequest) {
     if (status === 400) {
       return ApiResponses.invalidParameters(message);
     }
+    if (status === 401) {
+      return ApiResponses.unauthorized(message);
+    }
+    if (status === 403) {
+      return ApiResponses.forbidden(message);
+    }
+    if (status === 409) {
+      return ApiResponses.conflict(message);
+    }
     return ApiResponses.internalError(message, details);
   }
 }

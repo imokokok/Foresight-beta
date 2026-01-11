@@ -12,5 +12,6 @@ export type PredictionForm = {
   deadline: string;
   minStake: number | string;
   criteria: string;
+  referenceUrl: string;
   type: "binary" | "multi";
 };

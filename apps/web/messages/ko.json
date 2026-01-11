@@ -1142,6 +1142,8 @@
       "fieldDescriptionPlaceholder": "이 예측의 배경, 범위 및 기타 핵심 정보를 자세히 설명하세요...",
       "fieldCriteria": "해결 기준 (오라클 기준)",
       "fieldCriteriaPlaceholder": "예: 마감일의 CoinMarketCap 종가를 기준으로 합니다",
+      "fieldReferenceUrl": "참고 링크 (선택)",
+      "fieldReferenceUrlPlaceholder": "예: https://coinmarketcap.com/ ...",
       "confirmDelete": "이 이벤트를 삭제하시겠습니까?",
       "updateFailed": "업데이트 실패",
       "deleteFailed": "삭제 실패",

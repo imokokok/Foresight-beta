@@ -21,6 +21,8 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "@/lib/i18n";
+import type { UserProfile } from "@/lib/supabase";
 import type {
   PortfolioStats,
   ProfileHistoryItem,
@@ -47,6 +49,7 @@ import {
 export type ProfilePageViewProps = {
   account: string | null;
   username: string;
+  profileInfo?: UserProfile | null;
   tProfile: (key: string) => string;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
@@ -66,6 +69,7 @@ export type ProfilePageViewProps = {
 export function ProfilePageView({
   account,
   username,
+  profileInfo,
   tProfile,
   activeTab,
   setActiveTab,
@@ -84,6 +88,8 @@ export function ProfilePageView({
   const { account: myAccount } = useWallet();
   const auth = useAuthOptional();
   const userId = auth?.user?.id ?? null;
+  const tCommon = useTranslations("common");
+  const tWalletModal = useTranslations("walletModal");
   const queryClient = useQueryClient();
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const prevUserIdRef = useRef<string | null>(userId);
@@ -91,8 +97,80 @@ export function ProfilePageView({
   const accountNorm = useMemo(() => (account ? normalizeAddress(account) : ""), [account]);
   const myAccountNorm = useMemo(() => (myAccount ? normalizeAddress(myAccount) : ""), [myAccount]);
 
+  const [emailInput, setEmailInput] = useState<string>("");
+  const [otpInput, setOtpInput] = useState<string>("");
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [codePreview, setCodePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    const existing = String(profileInfo?.email || "")
+      .trim()
+      .toLowerCase();
+    if (existing) {
+      setEmailInput(existing);
+      setOtpRequested(false);
+      setOtpInput("");
+      setCodePreview(null);
+      return;
+    }
+    setOtpRequested(false);
+    setOtpInput("");
+    setCodePreview(null);
+  }, [profileInfo?.email]);
+
   const countsQuery = useUserFollowCounts(account || null);
   const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
+
+  const requestEmailOtpMutation = useMutation({
+    mutationFn: async () => {
+      const email = String(emailInput || "")
+        .trim()
+        .toLowerCase();
+      const addr = String(accountNorm || "").toLowerCase();
+      return fetcher<{ expiresInSec?: number; codePreview?: string }>("/api/email-otp/request", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: addr, email }),
+      });
+    },
+    onSuccess: (data) => {
+      setOtpRequested(true);
+      setOtpInput("");
+      if (data?.codePreview) {
+        setOtpInput(String(data.codePreview || ""));
+        setCodePreview(String(data.codePreview || ""));
+      } else {
+        setCodePreview(null);
+      }
+      toast.success(tWalletModal("profile.sendOtpWithValidity"));
+    },
+    onError: (e: any) => {
+      toast.error(String(e?.message || tWalletModal("errors.otpSendFailed")));
+    },
+  });
+
+  const verifyEmailOtpMutation = useMutation({
+    mutationFn: async () => {
+      const email = String(emailInput || "")
+        .trim()
+        .toLowerCase();
+      const code = String(otpInput || "").trim();
+      const addr = String(accountNorm || "").toLowerCase();
+      return fetcher<{ ok: boolean }>("/api/email-otp/verify", {
+        method: "POST",
+        body: JSON.stringify({ walletAddress: addr, email, code }),
+      });
+    },
+    onSuccess: async () => {
+      setOtpRequested(false);
+      setOtpInput("");
+      setCodePreview(null);
+      toast.success(tCommon("success"));
+      await queryClient.invalidateQueries({ queryKey: QueryKeys.userProfile(accountNorm) });
+    },
+    onError: (e: any) => {
+      toast.error(String(e?.message || tWalletModal("errors.otpVerifyFailed")));
+    },
+  });
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -186,6 +264,24 @@ export function ProfilePageView({
   const isFollowed = followStatusQuery.data ?? false;
   const isFollowLoading = followMutation.isPending || followStatusQuery.isFetching;
 
+  const currentEmail = String(profileInfo?.email || "").trim();
+  const emailVerified = !!currentEmail;
+  const canRequestOtp =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    /.+@.+\..+/.test(String(emailInput || "").trim()) &&
+    !requestEmailOtpMutation.isPending &&
+    !verifyEmailOtpMutation.isPending;
+  const canVerifyOtp =
+    isOwnProfile &&
+    !!accountNorm &&
+    !!userId &&
+    otpRequested &&
+    /^\d{6}$/.test(String(otpInput || "").trim()) &&
+    !requestEmailOtpMutation.isPending &&
+    !verifyEmailOtpMutation.isPending;
+
   const handleFollowToggle = async () => {
     if (!account) return;
     if (!myAccount) {
@@ -255,6 +351,112 @@ export function ProfilePageView({
                     {account ? formatAddress(account) : tProfile("username.walletDisconnected")}
                   </span>
                 </button>
+
+                {isOwnProfile && account && (
+                  <div className="w-full mb-6 bg-white/70 border border-purple-100 rounded-2xl p-4 text-left">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="text-sm font-black text-gray-900">
+                        {tWalletModal("profile.verifyEmail")}
+                      </div>
+                      {emailVerified && (
+                        <div className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                          {tWalletModal("profile.verifiedTag")}
+                        </div>
+                      )}
+                    </div>
+
+                    {emailVerified && (
+                      <div className="text-xs text-gray-700 font-mono break-all mb-3">
+                        {currentEmail}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-2">
+                      <input
+                        value={emailInput}
+                        onChange={(e) => {
+                          setEmailInput(e.target.value);
+                          setOtpRequested(false);
+                          setOtpInput("");
+                          setCodePreview(null);
+                        }}
+                        placeholder="name@example.com"
+                        className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
+                      />
+
+                      <button
+                        type="button"
+                        disabled={!canRequestOtp}
+                        onClick={async () => {
+                          if (!userId) {
+                            setWalletModalOpen(true);
+                            return;
+                          }
+                          if (!/.+@.+\..+/.test(String(emailInput || "").trim())) {
+                            toast.error(tWalletModal("profile.emailInvalid"));
+                            return;
+                          }
+                          await requestEmailOtpMutation.mutateAsync();
+                        }}
+                        className="w-full h-11 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 hover:from-purple-400 hover:to-pink-400 hover:text-white"
+                      >
+                        {requestEmailOtpMutation.isPending ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {tCommon("loading")}
+                          </span>
+                        ) : (
+                          tWalletModal("profile.sendOtpWithValidity")
+                        )}
+                      </button>
+
+                      {otpRequested && (
+                        <>
+                          <input
+                            value={otpInput}
+                            onChange={(e) =>
+                              setOtpInput(e.target.value.replace(/[^\d]/g, "").slice(0, 6))
+                            }
+                            placeholder="123456"
+                            inputMode="numeric"
+                            className="w-full h-11 px-3 rounded-xl border border-purple-100 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-purple-300"
+                          />
+
+                          <button
+                            type="button"
+                            disabled={!canVerifyOtp}
+                            onClick={async () => {
+                              if (!userId) {
+                                setWalletModalOpen(true);
+                                return;
+                              }
+                              await verifyEmailOtpMutation.mutateAsync();
+                            }}
+                            className="w-full h-11 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-white/90 border border-purple-100 text-purple-700 hover:border-purple-200 hover:bg-white"
+                          >
+                            {verifyEmailOtpMutation.isPending ? (
+                              <span className="inline-flex items-center gap-2">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                {tCommon("loading")}
+                              </span>
+                            ) : (
+                              tWalletModal("profile.verifyEmail")
+                            )}
+                          </button>
+
+                          {!!codePreview && (
+                            <div className="text-xs text-gray-600 font-semibold">
+                              {tWalletModal("devCodePreviewPrefix")} {codePreview}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 font-medium">
+                            {tWalletModal("profile.otpTip")}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {isOwnProfile && !account && (
                   <button

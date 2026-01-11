@@ -5,6 +5,7 @@
 
 import { ethers, Contract, Wallet, JsonRpcProvider } from "ethers";
 import type { SettlementOrder } from "./types.js";
+import { settlementLogger } from "../monitoring/logger.js";
 
 // EIP-2612 Permit 签名类型
 const PERMIT_TYPES = {
@@ -44,10 +45,10 @@ export interface MetaTransactionRequest {
   order: SettlementOrder;
   orderSignature: string;
   fillAmount: bigint;
-  
+
   // Permit 数据 (可选，用于授权 USDC)
   permit?: PermitData;
-  
+
   // 请求元数据
   requestedAt: number;
   userAddress: string;
@@ -154,7 +155,7 @@ export class MetaTransactionHandler {
       const recovered = ethers.verifyTypedData(domain, PERMIT_TYPES, permitData, permit.signature);
       return recovered.toLowerCase() === permit.owner.toLowerCase();
     } catch (error) {
-      console.error("[MetaTx] Permit verification error:", error);
+      settlementLogger.error("MetaTx permit verification error", undefined, error);
       return false;
     }
   }
@@ -174,7 +175,7 @@ export class MetaTransactionHandler {
         request.orderSignature,
         request.userAddress
       );
-      
+
       if (!orderValid) {
         return { success: false, error: "Invalid order signature" };
       }
@@ -196,7 +197,7 @@ export class MetaTransactionHandler {
         request.order,
         request.fillAmount
       );
-      
+
       if (!balanceCheck.success) {
         return { success: false, error: balanceCheck.error };
       }
@@ -204,7 +205,6 @@ export class MetaTransactionHandler {
       // 4. 由 Operator 代为提交交易
       // (实际填充由 BatchSettler 处理)
       return { success: true };
-      
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -354,4 +354,3 @@ export function getOrderSignMessage(
 
   return { domain, types: ORDER_TYPES, message };
 }
-

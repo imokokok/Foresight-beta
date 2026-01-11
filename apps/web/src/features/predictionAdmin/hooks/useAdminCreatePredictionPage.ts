@@ -25,6 +25,18 @@ export function useAdminCreatePredictionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showDraftMenu, setShowDraftMenu] = useState(false);
 
+  useEffect(() => {
+    if (form.type !== "multi") return;
+    setOutcomes((previous) => {
+      if (previous.length >= 3) return previous;
+      const next = [...previous];
+      for (let i = next.length; i < 3; i++) {
+        next.push({ label: `Option ${i + 1}` });
+      }
+      return next;
+    });
+  }, [form.type]);
+
   const {
     lastSaved,
     msg,
@@ -48,6 +60,10 @@ export function useAdminCreatePredictionPage() {
       setForm((previous) => ({ ...previous, [key]: value })),
     []
   );
+
+  const setType = useCallback((type: PredictionForm["type"]) => {
+    setForm((previous) => ({ ...previous, type }));
+  }, []);
 
   const { onAddOutcome, onDelOutcome, onOutcomeChange } = usePredictionOutcomes(setOutcomes);
 
@@ -78,6 +94,11 @@ export function useAdminCreatePredictionPage() {
         type: form.type,
         walletAddress: String(account).toLowerCase(),
       };
+
+      const referenceUrl = String(form.referenceUrl || "").trim();
+      if (referenceUrl) {
+        payload.reference_url = referenceUrl;
+      }
 
       if (form.type === "multi") {
         payload.outcomes = outcomes.map((outcome) => ({ ...outcome }));
@@ -134,6 +155,7 @@ export function useAdminCreatePredictionPage() {
     closeDraftConfirm,
     confirmDraft,
     setField,
+    setType,
     onAddOutcome,
     onDelOutcome,
     onOutcomeChange,

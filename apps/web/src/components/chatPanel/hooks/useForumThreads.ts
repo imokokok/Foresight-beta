@@ -15,13 +15,17 @@ export function useForumThreads(eventId: number) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
     const loadForum = async () => {
       try {
+        if (cancelled) return;
         setLoading(true);
         setError(null);
-        const res = await fetch(`/api/forum?eventId=${eventId}`);
+        const res = await fetch(`/api/forum?eventId=${eventId}`, { signal: controller.signal });
         if (!res.ok) throw new Error("load_failed");
         const data = await res.json();
+        if (cancelled) return;
         const threads = Array.isArray(data?.threads) ? data.threads : [];
         setForumThreads(threads);
 
@@ -46,11 +50,17 @@ export function useForumThreads(eventId: number) {
         setForumMessages(fm);
         setLoading(false);
       } catch {
-        setError("load_failed");
-        setLoading(false);
+        if (!cancelled) {
+          setError("load_failed");
+          setLoading(false);
+        }
       }
     };
     loadForum();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [eventId, reloadKey]);
 
   return { forumThreads, forumMessages, loading, error, refresh };

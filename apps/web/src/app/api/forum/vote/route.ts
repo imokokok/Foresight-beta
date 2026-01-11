@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, getClient } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
@@ -19,11 +19,15 @@ export async function POST(req: NextRequest) {
     const userAddr = normalizeAddress(await getSessionAddress(req));
     if (!/^0x[a-f0-9]{40}$/.test(userAddr)) return ApiResponses.unauthorized("未登录或会话失效");
 
+    if (!supabaseAdmin) {
+      return ApiResponses.internalError("服务端未配置 SUPABASE_SERVICE_KEY");
+    }
+    const admin = supabaseAdmin as any;
+
     // 内容存在性与事件ID解析
     let eventId: number | null = null;
-    const client = getClient();
     if (type === "thread") {
-      const { data: t, error } = await client
+      const { data: t, error } = await admin
         .from("forum_threads")
         .select("event_id, upvotes, downvotes")
         .eq("id", id)
@@ -32,7 +36,7 @@ export async function POST(req: NextRequest) {
       if (!t) return ApiResponses.notFound("未找到对象");
       eventId = Number((t as any).event_id);
     } else {
-      const { data: c, error } = await client
+      const { data: c, error } = await admin
         .from("forum_comments")
         .select("event_id, upvotes, downvotes")
         .eq("id", id)
@@ -42,12 +46,6 @@ export async function POST(req: NextRequest) {
       eventId = Number((c as any).event_id);
     }
     if (!Number.isFinite(eventId)) return ApiResponses.badRequest("事件不存在或无效");
-
-    if (!supabaseAdmin) {
-      return ApiResponses.internalError("服务端未配置 SUPABASE_SERVICE_KEY");
-    }
-
-    const admin = (supabaseAdmin || client) as any;
 
     // 重复投票检查
     const { data: existing, error: existErr } = await admin
