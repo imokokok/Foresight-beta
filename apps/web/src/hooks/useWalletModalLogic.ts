@@ -11,6 +11,7 @@ import {
   type EmailOtpVerifyResult,
   type UserProfileInfoResponse,
 } from "@/hooks/useQueries";
+import { handleApiError } from "@/lib/toast";
 
 export type WalletStep =
   | "select"
@@ -380,8 +381,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       }
       setWalletStep("completed");
       onClose();
-    } catch (e: any) {
-      setProfileError(String(e?.message || e || tWalletModal("errors.submitFailed")));
+    } catch (error: any) {
+      handleApiError(error, "walletModal.errors.submitFailed");
+      setProfileError(String(error?.message || error || tWalletModal("errors.submitFailed")));
     } finally {
       setProfileLoading(false);
     }
@@ -405,8 +407,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       } else {
         setCodePreview(null);
       }
-    } catch (e: any) {
-      setProfileError(String(e?.message || tWalletModal("errors.otpSendFailed")));
+    } catch (error: any) {
+      handleApiError(error, "walletModal.errors.otpSendFailed");
+      setProfileError(String(error?.message || tWalletModal("errors.otpSendFailed")));
     } finally {
       setEmailLoading(false);
     }
@@ -423,8 +426,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       });
       setEmailVerified(true);
       verifiedEmailRef.current = email.trim().toLowerCase();
-    } catch (e: any) {
-      setProfileError(String(e?.message || tWalletModal("errors.otpVerifyFailed")));
+    } catch (error: any) {
+      handleApiError(error, "walletModal.errors.otpVerifyFailed");
+      setProfileError(String(error?.message || tWalletModal("errors.otpVerifyFailed")));
     } finally {
       setEmailLoading(false);
     }

@@ -33,8 +33,9 @@ export async function GET(req: NextRequest) {
     const chainId = Number(searchParams.get("chainId"));
     const outcome = Number(searchParams.get("outcome"));
     const resolution = searchParams.get("resolution") || "15m";
-    // 限制获取最近的 5000 条成交记录进行聚合
-    const tradeLimit = 5000;
+    const limitParam = Number(searchParams.get("limit") || "");
+    const tradeLimit =
+      Number.isFinite(limitParam) && limitParam > 0 && limitParam <= 5000 ? limitParam : 5000;
 
     if (!market || !Number.isFinite(chainId) || !Number.isFinite(outcome)) {
       return ApiResponses.badRequest("Missing required parameters");
@@ -74,6 +75,10 @@ export async function GET(req: NextRequest) {
       const price = Number(trade.price);
       const amount = Number(trade.amount);
 
+      if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(amount) || amount <= 0) {
+        continue;
+      }
+
       // 计算时间桶 (向下取整)
       const bucketTime = Math.floor(ts / intervalSec) * intervalSec;
 
@@ -96,13 +101,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. 格式化返回
-    const candles = Array.from(candlesMap.values())
-      .sort((a, b) => a.time - b.time)
-      .map((c) => ({
-        ...c,
-        // 转回 ISO 字符串以保持与原 API 格式兼容
-        time: new Date(c.time * 1000).toISOString(),
-      }));
+    const candles = Array.from(candlesMap.values()).sort((a, b) => a.time - b.time);
 
     return NextResponse.json({ success: true, data: candles });
   } catch (e: unknown) {

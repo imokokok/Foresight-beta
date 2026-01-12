@@ -7,7 +7,8 @@ import {
   parseRequestBody,
   logApiError,
 } from "@/lib/serverUtils";
-import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
+import { ApiErrorCode } from "@/types/api";
 import { sendMailSMTP } from "@/lib/emailService";
 import { isValidEmail, genCode, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
 
@@ -24,10 +25,10 @@ export async function POST(req: NextRequest) {
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
-      return ApiResponses.unauthorized("未认证或会话地址不匹配");
+      return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
     }
     if (!isValidEmail(email)) {
-      return ApiResponses.invalidParameters("邮箱格式不正确");
+      return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
@@ -63,7 +64,35 @@ export async function POST(req: NextRequest) {
 
     if (globalLastSentMs && nowMs - globalLastSentMs < minIntervalMs) {
       const waitSec = Math.ceil((minIntervalMs - (nowMs - globalLastSentMs)) / 1000);
-      return ApiResponses.rateLimit(`请求过于频繁，请 ${waitSec} 秒后重试`);
+      return errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429, {
+        reason: "GLOBAL_MIN_INTERVAL",
+      });
+    }
+
+    const ipWindowMs = 10 * 60_000;
+    const maxIpRequests = 30;
+    if (ip) {
+      const { data: ipRows, error: ipErr } = await client
+        .from("email_otps")
+        .select("last_sent_at, created_ip")
+        .eq("created_ip", ip);
+      if (ipErr) {
+        return ApiResponses.databaseError("Failed to check ip rate limit", ipErr.message);
+      }
+      const rows = Array.isArray(ipRows) ? ipRows : [];
+      let ipCount = 0;
+      for (const r of rows) {
+        const t = r.last_sent_at ? new Date(r.last_sent_at).getTime() : 0;
+        if (t && nowMs - t <= ipWindowMs) {
+          ipCount++;
+        }
+      }
+      if (ipCount >= maxIpRequests) {
+        return errorResponse("当前 IP 请求过于频繁，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
+          reason: "IP_RATE_LIMIT",
+          windowMinutes: ipWindowMs / 60000,
+        });
+      }
     }
 
     // Limit number of distinct emails targeted in the last hour
@@ -92,12 +121,19 @@ export async function POST(req: NextRequest) {
     const rec = (existing || null) as Database["public"]["Tables"]["email_otps"]["Row"] | null;
 
     if (!rec && activeEmailsInWindow >= maxEmailsInWindow) {
-      return ApiResponses.rateLimit("近期请求的邮箱数量过多，请稍后重试");
+      return errorResponse("近期请求的邮箱数量过多，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
+        reason: "TOO_MANY_DISTINCT_EMAILS",
+      });
     }
 
     if (rec?.lock_until && new Date(rec.lock_until).getTime() > nowMs) {
       const waitMin = Math.ceil((new Date(rec.lock_until).getTime() - nowMs) / 60000);
-      return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
+      return errorResponse(
+        `该邮箱已被锁定，请 ${waitMin} 分钟后重试`,
+        ApiErrorCode.RATE_LIMIT,
+        429,
+        { reason: "EMAIL_LOCKED", waitMinutes: waitMin }
+      );
     }
 
     // Per-email frequency limit (redundant with global if sending to same email, but good to keep)
@@ -114,7 +150,10 @@ export async function POST(req: NextRequest) {
     const nextWindowStartAt = windowReset ? now : new Date(sentWindowStartAtMs);
     const nextSentInWindow = (windowReset ? 0 : sentInWindow) + 1;
     if (nextSentInWindow > maxInWindow) {
-      return ApiResponses.rateLimit("该邮箱请求过于频繁，请稍后重试");
+      return errorResponse("该邮箱请求过于频繁，请稍后重试", ApiErrorCode.RATE_LIMIT, 429, {
+        reason: "EMAIL_TOO_FREQUENT",
+        windowMinutes: rateWindowMs / 60000,
+      });
     }
 
     const code = genCode();
@@ -162,14 +201,17 @@ export async function POST(req: NextRequest) {
           error: errMessage,
         });
       } catch {}
-      try {
-        await client
-          .from("email_otps")
-          .delete()
-          .eq("wallet_address", walletAddress)
-          .eq("email", email);
-      } catch {}
-      if (process.env.NODE_ENV !== "production") {
+      const isDev = typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+      if (!isDev) {
+        try {
+          await client
+            .from("email_otps")
+            .delete()
+            .eq("wallet_address", walletAddress)
+            .eq("email", email);
+        } catch {}
+      }
+      if (isDev) {
         const res = successResponse(
           {
             codePreview: code,
@@ -179,11 +221,16 @@ export async function POST(req: NextRequest) {
         );
         return res;
       }
-      return ApiResponses.internalError("邮件发送失败", errMessage);
+      return errorResponse("邮件发送失败", ApiErrorCode.INTERNAL_ERROR, 500, {
+        reason: "SMTP_FAILED",
+        error: errMessage,
+      });
     }
   } catch (e: unknown) {
     logApiError("POST /api/email-otp/request", e);
     const message = e instanceof Error ? e.message : String(e);
-    return ApiResponses.internalError("邮箱验证码请求失败", message);
+    return errorResponse("邮箱验证码请求失败", ApiErrorCode.INTERNAL_ERROR, 500, {
+      error: message,
+    });
   }
 }

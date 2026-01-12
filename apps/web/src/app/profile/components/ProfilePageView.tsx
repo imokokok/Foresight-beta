@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
 import { buildDiceBearUrl } from "@/lib/dicebear";
-import { toast } from "@/lib/toast";
+import { toast, handleApiError } from "@/lib/toast";
 import { formatAddress, normalizeAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
@@ -143,8 +143,8 @@ export function ProfilePageView({
       }
       toast.success(tWalletModal("profile.sendOtpWithValidity"));
     },
-    onError: (e: any) => {
-      toast.error(String(e?.message || tWalletModal("errors.otpSendFailed")));
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.otpSendFailed");
     },
   });
 
@@ -167,8 +167,8 @@ export function ProfilePageView({
       toast.success(tCommon("success"));
       await queryClient.invalidateQueries({ queryKey: QueryKeys.userProfile(accountNorm) });
     },
-    onError: (e: any) => {
-      toast.error(String(e?.message || tWalletModal("errors.otpVerifyFailed")));
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.otpVerifyFailed");
     },
   });
 

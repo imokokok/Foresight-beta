@@ -7,8 +7,9 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
-import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { ApiResponses, successResponse, errorResponse } from "@/lib/apiResponse";
 import { isValidEmail, resolveEmailOtpSecret, hashEmailOtpCode } from "@/lib/otpUtils";
+import { ApiErrorCode } from "@/types/api";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,13 +23,13 @@ export async function POST(req: NextRequest) {
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
-      return ApiResponses.unauthorized("未认证或会话地址不匹配");
+      return errorResponse("未认证或会话地址不匹配", ApiErrorCode.UNAUTHORIZED, 401);
     }
     if (!isValidEmail(email)) {
-      return ApiResponses.invalidParameters("邮箱格式不正确");
+      return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
     if (!/^\d{6}$/.test(code)) {
-      return ApiResponses.invalidParameters("验证码格式不正确");
+      return errorResponse("验证码格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
     const client = supabaseAdmin as any;
@@ -47,11 +48,18 @@ export async function POST(req: NextRequest) {
     }
     const rec = (recRaw || null) as Database["public"]["Tables"]["email_otps"]["Row"] | null;
     if (!rec) {
-      return ApiResponses.invalidParameters("验证码未发送或已失效");
+      return errorResponse("验证码未发送或已失效", ApiErrorCode.INVALID_PARAMETERS, 400, {
+        reason: "OTP_NOT_FOUND",
+      });
     }
     if (rec.lock_until && new Date(rec.lock_until).getTime() > nowMs) {
       const waitMin = Math.ceil((new Date(rec.lock_until).getTime() - nowMs) / 60000);
-      return ApiResponses.rateLimit(`该邮箱已被锁定，请 ${waitMin} 分钟后重试`);
+      return errorResponse(
+        `该邮箱已被锁定，请 ${waitMin} 分钟后重试`,
+        ApiErrorCode.RATE_LIMIT,
+        429,
+        { reason: "EMAIL_LOCKED", waitMinutes: waitMin }
+      );
     }
     if (new Date(rec.expires_at).getTime() < nowMs) {
       return ApiResponses.invalidParameters("验证码已过期");
@@ -75,7 +83,15 @@ export async function POST(req: NextRequest) {
       const remain = Math.max(0, 3 - nextFail);
       const msg =
         remain > 0 ? `验证码不正确，剩余 ${remain} 次尝试` : "连续失败次数过多，已锁定 1 小时";
-      return nextFail >= 3 ? ApiResponses.rateLimit(msg) : ApiResponses.invalidParameters(msg);
+      return nextFail >= 3
+        ? errorResponse(msg, ApiErrorCode.RATE_LIMIT, 429, {
+            reason: "OTP_TOO_MANY_ATTEMPTS",
+            remaining: remain,
+          })
+        : errorResponse(msg, ApiErrorCode.INVALID_PARAMETERS, 400, {
+            reason: "OTP_INCORRECT",
+            remaining: remain,
+          });
     }
 
     // 通过验证：绑定邮箱到钱包地址
@@ -104,9 +120,11 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     const detail = String(e?.message || e);
     logApiError("POST /api/email-otp/verify unhandled error", e);
-    return ApiResponses.internalError(
+    return errorResponse(
       "邮箱验证码验证失败",
-      process.env.NODE_ENV === "development" ? detail : undefined
+      ApiErrorCode.INTERNAL_ERROR,
+      500,
+      process.env.NODE_ENV === "development" ? { error: detail } : undefined
     );
   }
 }
