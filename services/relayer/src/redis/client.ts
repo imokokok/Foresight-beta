@@ -11,6 +11,7 @@ import {
   redisOperationLatency,
   redisConnectionStatus,
 } from "../monitoring/metrics.js";
+import { CircuitBreaker } from "../resilience/circuitBreaker.js";
 
 export interface RedisConfig {
   url?: string;
@@ -23,6 +24,13 @@ export interface RedisConfig {
   commandTimeout?: number;
   retryAttempts?: number;
   retryDelay?: number;
+  // 熔断配置
+  circuitBreaker?: {
+    failureThreshold?: number; // 失败阈值 (百分比 0-100)
+    resetTimeout?: number; // 重置超时时间 (毫秒)
+    halfOpenTimeout?: number; // 半开状态超时时间 (毫秒)
+    halfOpenSuccessThreshold?: number; // 半开状态成功阈值 (百分比 0-100)
+  };
 }
 
 const DEFAULT_CONFIG: RedisConfig = {
@@ -34,6 +42,13 @@ const DEFAULT_CONFIG: RedisConfig = {
   commandTimeout: 3000,
   retryAttempts: 3,
   retryDelay: 1000,
+  // 默认熔断配置
+  circuitBreaker: {
+    failureThreshold: 50, // 50% 失败率触发熔断
+    resetTimeout: 30000, // 30秒后尝试恢复
+    halfOpenTimeout: 10000, // 10秒半开状态超时
+    halfOpenSuccessThreshold: 70, // 70% 成功率恢复闭合状态
+  },
 };
 
 class RedisClient {
@@ -41,9 +56,99 @@ class RedisClient {
   private config: RedisConfig;
   private isConnected: boolean = false;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private circuitBreaker: CircuitBreaker; // 熔断机制实例
 
   constructor(config: Partial<RedisConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+
+    // 初始化熔断机制
+    this.circuitBreaker = new CircuitBreaker({
+      name: "redis-client",
+      failureThreshold: 5,
+      successThreshold: 3,
+      openDuration: this.config.circuitBreaker?.resetTimeout || 30000,
+      timeout: this.config.commandTimeout || 10000,
+      windowSize: 60000,
+      errorRateThreshold: 0.5,
+      minRequests: 10,
+      // 移除fallback，使用默认行为
+    });
+  }
+
+  /**
+   * 通用Redis操作执行方法
+   * 统一处理Redis操作的执行、重试和错误处理
+   */
+  private async executeWithRetry<T>(
+    operation: string,
+    fn: () => Promise<T>,
+    retryAttempts: number = this.config.retryAttempts || 3,
+    retryDelay: number = this.config.retryDelay || 1000
+  ): Promise<T | null> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+      if (!this.isReady()) {
+        logger.warn(`Redis operation ${operation} skipped, client not ready`, { attempt });
+        return null;
+      }
+
+      const start = Date.now();
+      try {
+        // 使用熔断器包装操作
+        const result = await this.circuitBreaker.execute(async () => {
+          return await fn();
+        });
+
+        // 记录成功指标
+        redisOperationsTotal.inc({ operation, status: "success" });
+        redisOperationLatency.observe({ operation }, Date.now() - start);
+
+        // 如果是重试成功，记录恢复事件
+        if (attempt > 0) {
+          logger.info(`Redis operation ${operation} recovered after ${attempt} retries`, {
+            operation,
+            attempt,
+          });
+        }
+
+        return result;
+      } catch (error: any) {
+        // 记录错误指标
+        redisOperationsTotal.inc({ operation, status: "error" });
+        redisOperationLatency.observe({ operation }, Date.now() - start);
+
+        lastError = error;
+
+        // 如果是最后一次尝试，记录错误
+        if (attempt >= retryAttempts) {
+          logger.error(`Redis operation ${operation} failed after ${retryAttempts} retries`, {
+            operation,
+            error: error.message,
+          });
+          return null;
+        }
+
+        // 记录重试事件
+        logger.warn(
+          `Redis operation ${operation} failed, retrying (${attempt + 1}/${retryAttempts})`,
+          {
+            operation,
+            error: error.message,
+          }
+        );
+
+        // 指数退避延迟
+        await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
+      }
+    }
+
+    // 理论上不会到这里，但为了类型安全
+    logger.error(`Redis operation ${operation} failed unexpectedly`, {
+      operation,
+      error: lastError?.message || "Unknown error",
+    });
+    return null;
   }
 
   /**
@@ -166,243 +271,105 @@ class RedisClient {
   // ============================================================
 
   async get(key: string): Promise<string | null> {
-    if (!this.isReady()) return null;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.get(this.prefixKey(key));
-      redisOperationsTotal.inc({ operation: "get", status: "success" });
-      redisOperationLatency.observe({ operation: "get" }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "get", status: "error" });
-      redisOperationLatency.observe({ operation: "get" }, Date.now() - start);
-      logger.error("Redis GET failed", { key }, error);
-      return null;
-    }
+    return this.executeWithRetry<string | null>("get", async () => {
+      return await this.client!.get(this.prefixKey(key));
+    });
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    const start = Date.now();
-    try {
+    const result = await this.executeWithRetry<string | null>("set", async () => {
       if (ttlSeconds) {
-        await this.client!.setEx(this.prefixKey(key), ttlSeconds, value);
+        return await this.client!.setEx(this.prefixKey(key), ttlSeconds, value);
       } else {
-        await this.client!.set(this.prefixKey(key), value);
+        return await this.client!.set(this.prefixKey(key), value);
       }
-      redisOperationsTotal.inc({ operation: "set", status: "success" });
-      redisOperationLatency.observe({ operation: "set" }, Date.now() - start);
-      return true;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "set", status: "error" });
-      redisOperationLatency.observe({ operation: "set" }, Date.now() - start);
-      logger.error("Redis SET failed", { key }, error);
-      return false;
-    }
+    });
+    return result === "OK";
   }
 
   async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
-    if (!this.isReady()) return false;
-
     const ttl = Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? Math.trunc(ttlSeconds) : 0;
     if (!ttl) return false;
 
-    const start = Date.now();
-    try {
-      const result = await this.client!.set(this.prefixKey(key), value, { NX: true, EX: ttl });
-      const ok = result === "OK";
-      redisOperationsTotal.inc({ operation: "setnx", status: ok ? "success" : "error" });
-      redisOperationLatency.observe({ operation: "setnx" }, Date.now() - start);
-      return ok;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "setnx", status: "error" });
-      redisOperationLatency.observe({ operation: "setnx" }, Date.now() - start);
-      logger.error("Redis SETNX failed", { key }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<string | null>("setnx", async () => {
+      return await this.client!.set(this.prefixKey(key), value, { NX: true, EX: ttl });
+    });
+    return result === "OK";
   }
 
   async del(key: string): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    const start = Date.now();
-    try {
-      await this.client!.del(this.prefixKey(key));
-      redisOperationsTotal.inc({ operation: "del", status: "success" });
-      redisOperationLatency.observe({ operation: "del" }, Date.now() - start);
-      return true;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "del", status: "error" });
-      redisOperationLatency.observe({ operation: "del" }, Date.now() - start);
-      logger.error("Redis DEL failed", { key }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<number>("del", async () => {
+      return await this.client!.del(this.prefixKey(key));
+    });
+    return result !== null;
   }
 
-  // ============================================================
-  // Hash 操作 (用于订单簿)
-  // ============================================================
+  // ============================================================// Hash 操作 (用于订单簿)// ============================================================
 
   async hGet(key: string, field: string): Promise<string | null> {
-    if (!this.isReady()) return null;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.hGet(this.prefixKey(key), field);
-      redisOperationsTotal.inc({ operation: "hget", status: "success" });
-      redisOperationLatency.observe({ operation: "hget" }, Date.now() - start);
-      return result ?? null;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "hget", status: "error" });
-      redisOperationLatency.observe({ operation: "hget" }, Date.now() - start);
-      logger.error("Redis HGET failed", { key, field }, error);
-      return null;
-    }
+    return this.executeWithRetry<string | undefined>("hget", async () => {
+      return await this.client!.hGet(this.prefixKey(key), field);
+    }).then((result) => result ?? null);
   }
 
   async hSet(key: string, field: string, value: string): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    const start = Date.now();
-    try {
-      await this.client!.hSet(this.prefixKey(key), field, value);
-      redisOperationsTotal.inc({ operation: "hset", status: "success" });
-      redisOperationLatency.observe({ operation: "hset" }, Date.now() - start);
-      return true;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "hset", status: "error" });
-      redisOperationLatency.observe({ operation: "hset" }, Date.now() - start);
-      logger.error("Redis HSET failed", { key, field }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<number>("hset", async () => {
+      return await this.client!.hSet(this.prefixKey(key), field, value);
+    });
+    return result !== null;
   }
 
   async hGetAll(key: string): Promise<Record<string, string> | null> {
-    if (!this.isReady()) return null;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.hGetAll(this.prefixKey(key));
-      redisOperationsTotal.inc({ operation: "hgetall", status: "success" });
-      redisOperationLatency.observe({ operation: "hgetall" }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "hgetall", status: "error" });
-      redisOperationLatency.observe({ operation: "hgetall" }, Date.now() - start);
-      logger.error("Redis HGETALL failed", { key }, error);
-      return null;
-    }
+    return this.executeWithRetry<Record<string, string>>("hgetall", async () => {
+      return await this.client!.hGetAll(this.prefixKey(key));
+    });
   }
 
   async hSetMultiple(key: string, fields: Record<string, string>): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    const start = Date.now();
-    try {
-      await this.client!.hSet(this.prefixKey(key), fields);
-      redisOperationsTotal.inc({ operation: "hset_multi", status: "success" });
-      redisOperationLatency.observe({ operation: "hset_multi" }, Date.now() - start);
-      return true;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "hset_multi", status: "error" });
-      redisOperationLatency.observe({ operation: "hset_multi" }, Date.now() - start);
-      logger.error("Redis HSET multi failed", { key }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<number>("hset_multi", async () => {
+      return await this.client!.hSet(this.prefixKey(key), fields);
+    });
+    return result !== null;
   }
 
   async hDel(key: string, ...fields: string[]): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    const start = Date.now();
-    try {
-      await this.client!.hDel(this.prefixKey(key), fields);
-      redisOperationsTotal.inc({ operation: "hdel", status: "success" });
-      redisOperationLatency.observe({ operation: "hdel" }, Date.now() - start);
-      return true;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "hdel", status: "error" });
-      redisOperationLatency.observe({ operation: "hdel" }, Date.now() - start);
-      logger.error("Redis HDEL failed", { key, fields }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<number>("hdel", async () => {
+      return await this.client!.hDel(this.prefixKey(key), fields);
+    });
+    return result !== null;
   }
 
-  // ============================================================
-  // List 操作 (用于事件队列)
-  // ============================================================
+  // ============================================================// List 操作 (用于事件队列)// ============================================================
 
   async lPush(key: string, ...values: string[]): Promise<number> {
-    if (!this.isReady()) return 0;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.lPush(this.prefixKey(key), values);
-      redisOperationsTotal.inc({ operation: "lpush", status: "success" });
-      redisOperationLatency.observe({ operation: "lpush" }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "lpush", status: "error" });
-      redisOperationLatency.observe({ operation: "lpush" }, Date.now() - start);
-      logger.error("Redis LPUSH failed", { key }, error);
-      return 0;
-    }
+    const result = await this.executeWithRetry<number>("lpush", async () => {
+      return await this.client!.lPush(this.prefixKey(key), values);
+    });
+    return result || 0;
   }
 
   async rPop(key: string): Promise<string | null> {
-    if (!this.isReady()) return null;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.rPop(this.prefixKey(key));
-      redisOperationsTotal.inc({ operation: "rpop", status: "success" });
-      redisOperationLatency.observe({ operation: "rpop" }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "rpop", status: "error" });
-      redisOperationLatency.observe({ operation: "rpop" }, Date.now() - start);
-      logger.error("Redis RPOP failed", { key }, error);
-      return null;
-    }
+    return this.executeWithRetry<string | null>("rpop", async () => {
+      return await this.client!.rPop(this.prefixKey(key));
+    });
   }
 
-  // ============================================================
-  // 过期时间操作
-  // ============================================================
+  // ============================================================// 过期时间操作// ============================================================
 
   async expire(key: string, seconds: number): Promise<boolean> {
-    if (!this.isReady()) return false;
-
-    try {
-      await this.client!.expire(this.prefixKey(key), seconds);
-      return true;
-    } catch (error: any) {
-      logger.error("Redis EXPIRE failed", { key, seconds }, error);
-      return false;
-    }
+    const result = await this.executeWithRetry<boolean>("expire", async () => {
+      return await this.client!.expire(this.prefixKey(key), seconds);
+    });
+    return result || false;
   }
 
-  // ============================================================
-  // 原子操作
-  // ============================================================
+  // ============================================================// 原子操作// ============================================================
 
   async incr(key: string): Promise<number> {
-    if (!this.isReady()) return 0;
-
-    const start = Date.now();
-    try {
-      const result = await this.client!.incr(this.prefixKey(key));
-      redisOperationsTotal.inc({ operation: "incr", status: "success" });
-      redisOperationLatency.observe({ operation: "incr" }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      redisOperationsTotal.inc({ operation: "incr", status: "error" });
-      redisOperationLatency.observe({ operation: "incr" }, Date.now() - start);
-      logger.error("Redis INCR failed", { key }, error);
-      return 0;
-    }
+    const result = await this.executeWithRetry<number>("incr", async () => {
+      return await this.client!.incr(this.prefixKey(key));
+    });
+    return result || 0;
   }
 
   /**
@@ -426,14 +393,18 @@ class RedisClient {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       const token = randomBytes(16).toString("hex");
-      try {
-        const result = await raw.set(fullKey, token, { NX: true, PX: ttlMs });
-        if (result === "OK") {
-          return token;
-        }
-      } catch (error: any) {
-        logger.error("Redis acquireLock failed", { key }, error);
-        return null;
+
+      const result = await this.executeWithRetry<string | null>(
+        "acquireLock",
+        async () => {
+          return await raw.set(fullKey, token, { NX: true, PX: ttlMs });
+        },
+        1,
+        0
+      ); // 单次尝试，不重试
+
+      if (result === "OK") {
+        return token;
       }
 
       if (attempt < retries) {
@@ -445,44 +416,39 @@ class RedisClient {
   }
 
   async releaseLock(key: string, token: string): Promise<boolean> {
-    if (!this.isReady()) return false;
-    const raw = this.getRawClient();
-    if (!raw) return false;
+    const result = await this.executeWithRetry<number>("releaseLock", async () => {
+      const raw = this.getRawClient();
+      if (!raw) throw new Error("Raw client not available");
 
-    const fullKey = this.prefixKey(key);
-    const script =
-      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+      const fullKey = this.prefixKey(key);
+      const script =
+        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
 
-    try {
       const result = await raw.eval(script, { keys: [fullKey], arguments: [token] });
-      return Number(result) === 1;
-    } catch (error: any) {
-      logger.error("Redis releaseLock failed", { key }, error);
-      return false;
-    }
+      return Number(result);
+    });
+    return result === 1;
   }
 
   async refreshLock(key: string, token: string, ttlMs: number): Promise<boolean> {
-    if (!this.isReady()) return false;
-    const raw = this.getRawClient();
-    if (!raw) return false;
     const ttl = Number.isFinite(ttlMs) && ttlMs > 0 ? Math.trunc(ttlMs) : 0;
     if (!ttl) return false;
 
-    const fullKey = this.prefixKey(key);
-    const script =
-      'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end';
+    const result = await this.executeWithRetry<number>("refreshLock", async () => {
+      const raw = this.getRawClient();
+      if (!raw) throw new Error("Raw client not available");
 
-    try {
+      const fullKey = this.prefixKey(key);
+      const script =
+        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end';
+
       const result = await raw.eval(script, {
         keys: [fullKey],
         arguments: [token, String(ttl)],
       });
-      return Number(result) === 1;
-    } catch (error: any) {
-      logger.error("Redis refreshLock failed", { key }, error);
-      return false;
-    }
+      return Number(result);
+    });
+    return result === 1;
   }
 }
 

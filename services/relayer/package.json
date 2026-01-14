@@ -7,11 +7,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:chaos": "CHAOS_ENABLED=true vitest run src/chaos/**/*.chaos.test.ts",
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
     "start": "node dist/index.js",
-    "start:dev": "LOG_FORMAT=text LOG_LEVEL=debug node dist/index.js",
-    "start:prod": "LOG_FORMAT=json LOG_LEVEL=info node dist/index.js"
+    "start:dev": "LOG_FORMAT=text LOG_LEVEL=debug CHAOS_ENABLED=false node dist/index.js",
+    "start:dev:chaos": "LOG_FORMAT=text LOG_LEVEL=debug CHAOS_ENABLED=true node dist/index.js",
+    "start:prod": "LOG_FORMAT=json LOG_LEVEL=info CHAOS_ENABLED=false node dist/index.js"
   },
   "keywords": [
     "prediction-market",

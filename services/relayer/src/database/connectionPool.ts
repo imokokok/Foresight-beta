@@ -73,9 +73,7 @@ interface ReplicaState {
   lastHealthCheck: number;
 }
 
-// ============================================================
-// 数据库连接池
-// ============================================================
+// ============================================================// 数据库连接池// ============================================================
 
 export class DatabasePool {
   private primaryClient: SupabaseClient | null = null;
@@ -84,6 +82,11 @@ export class DatabasePool {
   private healthCheckTimer: NodeJS.Timeout | null = null;
   private config: DatabaseConfig;
   private isInitialized: boolean = false;
+
+  // 主库健康状态
+  private primaryHealthy: boolean = true;
+  private primaryFailureCount: number = 0;
+  private lastPrimaryHealthCheck: number = Date.now();
 
   constructor(config?: Partial<DatabaseConfig>) {
     this.config = {
@@ -204,9 +207,10 @@ export class DatabasePool {
 
     this.healthCheckTimer = setInterval(async () => {
       try {
-        await this.checkReplicaHealth();
+        // 同时检查主库和副本健康状态
+        await Promise.all([this.checkPrimaryHealth(), this.checkReplicaHealth()]);
       } catch (error: any) {
-        logger.warn("Replica health check tick failed", undefined, error);
+        logger.warn("Health check tick failed", undefined, error);
       }
     }, this.config.options?.healthCheckInterval || 30000);
   }
@@ -231,6 +235,58 @@ export class DatabasePool {
         this.markReplicaUnhealthy(replica, error.message);
       }
     }
+  }
+
+  /**
+   * 检查主库健康状态
+   */
+  private async checkPrimaryHealth(): Promise<void> {
+    if (!this.primaryClient) return;
+
+    try {
+      const start = Date.now();
+      const { error } = await this.primaryClient.from("markets").select("count").limit(1).single();
+      const latency = Date.now() - start;
+
+      if (error && !error.message.includes("No rows")) {
+        this.markPrimaryUnhealthy(error.message);
+      } else {
+        this.markPrimaryHealthy();
+        dbQueryLatency.observe({ pool: "primary", operation: "health_check" }, latency);
+      }
+    } catch (error: any) {
+      this.markPrimaryUnhealthy(error.message);
+    }
+  }
+
+  /**
+   * 标记主库为不健康
+   */
+  private markPrimaryUnhealthy(reason: string): void {
+    this.primaryFailureCount++;
+    this.lastPrimaryHealthCheck = Date.now();
+
+    if (this.primaryHealthy) {
+      this.primaryHealthy = false;
+      dbConnectionsActive.set({ pool: "primary", type: "write" }, 0);
+      logger.warn("Primary database marked unhealthy", {
+        reason,
+        failureCount: this.primaryFailureCount,
+      });
+    }
+  }
+
+  /**
+   * 标记主库为健康
+   */
+  private markPrimaryHealthy(): void {
+    if (!this.primaryHealthy) {
+      logger.info("Primary database recovered");
+    }
+    this.primaryHealthy = true;
+    this.primaryFailureCount = 0;
+    this.lastPrimaryHealthCheck = Date.now();
+    dbConnectionsActive.set({ pool: "primary", type: "write" }, 1);
   }
 
   /**
@@ -270,6 +326,9 @@ export class DatabasePool {
    * 获取写入连接 (主库)
    */
   getWriteClient(): SupabaseClient | null {
+    if (!this.primaryHealthy) {
+      logger.debug("Primary database is unhealthy, write operations may fail");
+    }
     return this.primaryClient;
   }
 
@@ -307,27 +366,69 @@ export class DatabasePool {
    */
   async executeRead<T>(
     operation: string,
-    queryFn: (client: SupabaseClient) => Promise<T>
+    queryFn: (client: SupabaseClient) => Promise<T>,
+    retryOptions?: { maxRetries?: number; delayMs?: number }
   ): Promise<T> {
-    const client = this.getReadClient();
-    if (!client) {
-      throw new Error("No database connection available");
+    const maxRetries = retryOptions?.maxRetries || 3;
+    const delayMs = retryOptions?.delayMs || 100;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const client = this.getReadClient();
+      if (!client) {
+        throw new Error("No database connection available");
+      }
+
+      const pool =
+        this.replicas.length > 0 && this.replicas.some((r) => r.healthy) ? "replica" : "primary";
+      const start = Date.now();
+
+      try {
+        const result = await queryFn(client);
+        dbQueriesTotal.inc({ pool, operation, status: "success" });
+        dbQueryLatency.observe({ pool, operation }, Date.now() - start);
+
+        // 如果是重试成功，记录恢复事件
+        if (attempt > 0) {
+          logger.info(`Database read operation recovered after ${attempt} retries`, {
+            operation,
+            pool,
+            attempt,
+          });
+        }
+
+        return result;
+      } catch (error: any) {
+        dbQueriesTotal.inc({ pool, operation, status: "error" });
+        dbQueryLatency.observe({ pool, operation }, Date.now() - start);
+
+        lastError = error;
+
+        // 如果是最后一次尝试，抛出错误
+        if (attempt >= maxRetries) {
+          logger.error(`Database read operation failed after ${maxRetries} retries`, {
+            operation,
+            pool,
+            error: error.message,
+          });
+          throw error;
+        }
+
+        // 记录重试事件
+        logger.warn(`Database read operation failed, retrying (${attempt + 1}/${maxRetries})`, {
+          operation,
+          pool,
+          error: error.message,
+        });
+
+        // 指数退避延迟
+        await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+      }
     }
 
-    const pool =
-      this.replicas.length > 0 && this.replicas.some((r) => r.healthy) ? "replica" : "primary";
-    const start = Date.now();
-
-    try {
-      const result = await queryFn(client);
-      dbQueriesTotal.inc({ pool, operation, status: "success" });
-      dbQueryLatency.observe({ pool, operation }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      dbQueriesTotal.inc({ pool, operation, status: "error" });
-      dbQueryLatency.observe({ pool, operation }, Date.now() - start);
-      throw error;
-    }
+    // 理论上不会到这里，但为了类型安全
+    throw lastError || new Error("Database operation failed");
   }
 
   /**
@@ -335,25 +436,67 @@ export class DatabasePool {
    */
   async executeWrite<T>(
     operation: string,
-    queryFn: (client: SupabaseClient) => Promise<T>
+    queryFn: (client: SupabaseClient) => Promise<T>,
+    retryOptions?: { maxRetries?: number; delayMs?: number }
   ): Promise<T> {
-    const client = this.getWriteClient();
-    if (!client) {
-      throw new Error("No primary database connection available");
+    const maxRetries = retryOptions?.maxRetries || 3;
+    const delayMs = retryOptions?.delayMs || 100;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const client = this.getWriteClient();
+      if (!client) {
+        throw new Error("No primary database connection available");
+      }
+
+      const start = Date.now();
+
+      try {
+        const result = await queryFn(client);
+        dbQueriesTotal.inc({ pool: "primary", operation, status: "success" });
+        dbQueryLatency.observe({ pool: "primary", operation }, Date.now() - start);
+
+        // 如果是重试成功，记录恢复事件
+        if (attempt > 0) {
+          logger.info(`Database write operation recovered after ${attempt} retries`, {
+            operation,
+            pool: "primary",
+            attempt,
+          });
+        }
+
+        return result;
+      } catch (error: any) {
+        dbQueriesTotal.inc({ pool: "primary", operation, status: "error" });
+        dbQueryLatency.observe({ pool: "primary", operation }, Date.now() - start);
+
+        lastError = error;
+
+        // 如果是最后一次尝试，抛出错误
+        if (attempt >= maxRetries) {
+          logger.error(`Database write operation failed after ${maxRetries} retries`, {
+            operation,
+            pool: "primary",
+            error: error.message,
+          });
+          throw error;
+        }
+
+        // 记录重试事件
+        logger.warn(`Database write operation failed, retrying (${attempt + 1}/${maxRetries})`, {
+          operation,
+          pool: "primary",
+          error: error.message,
+        });
+
+        // 指数退避延迟
+        await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+      }
     }
 
-    const start = Date.now();
-
-    try {
-      const result = await queryFn(client);
-      dbQueriesTotal.inc({ pool: "primary", operation, status: "success" });
-      dbQueryLatency.observe({ pool: "primary", operation }, Date.now() - start);
-      return result;
-    } catch (error: any) {
-      dbQueriesTotal.inc({ pool: "primary", operation, status: "error" });
-      dbQueryLatency.observe({ pool: "primary", operation }, Date.now() - start);
-      throw error;
-    }
+    // 理论上不会到这里，但为了类型安全
+    throw lastError || new Error("Database operation failed");
   }
 
   /**
@@ -361,12 +504,16 @@ export class DatabasePool {
    */
   getStats(): {
     primaryConnected: boolean;
+    primaryHealthy: boolean;
+    primaryFailureCount: number;
     replicaCount: number;
     healthyReplicaCount: number;
     replicas: Array<{ name: string; healthy: boolean; failureCount: number }>;
   } {
     return {
       primaryConnected: this.primaryClient !== null,
+      primaryHealthy: this.primaryHealthy,
+      primaryFailureCount: this.primaryFailureCount,
       replicaCount: this.replicas.length,
       healthyReplicaCount: this.replicas.filter((r) => r.healthy).length,
       replicas: this.replicas.map((r) => ({

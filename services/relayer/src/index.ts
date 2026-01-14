@@ -1085,8 +1085,19 @@ async function initContractListener() {
   }
 }
 
+// 混沌工程实例
+let chaosInstance: any = null;
+
 // 启动服务
 async function startServer() {
+  // 初始化混沌工程
+  try {
+    const { initChaosEngineering } = await import("./chaos/chaosInit.js");
+    chaosInstance = await initChaosEngineering();
+  } catch (error) {
+    logger.error("混沌工程初始化失败", { error: String(error) });
+  }
+
   // 初始化合约事件监听器
   await initContractListener();
 
@@ -1098,17 +1109,27 @@ async function startServer() {
 }
 
 // 处理优雅关闭
-process.on("SIGINT", async () => {
-  logger.info("收到 SIGINT 信号，正在关闭服务...");
-  await closeContractEventListener();
-  process.exit(0);
-});
+async function shutdown() {
+  logger.info("正在关闭服务...");
 
-process.on("SIGTERM", async () => {
-  logger.info("收到 SIGTERM 信号，正在关闭服务...");
+  // 关闭混沌工程
+  if (chaosInstance) {
+    try {
+      const { closeChaosEngineering } = await import("./chaos/chaosInit.js");
+      await closeChaosEngineering(chaosInstance);
+    } catch (error) {
+      logger.error("混沌工程关闭失败", { error: String(error) });
+    }
+  }
+
+  // 关闭合约事件监听器
   await closeContractEventListener();
+
   process.exit(0);
-});
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 app.get("/", (_req, res) => {
   res.setHeader("Cache-Control", "no-cache");
