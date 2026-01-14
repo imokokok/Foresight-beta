@@ -1,4 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  BaseParticle,
+  COLORS,
+  CELL_SIZE,
+  LINK_DISTANCE,
+  applyMouseInfluence,
+  updateParticleGrid,
+} from "@/lib/sharedParticleSystem";
 
 export const useTrendingCanvas = (
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -145,108 +153,15 @@ export const useTrendingCanvas = (
     const ctx = context;
     let animId = 0;
 
-    type Shape =
-      | "circle"
-      | "square"
-      | "triangle"
-      | "diamond"
-      | "ring"
-      | "pentagon"
-      | "hexagon"
-      | "octagon";
-    const COLORS = [
-      "rgba(255, 140, 180, 0.48)",
-      "rgba(179, 136, 255, 0.45)",
-      "rgba(100, 200, 255, 0.42)",
-      "rgba(120, 230, 190, 0.44)",
-      "rgba(255, 190, 120, 0.4)",
-    ];
-
-    const LINK_DISTANCE = 90;
-    const CELL_SIZE = 24;
-
-    class Particle {
-      x: number;
-      y: number;
-      baseSize: number;
-      size: number;
-      speedX: number;
-      speedY: number;
-      rotation: number;
-      rotationSpeed: number;
-      shape: Shape;
-      color: string;
-      radius: number;
-      pulsePhase: number;
+    class Particle extends BaseParticle {
       constructor() {
-        this.x = Math.random() * canvasEl.width;
-        this.y = Math.random() * canvasEl.height;
-        this.baseSize = 6 + Math.random() * 0.8;
-        this.size = this.baseSize;
-        this.speedX = Math.random() * 0.6 - 0.3;
-        this.speedY = Math.random() * 0.6 - 0.3;
-        this.rotation = Math.random() * Math.PI * 2;
-        this.rotationSpeed = Math.random() * 0.01 - 0.005;
-        const shapesPool: Shape[] = [
-          "circle",
-          "square",
-          "diamond",
-          "ring",
-          "pentagon",
-          "hexagon",
-          "octagon",
-          "circle",
-          "square",
-          "diamond",
-          "ring",
-          "pentagon",
-          "hexagon",
-          "circle",
-          "square",
-          "diamond",
-          "triangle",
-        ];
-        this.shape = shapesPool[Math.floor(Math.random() * shapesPool.length)];
-        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-        this.pulsePhase = Math.random() * Math.PI * 2;
-        switch (this.shape) {
-          case "circle":
-            this.radius = this.baseSize;
-            break;
-          case "square": {
-            const s = this.baseSize * 1.6;
-            this.radius = (s * Math.SQRT2) / 2;
-            break;
-          }
-          case "triangle": {
-            const s = this.baseSize * 2;
-            this.radius = s / 2;
-            break;
-          }
-          case "diamond": {
-            const s = this.baseSize * 2;
-            this.radius = s / 2;
-            break;
-          }
-          case "ring":
-            this.radius = this.baseSize * 1.4;
-            break;
-          case "pentagon":
-          case "hexagon":
-          case "octagon":
-            this.radius = this.baseSize * 1.8;
-            break;
-        }
+        super(canvasEl.width, canvasEl.height);
       }
+
       update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        this.rotation += this.rotationSpeed;
-        this.size = this.baseSize * (1 + 0.03 * Math.sin(this.pulsePhase));
-        this.pulsePhase += 0.015;
-        if (this.x < 0 || this.x > canvasEl.width) this.speedX *= -1;
-        if (this.y < 0 || this.y > canvasEl.height) this.speedY *= -1;
+        super.update(canvasEl.width, canvasEl.height);
       }
+
       draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -255,86 +170,13 @@ export const useTrendingCanvas = (
         ctx.strokeStyle = this.color;
         ctx.shadowColor = this.color;
         ctx.shadowBlur = 8;
-        switch (this.shape) {
-          case "circle": {
-            ctx.beginPath();
-            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-          }
-          case "square": {
-            const s = this.size * 1.6;
-            ctx.beginPath();
-            ctx.rect(-s / 2, -s / 2, s, s);
-            ctx.fill();
-            break;
-          }
-          case "triangle": {
-            const s = this.size * 2;
-            ctx.beginPath();
-            ctx.moveTo(0, -s / 2);
-            ctx.lineTo(s / 2, s / 2);
-            ctx.lineTo(-s / 2, s / 2);
-            ctx.closePath();
-            ctx.fill();
-            break;
-          }
-          case "diamond": {
-            const s = this.size * 2;
-            ctx.beginPath();
-            ctx.moveTo(0, -s / 2);
-            ctx.lineTo(s / 2, 0);
-            ctx.lineTo(0, s / 2);
-            ctx.lineTo(-s / 2, 0);
-            ctx.closePath();
-            ctx.fill();
-            break;
-          }
-          case "ring": {
-            const outer = this.size * 1.4;
-            const inner = this.size * 0.9;
-            ctx.beginPath();
-            ctx.arc(0, 0, outer, 0, Math.PI * 2);
-            ctx.arc(0, 0, inner, 0, Math.PI * 2, true);
-            ctx.fill();
-            break;
-          }
-          case "pentagon":
-          case "hexagon":
-          case "octagon": {
-            const sides = this.shape === "pentagon" ? 5 : this.shape === "hexagon" ? 6 : 8;
-            const radius = this.size * 1.8;
-            ctx.beginPath();
-            for (let i = 0; i < sides; i++) {
-              const angle = (i / sides) * Math.PI * 2;
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
-              if (i === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fill();
-            break;
-          }
-        }
+        super.draw(ctx);
         ctx.restore();
       }
     }
 
     const particles: Particle[] = [];
     const grid: Map<string, number[]> = new Map();
-
-    const updateGrid = () => {
-      grid.clear();
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        const cellX = Math.floor(p.x / CELL_SIZE);
-        const cellY = Math.floor(p.y / CELL_SIZE);
-        const key = `${cellX},${cellY}`;
-        if (!grid.has(key)) grid.set(key, []);
-        grid.get(key)!.push(i);
-      }
-    };
 
     const getNearbyParticleIndices = (p: Particle) => {
       const cellX = Math.floor(p.x / CELL_SIZE);
@@ -404,7 +246,10 @@ export const useTrendingCanvas = (
       for (let i = 0; i < count; i++) {
         particles.push(new Particle());
       }
-      updateGrid();
+      // 使用共享的网格更新函数
+      const newGrid = updateParticleGrid(particles, CELL_SIZE);
+      grid.clear();
+      newGrid.forEach((value, key) => grid.set(key, value));
     };
 
     const resizeCanvas = () => {
@@ -427,22 +272,15 @@ export const useTrendingCanvas = (
 
       drawBackgroundGrid();
 
-      const speedFactor = isScrollingRef.current ? 1.5 : 1;
+      // 使用共享的粒子更新方法，确保行为一致性
       for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.x += p.speedX * speedFactor * (delta / 16);
-        p.y += p.speedY * speedFactor * (delta / 16);
-        p.rotation += p.rotationSpeed * (delta / 16);
-        p.size = p.baseSize * (1 + 0.03 * Math.sin(p.pulsePhase));
-        p.pulsePhase += 0.015 * (delta / 16);
-
-        if (p.x < -p.radius) p.x = canvasEl.width + p.radius;
-        if (p.x > canvasEl.width + p.radius) p.x = -p.radius;
-        if (p.y < -p.radius) p.y = canvasEl.height + p.radius;
-        if (p.y > canvasEl.height + p.radius) p.y = -p.radius;
+        particles[i].update();
       }
 
-      updateGrid();
+      // 使用共享的网格更新函数
+      const newGrid = updateParticleGrid(particles, CELL_SIZE);
+      grid.clear();
+      newGrid.forEach((value, key) => grid.set(key, value));
 
       drawConnections();
 
