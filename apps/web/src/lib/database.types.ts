@@ -494,6 +494,7 @@ export interface Database {
       flags: {
         Row: {
           id: number;
+          prediction_id: number | null;
           user_id: string;
           title: string;
           description: string | null;
@@ -508,6 +509,7 @@ export interface Database {
         };
         Insert: {
           id?: number;
+          prediction_id?: number | null;
           user_id: string;
           title: string;
           description?: string | null;
@@ -522,6 +524,7 @@ export interface Database {
         };
         Update: {
           id?: number;
+          prediction_id?: number | null;
           user_id?: string;
           title?: string;
           description?: string | null;

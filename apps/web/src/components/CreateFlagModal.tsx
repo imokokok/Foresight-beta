@@ -29,6 +29,7 @@ interface CreateFlagModalProps {
   defaultTitle?: string;
   defaultDesc?: string;
   isOfficial?: boolean;
+  predictionId?: number | null;
 }
 
 export default function CreateFlagModal({
@@ -40,6 +41,7 @@ export default function CreateFlagModal({
   defaultTitle = "",
   defaultDesc = "",
   isOfficial = false,
+  predictionId = null,
 }: CreateFlagModalProps) {
   const { account, siweLogin, isAuthenticated, checkAuth } = useWallet();
   const tFlags = useTranslations("flags");
@@ -151,6 +153,9 @@ export default function CreateFlagModal({
         verification_type: isOfficial ? "witness" : verifType,
         status: "active",
       };
+      if (typeof predictionId === "number" && Number.isFinite(predictionId)) {
+        payload.prediction_id = predictionId;
+      }
       if (isOfficial) {
         payload.witness_id = "official";
       } else if (verifType === "witness" && witnessId.trim()) {

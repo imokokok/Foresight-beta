@@ -1,14 +1,20 @@
 import {
   Camera,
+  CloudRain,
   Clock,
   Droplet,
   Flag,
+  Footprints,
   Home,
   Ban,
   BookOpen,
   Brain,
   Moon,
+  Phone,
+  Smartphone,
   Sun,
+  Trash2,
+  Utensils,
   Zap,
 } from "lucide-react";
 
@@ -21,6 +27,76 @@ type FlagThemeConfig = {
 };
 
 export const THEME_MAP: Record<string, FlagThemeConfig> = {
+  early_bird: {
+    icon: Sun,
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    gradient: "from-amber-100 to-orange-50",
+    emoji: "🌅",
+  },
+  reading_marathon: {
+    icon: BookOpen,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    gradient: "from-blue-100 to-cyan-50",
+    emoji: "📚",
+  },
+  fitness_pro: {
+    icon: Zap,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    gradient: "from-emerald-100 to-green-50",
+    emoji: "💪",
+  },
+  weather_prophet: {
+    icon: CloudRain,
+    color: "text-sky-500",
+    bg: "bg-sky-50",
+    gradient: "from-sky-100 to-indigo-50",
+    emoji: "🌦️",
+  },
+  no_takeout: {
+    icon: Utensils,
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    gradient: "from-orange-100 to-amber-50",
+    emoji: "🥗",
+  },
+  sleep_early: {
+    icon: Moon,
+    color: "text-indigo-500",
+    bg: "bg-indigo-50",
+    gradient: "from-indigo-100 to-violet-50",
+    emoji: "😴",
+  },
+  walk_10k: {
+    icon: Footprints,
+    color: "text-teal-500",
+    bg: "bg-teal-50",
+    gradient: "from-teal-100 to-emerald-50",
+    emoji: "🚶",
+  },
+  digital_detox: {
+    icon: Smartphone,
+    color: "text-rose-500",
+    bg: "bg-rose-50",
+    gradient: "from-rose-100 to-pink-50",
+    emoji: "📵",
+  },
+  declutter: {
+    icon: Trash2,
+    color: "text-slate-500",
+    bg: "bg-slate-50",
+    gradient: "from-slate-100 to-gray-50",
+    emoji: "🧹",
+  },
+  call_parents: {
+    icon: Phone,
+    color: "text-pink-500",
+    bg: "bg-pink-50",
+    gradient: "from-pink-100 to-rose-50",
+    emoji: "📞",
+  },
   early_morning: {
     icon: Clock,
     color: "text-orange-500",

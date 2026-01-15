@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, Users, ShieldCheck, CheckCircle2, Clock, History, Target } from "lucide-react";
 import type { FlagItem } from "@/components/FlagCard";
 import { formatAddress } from "@/lib/address";
-import { useLocale } from "@/lib/i18n";
+import { useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { getFlagTierFromTotalDays, getTierSettleRule } from "@/lib/flagRewards";
 
 type HistoryItem = {
   id: string;
@@ -55,6 +56,7 @@ export function FlagsHistoryModal({
   const endDate = flag ? new Date(flag.deadline) : null;
   let challengeDurationText = "";
   let challengeRangeText = "";
+  let totalDaysForRule: number | null = null;
   if (
     startDate &&
     endDate &&
@@ -65,12 +67,29 @@ export function FlagsHistoryModal({
     const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
     const totalDays = Math.max(1, Math.floor((endDay.getTime() - startDay.getTime()) / msDay) + 1);
+    totalDaysForRule = totalDays;
     const daysLabel = tFlags("card.time.daysLabel");
     challengeDurationText = `${totalDays} ${daysLabel}`;
     challengeRangeText = `${formatDateTime(startDate, locale)} - ${formatDateTime(endDate, locale)}`;
   }
 
-  const successConditionText = tFlags("history.successCondition.default");
+  const successConditionText = (() => {
+    const defaultText = tFlags("history.successCondition.default");
+    if (!flag || !totalDaysForRule) return defaultText;
+
+    const tier = getFlagTierFromTotalDays(totalDaysForRule);
+    const rule = getTierSettleRule(tier);
+    const minDays = Math.min(rule.minDays, totalDaysForRule);
+    const thresholdPercent = Math.round(rule.threshold * 100);
+
+    const template = tFlags("history.successCondition.dynamic");
+    if (!template || template === "history.successCondition.dynamic") return defaultText;
+
+    return formatTranslation(template, {
+      minDays,
+      threshold: thresholdPercent,
+    });
+  })();
 
   return (
     <AnimatePresence>

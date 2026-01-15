@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
-import { normalizeId } from "@/lib/ids";
 import {
-  getFlagTierFromFlag,
-  getTierConfig,
-  isLuckyAddress,
-  issueRandomSticker,
-} from "@/lib/flagRewards";
+  parseRequestBody,
+  logApiError,
+  getSessionAddress,
+  normalizeAddress,
+} from "@/lib/serverUtils";
+import { normalizeId } from "@/lib/ids";
+import { getFlagTierFromFlag, getTierConfig, issueRandomSticker } from "@/lib/flagRewards";
 import { ApiResponses } from "@/lib/apiResponse";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -21,12 +21,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
-    const userId = await getSessionAddress(req);
-    if (!/^0x[a-f0-9]{40}$/.test(String(userId || ""))) {
+    const userId = normalizeAddress(await getSessionAddress(req));
+    if (!/^0x[a-f0-9]{40}$/.test(userId)) {
       return ApiResponses.unauthorized("Unauthorized");
     }
-
-    const isLuckyUser = isLuckyAddress(userId);
 
     const note = String(body?.note || "").trim();
     const imageUrl = String(body?.image_url || "").trim();
@@ -79,6 +77,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         existingForFlag.error.message
       );
     const alreadyCheckedInFlagToday = Number(existingForFlag.count || 0) > 0;
+    if (alreadyCheckedInFlagToday) {
+      return ApiResponses.badRequest("Already checked in today");
+    }
 
     const historyPayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
       proposal_id: flagId,
@@ -112,7 +113,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const isSelfSupervised =
-      flag.verification_type === "self" || (!flag.witness_id && flag.user_id === userId);
+      flag.verification_type === "self" ||
+      (!flag.witness_id && String(flag.user_id || "").toLowerCase() === userId.toLowerCase());
 
     const canAutoApprove =
       insertedCheckin?.id &&
@@ -144,10 +146,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     let rewardedSticker = null;
     const rewardRoll = Math.random();
     const shouldRewardFromTier = rewardRoll < tierConfig.checkinDropRate;
-    const shouldReward =
-      insertedCheckin?.id &&
-      !alreadyCheckedInFlagToday &&
-      ((canAutoApprove && shouldRewardFromTier) || isLuckyUser);
+    const shouldReward = insertedCheckin?.id && canAutoApprove && shouldRewardFromTier;
     if (shouldReward) {
       try {
         rewardedSticker = await issueRandomSticker({

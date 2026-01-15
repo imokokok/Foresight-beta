@@ -1511,7 +1511,8 @@
         "successCondition": "Condición de éxito"
       },
       "successCondition": {
-        "default": "El sistema ajusta la condición de éxito según la duración del reto: en retos cortos suele bastar con que la mayoría de los días estén aprobados, mientras que en retos largos se exigen más días aprobados y una tasa de cumplimiento más alta."
+        "default": "El sistema ajusta la condición de éxito según la duración del reto: en retos cortos suele bastar con que la mayoría de los días estén aprobados, mientras que en retos largos se exigen más días aprobados y una tasa de cumplimiento más alta.",
+        "dynamic": "Éxito con al menos {minDays} días aprobados y ≥{threshold}% de cumplimiento."
       },
       "actions": {
         "approve": "Aprobar",

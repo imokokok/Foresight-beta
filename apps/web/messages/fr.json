@@ -1491,7 +1491,8 @@
         "successCondition": "Success condition"
       },
       "successCondition": {
-        "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio."
+        "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio.",
+        "dynamic": "Réussite avec au moins {minDays} jours approuvés et ≥{threshold}% de réalisation."
       },
       "actions": {
         "approve": "Approve",

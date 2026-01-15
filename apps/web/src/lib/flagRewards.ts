@@ -198,17 +198,8 @@ export function getRarityClass(r: string) {
   }
 }
 
-import { normalizeAddress } from "./address";
-
-const LUCKY_ADDRESSES = [
-  "0x23d930b75a647a11a12b94d747488aa232375859",
-  "0x377f4bb22f0ebd9238c1a30a8872fd00fb0b6f43",
-].map((addr) => normalizeAddress(addr));
-
 export function isLuckyAddress(address?: string | null) {
-  if (!address) return false;
-  const norm = normalizeAddress(address);
-  return LUCKY_ADDRESSES.some((addr) => addr === norm);
+  return false;
 }
 
 export async function getPendingReviewCountForWitness(options: {

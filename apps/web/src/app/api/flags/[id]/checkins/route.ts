@@ -16,10 +16,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
     const { searchParams } = new URL(req.url);
     const sessionViewerRaw = await getSessionAddress(req);
-    const sessionViewer = isEvmAddress(sessionViewerRaw) ? normalizeAddress(sessionViewerRaw) : "";
-    const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
-    const viewer =
-      sessionViewer || (isEvmAddress(viewerParam) ? normalizeAddress(viewerParam) : "");
+    const viewer = isEvmAddress(sessionViewerRaw) ? normalizeAddress(sessionViewerRaw) : "";
     if (!viewer) return ApiResponses.unauthorized("Unauthorized");
 
     const rawLimit = Number(searchParams.get("limit") || 50);

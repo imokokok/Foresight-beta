@@ -184,10 +184,10 @@ export default function FlagsPage() {
     setHistoryLoading(true);
     setHistoryOpen(true);
     try {
-      const viewerParam = account ? `&viewer=${encodeURIComponent(account)}` : "";
-      const res = await fetch(`/api/flags/${flag.id}/checkins?limit=50${viewerParam}`, {
+      const res = await fetch(`/api/flags/${flag.id}/checkins?limit=50`, {
         cache: "no-store",
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json().catch(() => ({}) as any);
       const items = Array.isArray(data?.items) ? data.items : [];
       setHistoryItems(items);

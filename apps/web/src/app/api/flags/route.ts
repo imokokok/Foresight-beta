@@ -20,16 +20,12 @@ export async function GET(req: NextRequest) {
 
     const sessionViewerRaw = await getSessionAddress(req);
     const sessionViewer = isEvmAddress(sessionViewerRaw) ? normalizeAddress(sessionViewerRaw) : "";
-    const { searchParams } = new URL(req.url);
-    const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
-    const viewer =
-      sessionViewer || (isEvmAddress(viewerParam) ? normalizeAddress(viewerParam) : "");
-    if (!viewer) return NextResponse.json({ flags: [] }, { status: 200 });
+    if (!sessionViewer) return NextResponse.json({ flags: [] }, { status: 200 });
 
     const { data, error } = await client
       .from("flags")
       .select("*")
-      .or(`user_id.eq.${viewer},witness_id.eq.${viewer}`)
+      .or(`user_id.eq.${sessionViewer},witness_id.eq.${sessionViewer}`)
       .order("created_at", { ascending: false });
     if (error) {
       return ApiResponses.databaseError("Failed to fetch flags", error.message);
@@ -56,6 +52,13 @@ export async function POST(req: NextRequest) {
     const title = String(body?.title || "").trim();
     const description = String(body?.description || "");
     const deadlineRaw = String(body?.deadline || "").trim();
+    const rawPredictionId = body?.prediction_id;
+    const predictionId =
+      typeof rawPredictionId === "number"
+        ? rawPredictionId
+        : typeof rawPredictionId === "string"
+          ? Number(rawPredictionId)
+          : null;
     const verification_type =
       String(body?.verification_type || "self") === "witness" ? "witness" : "self";
     const witness_id = String(body?.witness_id || "").trim();
@@ -79,8 +82,21 @@ export async function POST(req: NextRequest) {
         return ApiResponses.invalidParameters("Invalid deadline format");
     }
 
+    let predictionIdToUse: number | null = null;
+    if (typeof predictionId === "number" && Number.isFinite(predictionId)) {
+      const { data: predictionRow, error: pErr } = await client
+        .from("predictions")
+        .select("id")
+        .eq("id", predictionId)
+        .maybeSingle();
+      if (pErr) return ApiResponses.databaseError("Failed to validate prediction_id", pErr.message);
+      if (!predictionRow?.id) return ApiResponses.invalidParameters("Invalid prediction_id");
+      predictionIdToUse = predictionId;
+    }
+
     const payload: Database["public"]["Tables"]["flags"]["Insert"] = {
       user_id: ownerId,
+      prediction_id: predictionIdToUse,
       title,
       description,
       deadline: deadline.toISOString(),
@@ -89,19 +105,43 @@ export async function POST(req: NextRequest) {
     };
     let data: Database["public"]["Tables"]["flags"]["Row"] | null = null;
     let error: { message?: string } | null = null;
+    const shouldRetryWithoutPredictionId = (err?: { message?: string } | null) => {
+      const msg = String(err?.message || "").toLowerCase();
+      return (
+        msg.includes("prediction_id") &&
+        (msg.includes("could not find") ||
+          (msg.includes("column") && msg.includes("does not exist")) ||
+          msg.includes("schema cache"))
+      );
+    };
+
+    const payloadWithoutPredictionId = { ...payload, prediction_id: null };
+
     if (witnessIdToUse) {
-      const res = await client
-        .from("flags")
-        .insert({
-          ...payload,
-          witness_id: isEvmAddress(witnessIdToUse)
-            ? normalizeAddress(witnessIdToUse)
-            : witnessIdToUse,
-        } as never)
-        .select("*")
-        .maybeSingle();
+      const insertWithWitness = async (
+        usePredictionId: boolean
+      ): Promise<{ data: any; error: any }> => {
+        const base = usePredictionId ? payload : payloadWithoutPredictionId;
+        return await client
+          .from("flags")
+          .insert({
+            ...base,
+            witness_id: isEvmAddress(witnessIdToUse)
+              ? normalizeAddress(witnessIdToUse)
+              : witnessIdToUse,
+          } as never)
+          .select("*")
+          .maybeSingle();
+      };
+
+      const res = await insertWithWitness(true);
       data = res.data as Database["public"]["Tables"]["flags"]["Row"] | null;
       error = res.error;
+      if (error && predictionIdToUse !== null && shouldRetryWithoutPredictionId(error)) {
+        const resRetry = await insertWithWitness(false);
+        data = resRetry.data as Database["public"]["Tables"]["flags"]["Row"] | null;
+        error = resRetry.error;
+      }
       if (error) {
         const res2 = await client
           .from("flags")
@@ -110,15 +150,34 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         data = res2.data as Database["public"]["Tables"]["flags"]["Row"] | null;
         error = res2.error;
+        if (error && predictionIdToUse !== null && shouldRetryWithoutPredictionId(error)) {
+          const res2Retry = await client
+            .from("flags")
+            .insert(payloadWithoutPredictionId as never)
+            .select("*")
+            .maybeSingle();
+          data = res2Retry.data as Database["public"]["Tables"]["flags"]["Row"] | null;
+          error = res2Retry.error;
+        }
       }
     } else {
-      const res = await client
-        .from("flags")
-        .insert(payload as never)
-        .select("*")
-        .maybeSingle();
+      const insertNoWitness = async (
+        usePredictionId: boolean
+      ): Promise<{ data: any; error: any }> =>
+        await client
+          .from("flags")
+          .insert((usePredictionId ? payload : payloadWithoutPredictionId) as never)
+          .select("*")
+          .maybeSingle();
+
+      const res = await insertNoWitness(true);
       data = res.data as Database["public"]["Tables"]["flags"]["Row"] | null;
       error = res.error;
+      if (error && predictionIdToUse !== null && shouldRetryWithoutPredictionId(error)) {
+        const resRetry = await insertNoWitness(false);
+        data = resRetry.data as Database["public"]["Tables"]["flags"]["Row"] | null;
+        error = resRetry.error;
+      }
     }
     if (error) return ApiResponses.databaseError("Failed to create flag", error.message);
     try {
@@ -148,7 +207,7 @@ export async function POST(req: NextRequest) {
         }
         const invitePayload: Database["public"]["Tables"]["discussions"]["Insert"] = {
           proposal_id: flagIdNum,
-          user_id: witnessIdToUse,
+          user_id: recipient,
           content: JSON.stringify({
             type: "witness_invite",
             flag_id: flagIdNum,

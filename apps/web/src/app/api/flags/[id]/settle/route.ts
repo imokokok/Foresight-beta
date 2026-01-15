@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
-import { parseRequestBody, logApiError, getSessionAddress } from "@/lib/serverUtils";
+import {
+  parseRequestBody,
+  logApiError,
+  getSessionAddress,
+  normalizeAddress,
+} from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { checkRateLimit, RateLimits, getIP } from "@/lib/rateLimit";
 import {
@@ -9,7 +14,6 @@ import {
   getFlagTierFromTotalDays,
   getTierConfig,
   getTierSettleRule,
-  isLuckyAddress,
   issueRandomSticker,
 } from "@/lib/flagRewards";
 import { ApiResponses } from "@/lib/apiResponse";
@@ -183,8 +187,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       endDay: endDay.toISOString(),
     };
 
-    const isLuckyOwner = isLuckyAddress(owner);
-
     let rewardedSticker: {
       id: string;
       emoji: string;
@@ -211,12 +213,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const tierConfig = getTierConfig(tier);
       const rewardRoll = Math.random();
       const baseShouldReward = status === "success" && rewardRoll < tierConfig.settleDropRate;
-      const shouldReward = baseShouldReward || isLuckyOwner;
+      const shouldReward = baseShouldReward;
 
       if (shouldReward) {
         rewardedSticker = await issueRandomSticker({
           client,
-          userId: owner,
+          userId: normalizeAddress(owner),
           source: "flag_settle",
           mode: "settle",
           tier,
