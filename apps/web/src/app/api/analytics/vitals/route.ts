@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     }
 
     const viewer = normalizeAddress(await getSessionAddress(request));
-    if (!viewer) return ApiResponses.unauthorized();
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized();
     const { data: prof, error: profErr } = await (client as any)
       .from("user_profiles")
       .select("is_admin")

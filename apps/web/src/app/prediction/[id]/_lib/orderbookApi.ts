@@ -96,8 +96,10 @@ export async function fetchUserOpenOrdersApi(
   return [];
 }
 
-export async function fetchTradesApi(contract: string, chainId: number) {
-  const q = `contract=${contract}&chainId=${chainId}&limit=50`;
+export async function fetchTradesApi(contract: string, chainId: number, outcomeIndex?: number) {
+  const q = `contract=${contract}&chainId=${chainId}&limit=50${
+    outcomeIndex != null ? `&outcomeIndex=${encodeURIComponent(String(outcomeIndex))}` : ""
+  }`;
   const res = await fetch(`${API_BASE}/orderbook/trades?${q}`);
   const json = await safeJson(res);
   if ((json as any).success && (json as any).data) {

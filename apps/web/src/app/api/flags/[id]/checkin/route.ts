@@ -22,7 +22,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const userId = await getSessionAddress(req);
-    if (!userId) return ApiResponses.unauthorized("Unauthorized");
+    if (!/^0x[a-f0-9]{40}$/.test(String(userId || ""))) {
+      return ApiResponses.unauthorized("Unauthorized");
+    }
 
     const isLuckyUser = isLuckyAddress(userId);
 

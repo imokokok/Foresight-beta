@@ -14,6 +14,10 @@ import {
 } from "@/lib/flagRewards";
 import { ApiResponses } from "@/lib/apiResponse";
 
+function isEvmAddress(value: string) {
+  return /^0x[a-f0-9]{40}$/.test(String(value || ""));
+}
+
 function parseNumberWithBounds(value: unknown, fallback: number, min?: number, max?: number) {
   const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   let v = Number.isFinite(n) ? (n as number) : fallback;
@@ -33,7 +37,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const settler_id = await getSessionAddress(req);
-    if (!settler_id) return ApiResponses.unauthorized("Unauthorized");
+    if (!isEvmAddress(settler_id)) return ApiResponses.unauthorized("Unauthorized");
 
     const ip = getIP(req);
     const rl = await checkRateLimit(`flags:settle:${settler_id.toLowerCase()}:${flagId}:${ip}`, {

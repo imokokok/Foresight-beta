@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
     const currentSessionId =
       typeof (session as any)?.sid === "string" ? String((session as any).sid) : "";
-    if (!address) return ApiResponses.unauthorized("Not authenticated");
+    if (!/^0x[a-f0-9]{40}$/.test(address)) return ApiResponses.unauthorized("Not authenticated");
     if (!currentSessionId) {
       return errorResponse("请重新登录以启用会话管理", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
     const currentSessionId =
       typeof (session as any)?.sid === "string" ? String((session as any).sid) : "";
-    if (!address) return ApiResponses.unauthorized("Not authenticated");
+    if (!/^0x[a-f0-9]{40}$/.test(address)) return ApiResponses.unauthorized("Not authenticated");
     if (!currentSessionId) {
       return errorResponse("请重新登录以启用会话管理", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
@@ -180,7 +180,7 @@ export async function DELETE(req: NextRequest) {
       typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
     const currentSessionId =
       typeof (session as any)?.sid === "string" ? String((session as any).sid) : "";
-    if (!address) return ApiResponses.unauthorized("Not authenticated");
+    if (!/^0x[a-f0-9]{40}$/.test(address)) return ApiResponses.unauthorized("Not authenticated");
     if (!currentSessionId) {
       return errorResponse("请重新登录以启用会话管理", ApiErrorCode.INVALID_PARAMETERS, 400);
     }

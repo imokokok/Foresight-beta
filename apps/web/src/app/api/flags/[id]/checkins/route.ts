@@ -15,7 +15,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const flagId = normalizeId(id);
     if (flagId == null || flagId <= 0) return ApiResponses.invalidParameters("flagId is required");
     const { searchParams } = new URL(req.url);
-    const sessionViewer = await getSessionAddress(req);
+    const sessionViewerRaw = await getSessionAddress(req);
+    const sessionViewer = isEvmAddress(sessionViewerRaw) ? normalizeAddress(sessionViewerRaw) : "";
     const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
     const viewer =
       sessionViewer || (isEvmAddress(viewerParam) ? normalizeAddress(viewerParam) : "");

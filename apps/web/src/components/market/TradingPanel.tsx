@@ -316,11 +316,11 @@ export function TradingPanel(props: TradingPanelProps) {
                   setActiveTab("trade");
                   setTradeSide("sell");
                   setOrderMode("best");
-                  setAmountInput(currentShares.toFixed(4));
+                  setAmountInput(currentShares.toFixed(6).replace(/\.?0+$/, ""));
                 }}
                 className="px-2 py-1 rounded-full border border-rose-100 bg-rose-50 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 hover:border-rose-200 transition-colors"
               >
-                {tTrading("sell")} MAX
+                {tTrading("sell")} {tTrading("hints.max")}
               </button>
             </div>
           </div>

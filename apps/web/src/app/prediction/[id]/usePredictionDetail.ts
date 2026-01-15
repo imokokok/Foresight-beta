@@ -77,7 +77,7 @@ export function usePredictionDetail() {
   const [usdcBalance, setUsdcBalance] = useState<string>("0.00");
   const [shareBalance, setShareBalance] = useState<string>("0");
   const [mintInput, setMintInput] = useState<string>("");
-  const { trades } = useTradesPolling(market);
+  const { trades } = useTradesPolling(market, predictionIdRaw, tradeOutcome);
   const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
   const [marketPlanLoading, setMarketPlanLoading] = useState(false);
 

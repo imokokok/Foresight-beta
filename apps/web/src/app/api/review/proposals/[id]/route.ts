@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (action === "resubmit") {
       const sessAddr = await getSessionAddress(req);
       const walletAddress = normalizeAddress(String(sessAddr || ""));
-      if (!walletAddress) {
+      if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
         return ApiResponses.unauthorized("unauthorized");
       }
       const { data: existing, error: fetchError } = await client

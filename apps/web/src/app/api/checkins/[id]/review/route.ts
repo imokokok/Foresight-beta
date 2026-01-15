@@ -32,8 +32,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
     }
 
-    const reviewer_id = await getSessionAddress(req);
-    if (!reviewer_id)
+    const reviewer_id = normalizeAddress(await getSessionAddress(req));
+    if (!/^0x[a-f0-9]{40}$/.test(reviewer_id))
       return NextResponse.json(
         { message: "Unauthorized", detail: "Missing session address" },
         { status: 401 }

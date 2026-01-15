@@ -14,15 +14,18 @@ export async function getReviewerSession(req: NextRequest): Promise<ReviewerSess
   }
 
   const address = normalizeAddress(String((await getSessionAddress(req)) || ""));
-  if (!address) {
+  if (!/^0x[a-f0-9]{40}$/.test(address)) {
     return { ok: false, reason: "unauthorized", userId: null };
   }
 
-  const { data: profile } = await (client as any)
+  const { data: profile, error } = await (client as any)
     .from("user_profiles")
     .select("is_admin,is_reviewer")
     .eq("wallet_address", address)
     .maybeSingle();
+  if (error) {
+    return { ok: false, reason: "no_client", userId: null };
+  }
 
   const isAdmin = !!(profile as any)?.is_admin || isAdminAddress(address);
   const isReviewer = !!(profile as any)?.is_reviewer;

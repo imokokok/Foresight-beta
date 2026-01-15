@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
     const client = supabaseAdmin;
     if (!client) return NextResponse.json({ flags: [] }, { status: 200 });
 
-    const sessionViewer = await getSessionAddress(req);
+    const sessionViewerRaw = await getSessionAddress(req);
+    const sessionViewer = isEvmAddress(sessionViewerRaw) ? normalizeAddress(sessionViewerRaw) : "";
     const { searchParams } = new URL(req.url);
     const viewerParam = searchParams.get("viewer") || searchParams.get("address") || "";
     const viewer =
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (!client) return ApiResponses.internalError("Service not configured");
 
     const ownerId = await getSessionAddress(req);
-    if (!ownerId) return ApiResponses.unauthorized("Unauthorized");
+    if (!isEvmAddress(ownerId)) return ApiResponses.unauthorized("Unauthorized");
 
     const title = String(body?.title || "").trim();
     const description = String(body?.description || "");

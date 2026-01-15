@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
 import { formatCurrency, formatNumber, formatPercent, formatInteger } from "@/lib/format";
 
@@ -130,12 +131,56 @@ export function TradeTabContent({
     outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? tCommon("yes") : tCommon("no"));
   const isMultiOutcome = outcomes.length > 2;
 
+  const canSubmit = (() => {
+    const amountText = (amountInput || "").trim();
+    const priceText = (priceInput || "").trim();
+    const amountVal = parseFloat(amountText);
+    const priceVal = parseFloat(priceText);
+    if (amountText.length > 0) {
+      if (!Number.isFinite(amountVal) || amountVal <= 0) return false;
+      const idx = amountText.indexOf(".");
+      const decimalsCount = idx < 0 ? 0 : Math.max(0, amountText.length - idx - 1);
+      if (decimalsCount > 6) return false;
+    }
+    if (orderMode === "limit" && priceText.length > 0) {
+      if (!Number.isFinite(priceVal) || priceVal <= 0 || priceVal >= 1) return false;
+    }
+    return true;
+  })();
+
+  const disabledReason = (() => {
+    const amountText = (amountInput || "").trim();
+    const priceText = (priceInput || "").trim();
+    if (amountText.length > 0) {
+      const amountVal = parseFloat(amountText);
+      if (!Number.isFinite(amountVal) || amountVal <= 0) return tTrading("orderFlow.invalidAmount");
+      const idx = amountText.indexOf(".");
+      const decimalsCount = idx < 0 ? 0 : Math.max(0, amountText.length - idx - 1);
+      if (decimalsCount > 6) return tTrading("orderFlow.invalidAmountPrecision");
+    }
+    if (orderMode === "limit" && priceText.length > 0) {
+      const priceVal = parseFloat(priceText);
+      if (!Number.isFinite(priceVal) || priceVal <= 0 || priceVal >= 1)
+        return tTrading("orderFlow.invalidPrice");
+    }
+    return null;
+  })();
+
   let feeRate = 0;
   if (market && typeof market.fee_bps === "number" && market.fee_bps >= 0) {
     feeRate = market.fee_bps / 10000;
   } else {
     feeRate = 0.004;
   }
+
+  const [sellToolsOpen, setSellToolsOpen] = useState(false);
+  const sellNoBalanceMsg = tTrading("orderFlow.sellNoBalance");
+  useEffect(() => {
+    if (tradeSide !== "sell") return;
+    if (orderMsg && orderMsg.includes(sellNoBalanceMsg)) {
+      setSellToolsOpen(true);
+    }
+  }, [orderMsg, sellNoBalanceMsg, tradeSide]);
 
   return (
     <div className="space-y-6">
@@ -221,19 +266,35 @@ export function TradeTabContent({
         market={market}
         currentOutcomeLabel={currentOutcomeLabel}
         orderMsg={orderMsg}
+        canSubmit={canSubmit}
+        disabledReason={disabledReason}
         tTrading={tTrading}
         tCommon={tCommon}
         tAuth={tAuth}
         tWallet={tWallet}
       />
       {tradeSide === "sell" && (
-        <MintRedeemPanel
-          mintInput={mintInput}
-          setMintInput={setMintInput}
-          handleMint={handleMint}
-          handleRedeem={handleRedeem}
-          tTrading={tTrading}
-        />
+        <div className="border-t border-dashed border-gray-200 pt-4 mt-2">
+          <button
+            type="button"
+            onClick={() => setSellToolsOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-xs font-semibold text-gray-600 hover:text-gray-900"
+          >
+            <span>{tTrading("hints.sellToolsTitle")}</span>
+            <span className="text-gray-400">
+              {sellToolsOpen ? tTrading("hints.hide") : tTrading("hints.show")}
+            </span>
+          </button>
+          {sellToolsOpen && (
+            <MintRedeemPanel
+              mintInput={mintInput}
+              setMintInput={setMintInput}
+              handleMint={handleMint}
+              handleRedeem={handleRedeem}
+              tTrading={tTrading}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -328,7 +389,7 @@ function OutcomeSelector({
               </div>
               <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
                 <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                  {chance} Chance
+                  {chance} {tTrading("hints.chance")}
                 </span>
               </div>
             </button>
@@ -372,9 +433,10 @@ function MultiOutcomeQuickTable({
       else prob = stats.noProbability || 0;
     }
     if (!Number.isFinite(prob)) prob = 0;
-    const buyPrice = prob;
-    const sellPrice = 100 - prob;
-    return { outcome, idx, prob, buyPrice, sellPrice };
+    const probPct = Math.max(0, Math.min(100, prob <= 1 ? prob * 100 : prob));
+    const buyPrice = probPct;
+    const sellPrice = 100 - probPct;
+    return { outcome, idx, probPct, buyPrice, sellPrice };
   });
 
   return (
@@ -383,7 +445,7 @@ function MultiOutcomeQuickTable({
         {tTrading("selectOutcome")}
       </label>
       <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 bg-white">
-        {displayItems.map(({ outcome, idx, prob, buyPrice, sellPrice }) => {
+        {displayItems.map(({ outcome, idx, probPct, buyPrice, sellPrice }) => {
           const isSelected = tradeOutcome === idx;
           return (
             <button
@@ -403,7 +465,7 @@ function MultiOutcomeQuickTable({
               <div className="flex items-center gap-3 flex-shrink-0">
                 <div className="flex flex-col items-end gap-0.5">
                   <span className="text-[11px] font-semibold text-purple-600">
-                    {formatPercent(prob)}{" "}
+                    {formatPercent(probPct)}{" "}
                   </span>
                   <span className="text-[10px] text-gray-400">
                     {formatInteger(buyPrice)}¢ / {formatInteger(sellPrice)}¢
@@ -485,6 +547,10 @@ function PriceInputSection({
   marketPlanPreview,
   marketPlanLoading,
 }: PriceInputSectionProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const limitPriceValue = parseFloat(priceInput || "0");
+  const limitPriceOk =
+    Number.isFinite(limitPriceValue) && limitPriceValue > 0 && limitPriceValue < 1;
   let worstPriceLabel = "";
   if (orderMode === "best") {
     const limit =
@@ -549,12 +615,27 @@ function PriceInputSection({
             <input
               type="number"
               value={priceInput}
-              onChange={(e) => setPriceInput(e.target.value)}
+              inputMode="decimal"
+              onKeyDown={(e) => {
+                if (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (/e/i.test(next) || next.startsWith("-")) return;
+                setPriceInput(next);
+              }}
               placeholder="0.00"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 pl-4 pr-10 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
             />
             <span className="absolute right-4 top-3.5 text-gray-400 font-medium">$</span>
           </div>
+          {limitPriceOk && (
+            <div className="text-[11px] text-gray-500 text-right">
+              {tTrading("hints.impliedProbability")}: {formatPercent(limitPriceValue * 100)}
+            </div>
+          )}
           <div className="flex justify-end gap-2 text-[10px] text-gray-500">
             <button
               type="button"
@@ -584,6 +665,12 @@ function PriceInputSection({
 
       {orderMode === "best" && (
         <div className="space-y-1 pt-1">
+          <div className="flex items-center justify-between text-[11px] font-medium text-gray-500">
+            <span className="inline-flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              {tTrading("hints.marketOrderOnchain")}
+            </span>
+          </div>
           <div className="flex gap-2 text-[10px] font-semibold text-gray-500">
             <span>{tTrading("maxSlippage")}</span>
             <button
@@ -628,60 +715,79 @@ function PriceInputSection({
 
       {orderMode === "limit" && (
         <div className="space-y-1 pt-1">
-          <div className="flex gap-2 text-[10px] font-semibold text-gray-500">
+          <div className="flex items-center justify-between text-[11px] font-medium text-gray-500">
+            <span className="inline-flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              {tTrading("hints.limitOrderSigned")}
+            </span>
             <button
-              onClick={() => setTif("GTC")}
-              className={`px-2 py-0.5 rounded-full border ${
-                tif === "GTC"
-                  ? "border-purple-400 bg-purple-50 text-purple-700"
-                  : "border-gray-200 bg-white text-gray-500"
-              }`}
+              type="button"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className="text-[11px] font-semibold text-purple-600 hover:text-purple-700"
             >
-              GTC
-            </button>
-            <button
-              onClick={() => setTif("IOC")}
-              className={`px-2 py-0.5 rounded-full border ${
-                tif === "IOC"
-                  ? "border-purple-400 bg-purple-50 text-purple-700"
-                  : "border-gray-200 bg-white text-gray-500"
-              }`}
-            >
-              IOC
-            </button>
-            <button
-              onClick={() => setTif("FOK")}
-              className={`px-2 py-0.5 rounded-full border ${
-                tif === "FOK"
-                  ? "border-purple-400 bg-purple-50 text-purple-700"
-                  : "border-gray-200 bg-white text-gray-500"
-              }`}
-            >
-              FOK
-            </button>
-            <button
-              onClick={() => setPostOnly(!postOnly)}
-              className={`ml-auto px-2 py-0.5 rounded-full border ${
-                postOnly
-                  ? "border-emerald-400 bg-emerald-50 text-emerald-700"
-                  : "border-gray-200 bg-white text-gray-500"
-              }`}
-            >
-              Post only
+              {advancedOpen ? tTrading("hints.hideAdvanced") : tTrading("hints.showAdvanced")}
             </button>
           </div>
+          {advancedOpen && (
+            <div className="flex gap-2 text-[10px] font-semibold text-gray-500">
+              <button
+                type="button"
+                onClick={() => setTif("GTC")}
+                className={`px-2 py-0.5 rounded-full border ${
+                  tif === "GTC"
+                    ? "border-purple-400 bg-purple-50 text-purple-700"
+                    : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                GTC
+              </button>
+              <button
+                type="button"
+                onClick={() => setTif("IOC")}
+                className={`px-2 py-0.5 rounded-full border ${
+                  tif === "IOC"
+                    ? "border-purple-400 bg-purple-50 text-purple-700"
+                    : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                IOC
+              </button>
+              <button
+                type="button"
+                onClick={() => setTif("FOK")}
+                className={`px-2 py-0.5 rounded-full border ${
+                  tif === "FOK"
+                    ? "border-purple-400 bg-purple-50 text-purple-700"
+                    : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                FOK
+              </button>
+              <button
+                type="button"
+                onClick={() => setPostOnly(!postOnly)}
+                className={`ml-auto px-2 py-0.5 rounded-full border ${
+                  postOnly
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-700"
+                    : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                {tTrading("hints.postOnly")}
+              </button>
+            </div>
+          )}
           <div className="flex gap-3 text-xs font-medium justify-end">
             <button
               onClick={() => fillPrice(formatPrice(bestBid))}
               className="text-emerald-600 hover:text-emerald-700 hover:underline decoration-emerald-600/30"
             >
-              Bid: {formatPrice(bestBid, true)}
+              {String(tTrading("bestBid") || "").replace("{price}", formatPrice(bestBid, true))}
             </button>
             <button
               onClick={() => fillPrice(formatPrice(bestAsk))}
               className="text-rose-600 hover:text-rose-700 hover:underline decoration-rose-600/30"
             >
-              Ask: {formatPrice(bestAsk, true)}
+              {String(tTrading("bestAsk") || "").replace("{price}", formatPrice(bestAsk, true))}
             </button>
           </div>
         </div>
@@ -711,6 +817,24 @@ function AmountInputSection({
   orderMode,
   priceInput,
 }: AmountInputSectionProps) {
+  const normalizeTo6Decimals = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n <= 0) return trimmed;
+    const rounded = Math.round(n * 1_000_000) / 1_000_000;
+    const fixed = rounded.toFixed(6);
+    return fixed.replace(/\.?0+$/, "");
+  };
+
+  const decimalsCount = (() => {
+    const v = amountInput || "";
+    const idx = v.indexOf(".");
+    if (idx < 0) return 0;
+    return Math.max(0, v.length - idx - 1);
+  })();
+  const hasTooManyDecimals = decimalsCount > 6;
+
   let usdcAvailable = 0;
   if (tradeSide === "buy") {
     const digits = balance.replace(/[^0-9.]/g, "");
@@ -739,32 +863,51 @@ function AmountInputSection({
       </div>
       <input
         type="number"
+        step="0.000001"
+        inputMode="decimal"
         value={amountInput}
-        onChange={(e) => setAmountInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "e" || e.key === "E" || e.key === "+" || e.key === "-") {
+            e.preventDefault();
+          }
+        }}
+        onChange={(e) => {
+          const next = e.target.value;
+          if (/e/i.test(next) || next.startsWith("-")) return;
+          setAmountInput(next);
+        }}
+        onBlur={() => {
+          if (!amountInput) return;
+          const next = normalizeTo6Decimals(amountInput);
+          if (next !== amountInput) setAmountInput(next);
+        }}
         placeholder="0"
         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3.5 px-4 text-gray-900 font-medium focus:outline-none focus:border-purple-500 focus:bg-purple-50/30 focus:ring-4 focus:ring-purple-500/10 transition-all placeholder-gray-400"
       />
+      {hasTooManyDecimals && (
+        <div className="text-[11px] text-amber-600">{tTrading("hints.maxSixDecimals")}</div>
+      )}
       {(showSellButtons || showBuyMax) && (
         <div className="flex justify-end gap-2 pt-1 text-[11px] text-gray-500">
           {showSellButtons && (
             <>
               <button
-                onClick={() => setAmountInput((currentShares * 0.25).toFixed(4))}
+                onClick={() => setAmountInput(normalizeTo6Decimals(String(currentShares * 0.25)))}
                 className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
               >
                 25%
               </button>
               <button
-                onClick={() => setAmountInput((currentShares * 0.5).toFixed(4))}
+                onClick={() => setAmountInput(normalizeTo6Decimals(String(currentShares * 0.5)))}
                 className="px-2 py-0.5 rounded-full border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
               >
                 50%
               </button>
               <button
-                onClick={() => setAmountInput(currentShares.toFixed(4))}
+                onClick={() => setAmountInput(normalizeTo6Decimals(String(currentShares)))}
                 className="px-2 py-0.5 rounded-full border border-purple-400 bg-purple-50 text-purple-700 font-semibold"
               >
-                MAX
+                {tTrading("hints.max")}
               </button>
             </>
           )}
@@ -773,12 +916,12 @@ function AmountInputSection({
               onClick={() => {
                 const maxShares = usdcAvailable / priceValue;
                 if (maxShares > 0) {
-                  setAmountInput(maxShares.toFixed(4));
+                  setAmountInput(normalizeTo6Decimals(String(maxShares)));
                 }
               }}
               className="px-2 py-0.5 rounded-full border border-purple-400 bg-purple-50 text-purple-700 font-semibold"
             >
-              MAX
+              {tTrading("hints.max")}
             </button>
           )}
         </div>
@@ -1041,13 +1184,13 @@ function TradeSummary({
             return (
               <>
                 <div className="flex justify-between">
-                  <span>Mark price</span>
+                  <span>{tTrading("preview.markPrice")}</span>
                   <span className="font-medium text-gray-900">
                     {formatCurrency(markPrice as number)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>PnL (mark)</span>
+                  <span>{tTrading("preview.markPnl")}</span>
                   <span
                     className={`font-bold ${
                       pnlNegative
@@ -1126,6 +1269,8 @@ type TradeSubmitSectionProps = {
   market: any;
   currentOutcomeLabel: string;
   orderMsg: string | null;
+  canSubmit: boolean;
+  disabledReason: string | null;
   tTrading: (key: string) => string;
   tCommon: (key: string) => string;
   tAuth: (key: string) => string;
@@ -1139,6 +1284,8 @@ function TradeSubmitSection({
   market,
   currentOutcomeLabel,
   orderMsg,
+  canSubmit,
+  disabledReason,
   tTrading,
   tCommon,
   tAuth,
@@ -1218,9 +1365,9 @@ function TradeSubmitSection({
     <div className="space-y-3">
       <button
         onClick={submitOrder}
-        disabled={isSubmitting || !market}
+        disabled={isSubmitting || !market || !canSubmit}
         className={`w-full py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 ${
-          isSubmitting
+          isSubmitting || !market || !canSubmit
             ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
             : tradeSide === "buy"
               ? "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-200"
@@ -1232,6 +1379,12 @@ function TradeSubmitSection({
           ? tTrading("submitting")
           : `${tradeSide === "buy" ? tTrading("buy") : tTrading("sell")} ${currentOutcomeLabel}`}
       </button>
+      {!orderMsg && disabledReason && (
+        <div className="text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
+          <Info className="w-3.5 h-3.5" />
+          {disabledReason}
+        </div>
+      )}
       {orderMsg && (
         <div className="space-y-2">
           <div

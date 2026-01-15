@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       return ApiResponses.internalError("Database not configured");
     }
     const viewer = normalizeAddress(await getSessionAddress(req));
-    if (!viewer) return ApiResponses.unauthorized();
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized();
     const { data: prof, error: profErr } = await (client as any)
       .from("user_profiles")
       .select("is_admin")

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     if (!client) return ApiResponses.internalError("Supabase not configured");
 
     const viewer = normalizeAddress(await getSessionAddress(req));
-    if (!viewer) return ApiResponses.unauthorized();
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized();
 
     const { searchParams } = new URL(req.url);
     const limitRaw = Number(searchParams.get("limit") || 20);

@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
   try {
     const baseAddrRaw = await getSessionAddress(req);
     const baseAddress = normalizeAddress(baseAddrRaw);
-    if (!baseAddress) {
+    if (!/^0x[a-f0-9]{40}$/.test(baseAddress)) {
       return ApiResponses.unauthorized("未登录或会话已过期");
     }
 

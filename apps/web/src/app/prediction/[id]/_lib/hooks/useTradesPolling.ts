@@ -17,9 +17,8 @@ export function useTradesPolling(
   const [trades, setTrades] = useState<any[]>([]);
 
   // 构建 marketKey
-  const marketKey = market && predictionIdRaw 
-    ? buildMarketKey(market.chain_id, predictionIdRaw) 
-    : undefined;
+  const marketKey =
+    market && predictionIdRaw ? buildMarketKey(market.chain_id, predictionIdRaw) : undefined;
 
   // 🚀 使用 WebSocket 获取实时成交
   const { trades: wsTrades, status: wsStatus } = useTradesWS(marketKey, outcomeIndex);
@@ -30,12 +29,10 @@ export function useTradesPolling(
       setTrades((prev) => {
         // 合并新成交，去重
         const existingIds = new Set(prev.map((t) => t.id || t.tx_hash));
-        const newTrades = wsTrades.filter(
-          (t) => !existingIds.has(t.id)
-        );
-        
+        const newTrades = wsTrades.filter((t) => !existingIds.has(t.id));
+
         if (newTrades.length === 0) return prev;
-        
+
         // 新成交放在前面，最多保留 100 条
         return [...newTrades, ...prev].slice(0, 100);
       });
@@ -48,7 +45,7 @@ export function useTradesPolling(
 
     const fetchTrades = async () => {
       try {
-        const items = await fetchTradesApi(market.market, market.chain_id);
+        const items = await fetchTradesApi(market.market, market.chain_id, outcomeIndex);
         setTrades(items);
       } catch (e) {
         console.error("Fetch trades failed", e);
@@ -61,12 +58,12 @@ export function useTradesPolling(
     // WebSocket 连接时，降低轮询频率；断开时正常轮询
     const interval = wsStatus === "connected" ? 30000 : 5000;
     const timer = setInterval(fetchTrades, interval);
-    
-    return () => clearInterval(timer);
-  }, [market, wsStatus]);
 
-  return { 
-    trades, 
+    return () => clearInterval(timer);
+  }, [market, wsStatus, outcomeIndex]);
+
+  return {
+    trades,
     setTrades,
     // 🚀 新增：连接状态
     wsStatus,

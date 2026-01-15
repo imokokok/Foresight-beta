@@ -667,6 +667,20 @@
       "placeOrder": "Choose direction and place order",
       "manageOrders": "Manage orders and fills"
     },
+    "hints": {
+      "sellToolsTitle": "Outils de vente",
+      "show": "Afficher",
+      "hide": "Masquer",
+      "marketOrderOnchain": "Les ordres au marché envoient une transaction on-chain et peuvent nécessiter du gas.",
+      "limitOrderSigned": "Les ordres limités sont signés off-chain et ne nécessitent généralement pas de gas.",
+      "chance": "Probabilité",
+      "postOnly": "Post only",
+      "showAdvanced": "Avancé",
+      "hideAdvanced": "Masquer l’avancé",
+      "impliedProbability": "Probabilité implicite",
+      "max": "MAX",
+      "maxSixDecimals": "Jusqu’à 6 décimales"
+    },
     "preview": {
       "title": "Order preview",
       "priceTimesAmount": "Price × Quantity",
@@ -690,7 +704,9 @@
       "currentStake": "Current cumulative investment",
       "afterTradeStake": "Cumulative investment after trade",
       "currentAvgPrice": "Current average entry price",
-      "afterTradeAvgPrice": "Average price after trade"
+      "afterTradeAvgPrice": "Average price after trade",
+      "markPrice": "Mark price",
+      "markPnl": "PnL (mark)"
     },
     "mintPanel": {
       "title": "Sell prep",

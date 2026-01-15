@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!client) return ApiResponses.internalError("Supabase not configured");
 
     const viewer = normalizeAddress(await getSessionAddress(req));
-    if (!viewer) return ApiResponses.unauthorized();
+    if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized();
 
     const body = await parseRequestBody(req);
     const markAll = body?.all === true || String(body?.all || "") === "true";

@@ -668,6 +668,20 @@
       "placeOrder": "Elegir dirección y crear orden",
       "manageOrders": "Gestionar órdenes y ejecuciones"
     },
+    "hints": {
+      "sellToolsTitle": "Herramientas de venta",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "marketOrderOnchain": "Las órdenes de mercado envían una transacción on-chain y pueden requerir gas.",
+      "limitOrderSigned": "Las órdenes limitadas se firman off-chain y normalmente no requieren gas.",
+      "chance": "Probabilidad",
+      "postOnly": "Solo post",
+      "showAdvanced": "Avanzado",
+      "hideAdvanced": "Ocultar avanzado",
+      "impliedProbability": "Probabilidad implícita",
+      "max": "MÁX",
+      "maxSixDecimals": "Hasta 6 decimales"
+    },
     "preview": {
       "title": "Vista previa de la orden",
       "priceTimesAmount": "Precio × Cantidad",
@@ -691,7 +705,9 @@
       "currentStake": "Inversión acumulada actual",
       "afterTradeStake": "Inversión acumulada tras la operación",
       "currentAvgPrice": "Precio medio de entrada actual",
-      "afterTradeAvgPrice": "Precio medio tras la operación"
+      "afterTradeAvgPrice": "Precio medio tras la operación",
+      "markPrice": "Precio mark",
+      "markPnl": "PnL (mark)"
     },
     "mintPanel": {
       "title": "Preparar venta",

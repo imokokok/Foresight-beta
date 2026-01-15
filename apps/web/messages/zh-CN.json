@@ -672,6 +672,20 @@
       "placeOrder": "选择方向并下单",
       "manageOrders": "管理订单与成交"
     },
+    "hints": {
+      "sellToolsTitle": "卖出小工具",
+      "show": "展开",
+      "hide": "收起",
+      "marketOrderOnchain": "市价单会发起链上交易，可能需要支付 Gas。",
+      "limitOrderSigned": "限价单为离线签名订单，通常无需链上 Gas。",
+      "chance": "概率",
+      "postOnly": "只挂单",
+      "showAdvanced": "高级设置",
+      "hideAdvanced": "收起高级",
+      "impliedProbability": "隐含概率",
+      "max": "最大",
+      "maxSixDecimals": "最多支持 6 位小数"
+    },
     "preview": {
       "title": "模拟下单预览",
       "priceTimesAmount": "价格 × 数量",
@@ -695,7 +709,9 @@
       "currentStake": "当前累计投入",
       "afterTradeStake": "成交后累计投入",
       "currentAvgPrice": "当前持仓均价",
-      "afterTradeAvgPrice": "成交后持仓均价"
+      "afterTradeAvgPrice": "成交后持仓均价",
+      "markPrice": "标记价格",
+      "markPnl": "浮动盈亏（按标记价）"
     },
     "mintPanel": {
       "title": "卖出准备",

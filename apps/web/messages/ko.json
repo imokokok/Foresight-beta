@@ -804,6 +804,20 @@
       "placeOrder": "방향 선택 및 주문",
       "manageOrders": "주문 및 체결 관리"
     },
+    "hints": {
+      "sellToolsTitle": "매도 도구",
+      "show": "보기",
+      "hide": "숨기기",
+      "marketOrderOnchain": "시장가 주문은 온체인 트랜잭션을 보내며 가스가 필요할 수 있어요.",
+      "limitOrderSigned": "지정가 주문은 오프체인 서명 방식이라 보통 가스가 필요하지 않아요.",
+      "chance": "확률",
+      "postOnly": "메이커 전용",
+      "showAdvanced": "고급",
+      "hideAdvanced": "고급 숨기기",
+      "impliedProbability": "내재 확률",
+      "max": "최대",
+      "maxSixDecimals": "최대 소수 6자리"
+    },
     "preview": {
       "title": "주문 미리보기",
       "priceTimesAmount": "가격 × 수량",
@@ -827,7 +841,9 @@
       "currentStake": "현재 누적 투자금",
       "afterTradeStake": "거래 후 누적 투자금",
       "currentAvgPrice": "현재 보유 평균 단가",
-      "afterTradeAvgPrice": "거래 후 예상 평균 단가"
+      "afterTradeAvgPrice": "거래 후 예상 평균 단가",
+      "markPrice": "마크 가격",
+      "markPnl": "평가손익(마크)"
     },
     "mintPanel": {
       "title": "매도 준비",

@@ -7,6 +7,13 @@ import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 // 这个路由使用了动态服务器功能（request.headers），不能静态渲染
 // 移除 revalidate 配置，确保路由被正确标记为动态
 
+function isMissingColumnError(error: any, column: string) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+  if (code === "42703") return true;
+  return message.toLowerCase().includes(column.toLowerCase());
+}
+
 export async function GET(req: NextRequest) {
   try {
     const ip = getIP(req);
@@ -27,6 +34,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const chainIdRaw = url.searchParams.get("chainId");
     const contract = url.searchParams.get("contract") || undefined;
+    const outcomeIndexRaw =
+      url.searchParams.get("outcomeIndex") || url.searchParams.get("outcome_index");
     const limitRaw = url.searchParams.get("limit");
     const limitParsed = limitRaw == null ? 50 : Number(limitRaw);
     const limit = Number.isFinite(limitParsed) ? Math.max(1, Math.min(200, limitParsed)) : 50;
@@ -38,6 +47,15 @@ export async function GET(req: NextRequest) {
         return ApiResponses.badRequest("Invalid chainId");
       }
       chainId = String(parsed);
+    }
+
+    let outcomeIndex: number | undefined;
+    if (outcomeIndexRaw != null) {
+      const parsed = Number(outcomeIndexRaw);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return ApiResponses.badRequest("Invalid outcomeIndex");
+      }
+      outcomeIndex = Math.floor(parsed);
     }
 
     let query = client
@@ -52,11 +70,21 @@ export async function GET(req: NextRequest) {
     if (contract) {
       query = query.eq("market_address", contract);
     }
-    // Note: trades table currently uses network_id and market_address.
-    // It does not seem to have 'market_key' column based on previous sql file reading.
-    // But let's check if we can filter by market_address and network_id effectively.
+    if (outcomeIndex != null) {
+      query = query.eq("outcome_index", outcomeIndex);
+    }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+    if (error && outcomeIndex != null && isMissingColumnError(error, "outcome_index")) {
+      let fallback = client
+        .from("trades")
+        .select("*")
+        .order("block_timestamp", { ascending: false })
+        .limit(limit);
+      if (chainId) fallback = fallback.eq("network_id", chainId);
+      if (contract) fallback = fallback.eq("market_address", contract);
+      ({ data, error } = await fallback);
+    }
 
     if (error) {
       logApiError("GET /api/orderbook/trades query failed", error);
