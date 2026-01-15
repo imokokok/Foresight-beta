@@ -65,6 +65,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const [resendLeft, setResendLeft] = useState(0);
   const [codePreview, setCodePreview] = useState<string | null>(null);
   const resendTimerRef = React.useRef<number | null>(null);
+
+  // New states for signup flow
+  const [requireUsername, setRequireUsername] = useState(false);
+  const [signupToken, setSignupToken] = useState<string | null>(null);
   const [installPromptOpen, setInstallPromptOpen] = useState(false);
   const [installWalletName, setInstallWalletName] = useState<string>("");
   const [installUrl, setInstallUrl] = useState<string>("");
@@ -511,10 +515,24 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     setEmailLoading(true);
     try {
       const addr = String(account || "").toLowerCase();
-      await fetcher<EmailOtpVerifyResult>("/api/email-otp/verify", {
+      const res = await fetcher<
+        EmailOtpVerifyResult & { requireUsername?: boolean; signupToken?: string }
+      >("/api/email-otp/verify", {
         method: "POST",
         body: JSON.stringify({ walletAddress: addr, email, code: otp }),
       });
+
+      if (res.requireUsername && res.signupToken) {
+        setRequireUsername(true);
+        setSignupToken(res.signupToken);
+        setOtpRequested(false);
+        setOtp("");
+        setCodePreview(null);
+        clearResendTimer();
+        setResendLeft(0);
+        return;
+      }
+
       setEmailVerified(true);
       verifiedEmailRef.current = email.trim().toLowerCase();
       setOtpRequested(false);
@@ -540,6 +558,28 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         }
       }
       setProfileError(String(error?.message || tWalletModal("errors.otpVerifyFailed")));
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const completeSignup = async () => {
+    if (!username || !signupToken) return;
+    setProfileError(null);
+    setEmailLoading(true);
+    try {
+      await fetcher("/api/email-otp/complete-signup", {
+        method: "POST",
+        body: JSON.stringify({ signupToken, username }),
+      });
+
+      setEmailVerified(true);
+      verifiedEmailRef.current = email.trim().toLowerCase();
+      setRequireUsername(false);
+      setSignupToken(null);
+    } catch (error: any) {
+      handleApiError(error, "walletModal.errors.unknown");
+      setProfileError(String(error?.message || "Failed to complete signup"));
     } finally {
       setEmailLoading(false);
     }
@@ -597,6 +637,8 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     walletError,
     rememberMe,
     setRememberMe,
+    requireUsername,
+    completeSignup,
     emailVerified,
     resendLeft,
     codePreview,

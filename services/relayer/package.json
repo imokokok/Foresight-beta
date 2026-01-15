@@ -4,10 +4,11 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
+    "lint": "prettier --check \"src/**/*.{ts,js,json}\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:chaos": "CHAOS_ENABLED=true vitest run src/chaos/**/*.chaos.test.ts",
+    "test:chaos": "cross-env CHAOS_ENABLED=true vitest run src/chaos",
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
     "start": "node dist/index.js",

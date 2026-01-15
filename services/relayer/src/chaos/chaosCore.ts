@@ -46,6 +46,11 @@ export interface ChaosConfig {
 export class Chaos {
   private config: ChaosConfig;
   private memoryLeaks: Buffer[] = [];
+  private patchedMethods: Array<{
+    obj: any;
+    methodName: string | symbol;
+    original: Function;
+  }> = [];
 
   constructor(config: ChaosConfig) {
     this.config = config;
@@ -159,6 +164,17 @@ export class Chaos {
       throw new Error(`Method ${String(methodName)} is not a function`);
     }
 
+    const alreadyPatched = this.patchedMethods.some(
+      (p) => p.obj === obj && p.methodName === (methodName as any)
+    );
+    if (!alreadyPatched) {
+      this.patchedMethods.push({
+        obj,
+        methodName: methodName as any,
+        original: originalMethod as any,
+      });
+    }
+
     // 替换为带有混沌注入的方法
     (obj as any)[methodName] = async (...args: any[]) => {
       return this.inject(() => (originalMethod as Function).apply(obj, args), scenarios);
@@ -169,6 +185,14 @@ export class Chaos {
    * 关闭混沌实例，释放资源
    */
   public close(): void {
+    this.config.enabled = false;
+    this.config.probability = 0;
+    for (const patched of this.patchedMethods) {
+      try {
+        patched.obj[patched.methodName] = patched.original;
+      } catch {}
+    }
+    this.patchedMethods = [];
     // 释放内存泄漏
     this.memoryLeaks = [];
   }

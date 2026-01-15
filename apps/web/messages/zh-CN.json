@@ -603,6 +603,7 @@
     "copyAddress": "复制地址",
     "addressCopied": "地址已复制",
     "viewOnExplorer": "在区块浏览器查看",
+    "deposit": "入金",
     "switchNetwork": "切换网络",
     "refreshBalance": "刷新余额",
     "noWallet": "未检测到钱包",

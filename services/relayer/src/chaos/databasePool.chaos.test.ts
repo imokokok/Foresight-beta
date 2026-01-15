@@ -84,7 +84,7 @@ describe("DatabasePool Chaos Tests", () => {
     chaos.addChaosToMethod(pool, "getWriteClient", ["latency"]);
 
     // 测试获取写入客户端在混沌条件下的行为
-    const client = pool.getWriteClient();
+    const client = await Promise.resolve((pool as any).getWriteClient());
     expect(client).toBeDefined();
   });
 
@@ -96,7 +96,7 @@ describe("DatabasePool Chaos Tests", () => {
 
     // 测试获取读取客户端在混沌条件下的行为
     try {
-      const client = pool.getReadClient();
+      const client = await Promise.resolve((pool as any).getReadClient());
       expect(client).toBeDefined();
     } catch (error) {
       // 捕获错误，验证系统不会崩溃
@@ -116,15 +116,15 @@ describe("DatabasePool Chaos Tests", () => {
 
     // 执行多个客户端请求，验证系统能够处理不同的混沌场景
     const operations = [
-      () => pool.getWriteClient(),
-      () => pool.getReadClient(),
-      () => pool.getWriteClient(),
-      () => pool.getReadClient(),
+      () => (pool as any).getWriteClient(),
+      () => (pool as any).getReadClient(),
+      () => (pool as any).getWriteClient(),
+      () => (pool as any).getReadClient(),
     ];
 
     for (const operation of operations) {
       try {
-        const client = operation();
+        const client = await Promise.resolve(operation());
         // 即使有错误，系统也不应该崩溃
         expect(client).toBeDefined();
       } catch (error) {
@@ -156,7 +156,7 @@ describe("DatabasePool Chaos Tests", () => {
 
     // 第一次获取客户端应该失败
     try {
-      pool.getReadClient();
+      await Promise.resolve((pool as any).getReadClient());
       expect.fail("Expected an error but none was thrown");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -169,7 +169,7 @@ describe("DatabasePool Chaos Tests", () => {
     mockSupabaseClient.execute.mockResolvedValue({ data: [], error: null });
 
     // 第二次获取客户端应该成功，验证连接恢复
-    const client = pool.getReadClient();
+    const client = await Promise.resolve((pool as any).getReadClient());
     expect(client).toBeDefined();
   });
 });

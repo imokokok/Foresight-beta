@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { formatTranslation, t } from "@/lib/i18n";
 import type { MarketInfo } from "../marketTypes";
 import { createBrowserProvider, ensureNetwork, getCollateralTokenContract } from "../wallet";
+import { trySubmitAaCalls, isAaEnabled } from "../aaUtils";
 
 const ORACLE_ADAPTER_ABI = [
   "function requestOutcome(bytes32 marketId, uint8 outcomeIndex, bytes calldata claim) external returns (bytes32 assertionId)",
@@ -13,21 +14,6 @@ const MARKET_ABI = [
   "function resolve() external",
   "function state() external view returns (uint8)",
 ];
-
-async function trySubmitAaCalls(input: {
-  chainId: number;
-  calls: Array<{ to: string; data: string; value?: string }>;
-}) {
-  const res = await fetch("/api/aa/userop/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  const json = await res.json().catch(() => null);
-  if (res.ok && json?.success) return json;
-  const msg = json?.error?.message || json?.message || "AA submit failed";
-  throw new Error(String(msg));
-}
 
 export async function assertOutcomeAction(args: {
   market: MarketInfo;
@@ -73,10 +59,7 @@ export async function assertOutcomeAction(args: {
     );
     const marketId = await marketIdContract.marketId();
 
-    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
-      .trim()
-      .toLowerCase();
-    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+    if (isAaEnabled()) {
       try {
         const oracleIface = new ethers.Interface(ORACLE_ADAPTER_ABI);
         const data = oracleIface.encodeFunctionData("requestOutcome", [
@@ -133,10 +116,7 @@ export async function settleAdapterAction(args: {
 
     setMsg(t("settlement.settleFlow.settling"));
 
-    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
-      .trim()
-      .toLowerCase();
-    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+    if (isAaEnabled()) {
       try {
         const oracleIface = new ethers.Interface(ORACLE_ADAPTER_ABI);
         const data = oracleIface.encodeFunctionData("settleOutcome", [marketId]);
@@ -181,10 +161,7 @@ export async function resolveMarketAction(args: {
 
     setMsg(t("settlement.resolveFlow.resolving"));
 
-    const aaEnabled = String(process.env.NEXT_PUBLIC_AA_ENABLED || "")
-      .trim()
-      .toLowerCase();
-    if (aaEnabled === "1" || aaEnabled === "true" || aaEnabled === "yes" || aaEnabled === "on") {
+    if (isAaEnabled()) {
       try {
         const marketIface = new ethers.Interface(MARKET_ABI);
         const data = marketIface.encodeFunctionData("resolve", []);

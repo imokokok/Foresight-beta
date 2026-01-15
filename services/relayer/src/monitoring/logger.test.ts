@@ -61,14 +61,14 @@ describe("Logger", () => {
   describe("JSON Format", () => {
     it("should output valid JSON", () => {
       logger.info("Test message", { key: "value" });
-      
+
       const output = consoleSpy.log.mock.calls[0][0];
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
     it("should include required fields", () => {
       logger.info("Test message", { customKey: "customValue" });
-      
+
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
       expect(output).toHaveProperty("timestamp");
       expect(output).toHaveProperty("level", "info");
@@ -80,9 +80,9 @@ describe("Logger", () => {
     it("should format error correctly", () => {
       const error = new Error("Test error");
       error.stack = "Error: Test error\n    at test.ts:1:1";
-      
+
       logger.error("Error occurred", {}, error);
-      
+
       const output = JSON.parse(consoleSpy.error.mock.calls[0][0]);
       expect(output.error).toHaveProperty("name", "Error");
       expect(output.error).toHaveProperty("message", "Test error");
@@ -94,7 +94,7 @@ describe("Logger", () => {
     it("should create child logger with context", () => {
       const childLogger = logger.child({ requestId: "123" });
       childLogger.info("Child message");
-      
+
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
       expect(output.context).toHaveProperty("requestId", "123");
     });
@@ -102,9 +102,9 @@ describe("Logger", () => {
     it("should merge parent and child context", () => {
       const childLogger = logger.child({ parentKey: "parent" });
       const grandchildLogger = childLogger.child({ childKey: "child" });
-      
+
       grandchildLogger.info("Grandchild message");
-      
+
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
       expect(output.context).toHaveProperty("parentKey", "parent");
       expect(output.context).toHaveProperty("childKey", "child");
@@ -114,17 +114,16 @@ describe("Logger", () => {
   describe("Specialized Loggers", () => {
     it("should have matching-engine logger", () => {
       matchingLogger.info("Matching engine message");
-      
+
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
       expect(output.service).toBe("matching-engine");
     });
 
     it("should have settlement logger", () => {
       settlementLogger.info("Settlement message");
-      
+
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
       expect(output.service).toBe("settlement");
     });
   });
 });
-

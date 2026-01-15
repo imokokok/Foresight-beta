@@ -52,7 +52,7 @@ describe("RedisPubSub", () => {
     it("should use default configuration when not provided", async () => {
       const { RedisPubSub } = await import("./pubsub.js");
       const pubsub = new RedisPubSub();
-      
+
       expect(pubsub.getNodeId()).toBeTruthy();
       expect(pubsub.isReady()).toBe(false);
     });
@@ -60,7 +60,7 @@ describe("RedisPubSub", () => {
     it("should accept custom node ID", async () => {
       const { RedisPubSub } = await import("./pubsub.js");
       const pubsub = new RedisPubSub({}, "custom-node-id");
-      
+
       expect(pubsub.getNodeId()).toBe("custom-node-id");
     });
   });
@@ -68,7 +68,7 @@ describe("RedisPubSub", () => {
   describe("Channel Names", () => {
     it("should define correct channel constants", async () => {
       const { CHANNELS } = await import("./pubsub.js");
-      
+
       expect(CHANNELS.WS_DEPTH).toBe("ws:depth");
       expect(CHANNELS.WS_TRADES).toBe("ws:trades");
       expect(CHANNELS.WS_STATS).toBe("ws:stats");
@@ -80,9 +80,8 @@ describe("RedisPubSub", () => {
     it("should report not ready before connection", async () => {
       const { RedisPubSub } = await import("./pubsub.js");
       const pubsub = new RedisPubSub();
-      
+
       expect(pubsub.isReady()).toBe(false);
     });
   });
 });
-

@@ -43,7 +43,7 @@ describe("DatabasePool", () => {
     it("should use environment variables for default config", async () => {
       const { DatabasePool } = await import("./connectionPool.js");
       const pool = new DatabasePool();
-      
+
       // 验证可以创建实例
       expect(pool).toBeTruthy();
     });
@@ -56,7 +56,7 @@ describe("DatabasePool", () => {
           serviceKey: "custom-key",
         },
       });
-      
+
       expect(pool).toBeTruthy();
     });
   });
@@ -65,7 +65,7 @@ describe("DatabasePool", () => {
     it("should return null write client before initialization", async () => {
       const { DatabasePool } = await import("./connectionPool.js");
       const pool = new DatabasePool();
-      
+
       // 未初始化时返回 null
       expect(pool.getWriteClient()).toBeNull();
     });
@@ -73,7 +73,7 @@ describe("DatabasePool", () => {
     it("should return null read client before initialization", async () => {
       const { DatabasePool } = await import("./connectionPool.js");
       const pool = new DatabasePool();
-      
+
       expect(pool.getReadClient()).toBeNull();
     });
   });
@@ -82,9 +82,9 @@ describe("DatabasePool", () => {
     it("should return empty stats before initialization", async () => {
       const { DatabasePool } = await import("./connectionPool.js");
       const pool = new DatabasePool();
-      
+
       const stats = pool.getStats();
-      
+
       expect(stats.primaryConnected).toBe(false);
       expect(stats.replicaCount).toBe(0);
       expect(stats.healthyReplicaCount).toBe(0);
@@ -95,12 +95,11 @@ describe("DatabasePool", () => {
     it("should parse replica config from environment", async () => {
       const { DatabasePool } = await import("./connectionPool.js");
       const pool = new DatabasePool();
-      
+
       const stats = pool.getStats();
-      
+
       // 没有配置副本时应为空
       expect(stats.replicas).toEqual([]);
     });
   });
 });
-

@@ -153,10 +153,17 @@ export async function GET(req: NextRequest) {
     let worstPrice: bigint | null = null;
 
     const fills: MarketPlanItem[] = [];
+    const nowUnix = Math.floor(Date.now() / 1000);
 
     for (const item of normalized) {
       if (remainingToFill <= 0n) break;
       if (item.remaining <= 0n) continue;
+
+      const expiryUnix =
+        item.row.expiry != null
+          ? Math.floor(new Date(String(item.row.expiry)).getTime() / 1000)
+          : 0;
+      if (Number.isFinite(expiryUnix) && expiryUnix > 0 && expiryUnix <= nowUnix) continue;
 
       const take = item.remaining >= remainingToFill ? remainingToFill : item.remaining;
       if (take <= 0n) continue;
@@ -167,11 +174,6 @@ export async function GET(req: NextRequest) {
       // totalCost (USDC6) = sum(amount18 * price6Per1e18 / 1e18)
       totalCost += (take * item.price) / 1_000_000_000_000_000_000n;
       remainingToFill -= take;
-
-      const expiryUnix =
-        item.row.expiry != null
-          ? Math.floor(new Date(String(item.row.expiry)).getTime() / 1000)
-          : 0;
 
       fills.push({
         orderId: Number(item.row.id),

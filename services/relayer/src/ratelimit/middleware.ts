@@ -29,13 +29,16 @@ export function createRateLimitMiddleware(config?: TieredRateLimitConfig) {
       const result = await limiter.check(rateLimitReq);
 
       // 设置限流响应头
-      res.setHeader("X-RateLimit-Limit", result.remaining >= 0 ? result.remaining + 1 : "unlimited");
+      res.setHeader(
+        "X-RateLimit-Limit",
+        result.remaining >= 0 ? result.remaining + 1 : "unlimited"
+      );
       res.setHeader("X-RateLimit-Remaining", Math.max(0, result.remaining));
       res.setHeader("X-RateLimit-Reset", Math.ceil(result.resetAt / 1000));
 
       if (!result.allowed) {
         res.setHeader("Retry-After", result.retryAfter || 60);
-        
+
         logger.warn("Rate limit exceeded", {
           ip: rateLimitReq.ip,
           path: rateLimitReq.path,
@@ -71,7 +74,7 @@ function getClientIp(req: Request): string {
     const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
     return ips.trim();
   }
-  
+
   const realIp = req.headers["x-real-ip"];
   if (realIp) {
     return Array.isArray(realIp) ? realIp[0] : realIp;
@@ -142,4 +145,3 @@ export function createEndpointRateLimiter(
     next();
   };
 }
-

@@ -141,6 +141,7 @@
     "copyAddress": "주소 복사",
     "addressCopied": "주소 복사됨",
     "viewOnExplorer": "익스플로러에서 보기",
+    "deposit": "입금",
     "switchNetwork": "네트워크 전환",
     "refreshBalance": "잔액 새로고침",
     "noWallet": "지갑이 감지되지 않음",

@@ -26,6 +26,7 @@ import { multisigSign as multisigSignImpl } from "../lib/walletMultisig";
 import { switchNetwork as switchNetworkImpl } from "../lib/walletNetwork";
 import { formatAddress, normalizeAddress } from "../lib/cn";
 import { t } from "../lib/i18n";
+import { useAuthOptional } from "@/contexts/AuthContext";
 
 declare global {
   interface Window {
@@ -72,6 +73,7 @@ interface WalletContextType extends WalletState {
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
+  const auth = useAuthOptional();
   const {
     walletState,
     connectWallet,
@@ -153,8 +155,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [walletState.account, walletState.chainId, rawProvider, refreshBalance]);
 
-  const normalizedAccount = walletState.account ? normalizeAddress(walletState.account) : null;
+  const normalizedWalletAccount = walletState.account
+    ? normalizeAddress(walletState.account)
+    : null;
+  const normalizedSessionAccount =
+    auth?.user?.id && typeof auth.user.id === "string" ? normalizeAddress(auth.user.id) : null;
   const normalizedAuthAddress = authAddress ? normalizeAddress(authAddress) : null;
+  const effectiveAccount =
+    normalizedWalletAccount || normalizedSessionAccount || normalizedAuthAddress || null;
+  const effectiveAuthAddress = normalizedSessionAccount || normalizedAuthAddress || null;
+  const effectiveIsAuthenticated = Boolean(normalizedSessionAccount || isAuthenticated);
 
   useEffect(() => {
     checkAuth();
@@ -162,8 +172,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!walletState.account) return;
-    if (!isAuthenticated || !normalizedAuthAddress) return;
-    if (normalizedAccount && normalizedAccount !== normalizedAuthAddress) {
+    const expected = effectiveAuthAddress;
+    if (!expected) return;
+    if (normalizedWalletAccount && normalizedWalletAccount !== expected) {
       void (async () => {
         try {
           await fetch("/api/siwe/logout", { method: "POST" });
@@ -174,7 +185,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
       })();
     }
-  }, [walletState.account, isAuthenticated, normalizedAccount, normalizedAuthAddress]);
+  }, [walletState.account, normalizedWalletAccount, effectiveAuthAddress]);
 
   const disconnectWalletWithLogout = useCallback(async () => {
     try {
@@ -214,6 +225,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const contextValue: WalletContextType = {
     ...walletState,
+    account: effectiveAccount,
     balanceEth,
     balanceLoading,
     connectWallet,
@@ -228,10 +240,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     refreshBalance: () => refreshBalance(),
     switchNetwork,
     provider: rawProvider,
-    normalizedAccount,
+    normalizedAccount: effectiveAccount,
     // SIWE 认证状态
-    isAuthenticated,
-    authAddress,
+    isAuthenticated: effectiveIsAuthenticated,
+    authAddress: effectiveAuthAddress,
     checkAuth,
   };
 

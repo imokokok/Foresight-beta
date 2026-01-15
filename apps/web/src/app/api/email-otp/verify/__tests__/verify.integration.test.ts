@@ -26,12 +26,25 @@ describe("POST /api/email-otp/verify", () => {
 
   const makeKey = (address: string, email: string) => `${address}:${email}`;
 
-  const makeSupabaseMock = () => {
+  const makeSupabaseMock = (options?: { profilesByEmail?: Record<string, any[]> }) => {
+    const profilesByEmail = options?.profilesByEmail || {};
     const upsertProfileMock = vi.fn(async () => ({ error: null }));
     const fromMock = vi.fn((table: string) => {
       if (table === "user_profiles") {
+        const ctx: { email?: string } = {};
+        const selectBuilder: any = {
+          eq: (col: string, val: string) => {
+            if (col === "email") ctx.email = val;
+            return selectBuilder;
+          },
+          limit: async () => {
+            const key = String(ctx.email || "");
+            return { data: profilesByEmail[key] || [], error: null };
+          },
+        };
         return {
           upsert: upsertProfileMock,
+          select: () => selectBuilder,
         };
       }
       if (table === "email_otps") {
@@ -219,6 +232,68 @@ describe("POST /api/email-otp/verify", () => {
     expect(fromMock).toHaveBeenCalledWith("user_profiles");
     expect(upsertProfileMock).toHaveBeenCalledTimes(1);
     expect(otpStore.has(makeKey(ADDRESS, email))).toBe(false);
+
+    vi.resetModules();
+  });
+
+  it("reuses existing email proxy wallet on login when present", async () => {
+    const secret = "test-secret";
+    const email = "test@example.com";
+    const codeHash = createHash("sha256").update(`123456:${secret}`, "utf8").digest("hex");
+
+    const walletKeyHash = createHash("sha256")
+      .update(`email-login:${email}:${secret}`, "utf8")
+      .digest("hex");
+    const derivedWalletKey = `0x${walletKeyHash.slice(0, 40)}`;
+
+    otpStore.set(makeKey(derivedWalletKey, email), {
+      wallet_address: derivedWalletKey,
+      email,
+      code_hash: codeHash,
+      expires_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      fail_count: 0,
+      lock_until: null,
+    });
+
+    const existingProxyWallet = "0x" + "2".repeat(40);
+    const { fromMock, upsertProfileMock } = makeSupabaseMock({
+      profilesByEmail: {
+        [email]: [
+          {
+            wallet_address: existingProxyWallet,
+            email,
+            proxy_wallet_type: "email",
+            username: "",
+          },
+        ],
+      },
+    });
+
+    vi.doMock("@/lib/supabase.server", () => ({
+      supabaseAdmin: {
+        from: fromMock,
+      },
+    }));
+    const { POST } = await import("../route");
+
+    const req = createMockNextRequest({
+      method: "POST",
+      url: "http://localhost:3000/api/email-otp/verify",
+      body: {
+        email,
+        code: "123456",
+        mode: "login",
+      },
+    });
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data?.address).toBe(existingProxyWallet);
+    expect(json.data?.isNewUser).toBe(true);
+    expect(upsertProfileMock).toHaveBeenCalledTimes(0);
 
     vi.resetModules();
   });

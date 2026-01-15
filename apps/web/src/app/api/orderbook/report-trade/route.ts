@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, proxyJsonResponse, successResponse } from "@/lib/apiResponse";
 import { getRelayerBaseUrl, logApiError, logApiEvent } from "@/lib/serverUtils";
-import { getRuntimeConfig } from "@/lib/runtimeConfig";
+import { getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 import { marketAbi } from "@/app/prediction/[id]/_lib/abis";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
@@ -48,23 +48,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Serverless fallback: Update Supabase directly by parsing tx logs
-    const { chainId, txHash } = body;
+    const { chainId, txHash, contract, verifyingContract } = body;
 
-    if (!chainId || !txHash) {
-      return ApiResponses.invalidParameters("Missing chainId or txHash");
+    const marketAddressRaw = String(contract || verifyingContract || "").trim();
+
+    if (!chainId || !txHash || !marketAddressRaw) {
+      return ApiResponses.invalidParameters("Missing chainId, txHash, or contract");
     }
 
-    const runtime = getRuntimeConfig();
     const chainIdNum = Number(chainId);
     if (!Number.isFinite(chainIdNum) || chainIdNum <= 0) {
       return ApiResponses.badRequest("Invalid chainId");
     }
-    if (chainIdNum !== runtime.chainId) {
-      return ApiResponses.badRequest("chainId mismatch");
-    }
+    if (!ethers.isAddress(marketAddressRaw)) return ApiResponses.badRequest("Invalid contract");
+    const marketAddress = marketAddressRaw.toLowerCase();
 
-    const rpcUrl = runtime.rpcUrl;
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainIdNum));
 
     // Wait for receipt (it should be mined already as client sends this after wait)
     const receipt = await provider.getTransactionReceipt(txHash);
@@ -81,6 +80,7 @@ export async function POST(req: NextRequest) {
     const filledEvents = [];
     for (const log of receipt.logs) {
       try {
+        if (String(log.address || "").toLowerCase() !== marketAddress) continue;
         const parsed = iface.parseLog(log);
         if (parsed && parsed.name === "OrderFilledSigned") {
           // event OrderFilledSigned(address indexed maker, address indexed taker, uint256 indexed outcomeIndex, bool isBuy, uint256 price, uint256 amount, uint256 fee, uint256 salt);
@@ -111,6 +111,8 @@ export async function POST(req: NextRequest) {
       const { data: order, error: fetchErr } = await (client as any)
         .from("orders")
         .select("id, remaining, status")
+        .eq("chain_id", chainIdNum)
+        .eq("verifying_contract", marketAddress)
         .eq("maker_address", maker)
         .eq("maker_salt", salt)
         .maybeSingle();

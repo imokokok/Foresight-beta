@@ -294,32 +294,6 @@ export async function POST(req: NextRequest) {
       return ApiResponses.internalError("无法生成登录标识");
     }
 
-    const { data: existingList, error: existingErr } = await client
-      .from("user_profiles")
-      .select("wallet_address,proxy_wallet_type")
-      .eq("email", email)
-      .limit(10);
-    if (existingErr) {
-      return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
-    }
-    const list = Array.isArray(existingList) ? existingList : [];
-    const owner = list.find((r: any) => {
-      const t = String(r?.proxy_wallet_type || "")
-        .trim()
-        .toLowerCase();
-      if (t === "email") return false;
-      const wa = String(r?.wallet_address || "");
-      return !!wa && isValidEthAddress(wa);
-    });
-    if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
-      return errorResponse(
-        "该邮箱尚未绑定钱包，请先使用钱包登录并绑定邮箱",
-        ApiErrorCode.NOT_FOUND,
-        404,
-        { reason: "EMAIL_NOT_BOUND" }
-      );
-    }
-
     const rlKey = `${walletKey || "unknown"}:${ip || "unknown"}`;
     const rl = await checkRateLimit(rlKey, RateLimits.strict, "email-magic-link-request");
     if (!rl.success) {

@@ -75,11 +75,7 @@ export abstract class BaseRepository<T> {
    */
   async findById(id: string): Promise<T | null> {
     return this.pool.executeRead(`${this.tableName}_find_by_id`, async (client) => {
-      const { data, error } = await client
-        .from(this.tableName)
-        .select("*")
-        .eq("id", id)
-        .single();
+      const { data, error } = await client.from(this.tableName).select("*").eq("id", id).single();
 
       if (error && !error.message.includes("No rows")) {
         logger.error(`Failed to find ${this.tableName} by id`, { id }, error);
@@ -134,11 +130,7 @@ export abstract class BaseRepository<T> {
    */
   async create(record: Partial<T>): Promise<T> {
     return this.pool.executeWrite(`${this.tableName}_create`, async (client) => {
-      const { data, error } = await client
-        .from(this.tableName)
-        .insert(record)
-        .select()
-        .single();
+      const { data, error } = await client.from(this.tableName).insert(record).select().single();
 
       if (error) {
         logger.error(`Failed to create ${this.tableName}`, { record }, error);
@@ -175,10 +167,7 @@ export abstract class BaseRepository<T> {
    */
   async delete(id: string): Promise<boolean> {
     return this.pool.executeWrite(`${this.tableName}_delete`, async (client) => {
-      const { error } = await client
-        .from(this.tableName)
-        .delete()
-        .eq("id", id);
+      const { error } = await client.from(this.tableName).delete().eq("id", id);
 
       if (error) {
         logger.error(`Failed to delete ${this.tableName}`, { id }, error);
@@ -194,10 +183,7 @@ export abstract class BaseRepository<T> {
    */
   async createMany(records: Partial<T>[]): Promise<T[]> {
     return this.pool.executeWrite(`${this.tableName}_create_many`, async (client) => {
-      const { data, error } = await client
-        .from(this.tableName)
-        .insert(records)
-        .select();
+      const { data, error } = await client.from(this.tableName).insert(records).select();
 
       if (error) {
         logger.error(`Failed to create many ${this.tableName}`, { count: records.length }, error);
@@ -504,4 +490,3 @@ export function getMarketRepository(): MarketRepository {
   }
   return marketRepo;
 }
-

@@ -599,6 +599,7 @@
     "copyAddress": "Copiar dirección",
     "addressCopied": "Dirección copiada",
     "viewOnExplorer": "Ver en el explorador",
+    "deposit": "Depositar",
     "switchNetwork": "Cambiar red",
     "refreshBalance": "Actualizar saldo",
     "noWallet": "No se detectó billetera",

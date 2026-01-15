@@ -31,6 +31,74 @@ function deriveDeterministicAddressFromEmail(email: string, secretString: string
   return normalizeAddress(`0x${h.slice(0, 40)}`);
 }
 
+function isUniqueEmailViolation(message: string) {
+  const msg = String(message || "").toLowerCase();
+  return (
+    msg.includes("duplicate") &&
+    msg.includes("unique") &&
+    (msg.includes("idx_user_profiles_email") ||
+      msg.includes("user_profiles_email_key") ||
+      msg.includes("user_profiles_email") ||
+      msg.includes("email"))
+  );
+}
+
+function findMissingUserProfilesColumn(message: string): string | null {
+  const msg = String(message || "");
+  const m1 = msg.match(/could not find the '([^']+)' column of 'user_profiles'/i);
+  if (m1 && m1[1]) return String(m1[1]);
+  const m2 = msg.match(/column "?([a-z0-9_]+)"? of relation "?user_profiles"? does not exist/i);
+  if (m2 && m2[1]) return String(m2[1]);
+  return null;
+}
+
+async function fetchUserProfilesByEmail(client: any, email: string) {
+  const candidates = [
+    "wallet_address,email,proxy_wallet_type,username",
+    "wallet_address,email,username",
+    "wallet_address,email",
+  ];
+  let lastError: any = null;
+  for (const sel of candidates) {
+    const { data, error } = await client
+      .from("user_profiles")
+      .select(sel)
+      .eq("email", email)
+      .limit(10);
+    if (!error) return { list: Array.isArray(data) ? data : [], error: null };
+    lastError = error;
+    if (findMissingUserProfilesColumn(String(error?.message || ""))) continue;
+    break;
+  }
+  return { list: [], error: lastError };
+}
+
+async function upsertUserProfileWithColumnFallback(
+  client: any,
+  payload: Record<string, any>,
+  options: { onConflict: string }
+) {
+  const removable = new Set([
+    "proxy_wallet_type",
+    "proxy_wallet_address",
+    "embedded_wallet_provider",
+    "embedded_wallet_address",
+  ]);
+  let lastError: any = null;
+  for (let i = 0; i < 6; i++) {
+    const { error } = await client.from("user_profiles").upsert(payload, options);
+    if (!error) return { ok: true as const, error: null };
+    lastError = error;
+    const missing = findMissingUserProfilesColumn(String(error?.message || ""));
+    if (missing && removable.has(missing) && missing in payload) {
+      delete payload[missing];
+      continue;
+    }
+    return { ok: false as const, error };
+  }
+  return { ok: false as const, error: lastError };
+}
+
 const SQL_CREATE_EMAIL_OTPS_TABLE = `
 CREATE TABLE IF NOT EXISTS public.email_otps (
   wallet_address TEXT NOT NULL,
@@ -83,6 +151,7 @@ export async function POST(req: NextRequest) {
         : isValidEthAddress(walletAddress)
           ? "bind"
           : "login";
+    const isLoginMode = mode === "login";
     if (!isValidEmail(email)) {
       return errorResponse("邮箱格式不正确", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
@@ -358,75 +427,72 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    if (mode === "login") {
-      const { data: existingList, error: existingErr } = await client
-        .from("user_profiles")
-        .select("wallet_address,email,proxy_wallet_type")
-        .eq("email", email)
-        .limit(10);
-
+    if (isLoginMode) {
+      const { list, error: existingErr } = await fetchUserProfilesByEmail(client, email);
       if (existingErr) {
         return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
       }
 
-      const list = Array.isArray(existingList) ? existingList : [];
-      const owner = list.find((r: any) => {
-        const t = String(r?.proxy_wallet_type || "")
-          .trim()
-          .toLowerCase();
-        if (t === "email") return false;
-        const wa = String(r?.wallet_address || "");
-        return !!wa && isValidEthAddress(wa);
-      });
+      const listAny = Array.isArray(list) ? list : [];
+      const hasProxyType = listAny.some(
+        (r: any) => r && typeof r === "object" && "proxy_wallet_type" in r
+      );
+      const emailProxy = hasProxyType
+        ? listAny.find((r: any) => {
+            const t = String(r?.proxy_wallet_type || "")
+              .trim()
+              .toLowerCase();
+            if (t !== "email") return false;
+            const wa = String(r?.wallet_address || "");
+            return !!wa && isValidEthAddress(wa);
+          })
+        : null;
+      const owner = hasProxyType
+        ? listAny.find((r: any) => {
+            const t = String(r?.proxy_wallet_type || "")
+              .trim()
+              .toLowerCase();
+            if (t === "email") return false;
+            const wa = String(r?.wallet_address || "");
+            return !!wa && isValidEthAddress(wa);
+          })
+        : listAny.find((r: any) => isValidEthAddress(String(r?.wallet_address || "")));
 
-      if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
-        // 新用户自动注册逻辑
-        const newWalletAddress = deriveDeterministicAddressFromEmail(email, secretString);
-
-        // 生成默认用户名
-        const randomSuffix = Math.floor(Math.random() * 1000000)
-          .toString()
-          .padStart(6, "0");
-        const defaultUsername = `User_${randomSuffix}`;
-
-        const { error: createErr } = await client.from("user_profiles").upsert(
-          {
-            wallet_address: newWalletAddress,
-            email,
-            username: defaultUsername,
-            proxy_wallet_type: "email",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          } as Database["public"]["Tables"]["user_profiles"]["Insert"],
-          { onConflict: "wallet_address" }
-        );
-
-        if (createErr) {
-          return ApiResponses.databaseError("Failed to create user profile", createErr.message);
-        }
-
-        sessionAddress = newWalletAddress;
-
-        // 标记为新用户，以便前端引导设置用户名
+      const existingRow = (emailProxy || owner) as any;
+      if (existingRow?.wallet_address && isValidEthAddress(String(existingRow.wallet_address))) {
+        sessionAddress = normalizeAddress(String(existingRow.wallet_address));
+        const username = String(existingRow?.username || "").trim();
         const res = successResponse(
-          { ok: true, address: sessionAddress, isNewUser: true },
+          username
+            ? { ok: true, address: sessionAddress, email }
+            : { ok: true, address: sessionAddress, email, isNewUser: true },
           "验证成功"
         );
         await createSession(res, sessionAddress, undefined, { req, authMethod: "email_otp" });
         await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
         await markDeviceVerified(req, sessionAddress);
-
-        try {
-          await logApiEvent("email_login_new_user_created", {
-            addr: sessionAddress.slice(0, 8),
-            emailDomain: email.split("@")[1] || "",
-            requestId: reqId || undefined,
-          });
-        } catch {}
-
         return res;
       }
-      sessionAddress = normalizeAddress(owner.wallet_address);
+
+      const newWalletAddress = deriveDeterministicAddressFromEmail(email, secretString);
+
+      // 新用户流程：返回 signup token，要求用户填写用户名
+      const signupToken = await createToken(newWalletAddress, undefined, 15 * 60, {
+        tokenType: "signup",
+        extra: { email },
+      });
+
+      return successResponse(
+        {
+          ok: true,
+          isNewUser: true,
+          requireUsername: true,
+          signupToken,
+          email,
+          address: newWalletAddress,
+        },
+        "验证成功，请完善信息"
+      );
     } else {
       const { error: upsertErr } = await client.from("user_profiles").upsert(
         {
@@ -440,16 +506,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const res = successResponse({ ok: true, address: sessionAddress }, "验证成功");
-    if (mode === "login") {
+    const res = successResponse({ ok: true, address: sessionAddress, email }, "验证成功");
+    if (isLoginMode) {
       await createSession(res, sessionAddress, undefined, { req, authMethod: "email_otp" });
     }
     await setStepUpCookie(res, sessionAddress, undefined, {
-      purpose: mode === "login" ? "login" : "bind",
+      purpose: isLoginMode ? "login" : "bind",
     });
     await markDeviceVerified(req, sessionAddress);
     try {
-      if (mode === "login") {
+      if (isLoginMode) {
         await logApiEvent("email_login_code_verified", {
           addr: sessionAddress ? sessionAddress.slice(0, 8) : "",
           emailDomain: email.split("@")[1] || "",

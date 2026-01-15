@@ -50,6 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const tGlobal = useTranslations();
   const embeddedAuthEnabled = getFeatureFlags().embedded_auth_enabled;
 
+  const normalizeHttpErrorMessage = (message: string) => {
+    const m = message.match(/Request failed:\s*(\d{3})/);
+    const status = m ? Number(m[1]) : null;
+    if (!status) return message;
+    const key = `errors.api.${status}.description`;
+    const translated = tGlobal(key);
+    return translated === key ? message : translated;
+  };
+
   const refreshSession = async () => {
     try {
       const me = await fetch("/api/auth/me", { method: "GET" });
@@ -107,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       if (!embeddedAuthEnabled) {
-        const msg = tGlobal("errors.http.503.description");
+        const msg = tGlobal("errors.api.503.description");
         setError(msg);
         throw new Error(msg);
       }
@@ -117,10 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, mode: "login" }),
       });
     } catch (e: any) {
-      const msg =
+      const raw =
         typeof e?.message === "string" && e.message
           ? e.message
           : tWalletModal("errors.otpSendFailed");
+      const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;
     }
@@ -130,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       if (!embeddedAuthEnabled) {
-        const msg = tGlobal("errors.http.503.description");
+        const msg = tGlobal("errors.api.503.description");
         setError(msg);
         throw new Error(msg);
       }
@@ -147,10 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await refreshSession();
       return data;
     } catch (e: any) {
-      const msg =
+      const raw =
         typeof e?.message === "string" && e.message
           ? e.message
           : tWalletModal("errors.otpVerifyFailed");
+      const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;
     }
@@ -160,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       if (!embeddedAuthEnabled) {
-        const msg = tGlobal("errors.http.503.description");
+        const msg = tGlobal("errors.api.503.description");
         setError(msg);
         throw new Error(msg);
       }
@@ -175,10 +186,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, redirect }),
       });
     } catch (e: any) {
-      const msg =
+      const raw =
         typeof e?.message === "string" && e.message
           ? e.message
           : tWalletModal("errors.otpSendFailed");
+      const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;
     }

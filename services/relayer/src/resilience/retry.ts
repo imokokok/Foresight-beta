@@ -87,9 +87,9 @@ export async function retry<T>(
   while (attempt <= fullConfig.maxRetries) {
     try {
       const result = await fn();
-      
+
       retryAttemptsTotal.inc({ operation, result: "success" });
-      
+
       if (attempt > 0) {
         retryDuration.observe({ operation }, Date.now() - startTime);
       }
@@ -153,7 +153,7 @@ export async function retry<T>(
 function calculateDelay(attempt: number, config: RetryConfig): number {
   // 指数退避
   let delay = config.initialDelay * Math.pow(config.backoffMultiplier, attempt - 1);
-  
+
   // 限制最大延迟
   delay = Math.min(delay, config.maxDelay);
 
@@ -171,7 +171,7 @@ function calculateDelay(attempt: number, config: RetryConfig): number {
  * 延时
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ============================================================
@@ -193,11 +193,11 @@ export function isNetworkError(error: Error): boolean {
     "EPIPE",
     "ECONNABORTED",
   ];
-  
+
   const message = error.message || "";
   const code = (error as any).code || "";
-  
-  return networkErrors.some(e => message.includes(e) || code === e);
+
+  return networkErrors.some((e) => message.includes(e) || code === e);
 }
 
 /**
@@ -205,7 +205,7 @@ export function isNetworkError(error: Error): boolean {
  */
 export function isRetryableHttpError(error: Error): boolean {
   const status = (error as any).status || (error as any).statusCode;
-  
+
   if (!status) {
     return isNetworkError(error);
   }
@@ -219,7 +219,7 @@ export function isRetryableHttpError(error: Error): boolean {
  */
 export function isRetryableBlockchainError(error: Error): boolean {
   const message = error.message.toLowerCase();
-  
+
   const retryableErrors = [
     "nonce too low",
     "replacement transaction underpriced",
@@ -230,7 +230,7 @@ export function isRetryableBlockchainError(error: Error): boolean {
     "rate limit",
   ];
 
-  return retryableErrors.some(e => message.includes(e));
+  return retryableErrors.some((e) => message.includes(e));
 }
 
 // ============================================================
@@ -241,11 +241,7 @@ export function isRetryableBlockchainError(error: Error): boolean {
  * 重试装饰器
  */
 export function withRetry(operation: string, config?: Partial<RetryConfig>) {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
@@ -308,4 +304,3 @@ export const RETRY_STRATEGIES = {
     retryCondition: isRetryableBlockchainError,
   } as Partial<RetryConfig>,
 };
-

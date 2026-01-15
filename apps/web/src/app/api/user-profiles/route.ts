@@ -213,6 +213,18 @@ export async function POST(req: NextRequest) {
     if (String(existing?.email || "").trim() !== email) {
       return ApiResponses.forbidden("邮箱未验证或不匹配");
     }
+    const { data: usernameTaken, error: usernameTakenError } = await client
+      .from("user_profiles")
+      .select("wallet_address")
+      .ilike("username", username)
+      .neq("wallet_address", walletAddress)
+      .limit(1);
+    if (usernameTakenError) {
+      return ApiResponses.databaseError("Failed to check username", usernameTakenError.message);
+    }
+    if (Array.isArray(usernameTaken) && usernameTaken.length > 0) {
+      return ApiResponses.conflict("用户名已被占用");
+    }
     const { error: updError } = await client
       .from("user_profiles")
       .update({ username } as Database["public"]["Tables"]["user_profiles"]["Update"])

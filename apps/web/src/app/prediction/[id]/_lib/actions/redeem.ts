@@ -7,6 +7,7 @@ import {
   getCollateralTokenContract,
   parseUnitsByDecimals,
 } from "../wallet";
+import { trySubmitAaCalls, isAaEnabled } from "../aaUtils";
 
 export async function redeemAction(args: {
   amountStr: string;
@@ -45,6 +46,45 @@ export async function redeemAction(args: {
     const marketContract = new ethers.Contract(market.market, marketAbi, signer);
     const outcomeTokenAddress = await marketContract.outcomeToken();
     const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
+
+    if (isAaEnabled()) {
+      try {
+        const calls = [];
+        // 1. Approve Outcome Token
+        const erc1155Iface = new ethers.Interface(erc1155Abi);
+        const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+          market.market,
+          true,
+        ]);
+        calls.push({
+          to: outcomeTokenAddress,
+          data: approveData,
+        });
+
+        // 2. Redeem
+        const marketIface = new ethers.Interface(marketAbi);
+        const state = Number(await marketContract.state());
+        let redeemData;
+        if (state === 1) {
+          redeemData = marketIface.encodeFunctionData("redeem", [amount18]);
+        } else if (state === 2) {
+          redeemData = marketIface.encodeFunctionData("redeemCompleteSetOnInvalid", [amount18]);
+        } else {
+          throw new Error(t("trading.redeemFlow.marketNotResolved"));
+        }
+        calls.push({
+          to: market.market,
+          data: redeemData,
+        });
+
+        setOrderMsg(t("trading.redeemFlow.redeeming"));
+        await trySubmitAaCalls({ chainId: market.chain_id, calls });
+        setOrderMsg(t("trading.redeemFlow.success"));
+        return;
+      } catch (e: any) {
+        console.error("AA redeem failed", e);
+      }
+    }
 
     const isApproved = await outcome1155.isApprovedForAll(account, market.market);
     if (!isApproved) {

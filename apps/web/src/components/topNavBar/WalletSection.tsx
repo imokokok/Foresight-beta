@@ -1,12 +1,15 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { Copy, ExternalLink, Eye, EyeOff, LogOut, Wallet } from "lucide-react";
+import { ArrowDown, Copy, ExternalLink, Eye, EyeOff, LogOut, Wallet } from "lucide-react";
+import { useState } from "react";
 import WalletModal from "../WalletModal";
 import LazyImage from "@/components/ui/LazyImage";
 import type { TopNavBarState } from "./useTopNavBarLogic";
+import DepositModal from "@/components/DepositModal";
 
 export function WalletSection({ nav }: { nav: TopNavBarState }) {
+  const [depositOpen, setDepositOpen] = useState(false);
   const {
     account,
     user,
@@ -162,6 +165,16 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
                   <ExternalLink className="w-4 h-4 text-purple-600" />
                   <span>{tWallet("viewOnExplorer")}</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setDepositOpen(true);
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
+                >
+                  <ArrowDown className="w-4 h-4 text-purple-600" />
+                  <span>{tWallet("deposit")}</span>
+                </button>
                 <div className="my-1 border-t border-purple-100/60" />
                 {!isSepolia && (
                   <button
@@ -183,6 +196,13 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
             </>,
             document.body
           )}
+        {mounted && (
+          <DepositModal
+            open={depositOpen}
+            onClose={() => setDepositOpen(false)}
+            onRequireLogin={() => setWalletModalOpen(true)}
+          />
+        )}
       </div>
     );
   }
@@ -194,6 +214,12 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
           {tAuth("loggedIn")}：{user.email || tAuth("noEmail")}
         </span>
         <button
+          onClick={() => setDepositOpen(true)}
+          className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:opacity-95"
+        >
+          {tWallet("deposit")}
+        </button>
+        <button
           onClick={async () => {
             await signOut();
             await disconnectWallet();
@@ -202,6 +228,13 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
         >
           {tAuth("logout")}
         </button>
+        {mounted && (
+          <DepositModal
+            open={depositOpen}
+            onClose={() => setDepositOpen(false)}
+            onRequireLogin={() => setWalletModalOpen(true)}
+          />
+        )}
       </div>
     );
   }

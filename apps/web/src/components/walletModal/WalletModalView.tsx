@@ -42,6 +42,8 @@ export type WalletModalViewProps = WalletModalProps & {
   profileError: string | null;
   canSubmitProfile: boolean;
   profileLoading: boolean;
+  requireUsername?: boolean;
+  completeSignup?: () => Promise<void>;
   handleWalletConnect: (walletType: string, isAvailable?: boolean) => Promise<void>;
   canRequest: boolean;
   handleRequestOtp: () => Promise<void>;
@@ -118,6 +120,8 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
   setInstallPromptOpen,
   installWalletName,
   installUrl,
+  requireUsername,
+  completeSignup,
 }) => {
   return (
     <>
@@ -195,6 +199,10 @@ export const WalletModalView: React.FC<WalletModalViewProps> = ({
                 handleRequestOtp={handleRequestOtp}
                 handleVerifyOtp={handleVerifyOtp}
                 handleSendMagicLink={handleSendMagicLink}
+                requireUsername={requireUsername}
+                username={username}
+                setUsername={setUsername}
+                completeSignup={completeSignup}
               />
               <WalletListSection
                 tLogin={tLogin}

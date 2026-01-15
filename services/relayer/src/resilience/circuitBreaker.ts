@@ -39,9 +39,9 @@ const circuitBreakerLatency = new Histogram({
 // ============================================================
 
 export enum CircuitState {
-  CLOSED = 0,   // 正常状态，允许请求
-  OPEN = 1,     // 熔断状态，拒绝请求
-  HALF_OPEN = 2 // 半开状态，允许部分请求探测
+  CLOSED = 0, // 正常状态，允许请求
+  OPEN = 1, // 熔断状态，拒绝请求
+  HALF_OPEN = 2, // 半开状态，允许部分请求探测
 }
 
 export interface CircuitBreakerConfig {
@@ -87,7 +87,7 @@ export class CircuitBreaker extends EventEmitter {
 
   constructor(config: Partial<CircuitBreakerConfig> & { name: string }) {
     super();
-    
+
     this.config = {
       name: config.name,
       failureThreshold: config.failureThreshold ?? 5,
@@ -111,13 +111,13 @@ export class CircuitBreaker extends EventEmitter {
     // 检查是否应该允许请求
     if (!this.shouldAllowRequest()) {
       circuitBreakerCallsTotal.inc({ name: this.config.name, result: "rejected" });
-      
+
       const error = new Error(`Circuit breaker ${this.config.name} is OPEN`);
-      
+
       if (this.config.fallback) {
         return this.config.fallback(error);
       }
-      
+
       throw error;
     }
 
@@ -126,21 +126,21 @@ export class CircuitBreaker extends EventEmitter {
     try {
       // 添加超时
       const result = await this.withTimeout(fn(), this.config.timeout);
-      
+
       this.recordSuccess(Date.now() - start);
       circuitBreakerCallsTotal.inc({ name: this.config.name, result: "success" });
       circuitBreakerLatency.observe({ name: this.config.name }, Date.now() - start);
-      
+
       return result;
     } catch (error: any) {
       this.recordFailure(error, Date.now() - start);
       circuitBreakerCallsTotal.inc({ name: this.config.name, result: "failure" });
       circuitBreakerLatency.observe({ name: this.config.name }, Date.now() - start);
-      
+
       if (this.config.fallback) {
         return this.config.fallback(error);
       }
-      
+
       throw error;
     }
   }
@@ -237,7 +237,7 @@ export class CircuitBreaker extends EventEmitter {
     switch (this.state) {
       case CircuitState.CLOSED:
         this.failureCount++;
-        
+
         // 检查是否应该熔断
         if (this.shouldTrip()) {
           this.transitionTo(CircuitState.OPEN);
@@ -263,7 +263,7 @@ export class CircuitBreaker extends EventEmitter {
     // 错误率达到阈值
     const recentResults = this.getRecentResults();
     if (recentResults.length >= this.config.minRequests) {
-      const failures = recentResults.filter(r => !r.success).length;
+      const failures = recentResults.filter((r) => !r.success).length;
       const errorRate = failures / recentResults.length;
       if (errorRate >= this.config.errorRateThreshold) {
         return true;
@@ -278,7 +278,7 @@ export class CircuitBreaker extends EventEmitter {
    */
   private getRecentResults(): CallResult[] {
     const cutoff = Date.now() - this.config.windowSize;
-    return this.results.filter(r => r.timestamp > cutoff);
+    return this.results.filter((r) => r.timestamp > cutoff);
   }
 
   /**
@@ -286,7 +286,7 @@ export class CircuitBreaker extends EventEmitter {
    */
   private cleanupResults(): void {
     const cutoff = Date.now() - this.config.windowSize;
-    this.results = this.results.filter(r => r.timestamp > cutoff);
+    this.results = this.results.filter((r) => r.timestamp > cutoff);
   }
 
   /**
@@ -296,7 +296,7 @@ export class CircuitBreaker extends EventEmitter {
     const oldState = this.state;
     this.state = newState;
     this.lastStateChange = Date.now();
-    
+
     // 重置计数器
     if (newState === CircuitState.CLOSED) {
       this.failureCount = 0;
@@ -307,7 +307,7 @@ export class CircuitBreaker extends EventEmitter {
     }
 
     this.updateMetrics();
-    
+
     logger.info("CircuitBreaker state changed", {
       name: this.config.name,
       from: CircuitState[oldState],
@@ -359,8 +359,8 @@ export class CircuitBreaker extends EventEmitter {
     errorRate: number;
   } {
     const recentResults = this.getRecentResults();
-    const recentFailures = recentResults.filter(r => !r.success).length;
-    
+    const recentFailures = recentResults.filter((r) => !r.success).length;
+
     return {
       state: CircuitState[this.state],
       failureCount: this.failureCount,
@@ -434,11 +434,7 @@ export function withCircuitBreaker<T>(
  * 创建熔断器装饰器
  */
 export function circuitBreaker(name: string, config?: Partial<CircuitBreakerConfig>) {
-  return function (
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     const breaker = circuitBreakerRegistry.get(name, config);
 
@@ -449,4 +445,3 @@ export function circuitBreaker(name: string, config?: Partial<CircuitBreakerConf
     return descriptor;
   };
 }
-

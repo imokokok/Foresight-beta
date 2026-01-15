@@ -7,6 +7,7 @@ import {
   getCollateralTokenContract,
   parseUnitsByDecimals,
 } from "../wallet";
+import { trySubmitAaCalls, isAaEnabled } from "../aaUtils";
 
 export async function mintAction(args: {
   amountStr: string;
@@ -52,6 +53,36 @@ export async function mintAction(args: {
     }
     // USDC deposit is amount18 * 1e6 / 1e18
     const deposit6 = (amount18 * 1_000_000n) / 1_000_000_000_000_000_000n;
+
+    if (isAaEnabled()) {
+      try {
+        const calls = [];
+        const erc20Iface = new ethers.Interface(erc20Abi);
+        const approveData = erc20Iface.encodeFunctionData("approve", [
+          market.market,
+          ethers.MaxUint256,
+        ]);
+        calls.push({
+          to: String(tokenContract.target),
+          data: approveData,
+        });
+
+        const marketIface = new ethers.Interface(marketAbi);
+        const mintData = marketIface.encodeFunctionData("mintCompleteSet", [amount18]);
+        calls.push({
+          to: market.market,
+          data: mintData,
+        });
+
+        setOrderMsg(t("trading.mintFlow.minting"));
+        await trySubmitAaCalls({ chainId: market.chain_id, calls });
+
+        setOrderMsg(t("trading.mintFlow.success"));
+        return;
+      } catch (e: any) {
+        console.error("AA mint failed, falling back to EOA", e);
+      }
+    }
 
     const allowance = await tokenContract.allowance(account, market.market);
     if (allowance < deposit6) {

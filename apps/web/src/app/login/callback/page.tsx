@@ -11,6 +11,11 @@ type TokenState =
   | { status: "ok" }
   | { status: "error"; message: string };
 
+type UsernameState =
+  | { status: "idle" }
+  | { status: "editing"; walletAddress: string; email: string; signupToken?: string }
+  | { status: "saving"; walletAddress: string; email: string; signupToken?: string };
+
 function sanitizeRedirect(raw: unknown) {
   const redirectRaw = typeof raw === "string" ? raw.trim() : "";
   if (!redirectRaw) return "";
@@ -21,11 +26,17 @@ function sanitizeRedirect(raw: unknown) {
   return redirectRaw;
 }
 
+function isValidUsername(name: string) {
+  const v = String(name || "").trim();
+  if (v.length < 3 || v.length > 20) return false;
+  return /^\w+$/.test(v);
+}
+
 export default function LoginCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuthOptional();
-  const { checkAuth } = useWallet();
+  const { checkAuth, account, disconnectWallet } = useWallet();
   const token = useMemo(() => String(searchParams.get("token") || "").trim(), [searchParams]);
   const initialCodePreview = useMemo(
     () => String(searchParams.get("codePreview") || "").trim(),
@@ -57,6 +68,10 @@ export default function LoginCallbackPage() {
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const lastAutoSubmittedCodeRef = useRef<string>("");
   const tokenVerifyInFlightRef = useRef<string | null>(null);
+
+  const [usernameState, setUsernameState] = useState<UsernameState>({ status: "idle" });
+  const [username, setUsername] = useState<string>("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   const code = useMemo(() => digits.join(""), [digits]);
 
@@ -99,7 +114,27 @@ export default function LoginCallbackPage() {
 
         if (cancelled) return;
         setTokenState({ status: "ok" });
+        const data = json?.data && typeof json.data === "object" ? json.data : null;
+        const isNewUser = !!(data as any)?.isNewUser;
+        const addr =
+          typeof (data as any)?.address === "string" ? String((data as any).address) : "";
+        const emailFromRes =
+          typeof (data as any)?.email === "string"
+            ? String((data as any).email)
+                .trim()
+                .toLowerCase()
+            : "";
+        if (account && addr && account.toLowerCase() !== addr.toLowerCase()) {
+          try {
+            await disconnectWallet();
+          } catch {}
+        }
         await refreshAfterLogin();
+        if (isNewUser && addr && emailFromRes) {
+          setUsernameState({ status: "editing", walletAddress: addr, email: emailFromRes });
+          setEmail(emailFromRes);
+          return;
+        }
         router.replace(fallbackRedirect);
       } catch (e: any) {
         if (cancelled) return;
@@ -110,7 +145,7 @@ export default function LoginCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [fallbackRedirect, refreshAfterLogin, router, token]);
+  }, [account, disconnectWallet, fallbackRedirect, refreshAfterLogin, router, token]);
 
   useEffect(() => {
     if (resendLeft <= 0) return;
@@ -250,7 +285,34 @@ export default function LoginCallbackPage() {
           }
           throw new Error(String(msg));
         }
+        const data = json?.data && typeof json.data === "object" ? json.data : null;
+        const isNewUser = !!(data as any)?.isNewUser;
+        const addr =
+          typeof (data as any)?.address === "string" ? String((data as any).address) : "";
+        const signupToken =
+          typeof (data as any)?.signupToken === "string" ? String((data as any).signupToken) : "";
+        const emailFromRes =
+          typeof (data as any)?.email === "string"
+            ? String((data as any).email)
+                .trim()
+                .toLowerCase()
+            : email;
+
+        if (account && addr && account.toLowerCase() !== addr.toLowerCase()) {
+          await disconnectWallet();
+        }
+
         await refreshAfterLogin();
+        if (isNewUser && addr && emailFromRes) {
+          setUsernameState({
+            status: "editing",
+            walletAddress: addr,
+            email: emailFromRes,
+            signupToken: signupToken || undefined,
+          });
+          setEmail(emailFromRes);
+          return;
+        }
         router.replace(fallbackRedirect);
       } catch (e: any) {
         setActionError(String(e?.message || "验证失败"));
@@ -258,7 +320,16 @@ export default function LoginCallbackPage() {
         setVerifyingCode(false);
       }
     },
-    [email, emailOk, fallbackRedirect, refreshAfterLogin, router, verifyingCode]
+    [
+      account,
+      disconnectWallet,
+      email,
+      emailOk,
+      fallbackRedirect,
+      refreshAfterLogin,
+      router,
+      verifyingCode,
+    ]
   );
 
   const handleVerifyCode = useCallback(async () => {
@@ -281,6 +352,66 @@ export default function LoginCallbackPage() {
     void verifyCode(code);
   }, [code, codeOk, emailOk, tokenState.status, verifyCode, verifyingCode]);
 
+  const canSaveUsername =
+    usernameState.status === "editing" && isValidUsername(username) && usernameState.email;
+
+  const handleSaveUsername = useCallback(async () => {
+    if (usernameState.status !== "editing") return;
+    const addr = usernameState.walletAddress;
+    const userEmail = usernameState.email;
+    const signupToken = usernameState.signupToken ? String(usernameState.signupToken) : "";
+    const name = String(username || "").trim();
+    if (!addr || !userEmail) return;
+    if (!isValidUsername(name)) {
+      setUsernameError("用户名不合规：3–20 位，仅允许字母、数字与下划线");
+      return;
+    }
+
+    setUsernameError(null);
+    setUsernameState({
+      status: "saving",
+      walletAddress: addr,
+      email: userEmail,
+      signupToken: signupToken || undefined,
+    });
+    try {
+      const res = signupToken
+        ? await fetch("/api/email-otp/complete-signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ signupToken, username: name }),
+          })
+        : await fetch("/api/user-profiles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              walletAddress: addr,
+              username: name,
+              email: userEmail,
+              rememberMe: true,
+            }),
+          });
+      const json = (await res.json().catch(() => null)) as any;
+      if (!res.ok || !json || json?.success !== true) {
+        const msg =
+          json?.error?.message ||
+          json?.message ||
+          (res.status === 409 ? "用户名已被占用" : `保存失败: ${res.status}`);
+        throw new Error(String(msg));
+      }
+      await refreshAfterLogin();
+      router.replace(fallbackRedirect);
+    } catch (e: any) {
+      setUsernameState({
+        status: "editing",
+        walletAddress: addr,
+        email: userEmail,
+        signupToken: signupToken || undefined,
+      });
+      setUsernameError(String(e?.message || "保存失败"));
+    }
+  }, [fallbackRedirect, refreshAfterLogin, router, username, usernameState]);
+
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-6">
       <div className="max-w-md w-full rounded-2xl border bg-white p-6">
@@ -288,6 +419,44 @@ export default function LoginCallbackPage() {
           <div className="text-center">
             <div className="text-lg font-semibold text-gray-900">正在登录…</div>
             <div className="mt-2 text-sm text-gray-600">请稍候</div>
+          </div>
+        ) : usernameState.status !== "idle" ? (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-gray-900">设置用户名</div>
+              <div className="mt-2 text-sm text-gray-600">首次邮箱登录需要先设置用户名</div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="setup-username" className="block text-sm font-medium text-gray-900">
+                用户名
+              </label>
+              <input
+                id="setup-username"
+                type="text"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setUsernameError(null);
+                }}
+                className="w-full rounded-lg border px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-purple-600"
+                placeholder="例如: alice_01"
+                spellCheck={false}
+              />
+              <div className="text-xs text-gray-600">3–20 位，仅允许字母、数字与下划线</div>
+            </div>
+
+            {usernameError ? (
+              <div className="text-sm text-red-600 text-center">{usernameError}</div>
+            ) : null}
+
+            <button
+              className="w-full inline-flex items-center justify-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              disabled={!canSaveUsername}
+              onClick={() => void handleSaveUsername()}
+            >
+              {usernameState.status === "saving" ? "保存中…" : "保存并继续"}
+            </button>
           </div>
         ) : (
           <div className="space-y-4">

@@ -6,13 +6,21 @@ import {
   getRequestId,
   logApiError,
   logApiEvent,
+  getProxyWalletConfig,
   normalizeAddress,
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { getIP } from "@/lib/rateLimit";
 import { createSession, markDeviceVerified, setStepUpCookie } from "@/lib/session";
-import { getFeatureFlags } from "@/lib/runtimeConfig";
+import { getConfiguredChainId, getConfiguredRpcUrl, getFeatureFlags } from "@/lib/runtimeConfig";
 import { resolveEmailOtpSecret } from "@/lib/otpUtils";
+import {
+  computeSafeCounterfactualAddress,
+  encodeSafeInitializer,
+  resolveSaltNonce,
+  deriveProxyWalletAddress,
+} from "@/lib/safeUtils";
+import { ethers } from "ethers";
 
 function resolveMagicSecret() {
   const raw = (process.env.MAGIC_LINK_SECRET || process.env.JWT_SECRET || "").trim();
@@ -38,6 +46,112 @@ function deriveDeterministicAddressFromEmail(email: string, secretString: string
     .update(`email-login:${email}:${secretString}`, "utf8")
     .digest("hex");
   return normalizeAddress(`0x${h.slice(0, 40)}`);
+}
+
+function isUniqueEmailViolation(message: string) {
+  const msg = String(message || "").toLowerCase();
+  return (
+    msg.includes("duplicate") &&
+    msg.includes("unique") &&
+    (msg.includes("idx_user_profiles_email") ||
+      msg.includes("user_profiles_email_key") ||
+      msg.includes("user_profiles_email") ||
+      msg.includes("email"))
+  );
+}
+
+function findMissingUserProfilesColumn(message: string): string | null {
+  const msg = String(message || "");
+  const m1 = msg.match(/could not find the '([^']+)' column of 'user_profiles'/i);
+  if (m1 && m1[1]) return String(m1[1]);
+  const m2 = msg.match(/column "?([a-z0-9_]+)"? of relation "?user_profiles"? does not exist/i);
+  if (m2 && m2[1]) return String(m2[1]);
+  return null;
+}
+
+async function fetchUserProfilesByEmail(client: any, email: string) {
+  const candidates = [
+    "wallet_address,email,proxy_wallet_type,username",
+    "wallet_address,email,username",
+    "wallet_address,email",
+  ];
+  let lastError: any = null;
+  for (const sel of candidates) {
+    const { data, error } = await client
+      .from("user_profiles")
+      .select(sel)
+      .eq("email", email)
+      .limit(10);
+    if (!error) return { list: Array.isArray(data) ? data : [], error: null };
+    lastError = error;
+    if (findMissingUserProfilesColumn(String(error?.message || ""))) continue;
+    break;
+  }
+  return { list: [], error: lastError };
+}
+
+async function upsertUserProfileWithColumnFallback(
+  client: any,
+  payload: Record<string, any>,
+  options: { onConflict: string }
+) {
+  const removable = new Set([
+    "proxy_wallet_type",
+    "proxy_wallet_address",
+    "embedded_wallet_provider",
+    "embedded_wallet_address",
+  ]);
+  let lastError: any = null;
+  for (let i = 0; i < 6; i++) {
+    const { error } = await client.from("user_profiles").upsert(payload, options);
+    if (!error) return { ok: true as const, error: null };
+    lastError = error;
+    const missing = findMissingUserProfilesColumn(String(error?.message || ""));
+    if (missing && removable.has(missing) && missing in payload) {
+      delete payload[missing];
+      continue;
+    }
+    return { ok: false as const, error };
+  }
+  return { ok: false as const, error: lastError };
+}
+
+async function ensureEmailUserProxyWallet(params: {
+  client: any;
+  ownerEoa: string;
+  nowIso: string;
+}) {
+  const proxyConfig = getProxyWalletConfig();
+  if (!proxyConfig.ok || !proxyConfig.config) return;
+  const chainId = getConfiguredChainId();
+  if (chainId !== 80002 && chainId !== 137) return;
+
+  const rpcUrl = getConfiguredRpcUrl(chainId);
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const targetType = proxyConfig.config.type;
+
+  const smartAccountAddress =
+    targetType === "safe" || targetType === "safe4337"
+      ? await computeSafeCounterfactualAddress({
+          provider,
+          factoryAddress: proxyConfig.config.safeFactoryAddress || "",
+          singletonAddress: proxyConfig.config.safeSingletonAddress || "",
+          initializer: encodeSafeInitializer({
+            ownerEoa: params.ownerEoa,
+            fallbackHandler: proxyConfig.config.safeFallbackHandlerAddress || ethers.ZeroAddress,
+          }),
+          saltNonce: resolveSaltNonce(params.ownerEoa, chainId),
+        })
+      : deriveProxyWalletAddress(params.ownerEoa, targetType);
+
+  const { error } = await params.client
+    .from("user_profiles")
+    .update({
+      proxy_wallet_address: smartAccountAddress,
+      updated_at: params.nowIso,
+    })
+    .eq("wallet_address", params.ownerEoa);
+  if (error) throw error;
 }
 
 export async function POST(req: NextRequest) {
@@ -111,31 +225,140 @@ export async function POST(req: NextRequest) {
       return ApiResponses.invalidParameters("登录链接无效或已过期");
     }
 
-    const { data: existingList, error: existingErr } = await client
-      .from("user_profiles")
-      .select("wallet_address,email,proxy_wallet_type")
-      .eq("email", email)
-      .limit(10);
-
+    const { list, error: existingErr } = await fetchUserProfilesByEmail(client, email);
     if (existingErr) {
       return ApiResponses.databaseError("Failed to load user profile", existingErr.message);
     }
 
-    const list = Array.isArray(existingList) ? existingList : [];
-    const owner = list.find((r: any) => {
-      const t = String(r?.proxy_wallet_type || "")
-        .trim()
-        .toLowerCase();
-      if (t === "email") return false;
-      const wa = String(r?.wallet_address || "");
-      return !!wa && isValidEthAddress(wa);
-    });
+    const listAny = Array.isArray(list) ? list : [];
+    const hasProxyType = listAny.some(
+      (r: any) => r && typeof r === "object" && "proxy_wallet_type" in r
+    );
+    const emailProxy = hasProxyType
+      ? listAny.find((r: any) => {
+          const t = String(r?.proxy_wallet_type || "")
+            .trim()
+            .toLowerCase();
+          if (t !== "email") return false;
+          const wa = String(r?.wallet_address || "");
+          return !!wa && isValidEthAddress(wa);
+        })
+      : null;
+    const owner = hasProxyType
+      ? listAny.find((r: any) => {
+          const t = String(r?.proxy_wallet_type || "")
+            .trim()
+            .toLowerCase();
+          if (t === "email") return false;
+          const wa = String(r?.wallet_address || "");
+          return !!wa && isValidEthAddress(wa);
+        })
+      : listAny.find((r: any) => isValidEthAddress(String(r?.wallet_address || "")));
+    let sessionAddress = "";
+    let isNewUser = false;
     if (!owner?.wallet_address || !isValidEthAddress(owner.wallet_address)) {
-      return ApiResponses.notFound("该邮箱尚未绑定钱包，请先使用钱包登录并绑定邮箱");
-    }
-    const sessionAddress = normalizeAddress(owner.wallet_address);
+      if (emailProxy?.wallet_address && isValidEthAddress(emailProxy.wallet_address)) {
+        sessionAddress = normalizeAddress(emailProxy.wallet_address);
+        isNewUser = !String((emailProxy as any)?.username || "").trim();
+      } else {
+        const newWalletAddress = deriveDeterministicAddressFromEmail(
+          email,
+          resolveEmailOtpSecret().secretString
+        );
+        const { data: existingEmailUser, error: existingEmailUserErr } = await client
+          .from("user_profiles")
+          .select("wallet_address,username,proxy_wallet_type")
+          .eq("wallet_address", newWalletAddress)
+          .maybeSingle();
+        if (existingEmailUserErr) {
+          return ApiResponses.databaseError(
+            "Failed to load user profile",
+            existingEmailUserErr.message
+          );
+        }
 
-    const res = successResponse({ ok: true, address: sessionAddress }, "验证成功");
+        const existingProxyType = String((existingEmailUser as any)?.proxy_wallet_type || "")
+          .trim()
+          .toLowerCase();
+        if (!existingEmailUser || existingProxyType !== "email") {
+          const payloadRow: Record<string, any> = {
+            wallet_address: newWalletAddress,
+            email,
+            username: "",
+            proxy_wallet_type: "email",
+            created_at: nowIso,
+            updated_at: nowIso,
+          };
+          const createRes = await upsertUserProfileWithColumnFallback(client, payloadRow, {
+            onConflict: "wallet_address",
+          });
+          if (!createRes.ok) {
+            const createErr: any = createRes.error;
+            if (isUniqueEmailViolation(createErr?.message)) {
+              const existing = listAny.find((r: any) =>
+                isValidEthAddress(String(r?.wallet_address || ""))
+              );
+              if (existing?.wallet_address) {
+                sessionAddress = normalizeAddress(existing.wallet_address);
+                isNewUser = !String((existing as any)?.username || "").trim();
+                const res = successResponse(
+                  isNewUser
+                    ? { ok: true, address: sessionAddress, email, isNewUser: true }
+                    : { ok: true, address: sessionAddress, email },
+                  "验证成功"
+                );
+                await createSession(res, sessionAddress, undefined, {
+                  req,
+                  authMethod: "email_magic_link",
+                });
+                await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+                await markDeviceVerified(req, sessionAddress);
+                try {
+                  await logApiEvent("email_login_token_verified", {
+                    addr: sessionAddress ? sessionAddress.slice(0, 8) : "",
+                    emailDomain: email.split("@")[1] || "",
+                    requestId: reqId || undefined,
+                    ip: ip ? String(ip).split(".").slice(0, 2).join(".") + ".*.*" : "",
+                  });
+                } catch {}
+                try {
+                  await client.from("email_login_tokens").delete().eq("token_hash", tokenHash);
+                } catch {}
+                try {
+                  const walletKey = deriveDeterministicAddressFromEmail(
+                    email,
+                    resolveEmailOtpSecret().secretString
+                  );
+                  await client
+                    .from("email_otps")
+                    .delete()
+                    .eq("wallet_address", walletKey)
+                    .eq("email", email);
+                } catch {}
+                return res;
+              }
+            }
+            return ApiResponses.databaseError("Failed to create user profile", createErr?.message);
+          }
+          isNewUser = true;
+        }
+
+        sessionAddress = newWalletAddress;
+        try {
+          await ensureEmailUserProxyWallet({ client, ownerEoa: sessionAddress, nowIso });
+        } catch {}
+      }
+    } else {
+      sessionAddress = normalizeAddress(owner.wallet_address);
+      isNewUser = !String((owner as any)?.username || "").trim();
+    }
+
+    const res = successResponse(
+      isNewUser
+        ? { ok: true, address: sessionAddress, email, isNewUser: true }
+        : { ok: true, address: sessionAddress, email },
+      "验证成功"
+    );
     await createSession(res, sessionAddress, undefined, { req, authMethod: "email_magic_link" });
     await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
     await markDeviceVerified(req, sessionAddress);

@@ -15,6 +15,10 @@ export type WalletEmailSectionProps = {
   handleRequestOtp: () => Promise<void>;
   handleVerifyOtp: () => Promise<void>;
   handleSendMagicLink: () => Promise<void>;
+  requireUsername?: boolean;
+  username?: string;
+  setUsername?: (value: string) => void;
+  completeSignup?: () => Promise<void>;
 };
 
 export function WalletEmailSection({
@@ -32,7 +36,49 @@ export function WalletEmailSection({
   handleRequestOtp,
   handleVerifyOtp,
   handleSendMagicLink,
+  requireUsername,
+  username,
+  setUsername,
+  completeSignup,
 }: WalletEmailSectionProps) {
+  if (requireUsername) {
+    return (
+      <div className="relative p-6 space-y-4">
+        <div className="text-center space-y-2">
+          <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <Mail className="w-6 h-6 text-green-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">验证成功</h3>
+          <p className="text-sm text-gray-600">请设置您的用户名以完成注册</p>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <label className="block text-sm font-semibold text-gray-900">
+            {tWalletModal("profile.usernameLabel")}
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername?.(e.target.value)}
+            placeholder={tWalletModal("profile.usernamePlaceholder")}
+            className="w-full rounded-xl border-2 border-purple-200 bg-white/95 px-3 py-2.5 text-base text-black placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-400 focus:border-purple-400"
+            autoFocus
+          />
+          {authError && <div className="text-sm text-red-600">{authError}</div>}
+
+          <button
+            onClick={completeSignup}
+            disabled={!username || emailLoading}
+            className="w-full inline-flex justify-center items-center gap-2 rounded-md bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2.5 hover:opacity-90 transition-all font-semibold disabled:opacity-60"
+          >
+            {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            完成注册并登录
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative p-6 space-y-4">
       {!otpRequested ? (

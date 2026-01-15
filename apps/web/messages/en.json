@@ -599,6 +599,7 @@
     "copyAddress": "Copy Address",
     "addressCopied": "Address Copied",
     "viewOnExplorer": "View on Explorer",
+    "deposit": "Deposit",
     "switchNetwork": "Switch Network",
     "refreshBalance": "Refresh Balance",
     "noWallet": "No wallet detected",

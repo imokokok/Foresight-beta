@@ -19,6 +19,7 @@ import {
   ensureNetwork,
   getCollateralTokenContract,
   parseUnitsByDecimals,
+  resolveAddresses,
 } from "./_lib/wallet";
 import type { PredictionDetail } from "./_lib/types";
 export type { PredictionDetail } from "./_lib/types";
@@ -32,6 +33,8 @@ import { useUserOpenOrders } from "./_lib/hooks/useUserOpenOrders";
 import { cancelOrderAction } from "./_lib/actions/cancelOrder";
 import { mintAction } from "./_lib/actions/mint";
 import { redeemAction } from "./_lib/actions/redeem";
+import { trySubmitAaCalls, isAaEnabled } from "./_lib/aaUtils";
+import { getFallbackRpcUrl } from "@/lib/walletProviderUtils";
 
 type MarketPlanPreview = {
   slippagePercent: number;
@@ -432,7 +435,6 @@ export function usePredictionDetail() {
     try {
       if (!market) throw createUserError(tTrading("orderFlow.marketNotLoaded"));
       if (!account) throw createUserError(tTrading("orderFlow.walletRequired"));
-      if (!walletProvider) throw createUserError(tTrading("orderFlow.walletNotReady"));
 
       const amountVal = parseFloat(amountInput);
       if (isNaN(amountVal) || amountVal <= 0) {
@@ -454,6 +456,178 @@ export function usePredictionDetail() {
           throw createUserError(tTrading("orderFlow.invalidPrice"));
         }
       }
+
+      if (orderMode === "best" && isAaEnabled() && !walletProvider) {
+        const rpcUrl = getFallbackRpcUrl(market.chain_id);
+        if (!rpcUrl) throw createUserError(tTrading("orderFlow.walletNotReady"));
+
+        const readProvider = new ethers.JsonRpcProvider(rpcUrl);
+
+        const collateralToken = (() => {
+          const base = resolveAddresses(market.chain_id);
+          return market.collateral_token || base.usdc;
+        })();
+
+        const decimals = await (async () => {
+          try {
+            const token = new ethers.Contract(collateralToken, erc20Abi, readProvider);
+            const d = await token.decimals();
+            const n = Number(d);
+            return Number.isFinite(n) && n > 0 ? n : 6;
+          } catch {
+            return 6;
+          }
+        })();
+
+        const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
+        const qs = new URLSearchParams({
+          contract: market.market,
+          chainId: String(market.chain_id),
+          marketKey,
+          outcome: String(tradeOutcome),
+          side: tradeSide,
+          amount: amountBN.toString(),
+        });
+        const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
+        const planJson = await safeJson(planRes);
+        if (!planJson.success || !planJson.data) {
+          throw new Error(planJson.message || tTrading("orderFlow.fetchPlanFailed"));
+        }
+        const plan = planJson.data as any;
+        const filledBN = BigInt(String(plan.filledAmount || "0"));
+        if (filledBN === 0n) throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
+
+        const totalCostBN = BigInt(String(plan.total || "0"));
+        const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
+        const worstPriceBN = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
+        const slippageBpsNum = Number(String(plan.slippageBps || "0"));
+        const fills = Array.isArray(plan.fills) ? (plan.fills as any[]) : [];
+
+        const filledHuman = Number(ethers.formatUnits(filledBN, 18));
+        const avgPriceHuman = Number(ethers.formatUnits(avgPriceBN, decimals));
+        const worstPriceHuman = Number(ethers.formatUnits(worstPriceBN, decimals));
+        const totalHuman = Number(ethers.formatUnits(totalCostBN, decimals));
+
+        const slippagePercent = (slippageBpsNum || 0) / 100;
+        if (slippagePercent > maxSlippage) {
+          throw createUserError(tTrading("orderFlow.slippageTooHigh"));
+        }
+
+        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
+        const confirmMsg = formatTranslation(tTrading("orderFlow.marketConfirm"), {
+          side: sideLabel,
+          filled: String(filledHuman),
+          total: String(Number(ethers.formatUnits(amountBN, 18))),
+          avgPrice: Number.isFinite(avgPriceHuman)
+            ? avgPriceHuman.toFixed(4)
+            : String(avgPriceHuman),
+          worstPrice: Number.isFinite(worstPriceHuman)
+            ? worstPriceHuman.toFixed(4)
+            : String(worstPriceHuman),
+          totalCost: Number.isFinite(totalHuman) ? totalHuman.toFixed(2) : String(totalHuman),
+          slippage: slippagePercent.toFixed(2),
+        });
+
+        setMarketConfirmState({
+          message: confirmMsg,
+          onConfirm: async () => {
+            setIsSubmitting(true);
+            setOrderMsg(null);
+            try {
+              const ordersArr: any[] = [];
+              const sigArr: string[] = [];
+              const fillArr: bigint[] = [];
+              for (const f of fills) {
+                const fillAmount = BigInt(String(f.fillAmount || "0"));
+                if (fillAmount <= 0n) continue;
+                const req = f.req || {};
+                ordersArr.push({
+                  maker: String(req.maker),
+                  outcomeIndex: Number(req.outcomeIndex),
+                  isBuy: Boolean(req.isBuy),
+                  price: BigInt(String(req.price)),
+                  amount: BigInt(String(req.amount)),
+                  salt: BigInt(String(req.salt)),
+                  expiry: BigInt(String(req.expiry || "0")),
+                });
+                sigArr.push(String(f.signature));
+                fillArr.push(fillAmount);
+              }
+
+              if (ordersArr.length === 0) {
+                throw createUserError(tTrading("orderFlow.noFillableOrders"));
+              }
+
+              const calls: Array<{ to: string; data: string }> = [];
+              if (tradeSide === "buy") {
+                const erc20Iface = new ethers.Interface(erc20Abi);
+                const approveData = erc20Iface.encodeFunctionData("approve", [
+                  market.market,
+                  ethers.MaxUint256,
+                ]);
+                calls.push({ to: collateralToken, data: approveData });
+              } else {
+                const marketContract = new ethers.Contract(market.market, marketAbi, readProvider);
+                const outcomeTokenAddress = await marketContract.outcomeToken();
+                const erc1155Iface = new ethers.Interface(erc1155Abi);
+                const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+                  market.market,
+                  true,
+                ]);
+                calls.push({ to: String(outcomeTokenAddress), data: approveData });
+              }
+
+              const marketIface = new ethers.Interface(marketAbi);
+              const batchFillData = marketIface.encodeFunctionData("batchFill", [
+                ordersArr,
+                sigArr,
+                fillArr,
+              ]);
+              calls.push({ to: market.market, data: batchFillData });
+
+              setOrderMsg(
+                formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                  count: ordersArr.length,
+                })
+              );
+
+              const res = await trySubmitAaCalls({ chainId: market.chain_id, calls });
+              const txHash = res?.txHash || "";
+              if (txHash) {
+                try {
+                  await fetch(`${API_BASE}/orderbook/report-trade`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      chainId: market.chain_id,
+                      txHash,
+                      contract: market.market,
+                    }),
+                  });
+                } catch {}
+              }
+
+              if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
+              else setOrderMsg(tTrading("orderFlow.filled"));
+              setAmountInput("");
+              await refreshUserOrders();
+              toast.success(
+                tTrading("toast.orderSuccessTitle"),
+                tTrading("toast.orderSuccessDesc")
+              );
+            } catch (e: any) {
+              handleOrderError(e);
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        });
+
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!walletProvider) throw createUserError(tTrading("orderFlow.walletNotReady"));
 
       const provider = await createBrowserProvider(walletProvider);
       try {
@@ -547,6 +721,96 @@ export function usePredictionDetail() {
             setIsSubmitting(true);
             setOrderMsg(null);
             try {
+              const ordersArr: any[] = [];
+              const sigArr: string[] = [];
+              const fillArr: bigint[] = [];
+              for (const f of fills) {
+                const fillAmount = BigInt(String(f.fillAmount || "0"));
+                if (fillAmount <= 0n) continue;
+                const req = f.req || {};
+                ordersArr.push({
+                  maker: String(req.maker),
+                  outcomeIndex: Number(req.outcomeIndex),
+                  isBuy: Boolean(req.isBuy),
+                  price: BigInt(String(req.price)),
+                  amount: BigInt(String(req.amount)),
+                  salt: BigInt(String(req.salt)),
+                  expiry: BigInt(String(req.expiry || "0")),
+                });
+                sigArr.push(String(f.signature));
+                fillArr.push(fillAmount);
+              }
+
+              if (ordersArr.length === 0) {
+                throw createUserError(tTrading("orderFlow.noFillableOrders"));
+              }
+
+              if (isAaEnabled()) {
+                try {
+                  const calls = [];
+                  if (tradeSide === "buy") {
+                    const erc20Iface = new ethers.Interface(erc20Abi);
+                    const approveData = erc20Iface.encodeFunctionData("approve", [
+                      market.market,
+                      ethers.MaxUint256,
+                    ]);
+                    calls.push({ to: String(tokenContract.target), data: approveData });
+                  } else {
+                    const marketContract = new ethers.Contract(market.market, marketAbi, signer);
+                    const outcomeTokenAddress = await marketContract.outcomeToken();
+                    const erc1155Iface = new ethers.Interface(erc1155Abi);
+                    const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
+                      market.market,
+                      true,
+                    ]);
+                    calls.push({ to: outcomeTokenAddress, data: approveData });
+                  }
+
+                  const marketIface = new ethers.Interface(marketAbi);
+                  const batchFillData = marketIface.encodeFunctionData("batchFill", [
+                    ordersArr,
+                    sigArr,
+                    fillArr,
+                  ]);
+                  calls.push({ to: market.market, data: batchFillData });
+
+                  setOrderMsg(
+                    formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                      count: ordersArr.length,
+                    })
+                  );
+
+                  const res = await trySubmitAaCalls({ chainId: market.chain_id, calls });
+                  const txHash = res?.txHash || "";
+
+                  if (txHash) {
+                    try {
+                      await fetch(`${API_BASE}/orderbook/report-trade`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          chainId: market.chain_id,
+                          txHash,
+                          contract: market.market,
+                        }),
+                      });
+                    } catch {}
+                  }
+
+                  if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
+                  else setOrderMsg(tTrading("orderFlow.filled"));
+                  setAmountInput("");
+                  await refreshUserOrders();
+                  toast.success(
+                    tTrading("toast.orderSuccessTitle"),
+                    tTrading("toast.orderSuccessDesc")
+                  );
+                  return;
+                } catch (e: any) {
+                  console.error("AA batchFill failed", e);
+                }
+              }
+
               if (tradeSide === "buy") {
                 const allowance = await tokenContract.allowance(account, market.market);
                 if (allowance < totalCostBN) {
@@ -571,29 +835,6 @@ export function usePredictionDetail() {
               }
 
               const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-              const ordersArr: any[] = [];
-              const sigArr: string[] = [];
-              const fillArr: bigint[] = [];
-              for (const f of fills) {
-                const fillAmount = BigInt(String(f.fillAmount || "0"));
-                if (fillAmount <= 0n) continue;
-                const req = f.req || {};
-                ordersArr.push({
-                  maker: String(req.maker),
-                  outcomeIndex: Number(req.outcomeIndex),
-                  isBuy: Boolean(req.isBuy),
-                  price: BigInt(String(req.price)),
-                  amount: BigInt(String(req.amount)),
-                  salt: BigInt(String(req.salt)),
-                  expiry: BigInt(String(req.expiry || "0")),
-                });
-                sigArr.push(String(f.signature));
-                fillArr.push(fillAmount);
-              }
-
-              if (ordersArr.length === 0) {
-                throw createUserError(tTrading("orderFlow.noFillableOrders"));
-              }
               setOrderMsg(
                 formatTranslation(tTrading("orderFlow.matchingInProgress"), {
                   count: ordersArr.length,
@@ -609,6 +850,7 @@ export function usePredictionDetail() {
                   body: JSON.stringify({
                     chainId: market.chain_id,
                     txHash: receipt.hash,
+                    contract: market.market,
                   }),
                 });
               } catch {}

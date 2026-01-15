@@ -4,6 +4,7 @@ type FeatureFlags = {
 };
 
 type ChainAddresses = {
+  entryPoint?: string;
   marketFactory?: string;
   outcomeToken1155?: string;
   umaAdapter?: string;
@@ -31,6 +32,7 @@ const DEFAULT_RPC_URLS: Record<number, string> = {
 
 const DEFAULT_ADDRESSES_BY_CHAIN: Record<number, ChainAddresses> = {
   80002: {
+    entryPoint: "0x0000000071727de22e5e9d8baf0edac6f37da032",
     marketFactory: "0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30",
     outcomeToken1155: "0x6dA31A9B2e9e58909836DDa3aeA7f824b1725087",
     umaAdapter: "0x5e42fce766Ad623cE175002B7b2528411C47cc92",
@@ -114,11 +116,11 @@ export function getFeatureFlags(): FeatureFlags {
     parseBoolEnv(process.env.AA_ENABLED) ??
     parseBoolEnv(process.env.aa_enabled) ??
     false;
-  const embedded =
+  const embeddedFromEnv =
     parseBoolEnv(process.env.NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED) ??
     parseBoolEnv(process.env.EMBEDDED_AUTH_ENABLED) ??
-    parseBoolEnv(process.env.embedded_auth_enabled) ??
-    false;
+    parseBoolEnv(process.env.embedded_auth_enabled);
+  const embedded = embeddedFromEnv ?? process.env.NODE_ENV !== "production";
   return { aa_enabled: aa, embedded_auth_enabled: embedded };
 }
 
@@ -126,6 +128,11 @@ export function getChainAddresses(chainId?: number): ChainAddresses {
   const id = chainId ?? getConfiguredChainId();
   const defaults = DEFAULT_ADDRESSES_BY_CHAIN[id] || {};
 
+  const entryPoint = pickFirstNonEmpty(
+    process.env.ENTRYPOINT_ADDRESS,
+    process.env.NEXT_PUBLIC_ENTRYPOINT_ADDRESS,
+    defaults.entryPoint
+  );
   const marketFactory = pickFirstNonEmpty(
     process.env.MARKET_FACTORY_ADDRESS,
     process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS,
@@ -199,6 +206,7 @@ export function getChainAddresses(chainId?: number): ChainAddresses {
   );
 
   return {
+    ...(entryPoint ? { entryPoint } : {}),
     ...(marketFactory ? { marketFactory } : {}),
     ...(outcomeToken1155 ? { outcomeToken1155 } : {}),
     ...(umaAdapter ? { umaAdapter } : {}),

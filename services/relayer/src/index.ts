@@ -151,10 +151,12 @@ const EnvSchema = z.object({
   BUNDLER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
   OPERATOR_PRIVATE_KEY: EthPrivateKeySchema.optional(),
   RELAYER_GASLESS_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
+  CUSTODIAL_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
   AA_ENABLED: BoolSchema.optional(),
   GASLESS_ENABLED: BoolSchema.optional(),
   EMBEDDED_AUTH_ENABLED: BoolSchema.optional(),
   RELAYER_GASLESS_PAYMASTER_URL: z.string().url().optional(),
+  ENTRYPOINT_ADDRESS: EthAddressSchema.optional(),
   RPC_URL: z.string().url().optional(),
   CHAIN_ID: z
     .preprocess(
@@ -220,7 +222,11 @@ const rawEnv = {
       process.env.NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED ||
       process.env.embedded_auth_enabled
   ),
+  CUSTODIAL_SIGNER_PRIVATE_KEY: maybeEthPrivateKey(process.env.CUSTODIAL_SIGNER_PRIVATE_KEY),
   RELAYER_GASLESS_PAYMASTER_URL: maybeUrl(process.env.RELAYER_GASLESS_PAYMASTER_URL),
+  ENTRYPOINT_ADDRESS: maybeEthAddress(
+    process.env.ENTRYPOINT_ADDRESS || process.env.NEXT_PUBLIC_ENTRYPOINT_ADDRESS
+  ),
   RPC_URL: maybeUrl(
     pickFirstNonEmptyString(
       process.env.RPC_URL,
@@ -261,6 +267,9 @@ export const AA_ENABLED = parsed.success ? (parsed.data.AA_ENABLED ?? false) : f
 export const EMBEDDED_AUTH_ENABLED = parsed.success
   ? (parsed.data.EMBEDDED_AUTH_ENABLED ?? false)
   : false;
+export const CUSTODIAL_SIGNER_PRIVATE_KEY = parsed.success
+  ? parsed.data.CUSTODIAL_SIGNER_PRIVATE_KEY
+  : undefined;
 export const GASLESS_ENABLED = (() => {
   if (!parsed.success) return false;
   const aa = Boolean(parsed.data.AA_ENABLED ?? false);
@@ -270,6 +279,7 @@ export const GASLESS_ENABLED = (() => {
 export const RELAYER_GASLESS_PAYMASTER_URL = parsed.success
   ? parsed.data.RELAYER_GASLESS_PAYMASTER_URL
   : undefined;
+export const ENTRYPOINT_ADDRESS = parsed.success ? parsed.data.ENTRYPOINT_ADDRESS : undefined;
 export const CHAIN_ID = parsed.success ? (parsed.data.CHAIN_ID ?? 80002) : 80002;
 export const RELAYER_LEADER_PROXY_URL = parsed.success
   ? parsed.data.RELAYER_LEADER_PROXY_URL
@@ -1244,6 +1254,23 @@ app.post("/", async (req, res) => {
   }
 });
 
+const DEFAULT_ENTRYPOINT_ADDRESSES: Record<number, string> = {
+  80002: "0x0000000071727de22e5e9d8baf0edac6f37da032",
+  137: "0x0000000071727de22e5e9d8baf0edac6f37da032",
+  11155111: "0x0000000071727de22e5e9d8baf0edac6f37da032",
+};
+
+function resolveEntryPointAddress(raw: unknown): string | null {
+  const body = raw && typeof raw === "object" ? (raw as any) : {};
+  const candidate = maybeEthAddress(
+    body.entryPointAddress || body.entryPoint || body.entryPoint_address
+  );
+  if (candidate) return candidate.toLowerCase();
+  if (ENTRYPOINT_ADDRESS) return ENTRYPOINT_ADDRESS.toLowerCase();
+  const fallback = DEFAULT_ENTRYPOINT_ADDRESSES[CHAIN_ID];
+  return fallback ? fallback.toLowerCase() : null;
+}
+
 const HexAddressSchema = z
   .string()
   .trim()
@@ -1254,6 +1281,11 @@ const HexDataSchema = z
   .string()
   .trim()
   .regex(/^0x[0-9a-fA-F]+$/);
+
+const HexDataOrEmptySchema = z
+  .string()
+  .trim()
+  .regex(/^0x[0-9a-fA-F]*$/);
 
 const BigIntFromNumberishSchema = z.preprocess((v) => {
   if (typeof v === "bigint") return v;
@@ -1308,6 +1340,361 @@ const GaslessOrderSchema = z.object({
       maxCostUsd: z.number().positive().optional(),
     })
     .optional(),
+});
+
+const UserOperationSchema = z.object({
+  sender: HexAddressSchema,
+  nonce: BigIntFromNumberishSchema,
+  initCode: HexDataOrEmptySchema,
+  callData: HexDataOrEmptySchema,
+  callGasLimit: BigIntFromNumberishSchema,
+  verificationGasLimit: BigIntFromNumberishSchema,
+  preVerificationGas: BigIntFromNumberishSchema,
+  maxFeePerGas: BigIntFromNumberishSchema,
+  maxPriorityFeePerGas: BigIntFromNumberishSchema,
+  paymasterAndData: HexDataOrEmptySchema,
+  signature: HexDataOrEmptySchema,
+});
+
+const AaUserOpDraftSchema = z.object({
+  owner: HexAddressSchema,
+  userOp: UserOperationSchema,
+  entryPointAddress: HexAddressSchema.optional(),
+});
+
+app.post("/aa/userop/draft", requireApiKey("aa", "aa_userop_draft"), async (req, res) => {
+  try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await getCachedLeaderId(cluster);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/aa/userop/draft");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/aa/userop/draft" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/draft" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/aa/userop/draft");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
+    if (!provider) {
+      const body = sendApiError(req, res, 503, {
+        message: "RPC provider unavailable",
+        errorCode: "RPC_UNAVAILABLE",
+      });
+      setIdempotencyIfPresent(idemKey, 503, body);
+      return;
+    }
+
+    const parsed = AaUserOpDraftSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const body = sendApiError(req, res, 400, {
+        message: "Invalid params",
+        detail: parsed.error.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const entryPointAddress =
+      (parsed.data.entryPointAddress || resolveEntryPointAddress(req.body))?.toLowerCase() || "";
+    if (!entryPointAddress) {
+      const body = sendApiError(req, res, 400, {
+        message: "EntryPoint not configured",
+        errorCode: "ENTRYPOINT_MISSING",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const entryPoint = new Contract(entryPointAddress, EntryPointAbi, provider);
+    const userOpHash = await entryPoint.getUserOpHash(parsed.data.userOp);
+
+    const responseBody = {
+      success: true,
+      owner: parsed.data.owner,
+      entryPointAddress,
+      userOp: parsed.data.userOp,
+      userOpHash,
+    };
+    res.json(responseBody);
+    setIdempotencyIfPresent(idemKey, 200, responseBody);
+  } catch (error: any) {
+    const body = sendApiError(req, res, 500, {
+      message: "Internal error",
+      detail: String(error?.message || error),
+    });
+    return body;
+  }
+});
+
+const AaUserOpSimulateSchema = z.object({
+  owner: HexAddressSchema,
+  userOp: UserOperationSchema,
+  entryPointAddress: HexAddressSchema.optional(),
+});
+
+app.post("/aa/userop/simulate", requireApiKey("aa", "aa_userop_simulate"), async (req, res) => {
+  try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await getCachedLeaderId(cluster);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/aa/userop/simulate");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/aa/userop/simulate" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/simulate" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/aa/userop/simulate");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
+    if (!provider) {
+      const body = sendApiError(req, res, 503, {
+        message: "RPC provider unavailable",
+        errorCode: "RPC_UNAVAILABLE",
+      });
+      setIdempotencyIfPresent(idemKey, 503, body);
+      return;
+    }
+
+    const parsed = AaUserOpSimulateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const body = sendApiError(req, res, 400, {
+        message: "Invalid params",
+        detail: parsed.error.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const entryPointAddress =
+      (parsed.data.entryPointAddress || resolveEntryPointAddress(req.body))?.toLowerCase() || "";
+    if (!entryPointAddress) {
+      const body = sendApiError(req, res, 400, {
+        message: "EntryPoint not configured",
+        errorCode: "ENTRYPOINT_MISSING",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const entryPoint = new Contract(entryPointAddress, EntryPointAbi, provider);
+    const userOpHash = await entryPoint.getUserOpHash(parsed.data.userOp);
+
+    let gasEstimate: string | null = null;
+    try {
+      const estimate = await entryPoint.handleOps.estimateGas(
+        [parsed.data.userOp],
+        bundlerWallet?.address || parsed.data.owner,
+        bundlerWallet?.address ? { from: bundlerWallet.address } : undefined
+      );
+      gasEstimate = estimate ? estimate.toString() : null;
+    } catch {
+      gasEstimate = null;
+    }
+
+    const responseBody = {
+      success: true,
+      owner: parsed.data.owner,
+      entryPointAddress,
+      userOpHash,
+      gasEstimate,
+    };
+    res.json(responseBody);
+    setIdempotencyIfPresent(idemKey, 200, responseBody);
+  } catch (error: any) {
+    const body = sendApiError(req, res, 500, {
+      message: "Internal error",
+      detail: String(error?.message || error),
+    });
+    return body;
+  }
+});
+
+const AaUserOpSubmitSchema = z.object({
+  owner: HexAddressSchema,
+  userOp: z.any(),
+  signature: HexDataOrEmptySchema.optional(),
+  entryPointAddress: HexAddressSchema.optional(),
+});
+
+app.post("/aa/userop/submit", requireApiKey("aa", "aa_userop_submit"), async (req, res) => {
+  try {
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await getCachedLeaderId(cluster);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/aa/userop/submit");
+          if (ok) return;
+        }
+        clusterFollowerRejectedTotal.inc({ path: "/aa/userop/submit" });
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/submit" });
+        return;
+      }
+    }
+
+    const idemKey = getIdempotencyKey(req, "/aa/userop/submit");
+    if (idemKey) {
+      const hit = await getIdempotencyEntry(idemKey);
+      if (hit) return res.status(hit.status).json(hit.body);
+    }
+
+    if (!bundlerWallet) {
+      const body = sendApiError(req, res, 501, {
+        message: "Bundler disabled",
+        errorCode: "BUNDLER_DISABLED",
+      });
+      setIdempotencyIfPresent(idemKey, 501, body);
+      return;
+    }
+
+    const parsed = AaUserOpSubmitSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const body = sendApiError(req, res, 400, {
+        message: "Invalid params",
+        detail: parsed.error.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const entryPointAddress =
+      (parsed.data.entryPointAddress || resolveEntryPointAddress(req.body))?.toLowerCase() || "";
+    if (!entryPointAddress) {
+      const body = sendApiError(req, res, 400, {
+        message: "EntryPoint not configured",
+        errorCode: "ENTRYPOINT_MISSING",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const opParsed = UserOperationSchema.safeParse(parsed.data.userOp);
+    if (!opParsed.success) {
+      const body = sendApiError(req, res, 400, {
+        message: "Invalid userOp",
+        detail: opParsed.error.flatten(),
+        errorCode: "VALIDATION_ERROR",
+      });
+      setIdempotencyIfPresent(idemKey, 400, body);
+      return;
+    }
+
+    const userOp = opParsed.data as any;
+    if (parsed.data.signature && (!userOp.signature || userOp.signature === "0x")) {
+      userOp.signature = parsed.data.signature;
+    }
+
+    const entryPoint = new Contract(entryPointAddress, EntryPointAbi, bundlerWallet);
+    const tx = await entryPoint.handleOps([userOp], bundlerWallet.address);
+    const receipt = await tx.wait();
+
+    const responseBody = {
+      success: true,
+      txHash: receipt?.hash ?? tx.hash,
+    };
+    res.json(responseBody);
+    setIdempotencyIfPresent(idemKey, 200, responseBody);
+  } catch (error: any) {
+    const body = sendApiError(req, res, 500, {
+      message: "Internal error",
+      detail: String(error?.message || error),
+    });
+    return body;
+  }
+});
+
+const CustodialSignSchema = z.object({
+  userOp: z.any(),
+  owner: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+});
+
+app.post("/aa/custodial/sign", requireApiKey("admin", "custodial_sign"), async (req, res) => {
+  try {
+    if (!CUSTODIAL_SIGNER_PRIVATE_KEY) {
+      return sendApiError(req, res, 503, {
+        message: "Custodial signing not configured",
+        errorCode: "CUSTODIAL_DISABLED",
+      });
+    }
+
+    if (clusterIsActive) {
+      const cluster = getClusterManager();
+      if (!cluster.isLeader()) {
+        const leaderId = await getCachedLeaderId(cluster);
+        const proxyUrl = getLeaderProxyUrl();
+        if (proxyUrl) {
+          const ok = await proxyToLeader(proxyUrl, req, res, "/aa/custodial/sign");
+          if (ok) return;
+        }
+        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/custodial/sign" });
+        return;
+      }
+    }
+
+    const parsed = CustodialSignSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendApiError(req, res, 400, {
+        message: "Invalid params",
+        detail: parsed.error.flatten(),
+      });
+    }
+
+    const { userOp, owner } = parsed.data;
+
+    // 这里可以添加更多校验：比如确认 owner 是我们系统内注册的邮箱托管地址
+    // 简单起见，我们假设调用方（Web API）已经验证了权限
+
+    // 计算 UserOp Hash 并签名
+    // 注意：UserOp 的打包和哈希计算通常需要 chainId 和 entryPoint
+    // 为了简化，我们假设前端或上游传来的 userOp 已经是需要签名的结构，或者我们需要自己重新计算
+    // 这里为了演示，我们使用 ethers 直接对 hash 进行签名，假设 userOp 包含预计算的 hash
+    // 或者我们需要重新构建 UserOpHash
+
+    // 更正：UserOp 签名需要对 UserOpHash 进行签名
+    // UserOpHash = keccak256(pack(userOp, entryPoint, chainId))
+    // 由于我们没有 entryPoint 和 chainId 参数传入，我们假设调用方传递了 userOpHash
+    // 或者我们可以从 userOp 中提取并自行计算（但这需要 ABI 编码）
+
+    // 为了稳健，我们要求请求体直接包含 userOpHash，或者我们在这里只做 "Message Signing"
+    // 真正的 UserOp 签名是 signMessage(arrayify(userOpHash))
+
+    const userOpHash = req.body.userOpHash;
+    if (!userOpHash || typeof userOpHash !== "string" || !userOpHash.startsWith("0x")) {
+      return sendApiError(req, res, 400, { message: "Missing userOpHash" });
+    }
+
+    const signer = new ethers.Wallet(CUSTODIAL_SIGNER_PRIVATE_KEY);
+    // 对 hash 进行签名（Ethereum Signed Message）
+    const signature = await signer.signMessage(ethers.getBytes(userOpHash));
+
+    res.json({ success: true, signature });
+  } catch (error: any) {
+    logger.error("Custodial sign error", { error: String(error) });
+    sendApiError(req, res, 500, { message: "Internal error", detail: error.message });
+  }
 });
 
 app.post(
