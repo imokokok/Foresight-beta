@@ -96,12 +96,38 @@
 - **实时赔率**: 基于订单簿的动态定价
 - **零 Gas 交易**: 链下签名，链上结算
 
-### 🤝 社交与成就 (Social & Gamification)
+### 🤝 社交、聊天与成就 (Social & Gamification)
 
 - **关注系统**: 追踪顶尖交易员，实时获取其最新动作
 - **用户卡片**: 悬停即可查看任意用户的胜率、盈亏等专业数据
 - **排行榜**: 实时盈利排名，支持按盈利、胜率、连胜多维度筛选
-- **愿望 Flag**: 将预测与个人成长结合，通过打卡系统见证每一个 Flag 的实现
+- **实时聊天（Discussions）**: 每个提案/事件都有独立聊天室，支持图文消息、回复、删除与举报；并通过 Supabase Realtime 实时推送新消息
+- **论坛提案（Forum）**: 主题 + 评论树 + 投票机制，按 eventId 聚合观点，适合把“市场想法”沉淀成可审阅的提案
+- **愿望 Flag**: 自证 / 见证 / 官方见证三种验证路径；每日打卡 + 到期结算；按完成跨度分层（tier）发放贴纸奖励并沉淀成长轨迹
+
+**接口速览（与文档/代码保持一致）**
+
+```text
+# Chat / Discussions
+GET    /api/discussions?proposalId=1
+POST   /api/discussions
+PATCH  /api/discussions/[id]
+DELETE /api/discussions/[id]
+POST   /api/discussions/report
+
+# Flag
+GET  /api/flags
+POST /api/flags
+POST /api/flags/[id]/checkin
+POST /api/flags/[id]/settle
+
+# Forum
+GET  /api/forum?eventId=1
+POST /api/forum
+POST /api/forum/comments
+POST /api/forum/vote
+GET  /api/forum/user-votes?eventId=1
+```
 
 ### 💰 专业交易体验
 
@@ -330,14 +356,17 @@ Foresight-beta/
 
 ## 📚 文档导航
 
-| 文档                                         | 描述           |
-| -------------------------------------------- | -------------- |
-| [DOCS.md](./DOCS.md)                         | 完整开发者文档 |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)         | 贡献指南       |
-| [SECURITY.md](./SECURITY.md)                 | 安全政策       |
-| [CHANGELOG.md](./CHANGELOG.md)               | 变更日志       |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)   | 行为准则       |
-| [Relayer 文档](./services/relayer/README.md) | 订单簿服务文档 |
+| 文档                                                                       | 描述            |
+| -------------------------------------------------------------------------- | --------------- |
+| [DOCS.md](./DOCS.md)                                                       | 完整开发者文档  |
+| [聊天/讨论（Discussions）API](./apps/web/src/app/api/discussions/route.ts) | 聊天接口与限流  |
+| [Flag 系统 API](./DOCS.md#flag-系统-api)                                   | Flag 接口与流程 |
+| [论坛系统 API](./DOCS.md#论坛系统-api)                                     | 论坛接口与投票  |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)                                       | 贡献指南        |
+| [SECURITY.md](./SECURITY.md)                                               | 安全政策        |
+| [CHANGELOG.md](./CHANGELOG.md)                                             | 变更日志        |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)                                 | 行为准则        |
+| [Relayer 文档](./services/relayer/README.md)                               | 订单簿服务文档  |
 
 ---
 

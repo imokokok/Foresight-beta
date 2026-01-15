@@ -26,6 +26,7 @@
   - [状态管理](#状态管理)
 - [API 参考](#api-参考)
   - [社交系统 API](#社交系统-api)
+  - [论坛系统 API](#论坛系统-api)
   - [Flag 系统 API](#flag-系统-api)
 - [数据库设计](#数据库设计)
 - [UI 模式与美学](#ui-模式与美学)
@@ -1058,6 +1059,171 @@ GET /api/user-follows/counts?address=0x...
 {
   "followersCount": 120,
   "followingCount": 45
+}
+```
+
+### 论坛系统 API
+
+#### GET /api/forum
+
+获取指定 eventId 下的论坛主题列表（包含该主题下的评论）。
+
+```typescript
+// 请求
+GET /api/forum?eventId=1
+
+// 响应
+{
+  "threads": [
+    {
+      "id": 123,
+      "event_id": 1,
+      "title": "Some title",
+      "content": "Some content",
+      "user_id": "0x...",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "upvotes": 0,
+      "downvotes": 0,
+      "category": "crypto",
+      "subject_name": "BTC",
+      "action_verb": "价格达到",
+      "target_value": "$100k",
+      "deadline": "2026-12-31T00:00:00.000Z",
+      "title_preview": "Will BTC reach $100k?",
+      "criteria_preview": "Binance 现货价格触及",
+      "created_prediction_id": null,
+      "review_status": "pending_review",
+      "review_reason": null,
+      "comments": [
+        {
+          "id": 456,
+          "thread_id": 123,
+          "event_id": 1,
+          "user_id": "0x...",
+          "content": "Nice idea",
+          "created_at": "2026-01-01T00:01:00.000Z",
+          "upvotes": 0,
+          "downvotes": 0,
+          "parent_id": null
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### POST /api/forum
+
+创建一个论坛主题（需要已登录会话）。
+
+```typescript
+// 请求
+POST /api/forum
+{
+  "eventId": 1,
+  "title": "Will BTC reach $100k by 2026?",
+  "content": "..."
+}
+
+// 响应
+{
+  "message": "ok",
+  "data": {
+    "id": 123,
+    "event_id": 1,
+    "title": "Will BTC reach $100k by 2026?",
+    "content": "...",
+    "user_id": "0x...",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  }
+}
+```
+
+约束与说明：
+
+- eventId：必填，非负整数（允许 0）
+- title：必填，去空白后长度至少 5
+- content：去空白后长度至少 40；若同时提供 titlePreview / criteriaPreview / subjectName / actionVerb / targetValue / deadline 等字段，服务端会自动拼装内容
+- walletAddress：若传入则必须与会话地址一致，否则返回 forbidden
+- 限流：同一用户 10 分钟内最多 1 条主题、24 小时内最多 3 条主题
+
+#### POST /api/forum/comments
+
+创建评论（需要已登录会话）。
+
+```typescript
+// 请求
+POST /api/forum/comments
+{
+  "eventId": 1,
+  "threadId": 123,
+  "content": "Nice idea",
+  "parentId": null
+}
+
+// 响应
+{
+  "message": "ok",
+  "data": {
+    "id": 456,
+    "event_id": 1,
+    "thread_id": 123,
+    "content": "Nice idea",
+    "user_id": "0x...",
+    "parent_id": null,
+    "created_at": "2026-01-01T00:01:00.000Z"
+  }
+}
+```
+
+约束与说明：
+
+- eventId、threadId：必填，正整数（当前实现不允许 eventId=0）
+- content：必填，去空白后长度至少 2
+- parentId：可选；用于回复某条评论
+- walletAddress：若传入则必须与会话地址一致，否则返回 forbidden
+- 限流：同一用户 15 秒内最多 1 条评论、24 小时内最多 30 条评论
+
+#### POST /api/forum/vote
+
+对主题或评论投票（需要已登录会话；每个用户对同一对象只能投一次票）。
+
+```typescript
+// 请求
+POST /api/forum/vote
+{
+  "type": "thread", // "thread" | "comment"
+  "id": 123,
+  "dir": "up" // "up" | "down"
+}
+
+// 响应
+{
+  "message": "ok",
+  "data": {
+    "id": 123,
+    "event_id": 1,
+    "upvotes": 10,
+    "downvotes": 2
+  },
+  "voted": { "type": "thread", "id": 123, "dir": "up" }
+}
+```
+
+#### GET /api/forum/user-votes
+
+获取当前会话用户在指定 eventId 下的投票记录（未登录也会返回 200 且 votes 为空）。
+
+```typescript
+// 请求
+GET /api/forum/user-votes?eventId=1
+
+// 响应
+{
+  "votes": [
+    { "content_type": "thread", "content_id": 123, "vote_type": "up" },
+    { "content_type": "comment", "content_id": 456, "vote_type": "down" }
+  ]
 }
 ```
 
