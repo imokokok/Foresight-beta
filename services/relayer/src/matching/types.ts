@@ -134,7 +134,13 @@ export interface Trade {
 
 export type MarketEvent =
   | { type: "order_placed"; order: Order }
-  | { type: "order_canceled"; orderId: string; marketKey: string; outcomeIndex?: number }
+  | {
+      type: "order_canceled";
+      orderId: string;
+      marketKey: string;
+      outcomeIndex?: number;
+      releasedUsdcMicro?: string;
+    }
   | { type: "order_updated"; order: Order }
   | { type: "trade"; trade: Trade }
   | { type: "depth_update"; depth: DepthSnapshot }

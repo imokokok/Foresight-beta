@@ -110,7 +110,8 @@ export type SettlementEvent =
   | { type: "batch_submitted"; batchId: string; txHash: string }
   | { type: "batch_confirmed"; batchId: string; blockNumber: number }
   | { type: "batch_failed"; batchId: string; error: string }
-  | { type: "fill_settled"; fillId: string; txHash: string };
+  | { type: "fill_settled"; fillId: string; txHash: string; fill: SettlementFill }
+  | { type: "fill_failed"; fillId: string; error: string; fill?: SettlementFill };
 
 // ============ 统计类型 ============
 

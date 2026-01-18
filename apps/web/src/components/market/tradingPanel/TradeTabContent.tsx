@@ -59,6 +59,8 @@ export type TradeTabContentProps = {
   useProxy?: boolean;
   proxyBalance?: string;
   proxyAddress?: string;
+  reservedUsdc?: number;
+  reservedProxyUsdc?: number;
   setUseProxy?: (v: boolean) => void;
   onDeposit?: () => void;
 };
@@ -111,9 +113,27 @@ export function TradeTabContent({
   useProxy,
   proxyBalance,
   proxyAddress,
+  reservedUsdc,
+  reservedProxyUsdc,
   setUseProxy,
   onDeposit,
 }: TradeTabContentProps) {
+  const parseUsdcBalanceNumber = (v: string | undefined) => {
+    if (!v) return 0;
+    const digits = v.replace(/[^0-9.]/g, "");
+    const n = parseFloat(digits);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+
+  const effectiveUsdcBalance =
+    tradeSide === "buy"
+      ? parseUsdcBalanceNumber(useProxy && proxyBalance ? proxyBalance : balance)
+      : 0;
+  const effectiveUsdcReserved =
+    tradeSide === "buy" ? (useProxy ? (reservedProxyUsdc ?? 0) : (reservedUsdc ?? 0)) : 0;
+  const effectiveUsdcAvailable =
+    tradeSide === "buy" ? Math.max(0, effectiveUsdcBalance - effectiveUsdcReserved) : 0;
+
   const isMarketOrder = orderMode === "best";
   let priceNum = 0;
   let amountNum = 0;
@@ -176,12 +196,9 @@ export function TradeTabContent({
 
     // Check insufficient funds
     if (tradeSide === "buy") {
-      const effectiveBalance = useProxy && proxyBalance ? proxyBalance : balance;
-      const digits = effectiveBalance?.replace(/[^0-9.]/g, "") || "0";
-      const available = parseFloat(digits) || 0;
       // For market orders, total is estimated cost. For limit, it's price * amount.
       // total is already calculated in component scope
-      if (total > available) {
+      if (total > effectiveUsdcAvailable) {
         return tTrading("orderFlow.insufficientFunds");
       }
     }
@@ -252,6 +269,8 @@ export function TradeTabContent({
           useProxy={useProxy}
           proxyBalance={proxyBalance}
           balance={balance}
+          usdcAvailable={effectiveUsdcAvailable}
+          usdcReserved={effectiveUsdcReserved}
         />
         <AmountInputSection
           amountInput={amountInput}
@@ -264,7 +283,10 @@ export function TradeTabContent({
           priceInput={priceInput}
           useProxy={useProxy}
           proxyBalance={proxyBalance}
+          usdcAvailable={effectiveUsdcAvailable}
+          usdcReserved={effectiveUsdcReserved}
           setUseProxy={setUseProxy}
+          onDeposit={onDeposit}
         />
       </div>
       <TradeSummary
@@ -556,6 +578,8 @@ type PriceInputSectionProps = {
   useProxy?: boolean;
   proxyBalance?: string;
   balance?: string;
+  usdcAvailable?: number;
+  usdcReserved?: number;
 };
 
 function PriceInputSection({
@@ -581,6 +605,8 @@ function PriceInputSection({
   useProxy,
   proxyBalance,
   balance,
+  usdcAvailable,
+  usdcReserved,
 }: PriceInputSectionProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const limitPriceValue = parseFloat(priceInput || "0");
@@ -616,11 +642,27 @@ function PriceInputSection({
           <span>{tTrading("price")}</span>
           {tradeSide === "buy" && (
             <span className="text-[10px] text-gray-400 font-normal">
-              {useProxy && proxyBalance
-                ? `(Proxy: ${proxyBalance})`
-                : balance?.replace("USDC", "").trim()
-                  ? `(Bal: ${balance.replace("USDC", "").trim()})`
-                  : ""}
+              {(() => {
+                const avail =
+                  typeof usdcAvailable === "number" && Number.isFinite(usdcAvailable)
+                    ? usdcAvailable.toFixed(2)
+                    : null;
+                const reserved =
+                  typeof usdcReserved === "number" &&
+                  Number.isFinite(usdcReserved) &&
+                  usdcReserved > 0
+                    ? usdcReserved.toFixed(2)
+                    : null;
+                const label = useProxy && proxyBalance ? "Proxy" : "Wallet";
+                if (avail) {
+                  return reserved
+                    ? `(${label}: Avail ${avail}, Res ${reserved})`
+                    : `(${label}: Avail ${avail})`;
+                }
+                if (useProxy && proxyBalance) return `(Proxy: ${proxyBalance})`;
+                const raw = balance?.replace("USDC", "").trim();
+                return raw ? `(Bal: ${raw})` : "";
+              })()}
             </span>
           )}
         </div>
@@ -853,6 +895,8 @@ type AmountInputSectionProps = {
   priceInput: string;
   useProxy?: boolean;
   proxyBalance?: string;
+  usdcAvailable?: number;
+  usdcReserved?: number;
   onDeposit?: () => void;
   setUseProxy?: (v: boolean) => void;
 };
@@ -868,6 +912,8 @@ function AmountInputSection({
   priceInput,
   useProxy,
   proxyBalance,
+  usdcAvailable,
+  usdcReserved,
   setUseProxy,
   onDeposit,
 }: AmountInputSectionProps) {
@@ -889,23 +935,12 @@ function AmountInputSection({
   })();
   const hasTooManyDecimals = decimalsCount > 6;
 
-  let usdcAvailable = 0;
-  // If using proxy, use proxyBalance for checking available funds
-  const effectiveBalance = useProxy && proxyBalance ? proxyBalance : balance;
-
-  if (tradeSide === "buy") {
-    const digits = effectiveBalance.replace(/[^0-9.]/g, "");
-    if (digits) {
-      const parsed = parseFloat(digits);
-      if (!isNaN(parsed) && parsed > 0) {
-        usdcAvailable = parsed;
-      }
-    }
-  }
+  const effectiveUsdcAvailable =
+    typeof usdcAvailable === "number" && Number.isFinite(usdcAvailable) ? usdcAvailable : 0;
   const priceValue = parseFloat(priceInput || "0") || 0;
   const showSellButtons = tradeSide === "sell" && currentShares > 0;
   const showBuyMax =
-    tradeSide === "buy" && orderMode === "limit" && usdcAvailable > 0 && priceValue > 0;
+    tradeSide === "buy" && orderMode === "limit" && effectiveUsdcAvailable > 0 && priceValue > 0;
 
   return (
     <div className="space-y-1">
@@ -934,9 +969,20 @@ function AmountInputSection({
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 6,
                 })
-              : useProxy && proxyBalance
-                ? `USDC ${proxyBalance} (Proxy)`
-                : balance}
+              : (() => {
+                  const avail =
+                    effectiveUsdcAvailable > 0 ? effectiveUsdcAvailable.toFixed(2) : "0.00";
+                  const reserved =
+                    typeof usdcReserved === "number" &&
+                    Number.isFinite(usdcReserved) &&
+                    usdcReserved > 0
+                      ? usdcReserved.toFixed(2)
+                      : null;
+                  const label = useProxy && proxyBalance ? "Proxy" : "Wallet";
+                  return reserved
+                    ? `USDC ${avail} (Avail · Res ${reserved} · ${label})`
+                    : `USDC ${avail} (Avail · ${label})`;
+                })()}
           </span>
           {onDeposit && useProxy && (
             <button
@@ -1002,7 +1048,7 @@ function AmountInputSection({
           {showBuyMax && (
             <button
               onClick={() => {
-                const maxShares = usdcAvailable / priceValue;
+                const maxShares = effectiveUsdcAvailable / priceValue;
                 if (maxShares > 0) {
                   setAmountInput(normalizeTo6Decimals(String(maxShares)));
                 }

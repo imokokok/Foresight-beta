@@ -394,7 +394,12 @@ export class BatchSettler extends EventEmitter {
 
               await this.ingestFillsFromReceipt(receipt, batch.chainId);
               for (const fill of batch.fills) {
-                this.emitEvent({ type: "fill_settled", fillId: fill.id, txHash: batch.txHash! });
+                this.emitEvent({
+                  type: "fill_settled",
+                  fillId: fill.id,
+                  txHash: batch.txHash!,
+                  fill,
+                });
                 await this.markFailedFillResolved(fill.id);
               }
 

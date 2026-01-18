@@ -18,7 +18,12 @@ import type {
 } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
 import { supabaseAdmin } from "../supabase.js";
-import { BatchSettler, type SettlementFill, type SettlementOrder } from "../settlement/index.js";
+import {
+  BatchSettler,
+  type SettlementEvent,
+  type SettlementFill,
+  type SettlementOrder,
+} from "../settlement/index.js";
 import { getRedisClient } from "../redis/client.js";
 import { getOrderbookSnapshotService } from "../redis/orderbookSnapshot.js";
 import {
@@ -84,6 +89,15 @@ function getConfiguredRpcUrl(chainId: number): string {
   return "http://127.0.0.1:8545";
 }
 
+function getConfiguredUsdcAddress(): string | undefined {
+  return pickFirstNonEmptyString(
+    process.env.COLLATERAL_TOKEN_ADDRESS,
+    process.env.USDC_ADDRESS,
+    process.env.NEXT_PUBLIC_USDC_ADDRESS,
+    process.env.NEXT_PUBLIC_COLLATERAL_TOKEN_ADDRESS
+  );
+}
+
 const providerByChainId = new Map<number, ethers.JsonRpcProvider>();
 
 function getRpcProvider(chainId: number): ethers.JsonRpcProvider {
@@ -122,6 +136,8 @@ export class MatchingEngine extends EventEmitter {
   private snapshotQueueLastAtMs: Map<string, number> = new Map();
   private snapshotFullLastAtMs: Map<string, number> = new Map();
   private clientOrderIdCache: Map<string, { expiresAtMs: number; result: MatchResult }> = new Map();
+  private expirySweepTimer: ReturnType<typeof setInterval> | null = null;
+  private expirySweepRunning = false;
 
   // 🚀 批量结算器 (Polymarket 模式)
   private batchSettlers: Map<string, BatchSettler> = new Map();
@@ -131,6 +147,59 @@ export class MatchingEngine extends EventEmitter {
     super();
     this.bookManager = new OrderBookManager();
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.startExpirySweep();
+    this.on("settlement_event", (event) => {
+      void this.handleSettlementEvent(event as SettlementEvent);
+    });
+  }
+
+  private async handleSettlementEvent(event: SettlementEvent): Promise<void> {
+    if (event.type !== "fill_settled") return;
+    const fill = (event as any).fill as SettlementFill | undefined;
+    if (!fill) return;
+    const isBuy = Boolean(fill.order?.isBuy);
+    const buyer = (isBuy ? fill.order?.maker : fill.taker || "").toLowerCase();
+    if (!ethers.isAddress(buyer)) return;
+    const amountMicro = this.orderNotionalUsdc(fill.fillAmount, fill.matchedPrice);
+    if (amountMicro <= 0n) return;
+    await this.releaseUsdcReservation(buyer, amountMicro);
+  }
+
+  private startExpirySweep(): void {
+    const raw = process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS;
+    const sweepMs = raw === undefined ? 5000 : Number(raw);
+    if (!Number.isFinite(sweepMs) || sweepMs <= 0) return;
+    this.expirySweepTimer = setInterval(() => {
+      void this.runExpirySweepOnce();
+    }, sweepMs);
+    (this.expirySweepTimer as any)?.unref?.();
+  }
+
+  private async runExpirySweepOnce(): Promise<number> {
+    if (this.expirySweepRunning) return 0;
+    this.expirySweepRunning = true;
+    try {
+      const books = this.bookManager.getAllBooks();
+      if (books.length === 0) return 0;
+
+      let expiredTotal = 0;
+      for (const book of books) {
+        if (book.getOrderCount() === 0) continue;
+        try {
+          expiredTotal += await this.withBookLockNoWarmup(
+            book.marketKey,
+            book.outcomeIndex,
+            async () => await this.expireOrdersInBook(book.marketKey, book.outcomeIndex)
+          );
+        } catch (error: any) {
+          const message = String(error?.message || "");
+          if (message.includes("Orderbook busy")) continue;
+        }
+      }
+      return expiredTotal;
+    } finally {
+      this.expirySweepRunning = false;
+    }
   }
 
   private async withBookLock<T>(
@@ -421,81 +490,105 @@ export class MatchingEngine extends EventEmitter {
         orderInput.marketKey,
         orderInput.outcomeIndex,
         async () => {
-          // 1. 验证订单
-          const validationResult = await this.validateOrder(orderInput);
-          if (!validationResult.valid) {
-            const failure: MatchResult = {
-              success: false,
-              matches: [],
-              remainingOrder: null,
-              error: validationResult.error,
-              errorCode: validationResult.errorCode,
-            };
-            this.setClientOrderIdCachedResult(orderInput, failure);
-            await this.setClientOrderIdCachedResultRemote(orderInput, failure);
-            return failure;
-          }
+          let order: Order | null = null;
+          let reservedAtStartUsdc = 0n;
+          let result: MatchResult = {
+            success: false,
+            matches: [],
+            remainingOrder: null,
+            error: "Unknown error",
+          };
 
-          // 2. 创建内部订单对象
-          const order = this.createOrder(orderInput);
-
-          if (order.postOnly) {
-            const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
-            while (true) {
-              const counterOrder = this.config.enableSelfTradeProtection
-                ? book.getBestCounterOrder(order.isBuy, order.maker)
-                : book.getBestCounterOrder(order.isBuy);
-              if (!counterOrder) break;
-              if (this.isExpired(counterOrder)) {
-                book.removeOrder(counterOrder.id);
-                await this.updateOrderStatus(counterOrder, "expired");
-                continue;
-              }
-              if (this.pricesMatch(order, counterOrder)) {
-                const failure: MatchResult = {
-                  success: false,
-                  matches: [],
-                  remainingOrder: null,
-                  error: "Post-only order would be immediately executed",
-                  errorCode: "INVALID_POST_ONLY",
-                };
-                this.setClientOrderIdCachedResult(orderInput, failure);
-                await this.setClientOrderIdCachedResultRemote(orderInput, failure);
-                return failure;
-              }
-              break;
+          try {
+            const validationResult = await this.validateOrder(orderInput);
+            if (!validationResult.valid) {
+              result = {
+                success: false,
+                matches: [],
+                remainingOrder: null,
+                error: validationResult.error,
+                errorCode: validationResult.errorCode,
+              };
+              return result;
             }
-            await this.addToOrderBook(order);
-            const success: MatchResult = {
-              success: true,
-              matches: [],
-              remainingOrder: order,
-            };
-            this.setClientOrderIdCachedResult(orderInput, success);
-            await this.setClientOrderIdCachedResultRemote(orderInput, success);
-            return success;
-          }
 
-          // 3. 尝试撮合
-          const matchResult = await this.matchOrder(order);
-
-          // 4. 如果有剩余,加入订单簿
-          if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
-            await this.addToOrderBook(matchResult.remainingOrder);
-          }
-
-          // 5. 广播事件
-          if (matchResult.matches.length > 0) {
-            for (const match of matchResult.matches) {
-              const trade = this.matchToTrade(match);
-              this.emit("trade", trade);
-              this.emitEvent({ type: "trade", trade });
+            order = this.createOrder(orderInput);
+            await this.expireOrdersInBook(order.marketKey, order.outcomeIndex);
+            reservedAtStartUsdc = await this.reserveUsdcForOrder(order);
+            if (reservedAtStartUsdc < 0n) {
+              result = {
+                success: false,
+                matches: [],
+                remainingOrder: null,
+                error: "Insufficient balance",
+                errorCode: "INSUFFICIENT_BALANCE",
+              };
+              return result;
             }
-          }
 
-          this.setClientOrderIdCachedResult(orderInput, matchResult);
-          await this.setClientOrderIdCachedResultRemote(orderInput, matchResult);
-          return matchResult;
+            if (order.postOnly) {
+              const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+              while (true) {
+                const counterOrder = this.config.enableSelfTradeProtection
+                  ? book.getBestCounterOrder(order.isBuy, order.maker)
+                  : book.getBestCounterOrder(order.isBuy);
+                if (!counterOrder) break;
+                if (this.isExpired(counterOrder)) {
+                  if (counterOrder.isBuy) {
+                    await this.releaseUsdcReservation(
+                      counterOrder.maker,
+                      this.orderNotionalUsdc(counterOrder.remainingAmount, counterOrder.price)
+                    );
+                  }
+                  book.removeOrder(counterOrder.id);
+                  await this.updateOrderStatus(counterOrder, "expired");
+                  this.emitDepthUpdate(book);
+                  continue;
+                }
+                if (this.pricesMatch(order, counterOrder)) {
+                  result = {
+                    success: false,
+                    matches: [],
+                    remainingOrder: null,
+                    error: "Post-only order would be immediately executed",
+                    errorCode: "INVALID_POST_ONLY",
+                  };
+                  return result;
+                }
+                break;
+              }
+              await this.addToOrderBook(order);
+              result = {
+                success: true,
+                matches: [],
+                remainingOrder: order,
+              };
+              return result;
+            }
+
+            const matchResult = await this.matchOrder(order);
+
+            if (matchResult.remainingOrder && matchResult.remainingOrder.remainingAmount > 0n) {
+              await this.addToOrderBook(matchResult.remainingOrder);
+            }
+
+            if (matchResult.matches.length > 0) {
+              for (const match of matchResult.matches) {
+                const trade = this.matchToTrade(match);
+                this.emit("trade", trade);
+                this.emitEvent({ type: "trade", trade });
+              }
+            }
+
+            result = matchResult;
+            return result;
+          } finally {
+            if (order && reservedAtStartUsdc > 0n) {
+              await this.finalizeUsdcReservationAfterSubmit(order, reservedAtStartUsdc, result);
+            }
+            this.setClientOrderIdCachedResult(orderInput, result);
+            await this.setClientOrderIdCachedResultRemote(orderInput, result);
+          }
         }
       );
       this.setClientOrderIdCachedResult(orderInput, result);
@@ -601,8 +694,15 @@ export class MatchingEngine extends EventEmitter {
 
       // 检查订单是否过期
       if (this.isExpired(counterOrder)) {
+        if (counterOrder.isBuy) {
+          await this.releaseUsdcReservation(
+            counterOrder.maker,
+            this.orderNotionalUsdc(counterOrder.remainingAmount, counterOrder.price)
+          );
+        }
         book.removeOrder(counterOrder.id);
         await this.updateOrderStatus(counterOrder, "expired");
+        this.emitDepthUpdate(book);
         continue;
       }
 
@@ -732,6 +832,53 @@ export class MatchingEngine extends EventEmitter {
     return Math.floor(Date.now() / 1000) >= order.expiry;
   }
 
+  private async expireOrdersInBook(marketKey: string, outcomeIndex: number): Promise<number> {
+    const book = this.bookManager.getBook(marketKey, outcomeIndex);
+    if (!book) return 0;
+
+    const { bidOrders, askOrders } = book.getAllOrders();
+    const allOrders = [...bidOrders, ...askOrders];
+    if (allOrders.length === 0) return 0;
+
+    let expiredCount = 0;
+    const releaseByMaker = new Map<string, bigint>();
+    const updates: Array<Pick<Order, "chainId" | "verifyingContract" | "maker" | "salt">> = [];
+
+    for (const o of allOrders) {
+      if (!this.isExpired(o)) continue;
+      const removed = book.removeOrder(o.id);
+      if (!removed) continue;
+      expiredCount += 1;
+      updates.push(removed);
+      if (removed.isBuy) {
+        const micro = this.orderNotionalUsdc(removed.remainingAmount, removed.price);
+        if (micro > 0n) {
+          const maker = removed.maker.toLowerCase();
+          releaseByMaker.set(maker, (releaseByMaker.get(maker) || 0n) + micro);
+        }
+      }
+    }
+
+    if (expiredCount === 0) return 0;
+
+    if (supabaseAdmin) {
+      for (const o of updates) {
+        await this.updateOrderStatus(o, "expired");
+      }
+    }
+
+    if (supabaseAdmin && releaseByMaker.size > 0) {
+      await Promise.all(
+        Array.from(releaseByMaker.entries()).map(([maker, micro]) =>
+          this.releaseUsdcReservation(maker, micro)
+        )
+      );
+    }
+
+    this.emitDepthUpdate(book);
+    return expiredCount;
+  }
+
   /**
    * 计算手续费
    */
@@ -745,6 +892,103 @@ export class MatchingEngine extends EventEmitter {
     const takerFee = (cost * BigInt(this.config.takerFeeBps)) / 10000n;
 
     return { makerFee, takerFee };
+  }
+
+  private orderNotionalUsdc(amount: bigint, price: bigint): bigint {
+    if (amount <= 0n || price <= 0n) return 0n;
+    return (amount * price) / 1_000_000_000_000_000_000n;
+  }
+
+  private formatUsdcUnitsFromMicro(usdcMicro: bigint): string {
+    return ethers.formatUnits(usdcMicro, 6);
+  }
+
+  private parseUsdcUnitsToMicro(raw: unknown): bigint {
+    let numeric = 0;
+    if (typeof raw === "number") {
+      numeric = raw;
+    } else if (typeof raw === "string") {
+      const parsed = parseFloat(raw);
+      if (Number.isFinite(parsed)) numeric = parsed;
+    }
+    if (!Number.isFinite(numeric) || numeric <= 0) return 0n;
+    return BigInt(Math.floor(numeric * 1e6));
+  }
+
+  private async reserveUsdcForOrder(order: Order): Promise<bigint> {
+    if (!supabaseAdmin) return 0n;
+    if (!order.isBuy) return 0n;
+    const reserveMicro = this.orderNotionalUsdc(order.remainingAmount, order.price);
+    if (reserveMicro <= 0n) return 0n;
+
+    try {
+      const { data, error } = await supabaseAdmin.rpc("reserve_user_balance", {
+        p_user_address: order.maker,
+        p_amount: this.formatUsdcUnitsFromMicro(reserveMicro),
+      });
+      if (error) {
+        const code = String((error as any).code || "");
+        if (code === "42883") return 0n;
+        return -1n;
+      }
+      const row = Array.isArray(data) ? (data[0] as any) : (data as any);
+      const ok = row && (row.success === true || row.success === "true");
+      return ok ? reserveMicro : -1n;
+    } catch {
+      return 0n;
+    }
+  }
+
+  private async releaseUsdcReservation(maker: string, amountMicro: bigint): Promise<void> {
+    if (!supabaseAdmin) return;
+    if (amountMicro <= 0n) return;
+    try {
+      const { error } = await supabaseAdmin.rpc("release_user_balance", {
+        p_user_address: maker,
+        p_amount: this.formatUsdcUnitsFromMicro(amountMicro),
+      });
+      if (error) {
+        const code = String((error as any).code || "");
+        if (code === "42883") return;
+      }
+    } catch {}
+  }
+
+  private async finalizeUsdcReservationAfterSubmit(
+    order: Order,
+    reservedAtStartUsdc: bigint,
+    result: MatchResult
+  ): Promise<void> {
+    if (!order.isBuy) return;
+    if (reservedAtStartUsdc <= 0n) return;
+    if (!result.success) {
+      await this.releaseUsdcReservation(order.maker, reservedAtStartUsdc);
+      return;
+    }
+
+    let matchedAmount = 0n;
+    for (const m of result.matches || []) {
+      matchedAmount += m.matchedAmount;
+    }
+
+    const matchedMicro =
+      matchedAmount > 0n
+        ? (() => {
+            let total = 0n;
+            for (const m of result.matches || []) {
+              total += this.orderNotionalUsdc(m.matchedAmount, m.matchedPrice);
+            }
+            return total;
+          })()
+        : 0n;
+
+    const remaining = result.remainingOrder?.remainingAmount ?? 0n;
+    const remainingMicro = remaining > 0n ? this.orderNotionalUsdc(remaining, order.price) : 0n;
+    const keepMicro = matchedMicro + remainingMicro;
+    const releaseMicro = reservedAtStartUsdc - keepMicro;
+    if (releaseMicro > 0n) {
+      await this.releaseUsdcReservation(order.maker, releaseMicro);
+    }
   }
 
   /**
@@ -836,8 +1080,30 @@ export class MatchingEngine extends EventEmitter {
         const orderId = `${maker.toLowerCase()}-${salt}`;
         const book = this.bookManager.getBook(marketKey, outcomeIndex);
         const removed = book ? book.removeOrder(orderId) : null;
+        let releaseMicro = 0n;
 
         if (supabaseAdmin) {
+          if (removed && removed.isBuy) {
+            releaseMicro = this.orderNotionalUsdc(removed.remainingAmount, removed.price);
+          } else if (!removed) {
+            const { data } = await supabaseAdmin
+              .from("orders")
+              .select("price, remaining, is_buy")
+              .eq("chain_id", chainId)
+              .eq("verifying_contract", verifyingContract.toLowerCase())
+              .eq("maker_address", maker.toLowerCase())
+              .eq("maker_salt", salt)
+              .in("status", ["open", "partially_filled"])
+              .maybeSingle();
+            if (data && (data as any).is_buy) {
+              try {
+                const price = BigInt((data as any).price);
+                const remaining = BigInt((data as any).remaining);
+                releaseMicro = this.orderNotionalUsdc(remaining, price);
+              } catch {}
+            }
+          }
+
           await supabaseAdmin
             .from("orders")
             .update({ status: "canceled", remaining: "0" })
@@ -846,11 +1112,29 @@ export class MatchingEngine extends EventEmitter {
             .eq("maker_address", maker.toLowerCase())
             .eq("maker_salt", salt)
             .in("status", ["open", "partially_filled"]);
+
+          if (releaseMicro > 0n) {
+            await this.releaseUsdcReservation(maker.toLowerCase(), releaseMicro);
+          }
         }
 
         if (book && removed) {
-          this.emitEvent({ type: "order_canceled", orderId, marketKey, outcomeIndex });
+          this.emitEvent({
+            type: "order_canceled",
+            orderId,
+            marketKey,
+            outcomeIndex,
+            releasedUsdcMicro: releaseMicro > 0n ? releaseMicro.toString() : undefined,
+          });
           this.emitDepthUpdate(book);
+        } else {
+          this.emitEvent({
+            type: "order_canceled",
+            orderId,
+            marketKey,
+            outcomeIndex,
+            releasedUsdcMicro: releaseMicro > 0n ? releaseMicro.toString() : undefined,
+          });
         }
 
         return { success: true };
@@ -1062,44 +1346,107 @@ export class MatchingEngine extends EventEmitter {
         return { valid: true };
       }
 
-      const { data: balanceRow } = await supabaseAdmin
-        .from("user_balances")
-        .select("balance")
-        .eq("user_address", makerAddress)
-        .maybeSingle();
+      let balanceRow: any = null;
+      try {
+        const res = await supabaseAdmin
+          .from("user_balances")
+          .select("balance,reserved")
+          .eq("user_address", makerAddress)
+          .maybeSingle();
+        if (!res.error) balanceRow = res.data;
+      } catch {}
 
-      let offchainBalanceUsdc = 0n;
-      if (balanceRow) {
-        const raw = (balanceRow as any).balance;
-        let numeric = 0;
-        if (typeof raw === "number") {
-          numeric = raw;
-        } else if (typeof raw === "string") {
-          const parsed = parseFloat(raw);
-          if (Number.isFinite(parsed)) {
-            numeric = parsed;
-          }
-        }
-        offchainBalanceUsdc = BigInt(Math.floor(numeric * 1e6));
+      if (!balanceRow) {
+        try {
+          const res = await supabaseAdmin
+            .from("user_balances")
+            .select("balance")
+            .eq("user_address", makerAddress)
+            .maybeSingle();
+          if (!res.error) balanceRow = res.data;
+        } catch {}
       }
 
-      const { data: openOrders } = await supabaseAdmin
-        .from("orders")
-        .select("price, remaining")
-        .eq("maker_address", makerAddress)
-        .eq("is_buy", true)
-        .in("status", ["open", "partially_filled"]);
+      const offchainBalanceUsdc = balanceRow ? this.parseUsdcUnitsToMicro(balanceRow.balance) : 0n;
+      const ledgerReservedUsdc =
+        balanceRow && "reserved" in balanceRow
+          ? this.parseUsdcUnitsToMicro(balanceRow.reserved)
+          : null;
 
       let reservedUsdc = 0n;
-      for (const row of openOrders || []) {
-        const price = BigInt((row as any).price);
-        const remaining = BigInt((row as any).remaining);
-        reservedUsdc += (remaining * price) / BigInt(1e18);
+      if (ledgerReservedUsdc !== null) {
+        reservedUsdc = ledgerReservedUsdc;
+        const reconcileEnabled =
+          String(process.env.RELAYER_RESERVED_RECONCILE_ENABLED || "true").toLowerCase() !==
+          "false";
+        if (reconcileEnabled) {
+          const { data: openOrders } = await supabaseAdmin
+            .from("orders")
+            .select("price, remaining")
+            .eq("maker_address", makerAddress)
+            .eq("is_buy", true)
+            .in("status", ["open", "partially_filled"]);
+
+          let computed = 0n;
+          for (const row of openOrders || []) {
+            const price = BigInt((row as any).price);
+            const remaining = BigInt((row as any).remaining);
+            computed += this.orderNotionalUsdc(remaining, price);
+          }
+
+          if (computed > reservedUsdc) reservedUsdc = computed;
+        }
+      } else {
+        const { data: openOrders } = await supabaseAdmin
+          .from("orders")
+          .select("price, remaining")
+          .eq("maker_address", makerAddress)
+          .eq("is_buy", true)
+          .in("status", ["open", "partially_filled"]);
+
+        for (const row of openOrders || []) {
+          const price = BigInt((row as any).price);
+          const remaining = BigInt((row as any).remaining);
+          reservedUsdc += this.orderNotionalUsdc(remaining, price);
+        }
       }
 
       const totalRequiredUsdc = reservedUsdc + orderCostUsdc;
 
       if (totalRequiredUsdc > offchainBalanceUsdc) {
+        const usdcAddress = getConfiguredUsdcAddress();
+        if (!usdcAddress || !ethers.isAddress(usdcAddress)) {
+          return {
+            valid: false,
+            error: "Insufficient balance",
+            errorCode: "INSUFFICIENT_BALANCE",
+          };
+        }
+
+        try {
+          const provider = getRpcProvider(input.chainId);
+          const usdc = new ethers.Contract(
+            usdcAddress,
+            ["function balanceOf(address account) view returns (uint256)"],
+            provider
+          );
+          const onchainBalanceUsdc = BigInt(await usdc.balanceOf(makerAddress));
+
+          if (totalRequiredUsdc <= onchainBalanceUsdc) {
+            try {
+              await supabaseAdmin.from("user_balances").upsert(
+                {
+                  user_address: makerAddress,
+                  balance: ethers.formatUnits(onchainBalanceUsdc, 6),
+                },
+                { onConflict: "user_address" }
+              );
+            } catch {}
+
+            return { valid: true };
+          }
+        } catch {}
+
         return { valid: false, error: "Insufficient balance", errorCode: "INSUFFICIENT_BALANCE" };
       }
 
@@ -1672,10 +2019,13 @@ export class MatchingEngine extends EventEmitter {
     }
 
     const orderIdsByOutcome = new Map<number, string[]>();
+    const releaseByMaker = new Map<string, bigint>();
+    const releaseMicroByOrderId = new Map<string, bigint>();
+    const releasedOrderIds = new Set<string>();
     if (supabaseAdmin) {
       const { data, error } = await supabaseAdmin
         .from("orders")
-        .select("maker_address,maker_salt,outcome_index,status")
+        .select("maker_address,maker_salt,outcome_index,status,is_buy,price,remaining")
         .eq("market_key", normalizedMarketKey)
         .in("status", ["open", "partially_filled", "filled_partial"])
         .limit(10000);
@@ -1692,6 +2042,19 @@ export class MatchingEngine extends EventEmitter {
           const arr = orderIdsByOutcome.get(outcomeIndex);
           if (arr) arr.push(id);
           else orderIdsByOutcome.set(outcomeIndex, [id]);
+
+          if (row.is_buy === true && !releasedOrderIds.has(id)) {
+            try {
+              const price = BigInt(String(row.price || "0"));
+              const remaining = BigInt(String(row.remaining || "0"));
+              const micro = this.orderNotionalUsdc(remaining, price);
+              if (micro > 0n) {
+                releasedOrderIds.add(id);
+                releaseMicroByOrderId.set(id, micro);
+                releaseByMaker.set(maker, (releaseByMaker.get(maker) || 0n) + micro);
+              }
+            } catch {}
+          }
         }
       }
 
@@ -1721,6 +2084,16 @@ export class MatchingEngine extends EventEmitter {
           for (const o of [...bidOrders, ...askOrders]) {
             if (o) ids.add(o.id);
           }
+
+          for (const o of bidOrders) {
+            if (!o || !o.isBuy) continue;
+            if (releasedOrderIds.has(o.id)) continue;
+            const micro = this.orderNotionalUsdc(o.remainingAmount, o.price);
+            if (micro <= 0n) continue;
+            releasedOrderIds.add(o.id);
+            releaseMicroByOrderId.set(o.id, micro);
+            releaseByMaker.set(o.maker, (releaseByMaker.get(o.maker) || 0n) + micro);
+          }
         }
 
         for (const id of ids) {
@@ -1732,6 +2105,10 @@ export class MatchingEngine extends EventEmitter {
             orderId: id,
             marketKey: normalizedMarketKey,
             outcomeIndex,
+            releasedUsdcMicro:
+              releaseMicroByOrderId.has(id) && releaseMicroByOrderId.get(id)! > 0n
+                ? releaseMicroByOrderId.get(id)!.toString()
+                : undefined,
           });
         }
 
@@ -1751,6 +2128,14 @@ export class MatchingEngine extends EventEmitter {
           await snapshotService.deleteOrderbookState(normalizedMarketKey, outcomeIndex);
         } catch {}
       });
+    }
+
+    if (supabaseAdmin && releaseByMaker.size > 0) {
+      await Promise.all(
+        Array.from(releaseByMaker.entries()).map(([maker, micro]) =>
+          this.releaseUsdcReservation(maker, micro)
+        )
+      );
     }
 
     return {
@@ -1800,11 +2185,17 @@ export class MatchingEngine extends EventEmitter {
         createdAt: new Date(row.created_at).getTime(),
       };
 
-      // 检查过期
-      if (!this.isExpired(order)) {
-        const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
-        book.addOrder(order);
+      if (this.isExpired(order)) {
+        if (order.isBuy) {
+          const releaseMicro = this.orderNotionalUsdc(order.remainingAmount, order.price);
+          await this.releaseUsdcReservation(order.maker, releaseMicro);
+        }
+        await this.updateOrderStatus(order, "expired");
+        continue;
       }
+
+      const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
+      book.addOrder(order);
     }
 
     console.log(`[MatchingEngine] Recovered orders for ${marketKey || "all markets"}`);
@@ -1824,6 +2215,11 @@ export class MatchingEngine extends EventEmitter {
     }
     await Promise.all(shutdownPromises);
     this.batchSettlers.clear();
+
+    if (this.expirySweepTimer) {
+      clearInterval(this.expirySweepTimer);
+      this.expirySweepTimer = null;
+    }
 
     this.bookManager.clear();
     console.log("[MatchingEngine] Shutdown complete");

@@ -55,6 +55,15 @@ function getConfiguredRpcUrl(chainId?: number): string {
   return "http://127.0.0.1:8545";
 }
 
+function getConfiguredUsdcAddress(): string | undefined {
+  return pickFirstNonEmptyString(
+    process.env.COLLATERAL_TOKEN_ADDRESS,
+    process.env.USDC_ADDRESS,
+    process.env.NEXT_PUBLIC_USDC_ADDRESS,
+    process.env.NEXT_PUBLIC_COLLATERAL_TOKEN_ADDRESS
+  );
+}
+
 // ============================================================
 // 指标定义
 // ============================================================
@@ -110,6 +119,9 @@ export interface BalanceCheckConfig {
   tolerance: bigint;
   /** 每批检查的用户数 */
   batchSize: number;
+  autoFix: boolean;
+  includeProxyWallets: boolean;
+  maxUsers: number;
 }
 
 export interface BalanceCheckResult {
@@ -151,14 +163,18 @@ export class BalanceChecker {
   private checkTimer: NodeJS.Timeout | null = null;
 
   constructor(config: Partial<BalanceCheckConfig> = {}) {
+    const usdcFromEnv = getConfiguredUsdcAddress();
     this.config = {
       rpcUrl: config.rpcUrl || getConfiguredRpcUrl(config.chainId),
-      usdcAddress: config.usdcAddress || process.env.USDC_ADDRESS || "",
+      usdcAddress: config.usdcAddress || usdcFromEnv || "",
       marketAddress: config.marketAddress || process.env.MARKET_ADDRESS || "",
       chainId: config.chainId || getConfiguredChainId(),
       intervalMs: config.intervalMs || 3600000, // 1 小时
       tolerance: config.tolerance || BigInt(1e6), // 1 USDC
       batchSize: config.batchSize || 100,
+      autoFix: config.autoFix ?? false,
+      includeProxyWallets: config.includeProxyWallets ?? true,
+      maxUsers: config.maxUsers || 10000,
     };
 
     this.provider = new JsonRpcProvider(this.config.rpcUrl);
@@ -267,6 +283,10 @@ export class BalanceChecker {
         }
       }
 
+      if (this.config.autoFix && report.mismatches.length > 0) {
+        await this.syncOffchainBalances(report.mismatches);
+      }
+
       // 更新系统总余额指标
       systemTotalBalance.set(
         { token: "USDC", type: "onchain" },
@@ -307,17 +327,36 @@ export class BalanceChecker {
     }
 
     try {
-      // 获取有交易记录的用户
-      const { data, error } = await client
-        .from("user_balances")
-        .select("user_address")
-        .gt("balance", 0);
+      const users = new Set<string>();
 
-      if (error) {
-        throw error;
+      if (this.config.includeProxyWallets) {
+        const { data, error } = await client
+          .from("user_profiles")
+          .select("proxy_wallet_address")
+          .not("proxy_wallet_address", "is", null)
+          .neq("proxy_wallet_address", "")
+          .limit(this.config.maxUsers);
+        if (!error) {
+          for (const row of (data || []) as any[]) {
+            const addr = String(row?.proxy_wallet_address || "").toLowerCase();
+            if (ethers.isAddress(addr)) users.add(addr);
+          }
+        }
       }
 
-      return (data || []).map((d) => d.user_address);
+      const { data: balData, error: balErr } = await client
+        .from("user_balances")
+        .select("user_address")
+        .gt("balance", 0)
+        .limit(this.config.maxUsers);
+      if (!balErr) {
+        for (const row of (balData || []) as any[]) {
+          const addr = String(row?.user_address || "").toLowerCase();
+          if (ethers.isAddress(addr)) users.add(addr);
+        }
+      }
+
+      return Array.from(users);
     } catch (error: any) {
       logger.error("Failed to get active users", {}, error);
       return [];
@@ -397,13 +436,43 @@ export class BalanceChecker {
 
       for (const row of data || []) {
         // 假设 balance 是以 USDC 为单位 (6 位小数)
-        balances.set(row.user_address, BigInt(Math.floor(row.balance * 1e6)));
+        const user = String((row as any)?.user_address || "").toLowerCase();
+        const raw = (row as any)?.balance;
+        let numeric = 0;
+        if (typeof raw === "number") {
+          numeric = raw;
+        } else if (typeof raw === "string") {
+          const parsed = parseFloat(raw);
+          if (Number.isFinite(parsed)) numeric = parsed;
+        }
+        balances.set(user, BigInt(Math.floor(numeric * 1e6)));
       }
     } catch (error: any) {
       logger.error("Failed to get offchain balances", {}, error);
     }
 
     return balances;
+  }
+
+  private async syncOffchainBalances(mismatches: BalanceCheckResult[]): Promise<void> {
+    const pool = getDatabasePool();
+    const client = pool.getWriteClient();
+    if (!client) return;
+
+    const rows = mismatches.map((m) => ({
+      user_address: m.userAddress.toLowerCase(),
+      balance: ethers.formatUnits(m.onchainBalance, 6),
+      updated_at: new Date().toISOString(),
+    }));
+
+    for (let i = 0; i < rows.length; i += 200) {
+      const batch = rows.slice(i, i + 200);
+      try {
+        await client.from("user_balances").upsert(batch, { onConflict: "user_address" });
+      } catch (error: any) {
+        logger.warn("Failed to upsert user_balances batch", {}, error);
+      }
+    }
   }
 
   /**

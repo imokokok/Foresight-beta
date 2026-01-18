@@ -48,6 +48,7 @@ import {
 import { initClusterManager, closeClusterManager, getClusterManager } from "./cluster/index.js";
 import { initDatabasePool, closeDatabasePool } from "./database/index.js";
 import { initChainReconciler, closeChainReconciler } from "./reconciliation/index.js";
+import { initBalanceChecker, closeBalanceChecker } from "./reconciliation/balanceChecker.js";
 
 let clusterIsActive = false;
 
@@ -1153,56 +1154,10 @@ async function initContractListener() {
 // 混沌工程实例
 let chaosInstance: any = null;
 
-// 启动服务
-async function startServer() {
-  // 初始化混沌工程
-  try {
-    const { initChaosEngineering } = await import("./chaos/chaosInit.js");
-    chaosInstance = await initChaosEngineering();
-  } catch (error) {
-    logger.error("混沌工程初始化失败", { error: String(error) });
-  }
-
-  // 初始化合约事件监听器
-  await initContractListener();
-
-  // 启动HTTP服务器
-  app.listen(PORT, () => {
-    logger.info(`Relayer server listening on port ${PORT}`);
-    console.log(`🚀 Relayer server listening on http://localhost:${PORT}`);
-  });
-}
-
-// 处理优雅关闭
-async function shutdown() {
-  logger.info("正在关闭服务...");
-
-  // 关闭混沌工程
-  if (chaosInstance) {
-    try {
-      const { closeChaosEngineering } = await import("./chaos/chaosInit.js");
-      await closeChaosEngineering(chaosInstance);
-    } catch (error) {
-      logger.error("混沌工程关闭失败", { error: String(error) });
-    }
-  }
-
-  // 关闭合约事件监听器
-  await closeContractEventListener();
-
-  process.exit(0);
-}
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
 app.get("/", (_req, res) => {
   res.setHeader("Cache-Control", "no-cache");
   res.send("Foresight Relayer is running!");
 });
-
-// 启动服务
-startServer();
 
 app.post("/", async (req, res) => {
   try {
@@ -3535,6 +3490,15 @@ if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, async () => {
     logger.info("Relayer server starting", { port: PORT });
 
+    try {
+      const { initChaosEngineering } = await import("./chaos/chaosInit.js");
+      chaosInstance = await initChaosEngineering();
+    } catch (error) {
+      logger.error("混沌工程初始化失败", { error: String(error) });
+    }
+
+    await initContractListener();
+
     // 🚀 Phase 1: 初始化 Redis
     const redisEnabled = process.env.REDIS_ENABLED !== "false";
     if (redisEnabled) {
@@ -3593,6 +3557,63 @@ if (process.env.NODE_ENV !== "test") {
       reconcilerStarted = false;
     };
 
+    const balanceCheckerEnabled = process.env.BALANCE_CHECKER_ENABLED !== "false";
+    const configuredUsdcAddress = pickFirstNonEmptyString(
+      process.env.COLLATERAL_TOKEN_ADDRESS,
+      process.env.USDC_ADDRESS,
+      process.env.NEXT_PUBLIC_USDC_ADDRESS,
+      process.env.NEXT_PUBLIC_COLLATERAL_TOKEN_ADDRESS
+    );
+    const shouldInitBalanceChecker =
+      balanceCheckerEnabled &&
+      !!RPC_URL &&
+      !!configuredUsdcAddress &&
+      ethers.isAddress(configuredUsdcAddress);
+    let balanceCheckerStarted = false;
+
+    const resolveBalanceTolerance = (): bigint | undefined => {
+      const raw = maybeNonEmptyString(process.env.BALANCE_CHECK_TOLERANCE_USDC);
+      const n = raw ? Number(raw) : NaN;
+      if (!Number.isFinite(n) || n < 0) return undefined;
+      return BigInt(Math.floor(n * 1e6));
+    };
+
+    const startBalanceChecker = async () => {
+      if (!shouldInitBalanceChecker) return;
+      if (balanceCheckerStarted) return;
+      const marketAddress =
+        process.env.MARKET_ADDRESS && ethers.isAddress(process.env.MARKET_ADDRESS)
+          ? process.env.MARKET_ADDRESS.toLowerCase()
+          : ethers.ZeroAddress;
+      const tolerance = resolveBalanceTolerance();
+      try {
+        await initBalanceChecker({
+          rpcUrl: RPC_URL,
+          usdcAddress: configuredUsdcAddress!.toLowerCase(),
+          marketAddress,
+          chainId: CHAIN_ID,
+          intervalMs: clampNumber(readIntEnv("BALANCE_CHECK_INTERVAL_MS", 60000), 5000, 3600000),
+          batchSize: clampNumber(readIntEnv("BALANCE_CHECK_BATCH_SIZE", 200), 1, 1000),
+          maxUsers: clampNumber(readIntEnv("BALANCE_CHECK_MAX_USERS", 10000), 1, 1000000),
+          includeProxyWallets: process.env.BALANCE_CHECK_INCLUDE_PROXY_WALLETS !== "false",
+          autoFix: process.env.BALANCE_CHECK_AUTO_FIX !== "false",
+          ...(tolerance ? { tolerance } : {}),
+        });
+        balanceCheckerStarted = true;
+        logger.info("Balance checker initialized");
+      } catch (e: any) {
+        logger.warn("Balance checker initialization failed", {}, e);
+      }
+    };
+
+    const stopBalanceChecker = async () => {
+      if (!balanceCheckerStarted) return;
+      try {
+        await closeBalanceChecker();
+      } catch {}
+      balanceCheckerStarted = false;
+    };
+
     if (clusterEnabled) {
       try {
         const cluster = await initClusterManager({
@@ -3605,11 +3626,13 @@ if (process.env.NODE_ENV !== "test") {
         cluster.on("became_leader", () => {
           logger.info("This node became the leader, starting matching engine");
           void startReconciler();
+          void startBalanceChecker();
         });
 
         cluster.on("lost_leadership", () => {
           logger.warn("This node lost leadership");
           void stopReconciler();
+          void stopBalanceChecker();
         });
 
         logger.info("Cluster manager initialized", {
@@ -3619,6 +3642,7 @@ if (process.env.NODE_ENV !== "test") {
 
         if (cluster.isLeader()) {
           await startReconciler();
+          await startBalanceChecker();
         }
       } catch (e: any) {
         logger.warn("Cluster manager initialization failed, running in standalone mode", {}, e);
@@ -3626,6 +3650,7 @@ if (process.env.NODE_ENV !== "test") {
     }
     if (!clusterEnabled) {
       await startReconciler();
+      await startBalanceChecker();
     }
 
     // 🚀 Phase 1: 注册健康检查器
@@ -3732,6 +3757,31 @@ async function gracefulShutdown(signal: string) {
       logger.info("Chain reconciler stopped");
     } catch (e: any) {
       logger.error("Failed to stop chain reconciler", {}, e);
+    }
+
+    try {
+      await closeBalanceChecker();
+      logger.info("Balance checker stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop balance checker", {}, e);
+    }
+
+    try {
+      await closeContractEventListener();
+      logger.info("Contract event listener stopped");
+    } catch (e: any) {
+      logger.error("Failed to stop contract event listener", {}, e);
+    }
+
+    if (chaosInstance) {
+      try {
+        const { closeChaosEngineering } = await import("./chaos/chaosInit.js");
+        await closeChaosEngineering(chaosInstance);
+        chaosInstance = null;
+        logger.info("Chaos engineering stopped");
+      } catch (e: any) {
+        logger.error("Failed to stop chaos engineering", {}, e);
+      }
     }
 
     // 🚀 Phase 2: 关闭集群管理器

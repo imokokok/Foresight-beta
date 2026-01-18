@@ -393,6 +393,121 @@ BEGIN
   END IF;
 END $$;
 
+CREATE TABLE IF NOT EXISTS public.user_balances (
+  user_address TEXT PRIMARY KEY,
+  balance NUMERIC NOT NULL DEFAULT 0,
+  reserved NUMERIC NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.user_balances ADD COLUMN IF NOT EXISTS reserved NUMERIC NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS user_balances_positive_balance_idx ON public.user_balances (balance) WHERE balance > 0;
+CREATE INDEX IF NOT EXISTS user_balances_reserved_positive_idx ON public.user_balances (reserved) WHERE reserved > 0;
+ALTER TABLE public.user_balances ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'user_balances' AND policyname = 'Service can manage user_balances'
+  ) THEN
+    CREATE POLICY "Service can manage user_balances" ON public.user_balances
+      FOR ALL USING (auth.role() = 'service_role') WITH CHECK (auth.role() = 'service_role');
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.reserve_user_balance(
+  p_user_address TEXT,
+  p_amount NUMERIC
+)
+RETURNS TABLE(success BOOLEAN, balance NUMERIC, reserved NUMERIC)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_balance NUMERIC;
+  v_reserved NUMERIC;
+BEGIN
+  p_user_address := lower(p_user_address);
+  IF p_user_address IS NULL OR length(trim(p_user_address)) = 0 THEN
+    RETURN QUERY SELECT false, NULL::NUMERIC, NULL::NUMERIC;
+    RETURN;
+  END IF;
+
+  IF p_amount IS NULL OR p_amount <= 0 THEN
+    SELECT ub.balance, ub.reserved INTO v_balance, v_reserved
+    FROM public.user_balances ub
+    WHERE ub.user_address = p_user_address;
+    RETURN QUERY SELECT true, v_balance, v_reserved;
+    RETURN;
+  END IF;
+
+  INSERT INTO public.user_balances (user_address, balance, reserved, updated_at)
+  VALUES (p_user_address, 0, 0, NOW())
+  ON CONFLICT (user_address) DO NOTHING;
+
+  UPDATE public.user_balances
+  SET reserved = reserved + p_amount,
+      updated_at = NOW()
+  WHERE user_address = p_user_address
+    AND (balance - reserved) >= p_amount
+  RETURNING balance, reserved INTO v_balance, v_reserved;
+
+  IF NOT FOUND THEN
+    SELECT ub.balance, ub.reserved INTO v_balance, v_reserved
+    FROM public.user_balances ub
+    WHERE ub.user_address = p_user_address;
+    RETURN QUERY SELECT false, v_balance, v_reserved;
+    RETURN;
+  END IF;
+
+  RETURN QUERY SELECT true, v_balance, v_reserved;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.release_user_balance(
+  p_user_address TEXT,
+  p_amount NUMERIC
+)
+RETURNS TABLE(success BOOLEAN, balance NUMERIC, reserved NUMERIC)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_balance NUMERIC;
+  v_reserved NUMERIC;
+BEGIN
+  p_user_address := lower(p_user_address);
+  IF p_user_address IS NULL OR length(trim(p_user_address)) = 0 THEN
+    RETURN QUERY SELECT false, NULL::NUMERIC, NULL::NUMERIC;
+    RETURN;
+  END IF;
+
+  IF p_amount IS NULL OR p_amount <= 0 THEN
+    SELECT ub.balance, ub.reserved INTO v_balance, v_reserved
+    FROM public.user_balances ub
+    WHERE ub.user_address = p_user_address;
+    RETURN QUERY SELECT true, v_balance, v_reserved;
+    RETURN;
+  END IF;
+
+  INSERT INTO public.user_balances (user_address, balance, reserved, updated_at)
+  VALUES (p_user_address, 0, 0, NOW())
+  ON CONFLICT (user_address) DO NOTHING;
+
+  UPDATE public.user_balances
+  SET reserved = GREATEST(reserved - p_amount, 0),
+      updated_at = NOW()
+  WHERE user_address = p_user_address
+  RETURNING balance, reserved INTO v_balance, v_reserved;
+
+  RETURN QUERY SELECT true, v_balance, v_reserved;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.reserve_user_balance(TEXT, NUMERIC) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.reserve_user_balance(TEXT, NUMERIC) TO service_role;
+REVOKE ALL ON FUNCTION public.release_user_balance(TEXT, NUMERIC) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.release_user_balance(TEXT, NUMERIC) TO service_role;
+
 -- ============================================================
 -- 认证会话/设备绑定 (Auth Sessions & Devices)
 -- ============================================================

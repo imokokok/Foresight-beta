@@ -6,10 +6,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { MatchingEngine, OrderInput } from "./matchingEngine.js";
 import { OrderBook, OrderBookManager } from "./orderBook.js";
 import type { Order, MatchResult } from "./types.js";
+import { ethers } from "ethers";
 
 // Mock supabase
+let supabaseAdminMock: any = null;
 vi.mock("../supabase.js", () => ({
-  supabaseAdmin: null,
+  get supabaseAdmin() {
+    return supabaseAdminMock;
+  },
 }));
 
 let redisReady = false;
@@ -46,12 +50,17 @@ vi.mock("../redis/orderbookSnapshot.js", () => ({
 
 describe("MatchingEngine", () => {
   let engine: MatchingEngine;
+  let prevExpirySweepMs: string | undefined;
 
   beforeEach(() => {
+    prevExpirySweepMs = process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS;
+    process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS = "0";
     redisReady = false;
+    supabaseAdminMock = null;
     loadSnapshotMock.mockReset();
     queueSnapshotMock.mockReset();
     queuePublicSnapshotMock.mockReset();
+    deleteOrderbookStateMock.mockReset();
     lRangeMock.mockReset();
     engine = new MatchingEngine({
       makerFeeBps: 0,
@@ -63,6 +72,527 @@ describe("MatchingEngine", () => {
 
   afterEach(async () => {
     await engine.shutdown();
+    if (prevExpirySweepMs === undefined) {
+      delete process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS;
+    } else {
+      process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS = prevExpirySweepMs;
+    }
+  });
+
+  describe("USDC reservation", () => {
+    it("should reserve for a resting buy order and keep it", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+      supabaseAdminMock = { rpc: rpcMock };
+
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+      (engine as any).checkBalanceAndRisk = vi.fn().mockResolvedValue({ valid: true });
+      (engine as any).saveOrderToDb = vi.fn().mockResolvedValue(undefined);
+
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "90001",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTC",
+      };
+
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(true);
+      expect(result.remainingOrder).not.toBeNull();
+
+      expect(rpcMock).toHaveBeenCalledWith("reserve_user_balance", {
+        p_user_address: order.maker.toLowerCase(),
+        p_amount: "0.5",
+      });
+
+      expect(rpcMock).not.toHaveBeenCalledWith("release_user_balance", expect.anything());
+    });
+
+    it("should reserve and then release when post-only is rejected", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+      supabaseAdminMock = { rpc: rpcMock };
+
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+      (engine as any).checkBalanceAndRisk = vi.fn().mockResolvedValue({ valid: true });
+      (engine as any).saveOrderToDb = vi.fn().mockResolvedValue(undefined);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+      book.addOrder(
+        createTestOrder({
+          id: "ask-1",
+          isBuy: false,
+          price: 400000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
+
+      const order: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "90002",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTC",
+        postOnly: true,
+      };
+
+      const result = await engine.submitOrder(order);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe("INVALID_POST_ONLY");
+
+      expect(rpcMock).toHaveBeenCalledWith("reserve_user_balance", {
+        p_user_address: order.maker.toLowerCase(),
+        p_amount: "0.5",
+      });
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: order.maker.toLowerCase(),
+        p_amount: "0.5",
+      });
+    });
+
+    it("should release reservation for a filled resting buy order", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+      supabaseAdminMock = { rpc: rpcMock };
+
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+      (engine as any).checkBalanceAndRisk = vi.fn().mockResolvedValue({ valid: true });
+      (engine as any).updateOrderInDb = vi.fn().mockResolvedValue(undefined);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+      book.addOrder(
+        createTestOrder({
+          id: "bid-1",
+          maker: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          isBuy: true,
+          price: 500000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+        })
+      );
+
+      const sellOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        outcomeIndex: 0,
+        isBuy: false,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "90003",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "IOC",
+      };
+
+      const result = await engine.submitOrder(sellOrder);
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBe(1);
+
+      expect(rpcMock).not.toHaveBeenCalledWith("release_user_balance", expect.anything());
+
+      engine.emit("settlement_event", {
+        type: "fill_settled",
+        fillId: result.matches[0]!.id,
+        txHash: "0x1234",
+        fill: {
+          id: result.matches[0]!.id,
+          order: {
+            maker: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            outcomeIndex: 0,
+            isBuy: true,
+            price: 500000n,
+            amount: 1_000_000_000_000_000_000n,
+            salt: 1n,
+            expiry: 0n,
+          },
+          signature: "0x",
+          fillAmount: 1_000_000_000_000_000_000n,
+          taker: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          matchedPrice: 500000n,
+          makerFee: 0n,
+          takerFee: 0n,
+          timestamp: Date.now(),
+        },
+      });
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        p_amount: "0.5",
+      });
+    });
+
+    it("should release reservation when a resting order expires via sweep", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-10T00:00:00.000Z"));
+      const prev = process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS;
+      process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS = "0";
+
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+
+      const query: any = {};
+      query.update = vi.fn(() => query);
+      query.eq = vi.fn(() => query);
+
+      supabaseAdminMock = { rpc: rpcMock, from: () => query };
+
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+      (engine as any).checkBalanceAndRisk = vi.fn().mockResolvedValue({ valid: true });
+      (engine as any).saveOrderToDb = vi.fn().mockResolvedValue(undefined);
+
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const order: OrderInput = {
+        marketKey: "80002:expire-sweep",
+        maker: "0x1234567890123456789012345678901234567890",
+        outcomeIndex: 0,
+        isBuy: true,
+        price: 500000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "91001",
+        expiry: nowSeconds + 1,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTD",
+      };
+
+      const placed = await engine.submitOrder(order);
+      expect(placed.success).toBe(true);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getBook(order.marketKey, order.outcomeIndex)!;
+      expect(book.getOrderCount()).toBe(1);
+
+      vi.setSystemTime(new Date("2026-01-10T00:00:02.000Z"));
+      await (engine as any).runExpirySweepOnce();
+
+      expect(book.getOrderCount()).toBe(0);
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: order.maker.toLowerCase(),
+        p_amount: "0.5",
+      });
+      expect(query.update).toHaveBeenCalledWith({ status: "expired" });
+
+      vi.useRealTimers();
+      if (prev === undefined) {
+        delete process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS;
+      } else {
+        process.env.RELAYER_ORDER_EXPIRY_SWEEP_MS = prev;
+      }
+    });
+
+    it("should release reservation and include releasedUsdcMicro on cancelOrder", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+
+      const query: any = {};
+      query.update = vi.fn(() => query);
+      query.eq = vi.fn(() => query);
+      query.in = vi.fn(() => query);
+      supabaseAdminMock = { rpc: rpcMock, from: () => query };
+
+      const wallet = ethers.Wallet.createRandom();
+      const maker = wallet.address.toLowerCase();
+      const salt = "90001";
+      const marketKey = "80002:cancel";
+      const outcomeIndex = 0;
+      const chainId = 80002;
+      const verifyingContract = "0x1234567890123456789012345678901234567890";
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook(marketKey, outcomeIndex);
+      book.addOrder(
+        createTestOrder({
+          id: `${maker}-${salt}`,
+          maker,
+          isBuy: true,
+          price: 500000n,
+          remainingAmount: 1_000_000_000_000_000_000n,
+          chainId,
+          verifyingContract,
+          salt,
+          marketKey,
+          outcomeIndex,
+        })
+      );
+
+      const events: any[] = [];
+      engine.on("market_event", (e) => events.push(e));
+
+      const domain = {
+        name: "Foresight Market",
+        version: "1",
+        chainId,
+        verifyingContract: verifyingContract.toLowerCase(),
+      };
+      const types = {
+        CancelSaltRequest: [
+          { name: "maker", type: "address" },
+          { name: "salt", type: "uint256" },
+        ],
+      };
+      const signature = await wallet.signTypedData(domain, types as any, {
+        maker,
+        salt: BigInt(salt),
+      });
+
+      const res = await engine.cancelOrder(
+        marketKey,
+        outcomeIndex,
+        chainId,
+        verifyingContract,
+        maker,
+        salt,
+        signature
+      );
+      expect(res.success).toBe(true);
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: maker.toLowerCase(),
+        p_amount: "0.5",
+      });
+
+      const canceled = events.find((e) => e?.type === "order_canceled");
+      expect(canceled?.releasedUsdcMicro).toBe("500000");
+    });
+
+    it("should include releasedUsdcMicro on closeMarket order_canceled events", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+
+      const maker = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+      const salt = "90001";
+      const marketKey = "80002:close-market";
+      const outcomeIndex = 0;
+
+      const ordersQuery: any = {};
+      ordersQuery.select = vi.fn(() => ordersQuery);
+      ordersQuery.eq = vi.fn(() => ordersQuery);
+      ordersQuery.in = vi.fn(() => ordersQuery);
+      ordersQuery.limit = vi.fn(() =>
+        Promise.resolve({
+          data: [
+            {
+              maker_address: maker,
+              maker_salt: salt,
+              outcome_index: outcomeIndex,
+              status: "open",
+              is_buy: true,
+              price: "500000",
+              remaining: "1000000000000000000",
+            },
+          ],
+          error: null,
+        })
+      );
+
+      const updateQuery: any = {};
+      updateQuery.update = vi.fn(() => updateQuery);
+      updateQuery.eq = vi.fn(() => updateQuery);
+      updateQuery.in = vi.fn(() => Promise.resolve({ data: null, error: null }));
+
+      const fromMock = vi.fn((table: string) => {
+        if (table === "orders") {
+          const firstCall = (fromMock as any).mock.calls.length === 1;
+          return firstCall ? ordersQuery : updateQuery;
+        }
+        return updateQuery;
+      });
+
+      supabaseAdminMock = { rpc: rpcMock, from: fromMock };
+
+      const events: any[] = [];
+      engine.on("market_event", (e) => events.push(e));
+
+      await engine.closeMarket(marketKey);
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: maker,
+        p_amount: "0.5",
+      });
+
+      const id = `${maker}-${salt}`;
+      const canceled = events.find((e) => e?.type === "order_canceled" && e?.orderId === id);
+      expect(canceled?.releasedUsdcMicro).toBe("500000");
+    });
+  });
+
+  describe("Order expiry", () => {
+    it("should release reservation for expired non-top resting buy order on submitOrder", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+      supabaseAdminMock = { rpc: rpcMock };
+
+      (engine as any).verifySignature = vi.fn().mockResolvedValue(true);
+      (engine as any).checkOrderExists = vi.fn().mockResolvedValue(false);
+      (engine as any).checkBalanceAndRisk = vi.fn().mockResolvedValue({ valid: true });
+      (engine as any).saveOrderToDb = vi.fn().mockResolvedValue(undefined);
+      (engine as any).updateOrderStatus = vi.fn().mockResolvedValue(undefined);
+
+      const manager = (engine as any).bookManager as OrderBookManager;
+      const book = manager.getOrCreateBook("80002:1", 0);
+      const expiredBid = createTestOrder({
+        id: "bid-expired",
+        maker: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        isBuy: true,
+        price: 500000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        expiry: Math.floor(Date.now() / 1000) - 10,
+      });
+      const goodBid = createTestOrder({
+        id: "bid-good",
+        maker: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        isBuy: true,
+        price: 600000n,
+        remainingAmount: 1_000_000_000_000_000_000n,
+        expiry: 0,
+      });
+      book.addOrder(expiredBid);
+      book.addOrder(goodBid);
+
+      const sellOrder: OrderInput = {
+        marketKey: "80002:1",
+        maker: "0xcccccccccccccccccccccccccccccccccccccccc",
+        outcomeIndex: 0,
+        isBuy: false,
+        price: 700000n,
+        amount: 1_000_000_000_000_000_000n,
+        salt: "91001",
+        expiry: 0,
+        signature: "0x1234",
+        chainId: 80002,
+        verifyingContract: "0x1234567890123456789012345678901234567890",
+        tif: "GTC",
+      };
+
+      const result = await engine.submitOrder(sellOrder);
+      expect(result.success).toBe(true);
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        p_amount: "0.5",
+      });
+
+      expect(book.hasOrder("bid-expired")).toBe(false);
+    });
+
+    it("should release reservation and mark expired during recoverFromDb", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+
+      const updateCalls: any[] = [];
+      const eqCalls: any[] = [];
+      const ordersRows: any[] = [
+        {
+          maker_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          maker_salt: "1",
+          chain_id: 80002,
+          verifying_contract: "0x2222222222222222222222222222222222222222",
+          market_key: "80002:recover",
+          outcome_index: 0,
+          is_buy: true,
+          price: "500000",
+          amount: "1000000000000000000",
+          remaining: "1000000000000000000",
+          expiry: new Date(Date.now() - 60_000).toISOString(),
+          signature: "0x",
+          status: "open",
+          sequence: "1",
+          created_at: new Date().toISOString(),
+        },
+      ];
+
+      const fromMock = vi.fn().mockImplementation((_table: string) => {
+        let mode: "select" | "update" | null = null;
+        const builder: any = {
+          select: vi.fn().mockImplementation(() => {
+            mode = "select";
+            return builder;
+          }),
+          in: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockImplementation((...args: any[]) => {
+            eqCalls.push(args);
+            return builder;
+          }),
+          update: vi.fn().mockImplementation((payload: any) => {
+            mode = "update";
+            updateCalls.push(payload);
+            return builder;
+          }),
+          then: (resolve: any, reject: any) => {
+            const out =
+              mode === "select"
+                ? { data: ordersRows, error: null }
+                : mode === "update"
+                  ? { data: null, error: null }
+                  : { data: null, error: null };
+            return Promise.resolve(out).then(resolve, reject);
+          },
+        };
+        return builder;
+      });
+
+      supabaseAdminMock = { rpc: rpcMock, from: fromMock };
+
+      await engine.recoverFromDb();
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        p_amount: "0.5",
+      });
+      expect(updateCalls.some((c) => c && c.status === "expired")).toBe(true);
+
+      const snapshot = engine.getOrderBookSnapshot("80002:recover", 0, 10);
+      expect(snapshot).toBeNull();
+      expect(eqCalls.length).toBeGreaterThan(0);
+    });
   });
 
   describe("Redis snapshot warmup", () => {
