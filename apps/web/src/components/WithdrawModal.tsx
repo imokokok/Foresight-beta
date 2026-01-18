@@ -189,7 +189,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
           <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1">
             <p>• 资金将从您的 Proxy Wallet 提现到当前连接的钱包。</p>
             <p>• 提现需要您签署 Safe 交易。</p>
-            <p>• 网络费用将由 Relayer 代付 (Gasless)。</p>
+            <p>• 提现交易需消耗少量 Matic/ETH 作为网络 Gas 费。</p>
           </div>
 
           <button

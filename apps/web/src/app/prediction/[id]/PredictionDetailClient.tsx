@@ -9,9 +9,12 @@ import { MarketInfo } from "@/components/market/MarketInfo";
 import { OutcomeList } from "@/components/market/OutcomeList";
 import { SettlementPanel } from "./components/SettlementPanel";
 import { Modal } from "@/components/ui/Modal";
+import DepositModal from "@/components/DepositModal";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useUserPortfolio } from "@/hooks/useQueries";
 import { useTranslations } from "@/lib/i18n";
+import { toast } from "@/lib/toast";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -156,6 +159,8 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   } = usePredictionDetail();
 
   const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(account || undefined);
+
+  const [depositOpen, setDepositOpen] = useState(false);
 
   if (loading) {
     return (
@@ -456,12 +461,22 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   handleRedeem,
                   setMintInput,
                   setUseProxy,
+                  onDeposit: () => setDepositOpen(true),
                 }}
               />
             </div>
           </div>
         </div>
       </div>
+
+      <DepositModal
+        open={depositOpen}
+        onClose={() => setDepositOpen(false)}
+        onRequireLogin={() => {
+          setDepositOpen(false);
+          toast.error("Please connect your wallet to deposit.");
+        }}
+      />
 
       <Modal
         open={marketConfirmOpen}

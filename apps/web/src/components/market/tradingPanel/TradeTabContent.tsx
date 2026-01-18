@@ -60,6 +60,7 @@ export type TradeTabContentProps = {
   proxyBalance?: string;
   proxyAddress?: string;
   setUseProxy?: (v: boolean) => void;
+  onDeposit?: () => void;
 };
 
 export function TradeTabContent({
@@ -111,6 +112,7 @@ export function TradeTabContent({
   proxyBalance,
   proxyAddress,
   setUseProxy,
+  onDeposit,
 }: TradeTabContentProps) {
   const isMarketOrder = orderMode === "best";
   let priceNum = 0;
@@ -851,6 +853,7 @@ type AmountInputSectionProps = {
   priceInput: string;
   useProxy?: boolean;
   proxyBalance?: string;
+  onDeposit?: () => void;
   setUseProxy?: (v: boolean) => void;
 };
 
@@ -866,6 +869,7 @@ function AmountInputSection({
   useProxy,
   proxyBalance,
   setUseProxy,
+  onDeposit,
 }: AmountInputSectionProps) {
   const normalizeTo6Decimals = (raw: string) => {
     const trimmed = raw.trim();
@@ -934,6 +938,15 @@ function AmountInputSection({
                 ? `USDC ${proxyBalance} (Proxy)`
                 : balance}
           </span>
+          {onDeposit && useProxy && (
+            <button
+              onClick={onDeposit}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
+              title="Deposit"
+            >
+              <span className="text-[10px] font-bold leading-none">Deposit</span>
+            </button>
+          )}
         </div>
       </div>
       <input

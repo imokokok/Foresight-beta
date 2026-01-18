@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Coins, Copy, ExternalLink, Loader2, RefreshCw, X } from "lucide-react";
+import {
+  ArrowRight,
+  Coins,
+  Copy,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  X,
+  ShieldCheck,
+} from "lucide-react";
 import { ethers } from "ethers";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/toast";
@@ -252,7 +261,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     return buildTemplateUrl(onrampTemplate, {
       address: depositAddress,
       chainId,
-      network: chainLabel(chainId),
+      network: encodeURIComponent(chainLabel(chainId)),
       asset: tokenSymbol,
     });
   }, [onrampTemplate, depositAddress, chainId, tokenSymbol]);
@@ -312,11 +321,25 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
           </button>
         </div>
 
+        <div className="px-5 pt-4 pb-0">
+          <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">
+              <ShieldCheck className="w-4 h-4 text-purple-600" />
+            </div>
+            <div className="text-xs text-purple-900">
+              <span className="font-bold">Foresight 智能账户</span>
+              <br />
+              这是一个为您自动生成的智能合约账户。充值 {tokenSymbol} 后即可开始交易。
+              资金由您完全掌控，更安全、更便捷。
+            </div>
+          </div>
+        </div>
+
         <div className="p-5 space-y-4">
           <div className="rounded-2xl border border-purple-100 bg-white/70 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-gray-700">Foresight Balance 地址</div>
+                <div className="text-xs font-semibold text-gray-700">Foresight 账户地址</div>
                 <div className="mt-1 font-mono text-sm text-gray-900 break-all">
                   {proxyLoading ? (
                     <span className="inline-flex items-center gap-2 text-gray-500">
@@ -431,111 +454,108 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold text-gray-900">买币入金（On-ramp）</div>
-                <div className="text-[11px] text-gray-500 mt-0.5">
-                  可配置第三方卡/转账购买 {tokenSymbol} 并直接发到你的入金地址
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => openUrl(onrampUrl)}
-                disabled={!onrampUrl}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white disabled:opacity-50"
-              >
-                前往购买 <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-            {!onrampUrl && (
-              <div className="mt-3 text-xs text-gray-500">
-                未配置 On-ramp。设置 NEXT_PUBLIC_ONRAMP_URL_TEMPLATE（支持占位符：{"{address}"}、
-                {"{chainId}"}、{"{network}"}、{"{asset}"}）。
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-bold text-gray-900">入金记录</div>
-              <button
-                type="button"
-                onClick={() => void fetchHistory()}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
-              >
-                <RefreshCw className={`w-4 h-4 ${historyLoading ? "animate-spin" : ""}`} />
-                刷新
-              </button>
-            </div>
-
-            {historyError && (
-              <div className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800">
-                {historyError}
-              </div>
-            )}
-
-            {!historyError && history.length === 0 && (
-              <div className="mt-3 text-xs text-gray-500">
-                {historyLoading ? "正在加载…" : "暂无入金记录（当前扫描最近区块窗口）。"}
-              </div>
-            )}
-
-            {!historyError && history.length > 0 && (
-              <div className="mt-3 divide-y divide-gray-100">
-                {history.slice(0, 20).map((it) => (
-                  <div
-                    key={`${it.txHash}:${it.blockNumber}`}
-                    className="py-2 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-gray-900 tabular-nums">
-                        +{it.valueFormatted} {tokenSymbol}
-                      </div>
-                      <div className="text-[11px] text-gray-500 truncate">
-                        来自 {shortAddress(it.from)} · 区块 {it.blockNumber}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => it.explorerUrl && openUrl(it.explorerUrl)}
-                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 text-xs"
-                    >
-                      详情 <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
+          {!!onrampUrl && (
+            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-gray-900">买币入金（On-ramp）</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    可配置第三方卡/转账购买 {tokenSymbol} 并直接发到你的入金地址
                   </div>
-                ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openUrl(onrampUrl)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md hover:shadow-lg transition-all active:scale-95"
+                >
+                  前往购买 <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-            <div className="text-sm font-bold text-gray-900">跨链引导（可选）</div>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => openUrl("https://wallet.polygon.technology/polygon/bridge")}
-                className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
-              >
-                Polygon Bridge
-              </button>
-              <button
-                type="button"
-                onClick={() => openUrl("https://across.to/")}
-                className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
-              >
-                Across
-              </button>
-              <button
-                type="button"
-                onClick={() => openUrl("https://jumper.exchange/")}
-                className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
-              >
-                Jumper
-              </button>
             </div>
-            <div className="mt-2 text-[11px] text-gray-500">
-              跨链风险提示：桥接存在滑点、费用与延迟，务必确认目标链与目标资产为 {tokenSymbol}。
+          )}
+
+          <div className="pt-2 border-t border-gray-100">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-bold text-gray-900">入金记录</div>
+                <button
+                  type="button"
+                  onClick={() => void fetchHistory()}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                >
+                  <RefreshCw className={`w-4 h-4 ${historyLoading ? "animate-spin" : ""}`} />
+                  刷新
+                </button>
+              </div>
+
+              {historyError && (
+                <div className="mt-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800">
+                  {historyError}
+                </div>
+              )}
+
+              {!historyError && history.length === 0 && (
+                <div className="mt-3 text-xs text-gray-500">
+                  {historyLoading ? "正在加载…" : "暂无入金记录（当前扫描最近区块窗口）。"}
+                </div>
+              )}
+
+              {!historyError && history.length > 0 && (
+                <div className="mt-3 divide-y divide-gray-100">
+                  {history.slice(0, 20).map((it) => (
+                    <div
+                      key={`${it.txHash}:${it.blockNumber}`}
+                      className="py-2 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-gray-900 tabular-nums">
+                          +{it.valueFormatted} {tokenSymbol}
+                        </div>
+                        <div className="text-[11px] text-gray-500 truncate">
+                          来自 {shortAddress(it.from)} · 区块 {it.blockNumber}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => it.explorerUrl && openUrl(it.explorerUrl)}
+                        className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700 text-xs"
+                      >
+                        详情 <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+              <div className="text-sm font-bold text-gray-900">跨链引导（可选）</div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openUrl("https://wallet.polygon.technology/polygon/bridge")}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                >
+                  Polygon Bridge
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openUrl("https://across.to/")}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                >
+                  Across
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openUrl("https://jumper.exchange/")}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                >
+                  Jumper
+                </button>
+              </div>
+              <div className="mt-2 text-[11px] text-gray-500">
+                跨链风险提示：桥接存在滑点、费用与延迟，务必确认目标链与目标资产为 {tokenSymbol}。
+              </div>
             </div>
           </div>
         </div>

@@ -68,6 +68,7 @@ interface TradingPanelHandlers {
   handleRedeem: (amount: string) => void;
   setMintInput: (v: string) => void;
   setUseProxy?: (v: boolean) => void;
+  onDeposit?: () => void;
 }
 
 interface TradingPanelProps {
@@ -127,6 +128,7 @@ export function TradingPanel(props: TradingPanelProps) {
     handleRedeem,
     setMintInput,
     setUseProxy,
+    onDeposit,
   } = handlers;
 
   const [activeTab, setActiveTab] = useState<"trade" | "depth" | "orders" | "history">("trade");
@@ -344,7 +346,9 @@ export function TradingPanel(props: TradingPanelProps) {
               : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/50"
           }`}
         >
-          {tTrading("tabTrade")}
+          {handlers.onDeposit
+            ? `${tTrading("tabTrade")} & ${tWallet("deposit")}`
+            : tTrading("tabTrade")}
         </button>
         <button
           onClick={() => setActiveTab("depth")}
@@ -429,6 +433,7 @@ export function TradingPanel(props: TradingPanelProps) {
             proxyBalance={proxyBalance}
             proxyAddress={proxyAddress}
             setUseProxy={setUseProxy}
+            onDeposit={handlers.onDeposit}
           />
         )}
 
