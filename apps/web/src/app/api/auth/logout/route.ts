@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
           .catch(() => {});
       }
     } catch {}
-    clearSession(res);
+    clearSession(res, req);
     return res;
   } catch (e: any) {
     const detail = String(e?.message || e);

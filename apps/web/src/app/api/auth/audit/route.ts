@@ -1,8 +1,20 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ApiResponses, errorResponse, successResponse } from "@/lib/apiResponse";
 import { ApiErrorCode } from "@/types/api";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSession } from "@/lib/session";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function withNoStore<T>(res: NextResponse<T>) {
+  try {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+  } catch {}
+  return res;
+}
 
 const SQL_CREATE_AUTH_TABLES = `
 CREATE TABLE IF NOT EXISTS public.user_sessions (
@@ -72,11 +84,14 @@ export async function GET(req: NextRequest) {
       typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
     const currentSessionId =
       typeof (session as any)?.sid === "string" ? String((session as any).sid) : "";
-    if (!/^0x[a-f0-9]{40}$/.test(address)) return ApiResponses.unauthorized("Not authenticated");
+    if (!/^0x[a-f0-9]{40}$/.test(address))
+      return withNoStore(ApiResponses.unauthorized("Not authenticated"));
     if (!currentSessionId) {
-      return errorResponse("请重新登录以启用登录记录", ApiErrorCode.INVALID_PARAMETERS, 400);
+      return withNoStore(
+        errorResponse("请重新登录以启用登录记录", ApiErrorCode.INVALID_PARAMETERS, 400)
+      );
     }
-    if (!supabaseAdmin) return ApiResponses.internalError("Missing service key");
+    if (!supabaseAdmin) return withNoStore(ApiResponses.internalError("Missing service key"));
 
     const { data, error } = await (supabaseAdmin as any)
       .from("login_audit_events")
@@ -87,17 +102,19 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       if (isMissingRelation(error)) {
-        return errorResponse(
-          "缺少 user_sessions/login_audit_events 表",
-          ApiErrorCode.DATABASE_ERROR,
-          500,
-          {
-            setupRequired: true,
-            sql: SQL_CREATE_AUTH_TABLES,
-          }
+        return withNoStore(
+          errorResponse(
+            "缺少 user_sessions/login_audit_events 表",
+            ApiErrorCode.DATABASE_ERROR,
+            500,
+            {
+              setupRequired: true,
+              sql: SQL_CREATE_AUTH_TABLES,
+            }
+          )
         );
       }
-      return ApiResponses.databaseError("Failed to load audit", error.message);
+      return withNoStore(ApiResponses.databaseError("Failed to load audit", error.message));
     }
 
     const events = Array.isArray(data)
@@ -113,8 +130,8 @@ export async function GET(req: NextRequest) {
         }))
       : [];
 
-    return successResponse({ events });
+    return withNoStore(successResponse({ events }));
   } catch (e: any) {
-    return ApiResponses.internalError("Failed to load audit", String(e?.message || e));
+    return withNoStore(ApiResponses.internalError("Failed to load audit", String(e?.message || e)));
   }
 }

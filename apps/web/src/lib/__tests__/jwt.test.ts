@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { webcrypto } from "crypto";
+import { NextResponse } from "next/server";
 import { createToken, verifyToken, createRefreshToken, decodeToken } from "../jwt";
-import { getSession } from "../session";
+import { clearSession, createSession, getSession, setStepUpCookie } from "../session";
 import { getSessionAddress } from "../serverUtils";
 import { createMockNextRequest } from "../../test/apiTestHelpers";
 
@@ -155,6 +156,70 @@ describe("JWT Token Management", () => {
 
       const addr = await getSessionAddress(req);
       expect(addr).toBe(sessionAddr);
+    });
+  });
+
+  describe("Cookie domain resolution", () => {
+    it("should set cookie domain for production subdomains", async () => {
+      const prevEnv = {
+        NODE_ENV: process.env.NODE_ENV,
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+      };
+      (process.env as any).NODE_ENV = "production";
+      process.env.NEXT_PUBLIC_APP_URL = "https://foresight4.xyz";
+      try {
+        const req = createMockNextRequest({
+          url: "https://app.foresight4.xyz/api/siwe/verify",
+        });
+        const res = NextResponse.json({ ok: true });
+        await createSession(res, testAddress, testChainId, { req, authMethod: "test" });
+        await setStepUpCookie(res, testAddress, testChainId, { req, purpose: "login" });
+
+        const sessionCookie = res.cookies.get("fs_session");
+        const refreshCookie = res.cookies.get("fs_refresh");
+        const stepupCookie = res.cookies.get("fs_stepup");
+
+        expect(sessionCookie?.domain).toBe(".foresight4.xyz");
+        expect(refreshCookie?.domain).toBe(".foresight4.xyz");
+        expect(stepupCookie?.domain).toBe(".foresight4.xyz");
+
+        clearSession(res, req);
+        const clearedSessionCookie = res.cookies.get("fs_session");
+        const clearedRefreshCookie = res.cookies.get("fs_refresh");
+        const clearedStepupCookie = res.cookies.get("fs_stepup");
+
+        expect(clearedSessionCookie?.domain).toBe(".foresight4.xyz");
+        expect(clearedRefreshCookie?.domain).toBe(".foresight4.xyz");
+        expect(clearedStepupCookie?.domain).toBe(".foresight4.xyz");
+        expect(clearedSessionCookie?.value).toBe("");
+        expect(clearedRefreshCookie?.value).toBe("");
+        expect(clearedStepupCookie?.value).toBe("");
+      } finally {
+        (process.env as any).NODE_ENV = prevEnv.NODE_ENV;
+        process.env.NEXT_PUBLIC_APP_URL = prevEnv.NEXT_PUBLIC_APP_URL;
+      }
+    });
+
+    it("should not set cookie domain when request host mismatches app root", async () => {
+      const prevEnv = {
+        NODE_ENV: process.env.NODE_ENV,
+        NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+      };
+      (process.env as any).NODE_ENV = "production";
+      process.env.NEXT_PUBLIC_APP_URL = "https://foresight4.xyz";
+      try {
+        const req = createMockNextRequest({
+          url: "https://evil.example.com/api/siwe/verify",
+        });
+        const res = NextResponse.json({ ok: true });
+        await createSession(res, testAddress, testChainId, { req, authMethod: "test" });
+
+        const sessionCookie = res.cookies.get("fs_session");
+        expect(sessionCookie?.domain).toBeUndefined();
+      } finally {
+        (process.env as any).NODE_ENV = prevEnv.NODE_ENV;
+        process.env.NEXT_PUBLIC_APP_URL = prevEnv.NEXT_PUBLIC_APP_URL;
+      }
     });
   });
 });

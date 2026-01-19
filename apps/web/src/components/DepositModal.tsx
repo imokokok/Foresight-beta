@@ -125,7 +125,11 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     setProxyLoading(true);
     setProxyError(null);
     try {
-      const res = await fetch("/api/wallets/proxy", { method: "POST" });
+      const res = await fetch("/api/wallets/proxy", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
       if (res.status === 401) {
         setProxyInfo(null);
         setProxyError("请先登录后再获取入金地址");
@@ -194,7 +198,11 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      const res = await fetch("/api/deposits/history", { method: "GET" });
+      const res = await fetch("/api/deposits/history", {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      });
       if (res.status === 401) {
         setHistory([]);
         setHistoryError("请先登录后查看入金记录");

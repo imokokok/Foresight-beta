@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function withNoStore<T>(res: NextResponse<T>) {
+  try {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+  } catch {}
+  return res;
+}
+
 function buildChallengeMessage(params: { domain: string; nonce: string }) {
   const domain = String(params.domain || "").trim() || "localhost";
   const nonce = String(params.nonce || "").trim();
@@ -26,5 +38,5 @@ export async function GET(req: NextRequest) {
     path: "/",
     maxAge: 60 * 10,
   });
-  return res;
+  return withNoStore(res);
 }

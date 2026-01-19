@@ -348,7 +348,7 @@ export async function POST(req: NextRequest) {
           path: "/",
           maxAge: 15 * 60,
         });
-        await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_old" });
+        await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_old", req });
         await markDeviceVerified(req, walletAddress);
         return res;
       }
@@ -422,7 +422,7 @@ export async function POST(req: NextRequest) {
         path: "/",
         maxAge: 0,
       });
-      await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_new" });
+      await setStepUpCookie(res, walletAddress, undefined, { purpose: "email_change_new", req });
       await markDeviceVerified(req, walletAddress);
       return res;
     }
@@ -469,7 +469,7 @@ export async function POST(req: NextRequest) {
           "验证成功"
         );
         await createSession(res, sessionAddress, undefined, { req, authMethod: "email_otp" });
-        await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+        await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login", req });
         await markDeviceVerified(req, sessionAddress);
         return res;
       }
@@ -512,6 +512,7 @@ export async function POST(req: NextRequest) {
     }
     await setStepUpCookie(res, sessionAddress, undefined, {
       purpose: isLoginMode ? "login" : "bind",
+      req,
     });
     await markDeviceVerified(req, sessionAddress);
     try {

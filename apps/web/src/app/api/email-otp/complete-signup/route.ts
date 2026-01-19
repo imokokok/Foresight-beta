@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
 
     const res = successResponse({ ok: true, address: walletAddress, email }, "注册成功");
     await createSession(res, walletAddress, undefined, { req, authMethod: "email_otp" });
-    await setStepUpCookie(res, walletAddress, undefined, { purpose: "login" });
+    await setStepUpCookie(res, walletAddress, undefined, { purpose: "login", req });
     await markDeviceVerified(req, walletAddress);
 
     try {

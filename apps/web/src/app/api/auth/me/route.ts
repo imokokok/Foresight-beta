@@ -3,12 +3,24 @@ import { getSession } from "@/lib/session";
 import { ApiResponses } from "@/lib/apiResponse";
 import { supabaseAdmin } from "@/lib/supabase.server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function withNoStore<T>(res: NextResponse<T>) {
+  try {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+  } catch {}
+  return res;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession(req);
 
     if (!session) {
-      return ApiResponses.unauthorized("Not authenticated");
+      return withNoStore(ApiResponses.unauthorized("Not authenticated"));
     }
 
     try {
@@ -26,13 +38,17 @@ export async function GET(req: NextRequest) {
       }
     } catch {}
 
-    return NextResponse.json({
-      authenticated: true,
-      address: session.address,
-      chainId: session.chainId,
-    });
+    return withNoStore(
+      NextResponse.json({
+        authenticated: true,
+        address: session.address,
+        chainId: session.chainId,
+      })
+    );
   } catch (error: any) {
     console.error("Auth check error:", error);
-    return ApiResponses.internalError("Auth check error", error?.message || "Unknown error");
+    return withNoStore(
+      ApiResponses.internalError("Auth check error", error?.message || "Unknown error")
+    );
   }
 }

@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
                   req,
                   authMethod: "email_magic_link",
                 });
-                await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+                await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login", req });
                 await markDeviceVerified(req, sessionAddress);
                 try {
                   await logApiEvent("email_login_token_verified", {
@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
       "验证成功"
     );
     await createSession(res, sessionAddress, undefined, { req, authMethod: "email_magic_link" });
-    await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login" });
+    await setStepUpCookie(res, sessionAddress, undefined, { purpose: "login", req });
     await markDeviceVerified(req, sessionAddress);
     try {
       await logApiEvent("email_login_token_verified", {

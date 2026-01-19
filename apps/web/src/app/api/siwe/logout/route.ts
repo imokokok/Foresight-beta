@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase.server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function withNoStore<T>(res: NextResponse<T>) {
+  try {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+  } catch {}
+  return res;
+}
+
 export async function GET(req: NextRequest) {
   // 清除会话与 nonce Cookie
-  const res = NextResponse.json({ success: true });
+  const res = withNoStore(NextResponse.json({ success: true }));
   const { clearSession } = await import("@/lib/session");
   try {
     const session = await getSession(req);
@@ -21,7 +33,7 @@ export async function GET(req: NextRequest) {
         .catch(() => {});
     }
   } catch {}
-  clearSession(res);
+  clearSession(res, req);
   res.cookies.set("siwe_nonce", "", {
     httpOnly: true,
     sameSite: "lax",

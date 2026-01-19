@@ -8,12 +8,59 @@ const SESSION_COOKIE_NAME = "fs_session";
 const REFRESH_COOKIE_NAME = "fs_refresh";
 const STEPUP_COOKIE_NAME = "fs_stepup";
 
-const COOKIE_OPTIONS = {
+const BASE_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
 };
+
+function resolveCookieDomain(req?: NextRequest): string | undefined {
+  try {
+    if (process.env.NODE_ENV !== "production") return undefined;
+
+    const base = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
+    if (!base) return undefined;
+
+    let appHost = "";
+    try {
+      appHost = new URL(base).hostname || "";
+    } catch {
+      return undefined;
+    }
+    const parts = appHost
+      .toLowerCase()
+      .split(".")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length < 2) return undefined;
+    const root = parts.slice(-2).join(".");
+    if (!root) return undefined;
+    if (root === "localhost" || root.endsWith(".localhost")) return undefined;
+    if (root === "vercel.app") return undefined;
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(root)) return undefined;
+
+    const reqHostRaw = String(
+      (req?.headers?.get("x-forwarded-host") ||
+        req?.headers?.get("host") ||
+        req?.nextUrl?.host ||
+        "") as any
+    )
+      .split(",")[0]
+      .trim()
+      .toLowerCase();
+    if (reqHostRaw && reqHostRaw !== root && !reqHostRaw.endsWith(`.${root}`)) return undefined;
+
+    return `.${root}`;
+  } catch {
+    return undefined;
+  }
+}
+
+function getCookieOptions(req?: NextRequest) {
+  const domain = resolveCookieDomain(req);
+  return domain ? { ...BASE_COOKIE_OPTIONS, domain } : BASE_COOKIE_OPTIONS;
+}
 
 function computeDeviceId(req?: NextRequest): string | null {
   try {
@@ -88,16 +135,17 @@ export async function createSession(
     tokenType: "session",
   });
   const refreshToken = await createRefreshToken(address, chainId, { sessionId });
+  const cookieOptions = getCookieOptions(options?.req);
 
   // 设置访问 token（7天）
   response.cookies.set(SESSION_COOKIE_NAME, token, {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions,
     maxAge: 7 * 24 * 60 * 60, // 7 天
   });
 
   // 设置刷新 token（30天）
   response.cookies.set(REFRESH_COOKIE_NAME, refreshToken, {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions,
     maxAge: 30 * 24 * 60 * 60, // 30 天
   });
 
@@ -209,14 +257,14 @@ export async function setStepUpCookie(
   response: NextResponse,
   address: string,
   chainId?: number,
-  options?: { expiresInSeconds?: number; purpose?: string }
+  options?: { expiresInSeconds?: number; purpose?: string; req?: NextRequest }
 ): Promise<void> {
   const token = await createToken(address, chainId, options?.expiresInSeconds ?? 15 * 60, {
     tokenType: "stepup",
     extra: options?.purpose ? { purpose: options.purpose } : undefined,
   });
   response.cookies.set(STEPUP_COOKIE_NAME, token, {
-    ...COOKIE_OPTIONS,
+    ...getCookieOptions(options?.req),
     maxAge: options?.expiresInSeconds ?? 15 * 60,
   });
 }
@@ -359,19 +407,20 @@ export async function refreshSession(req: NextRequest, response: NextResponse): 
 /**
  * 清除会话
  */
-export function clearSession(response: NextResponse): void {
+export function clearSession(response: NextResponse, req?: NextRequest): void {
+  const cookieOptions = getCookieOptions(req);
   response.cookies.set(SESSION_COOKIE_NAME, "", {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions,
     maxAge: 0,
   });
 
   response.cookies.set(REFRESH_COOKIE_NAME, "", {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions,
     maxAge: 0,
   });
 
   response.cookies.set(STEPUP_COOKIE_NAME, "", {
-    ...COOKIE_OPTIONS,
+    ...cookieOptions,
     maxAge: 0,
   });
 }

@@ -5,6 +5,9 @@ import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUt
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { getConfiguredRpcUrl, getConfiguredChainId, getChainAddresses } from "@/lib/runtimeConfig";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type Item = {
   txHash: string;
   blockNumber: number;
@@ -19,6 +22,15 @@ const transferIface = new ethers.Interface([
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
+function withNoStore<T>(res: import("next/server").NextResponse<T>) {
+  try {
+    res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+  } catch {}
+  return res;
+}
+
 function toTopicAddress(addr: string) {
   try {
     return ethers.zeroPadValue(addr, 32);
@@ -32,19 +44,19 @@ export async function GET(req: NextRequest) {
     const baseAddrRaw = await getSessionAddress(req);
     const baseAddress = normalizeAddress(baseAddrRaw);
     if (!baseAddress) {
-      return ApiResponses.unauthorized("未登录或会话已过期");
+      return withNoStore(ApiResponses.unauthorized("未登录或会话已过期"));
     }
 
     const chainId = getConfiguredChainId();
     const addresses = getChainAddresses(chainId);
     const usdcAddress = String(addresses.usdc || "").trim();
     if (!usdcAddress || !ethers.isAddress(usdcAddress)) {
-      return ApiResponses.internalError("USDC 地址未配置");
+      return withNoStore(ApiResponses.internalError("USDC 地址未配置"));
     }
 
     const client = supabaseAdmin as any;
     if (!client) {
-      return ApiResponses.internalError("Supabase 未配置");
+      return withNoStore(ApiResponses.internalError("Supabase 未配置"));
     }
 
     const { data: prof, error: profErr } = await client
@@ -54,16 +66,18 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (profErr) {
-      return ApiResponses.databaseError("Failed to load user profile", profErr.message);
+      return withNoStore(
+        ApiResponses.databaseError("Failed to load user profile", profErr.message)
+      );
     }
 
     const proxyAddress = normalizeAddress(String((prof as any)?.proxy_wallet_address || ""));
     if (!proxyAddress || !ethers.isAddress(proxyAddress)) {
-      return ApiResponses.badRequest("Proxy wallet 未初始化，请先打开入金弹窗初始化");
+      return withNoStore(ApiResponses.badRequest("Proxy wallet 未初始化，请先打开入金弹窗初始化"));
     }
 
     const toTopic = toTopicAddress(proxyAddress);
-    if (!toTopic) return ApiResponses.invalidParameters("入金地址无效");
+    if (!toTopic) return withNoStore(ApiResponses.invalidParameters("入金地址无效"));
 
     const url = new URL(req.url);
     const windowBlocksRaw = Number(url.searchParams.get("window") || "");
@@ -130,20 +144,22 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
-    return successResponse(
-      {
-        chainId,
-        usdcAddress,
-        proxyAddress,
-        windowBlocks,
-        fromBlock,
-        toBlock: latest,
-        items,
-      },
-      "ok"
+    return withNoStore(
+      successResponse(
+        {
+          chainId,
+          usdcAddress,
+          proxyAddress,
+          windowBlocks,
+          fromBlock,
+          toBlock: latest,
+          items,
+        },
+        "ok"
+      )
     );
   } catch (e: any) {
     logApiError("GET /api/deposits/history", e);
-    return ApiResponses.internalError("加载入金记录失败", String(e?.message || e));
+    return withNoStore(ApiResponses.internalError("加载入金记录失败", String(e?.message || e)));
   }
 }
