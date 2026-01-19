@@ -1940,7 +1940,11 @@
       "device": "기기",
       "revoke": "로그아웃",
       "auditTitle": "최근 로그인",
-      "noAudit": "로그인 기록이 없습니다"
+      "noAudit": "로그인 기록이 없습니다",
+      "deleteAccountTitle": "계정 삭제",
+      "deleteAccountDescription": "사이트 내 개인 데이터(이메일, 사용자명, 기기/세션, 알림, 팔로우, 조회 기록 등)를 삭제하고 로그아웃합니다. 온체인/공개 콘텐츠는 남을 수 있습니다.",
+      "deleteAccountConfirmHint": "확인을 위해 DELETE 를 입력하세요.",
+      "deleteAccountAction": "내 데이터 삭제"
     },
     "follow": {
       "failed": "작업에 실패했습니다",

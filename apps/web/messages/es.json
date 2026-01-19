@@ -1704,7 +1704,11 @@
       "device": "Dispositivo",
       "revoke": "Cerrar sesión",
       "auditTitle": "Inicios de sesión recientes",
-      "noAudit": "Sin historial de inicios"
+      "noAudit": "Sin historial de inicios",
+      "deleteAccountTitle": "Eliminar cuenta",
+      "deleteAccountDescription": "Elimina tus datos personales del sitio (email, nombre de usuario, dispositivos/sesiones, notificaciones, seguimientos, historial de vistas, etc.) y cierra tu sesión. El contenido público/en cadena puede permanecer.",
+      "deleteAccountConfirmHint": "Escribe DELETE para confirmar.",
+      "deleteAccountAction": "Eliminar mis datos"
     },
     "overview": {
       "cards": {

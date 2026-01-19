@@ -76,8 +76,7 @@ export function getConfiguredChainId(): number {
     parsePositiveIntEnv(process.env.NEXT_PUBLIC_CHAIN_ID) ??
     parsePositiveIntEnv(process.env.CHAIN_ID);
   if (fromEnv) return fromEnv;
-  if (process.env.NODE_ENV !== "production") return DEFAULT_CHAIN_ID;
-  throw new Error("Missing CHAIN_ID");
+  return DEFAULT_CHAIN_ID;
 }
 
 export function getConfiguredRpcUrl(chainId?: number): string {

@@ -495,9 +495,6 @@ export function useTopNavBarLogic() {
 
   const handleDisconnectWallet = useCallback(async () => {
     await disconnectWallet();
-    try {
-      await fetch("/api/siwe/logout", { method: "GET" });
-    } catch {}
     setMenuOpen(false);
   }, [disconnectWallet]);
 

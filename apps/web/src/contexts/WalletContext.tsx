@@ -189,12 +189,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const disconnectWalletWithLogout = useCallback(async () => {
     try {
-      await fetch("/api/siwe/logout", { method: "POST" });
+      if (auth?.signOut) {
+        await auth.signOut();
+      } else {
+        await fetch("/api/siwe/logout", { method: "POST" });
+      }
     } catch {}
     setIsAuthenticated(false);
     setAuthAddress(null);
     await disconnectWallet();
-  }, [disconnectWallet]);
+  }, [disconnectWallet, auth]);
 
   const requestWalletPermissions = async (): Promise<{ success: boolean; error?: string }> => {
     return requestWalletPermissionsImpl(rawProvider);

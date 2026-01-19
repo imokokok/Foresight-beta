@@ -1704,7 +1704,11 @@
       "device": "Device",
       "revoke": "Sign out",
       "auditTitle": "Recent sign-ins",
-      "noAudit": "No sign-in history"
+      "noAudit": "No sign-in history",
+      "deleteAccountTitle": "Delete account",
+      "deleteAccountDescription": "Deletes your on-site personal data (email, username, devices/sessions, notifications, follows, view history, etc.) and signs you out. On-chain/public content may remain.",
+      "deleteAccountConfirmHint": "Type DELETE to confirm.",
+      "deleteAccountAction": "Delete my data"
     },
     "overview": {
       "cards": {

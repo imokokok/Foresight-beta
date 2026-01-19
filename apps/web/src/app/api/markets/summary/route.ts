@@ -4,6 +4,8 @@ import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
 import { getIP, checkRateLimit, RateLimits } from "@/lib/rateLimit";
 
+export const dynamic = "force-dynamic";
+
 // Cache for 10 seconds to avoid hitting DB too hard
 export const revalidate = 10;
 

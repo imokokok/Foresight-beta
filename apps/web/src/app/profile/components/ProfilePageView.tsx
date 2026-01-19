@@ -473,6 +473,38 @@ export function ProfilePageView({
     },
   });
 
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState<string>("");
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () =>
+      fetcher<{ ok: boolean; address?: string }>("/api/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ confirm: deleteAccountConfirm.trim() }),
+      }),
+    onSuccess: async () => {
+      toast.success(tCommon("success"));
+      setDeleteAccountConfirm("");
+      try {
+        await auth?.signOut?.();
+      } catch {}
+      try {
+        await disconnect?.();
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
+    },
+    onError: (error: unknown) => {
+      handleApiError(error, "walletModal.errors.unknown");
+    },
+  });
+
+  const canDeleteAccount =
+    isOwnProfile &&
+    !!userId &&
+    String(deleteAccountConfirm || "").trim() === "DELETE" &&
+    !deleteAccountMutation.isPending;
+
   const formatTs = (raw: unknown) => {
     const s = typeof raw === "string" ? raw : "";
     if (!s) return "";
@@ -999,6 +1031,44 @@ export function ProfilePageView({
                               )}
                             </div>
                           )}
+                        </div>
+
+                        <div className="bg-white/70 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl shadow-purple-500/10 p-6">
+                          <div className="flex items-center gap-2 mb-2">
+                            <UserMinus className="w-5 h-5 text-red-600" />
+                            <div className="text-lg font-black text-gray-900">
+                              {tProfile("security.deleteAccountTitle")}
+                            </div>
+                          </div>
+                          <div className="text-sm font-semibold text-gray-600 mb-4">
+                            {tProfile("security.deleteAccountDescription")}
+                          </div>
+                          <div className="space-y-3">
+                            <div className="text-xs text-gray-600 font-semibold">
+                              {tProfile("security.deleteAccountConfirmHint")}
+                            </div>
+                            <input
+                              value={deleteAccountConfirm}
+                              onChange={(e) => setDeleteAccountConfirm(e.target.value)}
+                              placeholder="DELETE"
+                              autoCapitalize="off"
+                              autoCorrect="off"
+                              spellCheck={false}
+                              className="w-full h-11 px-3 rounded-xl border border-red-200 bg-white/80 text-sm font-semibold text-gray-900 outline-none focus:border-red-300"
+                            />
+                            <button
+                              type="button"
+                              disabled={!canDeleteAccount}
+                              onClick={async () => {
+                                await deleteAccountMutation.mutateAsync();
+                              }}
+                              className="h-11 px-4 rounded-xl font-black text-sm transition-all shadow-sm active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-red-200 to-rose-300 text-red-800 border border-red-200 hover:from-red-500 hover:to-rose-500 hover:text-white"
+                            >
+                              {deleteAccountMutation.isPending
+                                ? tCommon("loading")
+                                : tProfile("security.deleteAccountAction")}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

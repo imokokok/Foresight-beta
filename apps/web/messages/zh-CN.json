@@ -1708,7 +1708,11 @@
       "device": "设备",
       "revoke": "退出",
       "auditTitle": "最近登录记录",
-      "noAudit": "暂无登录记录"
+      "noAudit": "暂无登录记录",
+      "deleteAccountTitle": "注销账号",
+      "deleteAccountDescription": "将清除站内个人数据（邮箱、用户名、登录设备/记录、通知、关注、浏览历史等）并退出登录。链上交易与公开内容可能仍会保留。",
+      "deleteAccountConfirmHint": "为防误操作，请输入 DELETE 以确认。",
+      "deleteAccountAction": "注销并删除数据"
     },
     "overview": {
       "cards": {

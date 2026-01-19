@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { normalizeAddress } from "./serverUtils";
+import { normalizeAddress } from "./address";
 
 export function deriveProxyWalletAddress(baseAddress: string, proxyType: string) {
   const seed = `foresight-proxy:${proxyType}:${baseAddress.toLowerCase()}`;
