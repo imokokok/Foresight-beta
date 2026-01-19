@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { ethers } from "ethers";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/toast";
@@ -34,6 +34,11 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   const [tokenDecimals, setTokenDecimals] = useState<number>(6);
   const [rawBalance, setRawBalance] = useState<bigint>(0n);
 
+  const [offchainLoading, setOffchainLoading] = useState(false);
+  const [offchainOk, setOffchainOk] = useState(false);
+  const [offchainBalance, setOffchainBalance] = useState<string>("0");
+  const [offchainReserved, setOffchainReserved] = useState<string>("0");
+
   const [amount, setAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -41,20 +46,45 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     if (!account) return;
     setProxyLoading(true);
     try {
-      const res = await fetch("/api/wallets/proxy", { method: "POST" });
+      const res = await fetch("/api/wallets/proxy", { method: "POST", credentials: "include" });
       const json = await res.json();
       if (json?.success && json?.data?.smart_account_address) {
         setProxyAddress(json.data.smart_account_address);
+        setOffchainOk(false);
       } else {
         setProxyAddress(null);
+        setOffchainOk(false);
       }
     } catch (e) {
       console.error(e);
       setProxyAddress(null);
+      setOffchainOk(false);
     } finally {
       setProxyLoading(false);
     }
   }, [account]);
+
+  const fetchOffchain = useCallback(async () => {
+    if (!proxyAddress) return;
+    setOffchainLoading(true);
+    try {
+      const url = new URL("/api/user-balance", window.location.origin);
+      url.searchParams.set("address", proxyAddress);
+      const res = await fetch(url.toString(), { method: "GET", credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.success && json?.data) {
+        setOffchainOk(true);
+        setOffchainBalance(String(json.data.balance ?? "0"));
+        setOffchainReserved(String(json.data.reserved ?? "0"));
+      } else {
+        setOffchainOk(false);
+      }
+    } catch {
+      setOffchainOk(false);
+    } finally {
+      setOffchainLoading(false);
+    }
+  }, [proxyAddress]);
 
   const fetchBalance = useCallback(async () => {
     if (!proxyAddress || !usdcAddress) return;
@@ -88,14 +118,27 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   useEffect(() => {
     if (open && proxyAddress) {
       fetchBalance();
+      fetchOffchain();
       const timer = setInterval(fetchBalance, 15000);
       return () => clearInterval(timer);
     }
-  }, [open, proxyAddress, fetchBalance]);
+  }, [open, proxyAddress, fetchBalance, fetchOffchain]);
+
+  const availableRawBalance = useMemo(() => {
+    if (!offchainOk) return rawBalance;
+    try {
+      const bal = ethers.parseUnits(String(offchainBalance || "0"), 6);
+      const res = ethers.parseUnits(String(offchainReserved || "0"), 6);
+      const avail = bal > res ? bal - res : 0n;
+      return rawBalance < avail ? rawBalance : avail;
+    } catch {
+      return rawBalance;
+    }
+  }, [rawBalance, offchainOk, offchainBalance, offchainReserved]);
 
   const balanceHuman = useMemo(() => {
-    return ethers.formatUnits(rawBalance, tokenDecimals);
-  }, [rawBalance, tokenDecimals]);
+    return ethers.formatUnits(availableRawBalance, tokenDecimals);
+  }, [availableRawBalance, tokenDecimals]);
 
   const handleWithdraw = async () => {
     if (!account || !walletProvider || !proxyAddress || !usdcAddress) return;
@@ -107,8 +150,8 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
         toast.error("请输入有效的提现金额");
         return;
       }
-      if (amountBN > rawBalance) {
-        toast.error("余额不足");
+      if (amountBN > availableRawBalance) {
+        toast.error("可提现余额不足");
         return;
       }
 
@@ -126,7 +169,15 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       toast.success("提现交易已发送", "资金将很快到达您的钱包");
 
       await tx.wait();
-      fetchBalance();
+      try {
+        await fetch("/api/user-balance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ address: proxyAddress, chainId }),
+        });
+      } catch {}
+      await Promise.all([fetchBalance(), fetchOffchain()]);
       onClose();
     } catch (e: any) {
       console.error(e);
@@ -194,7 +245,14 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
 
           <button
             onClick={handleWithdraw}
-            disabled={isWithdrawing || !amount || parseFloat(amount) <= 0 || proxyLoading}
+            disabled={
+              isWithdrawing ||
+              !amount ||
+              parseFloat(amount) <= 0 ||
+              proxyLoading ||
+              balanceLoading ||
+              (offchainOk && offchainLoading)
+            }
             className="w-full py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
           >
             {isWithdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
