@@ -7,17 +7,13 @@ import * as Sentry from "@sentry/nextjs";
 
 // 初始化 Sentry
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  dsn: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // 仅在生产环境启用
   enabled: process.env.NODE_ENV === "production",
 
   // 性能监控采样率
   tracesSampleRate: 0.1,
-
-  // Session Replay 采样率
-  replaysSessionSampleRate: 0.1, // 10% 的会话
-  replaysOnErrorSampleRate: 1.0, // 100% 的错误会话
 
   // 环境标识
   environment: process.env.NODE_ENV,
@@ -79,16 +75,6 @@ Sentry.init({
     "EPIPE",
     "ETIMEDOUT",
   ],
-
-  // 集成
-  integrations: [
-    Sentry.replayIntegration({
-      // 隐藏敏感文本和输入
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
-    Sentry.browserTracingIntegration(),
-  ],
 });
 
 // 导出 register 函数，Next.js 会在适当的时机调用它
@@ -97,7 +83,4 @@ export function register() {
   // 这里可以添加其他工具的初始化代码
 }
 
-// 导出 instrumentation 函数，用于服务器端 instrumentation
-export const instrumentation = {
-  // 可以在这里添加服务器端特定的 instrumentation 代码
-};
+export const onRequestError = Sentry.captureRequestError;

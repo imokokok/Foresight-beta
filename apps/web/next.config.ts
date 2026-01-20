@@ -71,9 +71,8 @@ const nextConfig: NextConfig = {
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
 
-    // 生产环境使用更严格的 CSP，开发环境允许更多便利
     const scriptSrc = isProd
-      ? "script-src 'self' https://vercel.live https://*.sentry.io"
+      ? "script-src 'self' 'unsafe-inline' https://vercel.live https://*.sentry.io"
       : "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.sentry.io";
 
     return [
@@ -175,7 +174,7 @@ const nextConfig: NextConfig = {
   // Webpack 优化
   webpack: (config, { dev, isServer }) => {
     // 🚀 生产环境优化
-    if (!dev) {
+    if (!dev && !isServer) {
       // 优化 chunk 分割策略
       config.optimization = {
         ...config.optimization,
