@@ -77,7 +77,22 @@ function getLocaleFromCookie(): Locale | null {
 export function getCurrentLocale(): Locale {
   if (typeof window === "undefined") return defaultLocale;
 
-  return getLocaleFromCookie() || defaultLocale;
+  const cookieLocale = getLocaleFromCookie();
+  if (cookieLocale) return cookieLocale;
+
+  const saved =
+    typeof localStorage !== "undefined" ? localStorage.getItem("preferred-language") : null;
+  if (isSupportedLocale(saved)) {
+    return saved;
+  }
+
+  if (saved && typeof localStorage !== "undefined") {
+    try {
+      localStorage.removeItem("preferred-language");
+    } catch {}
+  }
+
+  return defaultLocale;
 }
 
 export function getTranslation(locale: Locale = getCurrentLocale()): Messages {
