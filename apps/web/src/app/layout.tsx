@@ -18,7 +18,6 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { getServerLocale } from "@/lib/i18n-server";
 import { buildLanguageAlternates, safeJsonLdStringify } from "@/lib/seo";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { Roboto } from "next/font/google";
 
 // 动态加载语言文件，只加载当前语言
 async function loadLanguageFile(locale: Locale): Promise<any> {
@@ -34,15 +33,6 @@ async function loadLanguageFile(locale: Locale): Promise<any> {
   const langModule = await loader();
   return langModule.default;
 }
-
-// 优化字体加载配置
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"], // 移除不常用的300权重，减少字体文件大小
-  display: "swap", // 使用 swap 模式确保文本可见性
-  variable: "--font-roboto",
-  preload: true, // 预加载常用权重，提高首屏字体渲染速度
-});
 
 const openGraphLocaleByLocale: Record<Locale, string> = {
   "zh-CN": "zh_CN",
@@ -143,7 +133,7 @@ export default async function RootLayout({
   const locale = await getServerLocale();
 
   return (
-    <html lang={locale} className={roboto.variable}>
+    <html lang={locale}>
       <body className="overflow-x-hidden font-sans">
         <script
           type="application/ld+json"
