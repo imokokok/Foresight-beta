@@ -434,9 +434,11 @@ export async function POST(req: NextRequest) {
         const maskedUser = user ? user.replace(/(^.).*(?=@)/, "$1***") : "";
         const maskedUrl = smtpUrl ? smtpUrl.replace(/:\/\/([^:]+):([^@]+)@/, "://$1:***@") : "";
         if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
-          console.error("[email-otp] SMTP send error", {
-            email,
-            address: walletAddress,
+          const walletPreview = walletKey ? `${walletKey.slice(0, 6)}…${walletKey.slice(-4)}` : "";
+          const emailDomain = email.split("@")[1] || "";
+          logApiError("[email-otp] SMTP send error", {
+            emailDomain,
+            walletPreview,
             url: maskedUrl,
             host,
             port,

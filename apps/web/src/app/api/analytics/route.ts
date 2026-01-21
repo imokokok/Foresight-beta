@@ -4,6 +4,33 @@ import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
+function safeIsoFromTimestamp(value: unknown): string {
+  const nowIso = new Date().toISOString();
+  try {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      const d = new Date(value);
+      return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (!s) return nowIso;
+      const ms = Date.parse(s);
+      if (Number.isFinite(ms)) {
+        const d = new Date(ms);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+      const asNum = Number(s);
+      if (Number.isFinite(asNum) && asNum > 0) {
+        const d = new Date(asNum);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+    }
+    return nowIso;
+  } catch {
+    return nowIso;
+  }
+}
+
 // 获取设备类型
 function getDeviceType(userAgent: string): string {
   if (/mobile/i.test(userAgent)) return "mobile";
@@ -85,7 +112,7 @@ export async function POST(req: NextRequest) {
               viewport?.width && viewport?.height ? `${viewport.width}x${viewport.height}` : null,
             connection_type: connection?.type || null,
             connection_effective_type: connection?.effectiveType || null,
-            created_at: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
+            created_at: safeIsoFromTimestamp(timestamp),
           })
           .catch((error: any) => {
             // 静默失败，但记录错误

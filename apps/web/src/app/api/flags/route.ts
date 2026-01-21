@@ -8,6 +8,7 @@ import {
   normalizeAddress,
 } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isEvmAddress(value: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(value);
@@ -46,11 +47,23 @@ export async function POST(req: NextRequest) {
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");
 
-    const ownerId = await getSessionAddress(req);
+    const ownerId = normalizeAddress(String((await getSessionAddress(req)) || ""));
     if (!isEvmAddress(ownerId)) return ApiResponses.unauthorized("Unauthorized");
 
-    const title = String(body?.title || "").trim();
-    const description = String(body?.description || "");
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `flags:create:${ownerId.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "flags_create"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("Too many create requests");
+
+    const title = String(body?.title || "")
+      .trim()
+      .slice(0, 200);
+    const description = String(body?.description || "")
+      .trim()
+      .slice(0, 4000);
     const deadlineRaw = String(body?.deadline || "").trim();
     const rawPredictionId = body?.prediction_id;
     const predictionId =
@@ -61,7 +74,9 @@ export async function POST(req: NextRequest) {
           : null;
     const verification_type =
       String(body?.verification_type || "self") === "witness" ? "witness" : "self";
-    const witness_id = String(body?.witness_id || "").trim();
+    const witness_id = String(body?.witness_id || "")
+      .trim()
+      .slice(0, 64);
     if (!title) return ApiResponses.invalidParameters("Missing required parameters");
     const witnessIdToUse = verification_type === "witness" ? witness_id : "";
     if (verification_type === "witness") {

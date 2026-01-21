@@ -152,7 +152,7 @@ export default function LoginCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [account, disconnectWallet, fallbackRedirect, refreshAfterLogin, router, token]);
+  }, [account, disconnectWallet, fallbackRedirect, refreshAfterLogin, router, tLogin, token]);
 
   useEffect(() => {
     if (resendLeft <= 0) return;

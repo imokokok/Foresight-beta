@@ -8,7 +8,8 @@
 import { Component, ReactNode } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { LocaleContext, t, type Locale, useLocale } from "@/lib/i18n";
+import { defaultLocale } from "@/i18n-config";
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,9 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  static contextType = LocaleContext;
+  declare context: { locale: Locale; setLocale: (next: Locale) => void } | null;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -76,6 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   render() {
+    const locale = this.context?.locale ?? defaultLocale;
     if (this.state.hasError) {
       // 如果提供了自定义 fallback，使用它
       if (this.props.fallback) {
@@ -94,16 +99,16 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-red-800 mb-1">
-                  {t("errors.componentLoadFailed")}
+                  {t("errors.componentLoadFailed", locale)}
                 </h3>
                 <p className="text-sm text-red-600">
-                  {this.state.error?.message || t("errors.errorOccurred")}
+                  {this.state.error?.message || t("errors.errorOccurred", locale)}
                 </p>
                 <button
                   onClick={this.handleReset}
                   className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
                 >
-                  {t("common.retry")}
+                  {t("common.retry", locale)}
                 </button>
               </div>
             </div>
@@ -127,23 +132,25 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             {/* 标题 */}
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">{t("errors.somethingWrong")}</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              {t("errors.somethingWrong", locale)}
+            </h2>
 
             {/* 错误描述 */}
             <p className="text-gray-600 mb-6">
-              {this.state.error?.message || t("errors.unknownError")}
+              {this.state.error?.message || t("errors.unknownError", locale)}
             </p>
 
             {/* 开发环境显示详细错误信息 */}
             {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mb-6 text-left">
                 <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 transition-colors">
-                  {t("errors.viewDetails")}
+                  {t("errors.viewDetails", locale)}
                 </summary>
                 <div className="mt-3 space-y-2">
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs font-semibold text-gray-700 mb-1">
-                      {t("errors.errorMessage")}:
+                      {t("errors.errorMessage", locale)}:
                     </p>
                     <pre className="text-xs text-red-600 whitespace-pre-wrap break-words">
                       {this.state.error.message}
@@ -152,7 +159,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.error.stack && (
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <p className="text-xs font-semibold text-gray-700 mb-1">
-                        {t("errors.stackTrace")}:
+                        {t("errors.stackTrace", locale)}:
                       </p>
                       <pre className="text-xs text-gray-600 overflow-auto max-h-40 whitespace-pre-wrap break-words">
                         {this.state.error.stack}
@@ -162,7 +169,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   {this.state.errorInfo?.componentStack && (
                     <div className="p-3 bg-gray-50 rounded-lg">
                       <p className="text-xs font-semibold text-gray-700 mb-1">
-                        {t("errors.componentStack")}:
+                        {t("errors.componentStack", locale)}:
                       </p>
                       <pre className="text-xs text-gray-600 overflow-auto max-h-40 whitespace-pre-wrap break-words">
                         {this.state.errorInfo.componentStack}
@@ -181,7 +188,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 rounded-lg shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
-                {t("common.retry")}
+                {t("common.retry", locale)}
               </button>
 
               {/* 页面级别显示更多选项 */}
@@ -191,7 +198,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     onClick={this.handleReload}
                     className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
                   >
-                    {t("errors.refreshPage")}
+                    {t("errors.refreshPage", locale)}
                   </button>
 
                   <button
@@ -199,14 +206,14 @@ export class ErrorBoundary extends Component<Props, State> {
                     className="flex items-center justify-center gap-2 px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
                   >
                     <Home className="w-4 h-4" />
-                    {t("errors.goHome")}
+                    {t("errors.goHome", locale)}
                   </button>
                 </>
               )}
             </div>
 
             {/* 提示信息 */}
-            <p className="mt-6 text-xs text-gray-500">{t("errors.autoReported")}</p>
+            <p className="mt-6 text-xs text-gray-500">{t("errors.autoReported", locale)}</p>
           </div>
         </div>
       );
@@ -226,19 +233,20 @@ export function SimpleErrorFallback({
   error?: Error;
   resetError?: () => void;
 }) {
+  const { locale } = useLocale();
   return (
     <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-center">
       <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-3" />
-      <h3 className="text-lg font-semibold text-red-800 mb-2">{t("errors.loadFailed")}</h3>
+      <h3 className="text-lg font-semibold text-red-800 mb-2">{t("errors.loadFailed", locale)}</h3>
       <p className="text-sm text-red-600 mb-4">
-        {error?.message || t("errors.contentUnavailable")}
+        {error?.message || t("errors.contentUnavailable", locale)}
       </p>
       {resetError && (
         <button
           onClick={resetError}
           className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
         >
-          {t("common.retry")}
+          {t("common.retry", locale)}
         </button>
       )}
     </div>

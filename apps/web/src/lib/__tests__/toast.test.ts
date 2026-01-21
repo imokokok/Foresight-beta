@@ -23,6 +23,9 @@ import { toast as sonnerToast } from "sonner";
 describe("Toast Utilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    try {
+      document.cookie = "preferred-language=zh-CN; path=/";
+    } catch {}
     if (typeof window !== "undefined" && "localStorage" in window) {
       window.localStorage.setItem("preferred-language", "zh-CN");
     }

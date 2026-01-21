@@ -67,6 +67,9 @@ export default function LazyImage({
   ...props
 }: LazyImageProps) {
   const tErrors = useTranslations("errors");
+  const defaultFallbackSrc =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23f3f4f6' width='100' height='100'/%3E%3C/svg%3E";
+  const [imgSrc, setImgSrc] = useState(src);
   const [loaded, setLoaded] = useState(false);
   const [inView, setInView] = useState(false);
   const [error, setError] = useState(false);
@@ -99,15 +102,28 @@ export default function LazyImage({
     };
   }, [rootMargin]);
 
+  useEffect(() => {
+    const nextSrc = String(src || "").trim();
+    const next = nextSrc ? nextSrc : fallbackSrc;
+    setImgSrc(next);
+    setLoaded(false);
+    setError(!nextSrc);
+  }, [src, fallbackSrc]);
+
   // 加载图片
   const handleLoad = () => {
     setLoaded(true);
-    setError(false);
   };
 
   const handleError = () => {
+    if (imgSrc !== fallbackSrc) {
+      setError(true);
+      setLoaded(false);
+      setImgSrc(fallbackSrc);
+      return;
+    }
     setError(true);
-    setLoaded(true); // 即使错误也标记为已加载，显示降级图片
+    setLoaded(true);
   };
 
   // 占位图的默认样式
@@ -140,7 +156,7 @@ export default function LazyImage({
         <>
           {fadeIn ? (
             <motion.img
-              src={error ? fallbackSrc : src}
+              src={imgSrc}
               alt={alt}
               onLoad={handleLoad}
               onError={handleError}
@@ -153,7 +169,7 @@ export default function LazyImage({
             />
           ) : (
             <img
-              src={error ? fallbackSrc : src}
+              src={imgSrc}
               alt={alt}
               onLoad={handleLoad}
               onError={handleError}
@@ -166,7 +182,7 @@ export default function LazyImage({
       )}
 
       {/* 加载失败提示（可选） */}
-      {error && loaded && (
+      {error && loaded && fallbackSrc === defaultFallbackSrc && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
           <div className="text-center text-gray-400">
             <svg

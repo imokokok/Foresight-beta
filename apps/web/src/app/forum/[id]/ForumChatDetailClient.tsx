@@ -8,7 +8,7 @@ import { ProposalChatShell } from "@/app/proposals/[id]/components/chat/Proposal
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTranslations, t, useLocale } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
 
@@ -25,6 +25,7 @@ export default function ForumChatDetailClient({ eventId, prediction }: ForumChat
   const { account } = useWallet();
   const { user } = useAuth();
   const tForum = useTranslations("forum");
+  const tChat = useTranslations("chat");
   const { locale } = useLocale();
 
   const roomTitle = prediction?.title || tForum("chatRoom");
@@ -67,7 +68,7 @@ export default function ForumChatDetailClient({ eventId, prediction }: ForumChat
 
             <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500">
               <span className="px-2 py-1 rounded-full bg-white/70 border border-slate-200">
-                {t("chat.header.youLabel").replace("{name}", displayName)}
+                {tChat("header.youLabel").replace("{name}", displayName)}
               </span>
             </div>
           </div>

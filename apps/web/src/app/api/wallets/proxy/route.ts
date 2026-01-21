@@ -16,6 +16,7 @@ import {
 } from "@/lib/safeUtils";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getConfiguredChainId, getConfiguredRpcUrl } from "@/lib/runtimeConfig";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 type DeploymentStatus = "deployed" | "not_deployed" | "unknown";
 
@@ -39,6 +40,14 @@ export async function POST(req: NextRequest) {
     if (!/^0x[a-f0-9]{40}$/.test(baseAddress)) {
       return ApiResponses.unauthorized("未登录或会话已过期");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `wallets:proxy:${baseAddress.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.strict,
+      "wallets_proxy"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const chainId = getConfiguredChainId();
     if (chainId !== 80002 && chainId !== 137) {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { POST as createPrediction } from "../route";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
+import { resetRateLimitStore } from "@/lib/rateLimit";
 
 let predictionOutcomesInsertError: unknown = null;
 let sessionAddressValue: string = "0x1234567890abcdef1234567890abcdef12345678";
@@ -109,6 +110,7 @@ describe("POST /api/predictions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetRateLimitStore();
     predictionOutcomesInsertError = null;
     sessionAddressValue = "0x1234567890abcdef1234567890abcdef12345678";
     lastPredictionInsertPayload = null;

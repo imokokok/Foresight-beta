@@ -6,6 +6,33 @@ import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
+function safeIsoFromTimestamp(value: unknown): string {
+  const nowIso = new Date().toISOString();
+  try {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      const d = new Date(value);
+      return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (!s) return nowIso;
+      const ms = Date.parse(s);
+      if (Number.isFinite(ms)) {
+        const d = new Date(ms);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+      const asNum = Number(s);
+      if (Number.isFinite(asNum) && asNum > 0) {
+        const d = new Date(asNum);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+    }
+    return nowIso;
+  } catch {
+    return nowIso;
+  }
+}
+
 /**
  * Web Vitals 数据收集 API
  *
@@ -40,7 +67,7 @@ export async function POST(request: NextRequest) {
       url: metric.url,
       user_agent: metric.userAgent,
       device_type: metric.deviceType,
-      created_at: new Date(metric.timestamp).toISOString(),
+      created_at: safeIsoFromTimestamp(metric.timestamp),
     });
 
     if (error) {

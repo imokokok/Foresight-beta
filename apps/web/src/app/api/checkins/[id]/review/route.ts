@@ -9,6 +9,7 @@ import {
   normalizeAddress,
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -24,7 +25,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       rawAction === "approve" ? "approved" : rawAction === "reject" ? "rejected" : null;
     const rawReason = (body as any)?.reason;
     const reason =
-      typeof rawReason === "string" && rawReason.trim().length > 0 ? rawReason.trim() : null;
+      typeof rawReason === "string" && rawReason.trim().length > 0
+        ? rawReason.trim().slice(0, 500)
+        : null;
     if (!action) {
       return NextResponse.json(
         { message: "action must be 'approve' or 'reject'" },
@@ -38,6 +41,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { message: "Unauthorized", detail: "Missing session address" },
         { status: 401 }
       );
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `checkin_review:${reviewer_id.toLowerCase()}:${checkinId}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "checkin_review"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("操作过于频繁，请稍后再试");
 
     const client = supabaseAdmin as any;
     if (!client) return ApiResponses.internalError("Service not configured");

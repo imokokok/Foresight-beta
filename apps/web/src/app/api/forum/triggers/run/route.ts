@@ -9,6 +9,7 @@ import {
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 function actionLabel(v: string): string {
   const normalized = normalizeActionVerb(v);
   if (normalized === "价格达到") return "价格是否会达到";
@@ -37,6 +38,11 @@ export async function POST(req: NextRequest) {
     if (!isAdminAddress(caller)) {
       return ApiResponses.forbidden("无权限");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.strict, "forum_triggers_run_ip");
+    if (!rl.success) return ApiResponses.rateLimit("操作过于频繁，请稍后再试");
+
     const body = await parseRequestBody(req as any);
     const { searchParams } = new URL(req.url);
     const eventId = normalizeId(body?.eventId ?? searchParams.get("eventId"));
@@ -127,18 +133,33 @@ export async function POST(req: NextRequest) {
       created_at?: string;
     } | null;
 
-    const subj = String(topRow?.subject_name || topRow?.title || "");
-    const verb = String(topRow?.action_verb || "");
-    const target = String(topRow?.target_value || "");
-    const cat = String(topRow?.category || "其他");
-    const deadline = topRow?.deadline
-      ? new Date(topRow.deadline).toISOString()
-      : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-    const titlePreview = String(topRow?.title_preview || subj);
+    const subj = String(topRow?.subject_name || topRow?.title || "")
+      .trim()
+      .slice(0, 120);
+    const verb = String(topRow?.action_verb || "")
+      .trim()
+      .slice(0, 40);
+    const target = String(topRow?.target_value || "")
+      .trim()
+      .slice(0, 120);
+    const cat = String(topRow?.category || "")
+      .trim()
+      .slice(0, 32);
+    const fallbackDeadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+    let deadline = fallbackDeadline;
+    if (topRow?.deadline) {
+      const d = new Date(String(topRow.deadline));
+      if (Number.isFinite(d.getTime())) deadline = d.toISOString();
+    }
+    const titlePreview = String(topRow?.title_preview || subj)
+      .trim()
+      .slice(0, 4000);
     const criteriaPreview = String(
       topRow?.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成"
-    );
-    const eventTitle = `${subj}${actionLabel(verb)}${target}`.trim();
+    )
+      .trim()
+      .slice(0, 4000);
+    const eventTitle = `${subj}${actionLabel(verb)}${target}`.trim().slice(0, 200);
     const seed = (eventTitle || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
     const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
       seed
@@ -148,7 +169,7 @@ export async function POST(req: NextRequest) {
       .insert({
         title: eventTitle || topRow?.title || "",
         description: titlePreview || topRow?.title || "",
-        category: cat,
+        category: cat || "其他",
         deadline,
         min_stake: 0.1,
         criteria: criteriaPreview,

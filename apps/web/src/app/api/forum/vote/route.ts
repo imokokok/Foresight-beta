@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function toNum(v: any): number | null {
   const n = Number(v);
@@ -18,6 +19,14 @@ export async function POST(req: NextRequest) {
     if (id == null || id <= 0) return ApiResponses.badRequest("id 必填");
     const userAddr = normalizeAddress(await getSessionAddress(req));
     if (!/^0x[a-f0-9]{40}$/.test(userAddr)) return ApiResponses.unauthorized("未登录或会话失效");
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `forum_vote:${userAddr.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "forum_vote"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("操作过于频繁，请稍后再试");
 
     if (!supabaseAdmin) {
       return ApiResponses.internalError("服务端未配置 SUPABASE_SERVICE_KEY");

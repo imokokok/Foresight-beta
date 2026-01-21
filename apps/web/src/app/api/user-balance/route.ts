@@ -9,6 +9,7 @@ import {
   normalizeAddress,
 } from "@/lib/serverUtils";
 import { getChainAddresses, getConfiguredChainId, getConfiguredRpcUrl } from "@/lib/runtimeConfig";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isMissingRelation(error?: { message?: string }) {
   const msg = String(error?.message || "").toLowerCase();
@@ -107,6 +108,14 @@ export async function POST(req: NextRequest) {
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) {
       return ApiResponses.unauthorized("未登录");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `user_balance:sync:${viewer.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "user_balance_sync"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const rawBody = await req.json().catch(() => ({}));
     const body = rawBody && typeof rawBody === "object" ? (rawBody as Record<string, unknown>) : {};

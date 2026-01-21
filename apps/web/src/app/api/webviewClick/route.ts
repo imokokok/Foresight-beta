@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getIP(req);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "webview_click_post_ip");
+    if (!rl.success) {
+      return ApiResponses.rateLimit("Too many requests");
+    }
     const body = await req.json().catch(() => null);
+    try {
+      if (body && typeof body === "object") {
+        const size = JSON.stringify(body).length;
+        if (size > 10_000) {
+          return ApiResponses.invalidParameters("payload too large");
+        }
+      }
+    } catch {}
 
     if (process.env.NODE_ENV === "production") {
       const client = supabaseAdmin;

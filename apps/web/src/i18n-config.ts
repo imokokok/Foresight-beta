@@ -2,7 +2,7 @@
  * 国际化配置（轻量级方案，不影响现有路由）
  */
 
-export const locales = ["zh-CN", "en", "es", "fr", "ko"] as const;
+export const locales = ["en", "zh-CN", "es", "fr", "ko"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "en";
 

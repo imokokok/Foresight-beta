@@ -9,6 +9,7 @@ import {
 } from "@/lib/serverUtils";
 import { Database } from "@/lib/database.types";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isEthAddress(addr: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(addr);
@@ -176,14 +177,26 @@ export async function POST(req: NextRequest) {
     }
     const payload = await parseRequestBody(req);
     const walletAddress = normalizeAddress(String(payload?.walletAddress || ""));
-    const username = String(payload?.username || "").trim();
-    const email = String(payload?.email || "").trim();
+    const username = String(payload?.username || "")
+      .trim()
+      .slice(0, 20);
+    const email = String(payload?.email || "")
+      .trim()
+      .slice(0, 254);
     const remember = !!payload?.rememberMe;
 
     const sessAddr = await getSessionAddress(req);
     if (!sessAddr || sessAddr !== walletAddress) {
       return ApiResponses.unauthorized("Not authenticated or wallet address mismatch");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `user_profiles:update:${walletAddress.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.strict,
+      "user_profiles_update"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("操作过于频繁，请稍后再试");
 
     if (!isEthAddress(walletAddress)) {
       return ApiResponses.badRequest("Invalid wallet address");

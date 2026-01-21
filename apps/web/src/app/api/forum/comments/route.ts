@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const threadId = toNum((body as { threadId?: unknown }).threadId);
     const parentIdRaw = (body as { parentId?: unknown }).parentId;
     const parentId = parentIdRaw == null ? null : toNum(parentIdRaw);
-    const content = String((body as { content?: unknown }).content || "");
+    const content = String((body as { content?: unknown }).content || "").slice(0, 4000);
     const rawWalletAddress = String((body as { walletAddress?: unknown }).walletAddress || "");
     if (parentIdRaw != null && parentId == null) {
       return ApiResponses.invalidParameters("parentId is invalid");
@@ -106,6 +106,9 @@ export async function POST(req: NextRequest) {
     }
     if (textLengthWithoutSpaces(content) < 2) {
       return ApiResponses.invalidParameters("Comment is too short");
+    }
+    if (textLengthWithoutSpaces(content) > 2000) {
+      return ApiResponses.invalidParameters("Comment is too long");
     }
     const client = supabaseAdmin;
     if (!client) {

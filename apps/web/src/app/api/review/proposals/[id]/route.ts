@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const rawAction = (body as Record<string, unknown>).action;
     const action = typeof rawAction === "string" ? rawAction.trim() : "";
     const rawReason = (body as Record<string, unknown>).reason;
-    const reason = typeof rawReason === "string" ? rawReason : "";
+    const reason = typeof rawReason === "string" ? rawReason.trim().slice(0, 500) : "";
     const patch = (body as Record<string, unknown>).patch;
     if (!action) {
       return ApiResponses.invalidParameters("action_required");
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (action === "approve") {
       reviewStatus = "approved";
       if (!existingRow.created_prediction_id) {
-        let title = existingRow.title_preview;
+        let title = String(existingRow.title_preview || "").trim();
         if (!title) {
           const subj = existingRow.subject_name || "";
           const verb = existingRow.action_verb || "";
@@ -138,23 +138,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             title = existingRow.title || "Untitled Prediction";
           }
         }
+        title = String(title || "")
+          .trim()
+          .slice(0, 200);
 
         const seed = (title || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
         const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
 
-        const deadline = existingRow.deadline
-          ? new Date(existingRow.deadline).toISOString()
-          : new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+        const fallbackDeadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+        let deadline = fallbackDeadline;
+        if (existingRow.deadline) {
+          const d = new Date(String(existingRow.deadline));
+          if (Number.isFinite(d.getTime())) deadline = d.toISOString();
+        }
 
         try {
           const result = await createPrediction(client, {
             title: title || "Untitled",
-            description: existingRow.title_preview || title || "No description",
-            category: normalizeCategory(existingRow.category || "更多"),
+            description: String(existingRow.title_preview || title || "No description")
+              .trim()
+              .slice(0, 4000),
+            category: normalizeCategory(String(existingRow.category || "更多")).slice(0, 32),
             deadline,
             minStake: 0.1,
-            criteria:
-              existingRow.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成",
+            criteria: String(
+              existingRow.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成"
+            )
+              .trim()
+              .slice(0, 4000),
             image_url: imageUrl,
           });
           if (result.newPrediction?.id) {
@@ -186,7 +197,53 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         if (Object.prototype.hasOwnProperty.call(safePatch, key)) {
           const value = safePatch[key];
           if (value !== undefined) {
-            (updatePayload as Record<string, unknown>)[key] = value as unknown;
+            if (key === "category") {
+              updatePayload.category = normalizeCategory(String(value || "")).slice(0, 32);
+              continue;
+            }
+            if (key === "deadline") {
+              const raw = String(value || "").trim();
+              if (!raw) {
+                updatePayload.deadline = null;
+                continue;
+              }
+              const d = new Date(raw);
+              if (!Number.isFinite(d.getTime())) {
+                return ApiResponses.invalidParameters("invalid_deadline");
+              }
+              updatePayload.deadline = d.toISOString();
+              continue;
+            }
+            if (key === "title_preview") {
+              updatePayload.title_preview = String(value || "")
+                .trim()
+                .slice(0, 4000);
+              continue;
+            }
+            if (key === "criteria_preview") {
+              updatePayload.criteria_preview = String(value || "")
+                .trim()
+                .slice(0, 4000);
+              continue;
+            }
+            if (key === "subject_name") {
+              updatePayload.subject_name = String(value || "")
+                .trim()
+                .slice(0, 120);
+              continue;
+            }
+            if (key === "action_verb") {
+              updatePayload.action_verb = String(value || "")
+                .trim()
+                .slice(0, 40);
+              continue;
+            }
+            if (key === "target_value") {
+              updatePayload.target_value = String(value || "")
+                .trim()
+                .slice(0, 120);
+              continue;
+            }
           }
         }
       }

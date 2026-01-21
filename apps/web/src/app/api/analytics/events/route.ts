@@ -4,6 +4,41 @@ import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 
+function safeJsonSize(value: unknown): number {
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return Infinity;
+  }
+}
+
+function safeIsoFromTimestamp(value: unknown): string {
+  const nowIso = new Date().toISOString();
+  try {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      const d = new Date(value);
+      return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (!s) return nowIso;
+      const ms = Date.parse(s);
+      if (Number.isFinite(ms)) {
+        const d = new Date(ms);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+      const asNum = Number(s);
+      if (Number.isFinite(asNum) && asNum > 0) {
+        const d = new Date(asNum);
+        return Number.isFinite(d.getTime()) ? d.toISOString() : nowIso;
+      }
+    }
+    return nowIso;
+  } catch {
+    return nowIso;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip = getIP(req);
@@ -15,14 +50,30 @@ export async function POST(req: NextRequest) {
     if (!rl.success) {
       return ApiResponses.rateLimit("Too many custom analytics events");
     }
-    const body = await req.json();
+    const contentLength = Number(req.headers.get("content-length") || "0");
+    if (Number.isFinite(contentLength) && contentLength > 32 * 1024) {
+      return ApiResponses.badRequest("Payload too large");
+    }
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return ApiResponses.invalidParameters("Invalid payload");
+    }
 
-    const { event, properties } = body;
+    const raw = body as any;
+    const event = typeof raw?.event === "string" ? raw.event.trim() : "";
+    const properties = raw?.properties;
+    const props =
+      properties && typeof properties === "object" && !Array.isArray(properties) ? properties : {};
+
+    if (!event || event.length > 64 || !/^[a-zA-Z0-9._:-]{1,64}$/.test(event)) {
+      return ApiResponses.invalidParameters("Invalid event");
+    }
+    if (safeJsonSize(props) > 10_000) {
+      return ApiResponses.invalidParameters("payload too large");
+    }
 
     // 在生产环境记录自定义事件
     if (process.env.NODE_ENV === "production") {
-      console.log("Custom Event:", event, properties);
-
       // 可以发送到分析服务或记录到数据库
       const client = supabaseAdmin as any;
       if (client) {
@@ -30,15 +81,15 @@ export async function POST(req: NextRequest) {
           .from("analytics_events")
           .insert({
             event_name: event,
-            event_properties: properties,
-            created_at: new Date(properties.timestamp || Date.now()).toISOString(),
+            event_properties: props,
+            created_at: safeIsoFromTimestamp((props as any)?.timestamp),
           })
           .catch(() => {
             // 表不存在时静默失败
           });
       }
     } else {
-      console.log(`[Event] ${event}:`, properties);
+      console.log(`[Event] ${event}:`, props);
     }
 
     return NextResponse.json({ success: true });

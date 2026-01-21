@@ -10,6 +10,7 @@ import {
 import { normalizeId } from "@/lib/ids";
 import { getFlagTierFromFlag, getTierConfig, issueRandomSticker } from "@/lib/flagRewards";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -26,8 +27,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return ApiResponses.unauthorized("Unauthorized");
     }
 
-    const note = String(body?.note || "").trim();
-    const imageUrl = String(body?.image_url || "").trim();
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `flags:checkin:${userId.toLowerCase()}:${flagId}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "flags_checkin"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("Too many check-in requests");
+
+    const note = String(body?.note || "")
+      .trim()
+      .slice(0, 500);
+    const imageUrl = String(body?.image_url || "")
+      .trim()
+      .slice(0, 2048);
 
     const { data: rawFlag, error: findErr } = await client
       .from("flags")

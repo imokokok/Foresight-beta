@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { createContext } from "react";
 
 vi.mock("lucide-react", () => ({
   AlertTriangle: () => <svg data-testid="alert-triangle-icon" />,
@@ -12,6 +13,10 @@ vi.mock("lucide-react", () => ({
 }));
 
 vi.mock("@/lib/i18n", () => ({
+  LocaleContext: createContext({
+    locale: "en",
+    setLocale: () => {},
+  }),
   t: (key: string) => {
     const map: Record<string, string> = {
       "errors.somethingWrong": "出错了",

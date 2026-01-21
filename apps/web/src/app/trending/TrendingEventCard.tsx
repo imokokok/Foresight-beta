@@ -4,13 +4,7 @@ import { FollowButton } from "@/components/ui/FollowButton";
 import LazyImage from "@/components/ui/LazyImage";
 import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
-import {
-  formatRelativeTime,
-  formatDate,
-  getEventStatus,
-  getStatusBadgeColor,
-  getStatusText,
-} from "@/lib/date-utils";
+import { formatRelativeTime } from "@/lib/date-utils";
 
 type AdminActionsProps = {
   eventId: number | null;
@@ -102,12 +96,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
     onDelete(e, eventId);
   };
 
-  // Get event status
-  const isResolved = product.status === "resolved";
-  const eventStatus = getEventStatus(product.deadline || new Date(), isResolved);
-  const statusBadgeColor = getStatusBadgeColor(eventStatus);
-  const statusText = getStatusText(eventStatus, tTrending);
-
   const imageElement = (
     <div className="relative h-40 overflow-hidden bg-gray-100 group">
       <LazyImage
@@ -120,15 +108,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
         fadeIn={true}
       />
 
-      {/* Event status badge */}
-      <div className="absolute top-3 right-3 z-10">
-        <span
-          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadgeColor} shadow-md`}
-        >
-          {statusText}
-        </span>
-      </div>
-
       {/* Gradient overlay for better text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -138,15 +117,6 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
           <Clock className="w-3 h-3 text-white" />
           <span className="text-[10px] font-medium text-white">
             {formatRelativeTime(product.deadline)}
-          </span>
-        </div>
-      )}
-
-      {/* Tag label */}
-      {product.tag && (
-        <div className="absolute top-3 left-3 z-10">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/60 text-white backdrop-blur-sm">
-            {product.tag}
           </span>
         </div>
       )}

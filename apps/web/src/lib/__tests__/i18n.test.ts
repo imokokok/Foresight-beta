@@ -33,24 +33,27 @@ Object.defineProperty(window, "localStorage", {
 describe("Internationalization (i18n)", () => {
   beforeEach(() => {
     localStorageMock.clear();
+    try {
+      document.cookie = "preferred-language=; Max-Age=0; path=/";
+    } catch {}
   });
 
   describe("getCurrentLocale", () => {
     it("should return default locale when no preference saved", () => {
       const locale = i18n.getCurrentLocale();
-      expect(["zh-CN", "en", "es", "fr", "ko"]).toContain(locale);
-    });
-
-    it("should return saved locale preference", () => {
-      localStorage.setItem("preferred-language", "en");
-      const locale = i18n.getCurrentLocale();
       expect(locale).toBe("en");
     });
 
-    it("should fallback to a valid locale for invalid preference", () => {
-      localStorage.setItem("preferred-language", "invalid");
+    it("should return saved locale preference", () => {
+      document.cookie = "preferred-language=zh-CN; path=/";
       const locale = i18n.getCurrentLocale();
-      expect(["zh-CN", "en", "es", "fr", "ko"]).toContain(locale);
+      expect(locale).toBe("zh-CN");
+    });
+
+    it("should fallback to a valid locale for invalid preference", () => {
+      document.cookie = "preferred-language=invalid; path=/";
+      const locale = i18n.getCurrentLocale();
+      expect(locale).toBe("en");
     });
   });
 

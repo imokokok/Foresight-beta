@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useContext,
+  useMemo,
+  createContext,
+  createElement,
+} from "react";
 import zhCN from "../../messages/zh-CN.json";
 import en from "../../messages/en.json";
 import es from "../../messages/es.json";
 import fr from "../../messages/fr.json";
 import ko from "../../messages/ko.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
+import type { ReactNode } from "react";
 
 type Messages = typeof zhCN;
 
@@ -42,6 +51,10 @@ const messages: Record<Locale, Messages> = {
   ko: mergeMessages(en, ko) as Messages,
 };
 
+type LocaleContextValue = { locale: Locale; setLocale: (next: Locale) => void };
+
+export const LocaleContext = createContext<LocaleContextValue | null>(null);
+
 export function getSupportedLocales(): Locale[] {
   return [...locales];
 }
@@ -50,22 +63,21 @@ export function isSupportedLocale(value: string | null | undefined): value is Lo
   return locales.includes(value as Locale);
 }
 
+function getLocaleFromCookie(): Locale | null {
+  if (typeof document === "undefined") return null;
+  const raw = document.cookie
+    .split(";")
+    .map((p) => p.trim())
+    .find((p) => p.startsWith("preferred-language="));
+  if (!raw) return null;
+  const value = decodeURIComponent(raw.slice("preferred-language=".length));
+  return isSupportedLocale(value) ? value : null;
+}
+
 export function getCurrentLocale(): Locale {
   if (typeof window === "undefined") return defaultLocale;
 
-  const saved =
-    typeof localStorage !== "undefined" ? localStorage.getItem("preferred-language") : null;
-  if (isSupportedLocale(saved)) {
-    return saved;
-  }
-
-  if (saved && typeof localStorage !== "undefined") {
-    try {
-      localStorage.removeItem("preferred-language");
-    } catch {}
-  }
-
-  return defaultLocale;
+  return getLocaleFromCookie() || defaultLocale;
 }
 
 export function getTranslation(locale: Locale = getCurrentLocale()): Messages {
@@ -138,12 +150,34 @@ export function setLocale(nextLocale: Locale) {
   );
 }
 
-export function useTranslations(namespace?: string) {
-  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+export function LocaleProvider({
+  initialLocale,
+  children,
+}: {
+  initialLocale: Locale;
+  children: ReactNode;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    setLocaleState(getCurrentLocale());
+    const fromCookie = getCurrentLocale();
+    if (fromCookie && fromCookie !== locale) {
+      setLocaleState(fromCookie);
+    }
 
+    try {
+      const saved =
+        typeof localStorage !== "undefined" ? localStorage.getItem("preferred-language") : null;
+      if (isSupportedLocale(saved) && saved !== fromCookie && saved !== locale) {
+        setLocale(saved);
+        setLocaleState(saved);
+      } else if (saved && typeof localStorage !== "undefined" && !isSupportedLocale(saved)) {
+        localStorage.removeItem("preferred-language");
+      }
+    } catch {}
+  }, [locale]);
+
+  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "preferred-language" && e.newValue) {
         if (isSupportedLocale(e.newValue)) {
@@ -169,26 +203,41 @@ export function useTranslations(namespace?: string) {
     };
   }, []);
 
-  const translate = useCallback(
-    (key: string) => {
-      const fullKey = namespace ? `${namespace}.${key}` : key;
-      return t(fullKey, locale);
-    },
-    [locale, namespace]
-  );
+  const changeLocale = useCallback((next: Locale) => {
+    setLocale(next);
+    setLocaleState(next);
+  }, []);
 
-  return translate;
+  const value = useMemo(() => ({ locale, setLocale: changeLocale }), [changeLocale, locale]);
+
+  return createElement(LocaleContext.Provider, { value }, children);
 }
 
 export function useLocale() {
+  const ctx = useContext(LocaleContext);
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
 
   useEffect(() => {
-    setLocaleState(getCurrentLocale());
+    if (ctx) return;
+    const fromCookie = getCurrentLocale();
+    setLocaleState(fromCookie);
+
+    try {
+      const saved =
+        typeof localStorage !== "undefined" ? localStorage.getItem("preferred-language") : null;
+      if (isSupportedLocale(saved) && saved !== fromCookie) {
+        setLocale(saved);
+        setLocaleState(saved);
+      } else if (saved && typeof localStorage !== "undefined" && !isSupportedLocale(saved)) {
+        localStorage.removeItem("preferred-language");
+      }
+    } catch {}
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "preferred-language" && e.newValue && isSupportedLocale(e.newValue)) {
-        setLocaleState(e.newValue);
+      if (e.key === "preferred-language" && e.newValue) {
+        if (isSupportedLocale(e.newValue)) {
+          setLocaleState(e.newValue);
+        }
       }
     };
 
@@ -207,13 +256,28 @@ export function useLocale() {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("languagechange", handleLanguageChange as EventListener);
     };
-  }, []);
+  }, [ctx]);
 
   const changeLocale = useCallback((next: Locale) => {
     setLocale(next);
+    setLocaleState(next);
   }, []);
 
-  return { locale, setLocale: changeLocale };
+  return ctx || { locale, setLocale: changeLocale };
+}
+
+export function useTranslations(namespace?: string) {
+  const { locale } = useLocale();
+
+  const translate = useCallback(
+    (key: string) => {
+      const fullKey = namespace ? `${namespace}.${key}` : key;
+      return t(fullKey, locale);
+    },
+    [locale, namespace]
+  );
+
+  return translate;
 }
 
 export type { Locale };

@@ -18,6 +18,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { getServerLocale } from "@/lib/i18n-server";
 import { buildLanguageAlternates, safeJsonLdStringify } from "@/lib/seo";
 import { OnboardingLayout } from "./OnboardingLayout";
+import { LocaleProvider } from "@/lib/i18n";
 
 // 动态加载语言文件，只加载当前语言
 async function loadLanguageFile(locale: Locale): Promise<any> {
@@ -171,39 +172,41 @@ export default async function RootLayout({
         <WebVitalsReporter />
         <ServiceWorkerRegister />
         <ErrorBoundary level="page">
-          <ReactQueryProvider>
-            <AuthProvider>
-              <WalletProvider>
-                <UserProfileProvider>
-                  <ToastProvider />
-                  <ErrorBoundary level="section">
-                    <OnboardingLayout locale={locale}>
-                      <div className="flex min-h-screen flex-col">
-                        <ErrorBoundary level="component">
-                          <TopNavBar />
-                        </ErrorBoundary>
-                        <div className="flex flex-1 relative">
+          <LocaleProvider initialLocale={locale}>
+            <ReactQueryProvider>
+              <AuthProvider>
+                <WalletProvider>
+                  <UserProfileProvider>
+                    <ToastProvider />
+                    <ErrorBoundary level="section">
+                      <OnboardingLayout locale={locale}>
+                        <div className="flex min-h-screen flex-col">
                           <ErrorBoundary level="component">
-                            <Sidebar />
+                            <TopNavBar />
                           </ErrorBoundary>
-                          <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 pb-nav">
-                            <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
-                            <div className="relative z-10">
-                              <ErrorBoundary level="section">{children}</ErrorBoundary>
+                          <div className="flex flex-1 relative">
+                            <ErrorBoundary level="component">
+                              <Sidebar />
+                            </ErrorBoundary>
+                            <div className="flex-1 min-h-screen relative bg-gradient-to-br from-violet-50 via-purple-50/20 to-fuchsia-50/30 pb-nav">
+                              <div className="absolute inset-0 pointer-events-none opacity-[0.02] z-0 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')]" />
+                              <div className="relative z-10">
+                                <ErrorBoundary level="section">{children}</ErrorBoundary>
+                              </div>
                             </div>
                           </div>
+                          {/* 移动端底部导航栏 */}
+                          <ErrorBoundary level="component">
+                            <MobileBottomNav />
+                          </ErrorBoundary>
                         </div>
-                        {/* 移动端底部导航栏 */}
-                        <ErrorBoundary level="component">
-                          <MobileBottomNav />
-                        </ErrorBoundary>
-                      </div>
-                    </OnboardingLayout>
-                  </ErrorBoundary>
-                </UserProfileProvider>
-              </WalletProvider>
-            </AuthProvider>
-          </ReactQueryProvider>
+                      </OnboardingLayout>
+                    </ErrorBoundary>
+                  </UserProfileProvider>
+                </WalletProvider>
+              </AuthProvider>
+            </ReactQueryProvider>
+          </LocaleProvider>
         </ErrorBoundary>
       </body>
     </html>

@@ -134,3 +134,7 @@ export function getIP(req: NextRequest | Request): string {
     headers.get("x-forwarded-for")?.split(",")[0].trim() || headers.get("x-real-ip") || "unknown"
   );
 }
+
+export function resetRateLimitStore() {
+  store.clear();
+}

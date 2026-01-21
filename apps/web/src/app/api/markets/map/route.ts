@@ -7,6 +7,7 @@ import {
   logApiError,
   normalizeAddress,
 } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
   try {
@@ -53,6 +54,14 @@ export async function POST(req: NextRequest) {
     if (profErr) return ApiResponses.databaseError("Query failed", profErr.message);
     const viewerIsAdmin = !!prof?.is_admin || isAdminAddress(viewer);
     if (!viewerIsAdmin) return ApiResponses.forbidden("无权限");
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `markets_map:upsert:${viewer.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.strict,
+      "markets_map_upsert"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("操作过于频繁，请稍后再试");
 
     const body = (await req.json().catch(() => ({}))) as any;
     const feeBps =

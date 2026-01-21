@@ -3,10 +3,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { ApiResponses } from "@/lib/apiResponse";
-import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { getSessionAddress, logApiError, normalizeAddress } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 function isEvmAddress(value: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(value);
+}
+
+function resolveAllowedOrigins(request: NextRequest): Set<string> {
+  const allowed = new Set<string>();
+  try {
+    allowed.add(request.nextUrl.origin);
+  } catch {}
+  const appUrl = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
+  if (appUrl) {
+    try {
+      allowed.add(new URL(appUrl).origin);
+    } catch {}
+  }
+  if (process.env.NODE_ENV !== "production") {
+    allowed.add("http://localhost:3000");
+    allowed.add("http://127.0.0.1:3000");
+  }
+  return allowed;
+}
+
+function getAllowedOriginHeader(request: NextRequest): string | null {
+  const origin = String(request.headers.get("origin") || "").trim();
+  if (!origin) return null;
+  return resolveAllowedOrigins(request).has(origin) ? origin : null;
 }
 
 function guessFileExt(file: File) {
@@ -26,6 +51,10 @@ function guessFileExt(file: File) {
 
 export async function POST(request: NextRequest) {
   try {
+    const allowedOrigin = getAllowedOriginHeader(request);
+    if (request.headers.get("origin") && !allowedOrigin) {
+      return ApiResponses.forbidden("Origin not allowed");
+    }
     // 验证用户是否已登录（钱包地址）
     const formData = await request.formData();
     const sessAddrRaw = await getSessionAddress(request);
@@ -43,6 +72,16 @@ export async function POST(request: NextRequest) {
 
     if (walletAddress && walletAddress !== sessAddr) {
       return ApiResponses.forbidden("walletAddress mismatch");
+    }
+
+    const ip = getIP(request);
+    const rl = await checkRateLimit(
+      `upload:${sessAddr.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.strict,
+      "upload_image"
+    );
+    if (!rl.success) {
+      return ApiResponses.rateLimit("上传过于频繁，请稍后再试");
     }
 
     // 验证文件
@@ -78,7 +117,7 @@ export async function POST(request: NextRequest) {
       if (!supabaseAdmin) {
         throw new Error("Service key not configured");
       }
-      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      const { error: uploadError } = await supabaseAdmin.storage
         .from("predictions") // 存储桶名称
         .upload(fileName, buffer, {
           contentType: file.type,
@@ -86,7 +125,7 @@ export async function POST(request: NextRequest) {
         });
 
       if (uploadError) {
-        console.warn("Supabase Storage上传失败，使用备用方案:", uploadError);
+        logApiError("POST /api/upload storage upload failed", uploadError);
         // 如果存储桶不存在，使用备用方案：生成基于标题的图片
         throw new Error("Storage bucket not available");
       }
@@ -107,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 返回成功响应
-    return NextResponse.json(
+    const res = NextResponse.json(
       {
         success: true,
         data: {
@@ -120,22 +159,37 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+    if (allowedOrigin) {
+      res.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+      res.headers.set("Vary", "Origin");
+    }
+    return res;
   } catch (error: any) {
-    console.error("图片上传异常:", error);
+    logApiError("POST /api/upload unhandled error", error);
     const detail = error instanceof Error ? error.message : String(error);
-    return ApiResponses.internalError(
+    const res = ApiResponses.internalError(
       "图片上传失败",
       process.env.NODE_ENV === "development" ? detail : undefined
     );
+    const allowedOrigin = getAllowedOriginHeader(request);
+    if (allowedOrigin) {
+      res.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+      res.headers.set("Vary", "Origin");
+    }
+    return res;
   }
 }
 
 // 处理OPTIONS请求（CORS）
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  const allowedOrigin = getAllowedOriginHeader(request);
+  if (request.headers.get("origin") && !allowedOrigin) {
+    return new NextResponse(null, { status: 403 });
+  }
   return new NextResponse(null, {
     status: 200,
     headers: {
-      "Access-Control-Allow-Origin": "*",
+      ...(allowedOrigin ? { "Access-Control-Allow-Origin": allowedOrigin, Vary: "Origin" } : {}),
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },

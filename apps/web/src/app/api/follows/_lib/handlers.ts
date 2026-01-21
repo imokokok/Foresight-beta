@@ -7,6 +7,7 @@ import {
   normalizeAddress,
   parseRequestBody,
 } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import {
   isEventIdForeignKeyViolation,
   isMissingRelation,
@@ -42,6 +43,14 @@ export async function handleFollowsPost(req: NextRequest) {
     if (!sessionWallet) {
       return ApiResponses.unauthorized("Unauthorized");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `follows:post:${sessionWallet.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "follows_post"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("Too many requests");
     const { walletAddress: bodyWallet } = parseWalletAddressStrict(rawWallet);
 
     if (!predictionId) {
@@ -234,6 +243,14 @@ export async function handleFollowsDelete(req: NextRequest) {
     if (!sessionWallet) {
       return ApiResponses.unauthorized("Unauthorized");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `follows:delete:${sessionWallet.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.moderate,
+      "follows_delete"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("Too many requests");
     const { walletAddress: bodyWallet } = parseWalletAddressStrict(rawWallet);
 
     if (!predictionId) return ApiResponses.badRequest("predictionId is required");

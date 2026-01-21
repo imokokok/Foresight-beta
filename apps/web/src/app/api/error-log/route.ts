@@ -2,10 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+import { logApiError } from "@/lib/serverUtils";
 
 function truncate(value: string, maxLength: number): string {
   if (value.length <= maxLength) return value;
   return value.slice(0, Math.max(0, maxLength - 1)) + "…";
+}
+
+function sanitizeUrl(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
+  try {
+    const u = raw.startsWith("http://") || raw.startsWith("https://") ? new URL(raw) : null;
+    if (u) return `${u.origin}${u.pathname}`;
+  } catch {}
+  try {
+    const u = new URL(raw, "https://example.invalid");
+    const path = u.pathname || "/";
+    return path.startsWith("/") ? path : `/${path}`;
+  } catch {}
+  return truncate(raw, 800);
 }
 
 export async function POST(req: NextRequest) {
@@ -28,7 +44,7 @@ export async function POST(req: NextRequest) {
     const error = truncate(String(raw.error || ""), 500) || "Unknown error";
     const stack = truncate(String(raw.stack || ""), 4000) || null;
     const digest = truncate(String(raw.digest || ""), 200) || null;
-    const url = truncate(String(raw.url || ""), 800) || null;
+    const url = sanitizeUrl(raw.url);
     const userAgent = truncate(String(raw.userAgent || ""), 500) || null;
     const componentStack = truncate(String(raw.componentStack || ""), 4000) || null;
 
@@ -50,30 +66,28 @@ export async function POST(req: NextRequest) {
             created_at: new Date().toISOString(),
           })
           .catch((err: any) => {
-            // 如果表不存在，只在控制台记录
-            console.error("Error logging to database:", err);
+            logApiError("POST /api/error-log db insert failed", err);
           });
       }
     }
 
-    // 同时输出到控制台
-    const logPayload: Record<string, unknown> = {
-      error,
-      digest,
-      url,
-      timestamp: new Date().toISOString(),
-    };
     if (process.env.NODE_ENV !== "production") {
-      logPayload.stack = stack;
-      logPayload.userAgent = userAgent;
-      logPayload.componentStack = componentStack;
+      const logPayload: Record<string, unknown> = {
+        error,
+        digest,
+        url,
+        timestamp: new Date().toISOString(),
+        stack,
+        userAgent,
+        componentStack,
+      };
+      logApiError("Client Error", logPayload);
     }
-    console.error("Client Error:", logPayload);
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
     const detail = String(e?.message || e);
-    console.error("Error in error logging:", e);
+    logApiError("POST /api/error-log unhandled error", e);
     return ApiResponses.internalError("Error in error logging", detail);
   }
 }

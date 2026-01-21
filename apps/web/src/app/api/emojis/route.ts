@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
+import { logApiError } from "@/lib/serverUtils";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const client = supabaseAdmin as any;
     if (!client) return NextResponse.json({ data: [] });
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await client.from("emojis").select("*").order("id");
 
     if (error) {
-      console.error("Fetch emojis error:", error);
+      logApiError("GET /api/emojis fetch failed", error);
       return NextResponse.json({ data: [] });
     }
 
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: formatted });
   } catch (e) {
+    logApiError("GET /api/emojis unhandled error", e);
     return NextResponse.json({ data: [] });
   }
 }

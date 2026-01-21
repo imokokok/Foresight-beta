@@ -68,9 +68,12 @@ describe("LanguageSwitcher Component", () => {
       fireEvent.click(button!);
 
       // 中文选项应该有选中标记
-      const options = screen.getAllByRole("menuitem");
-      const chineseOption = options[0];
-      expect(chineseOption).toHaveClass(/active|selected/);
+      const chineseOption = screen.getAllByRole("menuitem").find((el) => {
+        const text = (el.textContent || "").toLowerCase();
+        return text.includes("中文") || text.includes("chinese") || text.includes("简体中文");
+      });
+      expect(chineseOption).toBeTruthy();
+      expect(chineseOption!).toHaveClass(/active|selected/);
     });
 
     it("点击语言选项应该切换语言", () => {

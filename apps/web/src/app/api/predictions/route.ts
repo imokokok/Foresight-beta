@@ -7,6 +7,7 @@ import { createPredictionFromRequest } from "./_lib/createPrediction";
 import { ApiResponses, errorResponse } from "@/lib/apiResponse";
 import { logApiError } from "@/lib/serverUtils";
 import { ApiErrorCode } from "@/types/api";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 // 预测列表可以短暂缓存
 export const revalidate = 30; // 30秒缓存
@@ -98,6 +99,10 @@ export async function POST(request: NextRequest) {
     if (!supabaseAdmin) {
       return ApiResponses.internalError("Supabase client is not configured");
     }
+
+    const ip = getIP(request);
+    const rl = await checkRateLimit(ip || "unknown", RateLimits.strict, "predictions_create_ip");
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const { newPrediction } = await createPredictionFromRequest(request, supabaseAdmin);
 

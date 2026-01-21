@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { t } from "@/lib/i18n";
+import { useTranslations } from "@/lib/i18n";
 import type { PredictionDetail } from "../types";
 import { safeJson } from "../http";
 
 export function usePredictionData(predictionIdRaw: string | number | undefined) {
+  const tCommon = useTranslations("common");
   const [prediction, setPrediction] = useState<PredictionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +26,10 @@ export function usePredictionData(predictionIdRaw: string | number | undefined) 
           setPrediction(data.data);
           setError(null);
         } else {
-          setError(data.message || t("common.loadFailed"));
+          setError(data.message || tCommon("loadFailed"));
         }
       } catch (e) {
-        if (!cancelled) setError(t("common.loadFailed"));
+        if (!cancelled) setError(tCommon("loadFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }

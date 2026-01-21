@@ -79,12 +79,32 @@ export async function handleAdminPerformanceGet(req: NextRequest) {
 
 export async function handleAdminPerformancePost(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { type, data } = body;
-
     const client = supabaseAdmin;
     if (!client) {
       return errorResponse("数据库连接失败", ApiErrorCode.DATABASE_ERROR, 500);
+    }
+
+    const admin = await isAdminSession(client as any, req);
+    if (!admin.ok) {
+      if (admin.reason === "unauthorized")
+        return errorResponse("未授权", ApiErrorCode.UNAUTHORIZED, 401);
+      return errorResponse("权限不足", ApiErrorCode.FORBIDDEN, 403);
+    }
+
+    const body = await req.json().catch(() => null);
+    const rawType = body && typeof body === "object" ? (body as any).type : "";
+    const type = typeof rawType === "string" ? rawType : "";
+    const data = body && typeof body === "object" ? (body as any).data : null;
+
+    if (type !== "web_vitals" && type !== "custom_metrics" && type !== "api_performance") {
+      return errorResponse("无效的数据类型", ApiErrorCode.INVALID_PARAMETERS, 400);
+    }
+    const isValidRow = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+    const isValidPayload =
+      isValidRow(data) ||
+      (Array.isArray(data) && data.length > 0 && data.length <= 100 && data.every(isValidRow));
+    if (!isValidPayload) {
+      return errorResponse("无效的数据格式", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
     if (type === "web_vitals") {
@@ -96,8 +116,6 @@ export async function handleAdminPerformancePost(req: NextRequest) {
     } else if (type === "api_performance") {
       const { error } = await (client as any).from("api_performance").insert(data);
       if (error) throw error;
-    } else {
-      return errorResponse("无效的数据类型", ApiErrorCode.INVALID_PARAMETERS, 400);
     }
 
     return successResponse({ success: true });

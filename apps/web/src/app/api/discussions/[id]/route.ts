@@ -8,6 +8,11 @@ import {
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
+import { checkRateLimit, RateLimits } from "@/lib/rateLimit";
+
+function textLengthWithoutSpaces(value: string): number {
+  return value.replace(/\s+/g, "").length;
+}
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -17,10 +22,15 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const body = await parseRequestBody(req);
     const content = String(body?.content || "");
     if (!content.trim()) return ApiResponses.badRequest("content 必填");
+    if (content.length > 4000) return ApiResponses.badRequest("内容过长");
+    if (textLengthWithoutSpaces(content) > 2000) return ApiResponses.badRequest("内容过长");
 
     const sessAddr = await getSessionAddress(req);
     const viewer = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized("未登录或会话失效");
+
+    const rl = await checkRateLimit(viewer, RateLimits.moderate, "discussion_patch_user");
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase 未配置");
@@ -63,6 +73,9 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     const sessAddr = await getSessionAddress(req);
     const viewer = normalizeAddress(String(sessAddr || ""));
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) return ApiResponses.unauthorized("未登录或会话失效");
+
+    const rl = await checkRateLimit(viewer, RateLimits.moderate, "discussion_delete_user");
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const client = supabaseAdmin;
     if (!client) return ApiResponses.internalError("Supabase 未配置");

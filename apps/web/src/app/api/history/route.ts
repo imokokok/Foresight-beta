@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { ApiResponses, successResponse } from "@/lib/apiResponse";
-import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
+import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 // POST /api/history  body: { eventId: number, walletAddress: string }
 // GET /api/history?address=0x...
@@ -22,6 +23,14 @@ export async function POST(req: NextRequest) {
     if (!/^0x[a-f0-9]{40}$/.test(viewer)) {
       return ApiResponses.unauthorized("未登录或会话失效");
     }
+
+    const ip = getIP(req);
+    const rl = await checkRateLimit(
+      `history:record:${viewer.toLowerCase()}:${ip || "unknown"}`,
+      RateLimits.lenient,
+      "history_record"
+    );
+    if (!rl.success) return ApiResponses.rateLimit("请求过于频繁，请稍后再试");
 
     const walletAddress = walletAddressRaw ? normalizeAddress(walletAddressRaw) : viewer;
     if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) {
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
     );
 
     if (error) {
-      console.error("Failed to record view history:", error);
+      logApiError("POST /api/history upsert_failed", error);
       return ApiResponses.databaseError("Failed to record history", error.message);
     }
 
@@ -96,7 +105,7 @@ export async function GET(req: NextRequest) {
       .limit(50); // 限制最近 50 条
 
     if (error) {
-      console.error("Failed to fetch history:", error);
+      logApiError("GET /api/history query_failed", error);
       return ApiResponses.databaseError("Failed to fetch history", error.message);
     }
 

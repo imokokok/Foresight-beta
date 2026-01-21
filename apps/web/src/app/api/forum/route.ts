@@ -151,13 +151,15 @@ export async function POST(req: NextRequest) {
     const eventIdRaw = body?.eventId;
     const eventId = eventIdRaw === 0 || eventIdRaw === "0" ? 0 : normalizeId(eventIdRaw);
 
-    const title = String(body?.title || "");
-    const rawContent = String(body?.content || "");
+    const title = String(body?.title || "")
+      .trim()
+      .slice(0, 200);
+    const rawContent = String(body?.content || "").slice(0, 8000);
     const rawWalletAddress = String(body?.walletAddress || "");
     if (eventId === null || eventId < 0) {
       return ApiResponses.invalidParameters("eventId 必填且必须为非负整数");
     }
-    if (!title.trim()) {
+    if (!title) {
       return ApiResponses.invalidParameters("标题必填");
     }
     if (textLengthWithoutSpaces(title) < 5) {
@@ -188,15 +190,32 @@ export async function POST(req: NextRequest) {
       );
     }
     if (!ok) return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
-    const subject_name = String(body?.subjectName ?? body?.subject_name ?? "").trim();
-    const action_verb = normalizeActionVerb(String(body?.actionVerb ?? body?.action_verb ?? ""));
-    const target_value = String(body?.targetValue ?? body?.target_value ?? "").trim();
+    const subject_name = String(body?.subjectName ?? body?.subject_name ?? "")
+      .trim()
+      .slice(0, 120);
+    const action_verb = normalizeActionVerb(String(body?.actionVerb ?? body?.action_verb ?? ""))
+      .trim()
+      .slice(0, 40);
+    const target_value = String(body?.targetValue ?? body?.target_value ?? "")
+      .trim()
+      .slice(0, 120);
     const categoryRaw = String(body?.category || "");
     const category = categoryRaw ? normalizeCategory(categoryRaw) : "";
     const deadlineRaw = body?.deadline ?? body?.deadline_at ?? body?.resolutionTime;
-    const deadline = deadlineRaw ? new Date(String(deadlineRaw)).toISOString() : null;
-    const title_preview = String(body?.titlePreview ?? body?.title_preview ?? "").trim();
-    const criteria_preview = String(body?.criteriaPreview ?? body?.criteria_preview ?? "").trim();
+    let deadline: string | null = null;
+    if (deadlineRaw) {
+      const d = new Date(String(deadlineRaw));
+      if (!Number.isFinite(d.getTime())) {
+        return ApiResponses.invalidParameters("Invalid deadline format");
+      }
+      deadline = d.toISOString();
+    }
+    const title_preview = String(body?.titlePreview ?? body?.title_preview ?? "")
+      .trim()
+      .slice(0, 4000);
+    const criteria_preview = String(body?.criteriaPreview ?? body?.criteria_preview ?? "")
+      .trim()
+      .slice(0, 4000);
 
     let content = rawContent;
     if (textLengthWithoutSpaces(content) < 40) {
@@ -209,14 +228,14 @@ export async function POST(req: NextRequest) {
         !!deadline;
       if (hasMetadata) {
         const parts: string[] = [];
-        parts.push(title_preview || title.trim());
+        parts.push(title_preview || title);
         parts.push("---");
         if (subject_name) parts.push(`Subject Name: ${subject_name}`);
         if (action_verb) parts.push(`Action Verb: ${action_verb}`);
         if (target_value) parts.push(`Target Value: ${target_value}`);
         if (deadline) parts.push(`Deadline: ${deadline}`);
         if (criteria_preview) parts.push(`Criteria: ${criteria_preview}`);
-        content = parts.join("\n");
+        content = parts.join("\n").slice(0, 8000);
       }
     }
 
