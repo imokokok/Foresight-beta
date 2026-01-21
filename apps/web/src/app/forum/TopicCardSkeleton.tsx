@@ -45,4 +45,3 @@ export const TopicCardSkeletonList = memo(function TopicCardSkeletonList({
     </div>
   );
 });
-

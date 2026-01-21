@@ -9,10 +9,10 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: foresight-relayer
-  
+
   minReplicas: 3
   maxReplicas: 20
-  
+
   metrics:
     # CPU 使用率
     - type: Resource
@@ -21,7 +21,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
-    
+
     # 内存使用率
     - type: Resource
       resource:
@@ -29,7 +29,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
-    
+
     # 自定义指标：每秒请求数
     - type: Pods
       pods:
@@ -38,7 +38,7 @@ spec:
         target:
           type: AverageValue
           averageValue: 1000
-    
+
     # 自定义指标：WebSocket 连接数
     - type: Pods
       pods:
@@ -47,7 +47,7 @@ spec:
         target:
           type: AverageValue
           averageValue: 500
-  
+
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60
@@ -59,7 +59,7 @@ spec:
           value: 4
           periodSeconds: 60
       selectPolicy: Max
-    
+
     scaleDown:
       stabilizationWindowSeconds: 300
       policies:
@@ -96,7 +96,7 @@ spec:
     kind: Deployment
     name: foresight-relayer
   updatePolicy:
-    updateMode: "Off"  # 仅推荐，不自动更新
+    updateMode: "Off" # 仅推荐，不自动更新
   resourcePolicy:
     containerPolicies:
       - containerName: relayer
@@ -109,4 +109,3 @@ spec:
         controlledResources:
           - cpu
           - memory
-

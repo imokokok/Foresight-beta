@@ -7,6 +7,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useFollowPrediction } from "@/hooks/useFollowPrediction";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
+import { logClientErrorToApi } from "@/lib/errorReporting";
 import { normalizeAddress } from "@/lib/address";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
@@ -371,6 +372,11 @@ export function usePredictionDetail() {
         toast.info(msg);
         return;
       }
+
+      logClientErrorToApi(
+        new Error(`trade_submit_failed:${meta.code || "unknown"}:${meta.rawMessage || msg}`),
+        { silent: true }
+      );
 
       if (meta.isUser) {
         toast.warning(msg);

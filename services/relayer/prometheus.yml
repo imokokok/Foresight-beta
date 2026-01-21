@@ -43,7 +43,7 @@ scrape_configs:
           environment: development
     # 如果 relayer 运行在 Docker 网络中
     # - targets: ["relayer:3000"]
-    
+
     # 重命名指标标签
     relabel_configs:
       - source_labels: [__address__]
@@ -72,4 +72,3 @@ scrape_configs:
   #     - targets: ["host.docker.internal:3001"]
   #       labels:
   #         service: api
-

@@ -17,12 +17,15 @@ async function main() {
   const mfAddress = "0x0762A2EeFEB20f03ceA60A542FfC8CEC85FE8A30";
   const binImplAddress = "0x65E67c0D6D51Fd163C9E6d66A015807D7e494Fc9";
   const multiImplAddress = "0xffA5179B3A9422c68C758518dA6e815067587170";
-  const usdc = process.env.USDC_ADDRESS_AMOY || process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY || "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf";
+  const usdc =
+    process.env.USDC_ADDRESS_AMOY ||
+    process.env.NEXT_PUBLIC_USDC_ADDRESS_AMOY ||
+    "0xdc85e8303CD81e8E78f432bC2c0D673Abccd7Daf";
 
   // 获取合约实例
   const OutcomeToken1155 = await hre.ethers.getContractFactory("OutcomeToken1155");
   const MarketFactory = await hre.ethers.getContractFactory("MarketFactory");
-  
+
   const outcome1155 = OutcomeToken1155.attach(outcome1155Address);
   const mf = MarketFactory.attach(mfAddress);
 
@@ -36,11 +39,13 @@ async function main() {
     console.log("Registering binary template...");
     await (await mf.registerTemplate(templateBinary, binImplAddress, "Offchain Binary v1")).wait();
   }
-  
+
   const multiTemplate = await mf.getTemplate(templateMulti);
   if (!multiTemplate.exists) {
     console.log("Registering multi template...");
-    await (await mf.registerTemplate(templateMulti, multiImplAddress, "Offchain Multi(<=8) v1")).wait();
+    await (
+      await mf.registerTemplate(templateMulti, multiImplAddress, "Offchain Multi(<=8) v1")
+    ).wait();
   }
 
   // Create example markets
@@ -50,29 +55,58 @@ async function main() {
 
   console.log("Creating binary market...");
   const dataBin = new hre.ethers.AbiCoder().encode(["address"], [outcome1155Address]);
-  const receiptBin = await (await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
-    templateBinary, usdc, umaAdapterAddress, feeBps, resolutionTime, dataBin
-  )).wait();
-  
+  const receiptBin = await (
+    await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+      templateBinary,
+      usdc,
+      umaAdapterAddress,
+      feeBps,
+      resolutionTime,
+      dataBin
+    )
+  ).wait();
+
   const createdBinLog = receiptBin?.logs.find((l: any) => {
-    try { return mf.interface.parseLog(l)?.name === "MarketCreated"; } catch { return false; }
+    try {
+      return mf.interface.parseLog(l)?.name === "MarketCreated";
+    } catch {
+      return false;
+    }
   });
   const createdBinParsed = createdBinLog ? mf.interface.parseLog(createdBinLog) : null;
-  const binaryMarket = createdBinParsed ? (createdBinParsed.args.market ?? createdBinParsed.args[1]) : undefined;
+  const binaryMarket = createdBinParsed
+    ? (createdBinParsed.args.market ?? createdBinParsed.args[1])
+    : undefined;
   console.log("Created binary market:", binaryMarket);
 
   console.log("Creating multi market (3 outcomes)...");
   const outcomeCount = 3;
-  const dataMulti = new hre.ethers.AbiCoder().encode(["address", "uint8"], [outcome1155Address, outcomeCount]);
-  const receiptMulti = await (await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
-    templateMulti, usdc, umaAdapterAddress, feeBps, resolutionTime, dataMulti
-  )).wait();
-  
+  const dataMulti = new hre.ethers.AbiCoder().encode(
+    ["address", "uint8"],
+    [outcome1155Address, outcomeCount]
+  );
+  const receiptMulti = await (
+    await mf["createMarket(bytes32,address,address,uint256,uint256,bytes)"](
+      templateMulti,
+      usdc,
+      umaAdapterAddress,
+      feeBps,
+      resolutionTime,
+      dataMulti
+    )
+  ).wait();
+
   const createdMultiLog = receiptMulti?.logs.find((l: any) => {
-    try { return mf.interface.parseLog(l)?.name === "MarketCreated"; } catch { return false; }
+    try {
+      return mf.interface.parseLog(l)?.name === "MarketCreated";
+    } catch {
+      return false;
+    }
   });
   const createdMultiParsed = createdMultiLog ? mf.interface.parseLog(createdMultiLog) : null;
-  const multiMarket = createdMultiParsed ? (createdMultiParsed.args.market ?? createdMultiParsed.args[1]) : undefined;
+  const multiMarket = createdMultiParsed
+    ? (createdMultiParsed.args.market ?? createdMultiParsed.args[1])
+    : undefined;
   console.log("Created multi market:", multiMarket, "outcomeCount:", outcomeCount);
 
   // Grant MINTER_ROLE to markets
@@ -93,20 +127,20 @@ async function main() {
     umaOOv3: process.env.UMA_OO_V3_ADDRESS || "",
     umaAdapterV2: umaAdapterAddress,
     marketFactory: mfAddress,
-    templates: { 
-      offchainBinary: binImplAddress, 
+    templates: {
+      offchainBinary: binImplAddress,
       offchainMulti8: multiImplAddress,
       templateIds: {
         binary: templateBinary,
         multi: templateMulti,
-      }
+      },
     },
     markets: { binary: binaryMarket, multi: multiMarket, multiOutcomeCount: outcomeCount },
     timestamp: new Date().toISOString(),
   };
-  
+
   fs.writeFileSync("deployment_offchain_sprint1.json", JSON.stringify(deploymentInfo, null, 2));
-  
+
   console.log("\n" + "=".repeat(60));
   console.log("✅ 部署完成！");
   console.log("=".repeat(60));
@@ -127,4 +161,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

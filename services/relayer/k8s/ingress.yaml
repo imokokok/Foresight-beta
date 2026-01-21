@@ -36,7 +36,7 @@ spec:
                 name: foresight-relayer-prod
                 port:
                   number: 3000
-    
+
     # WebSocket
     - host: ws.foresight.market
       http:
@@ -74,4 +74,3 @@ spec:
                 name: foresight-relayer-preview
                 port:
                   number: 3000
-

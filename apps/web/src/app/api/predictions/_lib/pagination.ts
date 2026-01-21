@@ -36,12 +36,12 @@ export function parsePagination(args: PaginationArgs): {
   // 游标分页优先
   if (cursor || (limit && !page)) {
     const limitNum = Math.max(1, Math.min(50, parseInt(limit || "20") || 20));
-    return { 
-      mode: "cursor", 
-      currentPage: 1, 
-      pageSize: limitNum, 
+    return {
+      mode: "cursor",
+      currentPage: 1,
+      pageSize: limitNum,
       limit: limitNum,
-      cursor: cursor || undefined 
+      cursor: cursor || undefined,
     };
   }
 
@@ -86,7 +86,7 @@ export function buildCursorPaginationMeta(
   const hasMore = items.length >= pageSize;
   const lastItem = items[items.length - 1];
   const nextCursor = hasMore && lastItem?.created_at ? lastItem.created_at : null;
-  
+
   return {
     nextCursor,
     hasMore,

@@ -470,7 +470,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                       try {
                         window.dispatchEvent(new CustomEvent("fs:open-wallet-modal"));
                       } catch {}
-                      toast.error("Please log in to deposit.");
+                      toast.error(tCommon("loginRequiredForDeposit"));
                       return;
                     }
                     setDepositOpen(true);
@@ -490,7 +490,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
           try {
             window.dispatchEvent(new CustomEvent("fs:open-wallet-modal"));
           } catch {}
-          toast.error("Please log in to deposit.");
+          toast.error(tCommon("loginRequiredForDeposit"));
         }}
       />
 

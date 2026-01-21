@@ -122,6 +122,56 @@ export interface Database {
           created_at?: string;
         };
       };
+      deposit_records: {
+        Row: {
+          id: number;
+          wallet_address: string;
+          proxy_address: string;
+          chain_id: number;
+          token_address: string;
+          tx_hash: string;
+          log_index: number;
+          block_number: number;
+          block_timestamp: string | null;
+          from_address: string;
+          to_address: string;
+          value: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          wallet_address: string;
+          proxy_address: string;
+          chain_id: number;
+          token_address: string;
+          tx_hash: string;
+          log_index?: number;
+          block_number: number;
+          block_timestamp?: string | null;
+          from_address: string;
+          to_address: string;
+          value: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          wallet_address?: string;
+          proxy_address?: string;
+          chain_id?: number;
+          token_address?: string;
+          tx_hash?: string;
+          log_index?: number;
+          block_number?: number;
+          block_timestamp?: string | null;
+          from_address?: string;
+          to_address?: string;
+          value?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       user_profiles: {
         Row: {
           wallet_address: string;

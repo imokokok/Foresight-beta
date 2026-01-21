@@ -6,7 +6,7 @@ import { useState, useCallback } from "react";
 
 /**
  * 🚀 性能优化的 React Query 配置
- * 
+ *
  * 优化点：
  * - 智能缓存策略（根据数据类型区分）
  * - 结构化共享减少不必要的重渲染

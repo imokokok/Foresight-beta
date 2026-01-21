@@ -15,7 +15,7 @@ export type PerformanceMetric = {
 
 /**
  * Web Vitals 性能监控
- * 
+ *
  * 指标说明：
  * - LCP (Largest Contentful Paint): 最大内容绘制
  * - INP (Interaction to Next Paint): 交互到下一次绘制 (替代 FID)
@@ -26,7 +26,7 @@ export type PerformanceMetric = {
 
 function getDeviceType(): "mobile" | "tablet" | "desktop" {
   if (typeof window === "undefined") return "desktop";
-  
+
   const width = window.innerWidth;
   if (width < 768) return "mobile";
   if (width < 1024) return "tablet";
@@ -107,4 +107,3 @@ export function initWebVitals() {
   // 生产环境发送到服务器
   reportWebVitals(sendToAnalytics);
 }
-

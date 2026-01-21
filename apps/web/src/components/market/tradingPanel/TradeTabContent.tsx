@@ -222,6 +222,13 @@ export function TradeTabContent({
     }
   }, [orderMsg, sellNoBalanceMsg, tradeSide]);
 
+  const handleDeposit = () => {
+    if (setUseProxy) {
+      setUseProxy(true);
+    }
+    onDeposit?.();
+  };
+
   return (
     <div className="space-y-6">
       <TradeSideToggle tradeSide={tradeSide} setTradeSide={setTradeSide} tTrading={tTrading} />
@@ -286,7 +293,7 @@ export function TradeTabContent({
           usdcAvailable={effectiveUsdcAvailable}
           usdcReserved={effectiveUsdcReserved}
           setUseProxy={setUseProxy}
-          onDeposit={onDeposit}
+          onDeposit={handleDeposit}
         />
       </div>
       <TradeSummary
@@ -319,6 +326,8 @@ export function TradeTabContent({
         orderMsg={orderMsg}
         canSubmit={canSubmit}
         disabledReason={disabledReason}
+        useProxy={useProxy}
+        onDeposit={handleDeposit}
         tTrading={tTrading}
         tCommon={tCommon}
         tAuth={tAuth}
@@ -984,7 +993,7 @@ function AmountInputSection({
                     : `USDC ${avail} (Avail · ${label})`;
                 })()}
           </span>
-          {onDeposit && useProxy && (
+          {onDeposit && (useProxy || !!setUseProxy) && (
             <button
               onClick={onDeposit}
               className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
@@ -1405,6 +1414,8 @@ type TradeSubmitSectionProps = {
   orderMsg: string | null;
   canSubmit: boolean;
   disabledReason: string | null;
+  useProxy?: boolean;
+  onDeposit?: () => void;
   tTrading: (key: string) => string;
   tCommon: (key: string) => string;
   tAuth: (key: string) => string;
@@ -1420,6 +1431,8 @@ function TradeSubmitSection({
   orderMsg,
   canSubmit,
   disabledReason,
+  useProxy,
+  onDeposit,
   tTrading,
   tCommon,
   tAuth,
@@ -1449,6 +1462,10 @@ function TradeSubmitSection({
   const slippageTooHighMsg = tTrading("orderFlow.slippageTooHigh");
   const insufficientLiquidityMsg = tTrading("orderFlow.insufficientLiquidity");
   const noFillableOrdersMsg = tTrading("orderFlow.noFillableOrders");
+  const canOfferDeposit = !!onDeposit;
+  const showDepositForDisabled =
+    canOfferDeposit && !!disabledReason && disabledReason === insufficientFundsMsg;
+  const showDepositForOrderMsg = canOfferDeposit && !!orderMsg && orderMsg === insufficientFundsMsg;
 
   const switchNetworkMsg = String(tTrading("orderFlow.switchNetwork") || "").replace(
     "{chainId}",
@@ -1514,9 +1531,23 @@ function TradeSubmitSection({
           : `${tradeSide === "buy" ? tTrading("buy") : tTrading("sell")} ${currentOutcomeLabel}`}
       </button>
       {!orderMsg && disabledReason && (
-        <div className="text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
-          <Info className="w-3.5 h-3.5" />
-          {disabledReason}
+        <div className="space-y-2">
+          <div className="text-center text-xs font-medium p-2.5 rounded-lg flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
+            <Info className="w-3.5 h-3.5" />
+            {disabledReason}
+          </div>
+          {showDepositForDisabled && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => onDeposit?.()}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                {tWallet("deposit")}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {orderMsg && (
@@ -1572,6 +1603,16 @@ function TradeSubmitSection({
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
                   >
                     {tCommon("retry")}
+                  </button>
+                )}
+                {showDepositForOrderMsg && (
+                  <button
+                    type="button"
+                    onClick={() => onDeposit?.()}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 bg-white hover:border-purple-300 hover:text-purple-700"
+                  >
+                    <Wallet className="w-3.5 h-3.5" />
+                    {tWallet("deposit")}
                   </button>
                 )}
               </div>

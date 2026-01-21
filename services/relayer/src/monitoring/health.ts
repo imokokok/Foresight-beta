@@ -37,6 +37,30 @@ type HealthChecker = () => Promise<{
   latency?: number;
 }>;
 type ReadinessChecker = () => Promise<{ ready: boolean; message?: string }>;
+type HealthCheckOutcome = Awaited<ReturnType<HealthChecker>>;
+type ReadinessCheckOutcome = Awaited<ReturnType<ReadinessChecker>>;
+
+const healthCheckTimeoutMs = toPositiveNumber(process.env.HEALTHCHECK_TIMEOUT_MS, 3000);
+const readinessCheckTimeoutMs = toPositiveNumber(process.env.READINESSCHECK_TIMEOUT_MS, 2000);
+
+function toPositiveNumber(value: unknown, fallback: number): number {
+  const num = typeof value === "string" ? Number(value) : Number(value);
+  return Number.isFinite(num) && num > 0 ? num : fallback;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, onTimeout: () => T): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  let timeoutId: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => resolve(onTimeout()), timeoutMs);
+  });
+  return Promise.race([
+    promise.finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
+    }),
+    timeoutPromise,
+  ]);
+}
 
 class HealthCheckService {
   private healthCheckers: Map<string, HealthChecker> = new Map();
@@ -67,22 +91,42 @@ class HealthCheckService {
     const checks: HealthCheckResult["checks"] = {};
     let overallStatus: "healthy" | "unhealthy" | "degraded" = "healthy";
 
-    for (const [name, checker] of this.healthCheckers) {
-      try {
-        const result = await checker();
-        checks[name] = result;
-
-        if (result.status === "fail") {
-          overallStatus = "unhealthy";
-        } else if (result.status === "warn" && overallStatus !== "unhealthy") {
-          overallStatus = "degraded";
+    const entries = Array.from(this.healthCheckers.entries());
+    const results: { name: string; result: HealthCheckOutcome }[] = await Promise.all(
+      entries.map(
+        async ([name, checker]): Promise<{ name: string; result: HealthCheckOutcome }> => {
+          const startedAt = Date.now();
+          try {
+            const result: HealthCheckOutcome = await withTimeout(
+              Promise.resolve().then(() => checker()),
+              healthCheckTimeoutMs,
+              () => ({
+                status: "fail",
+                message: "Timeout",
+                latency: Date.now() - startedAt,
+              })
+            );
+            return { name, result };
+          } catch (error: any) {
+            return {
+              name,
+              result: {
+                status: "fail",
+                message: error.message || "Check failed",
+                latency: Date.now() - startedAt,
+              },
+            };
+          }
         }
-      } catch (error: any) {
-        checks[name] = {
-          status: "fail",
-          message: error.message || "Check failed",
-        };
+      )
+    );
+
+    for (const { name, result } of results) {
+      checks[name] = result;
+      if (result.status === "fail") {
         overallStatus = "unhealthy";
+      } else if (result.status === "warn" && overallStatus !== "unhealthy") {
+        overallStatus = "degraded";
       }
     }
 
@@ -105,19 +149,36 @@ class HealthCheckService {
     const checks: ReadinessCheckResult["checks"] = {};
     let allReady = true;
 
-    for (const [name, checker] of this.readinessCheckers) {
-      try {
-        const result = await checker();
-        checks[name] = result;
-
-        if (!result.ready) {
-          allReady = false;
+    const entries = Array.from(this.readinessCheckers.entries());
+    const results: { name: string; result: ReadinessCheckOutcome }[] = await Promise.all(
+      entries.map(
+        async ([name, checker]): Promise<{ name: string; result: ReadinessCheckOutcome }> => {
+          try {
+            const result: ReadinessCheckOutcome = await withTimeout(
+              Promise.resolve().then(() => checker()),
+              readinessCheckTimeoutMs,
+              () => ({
+                ready: false,
+                message: "Timeout",
+              })
+            );
+            return { name, result };
+          } catch (error: any) {
+            return {
+              name,
+              result: {
+                ready: false,
+                message: error.message || "Check failed",
+              },
+            };
+          }
         }
-      } catch (error: any) {
-        checks[name] = {
-          ready: false,
-          message: error.message || "Check failed",
-        };
+      )
+    );
+
+    for (const { name, result } of results) {
+      checks[name] = result;
+      if (!result.ready) {
         allReady = false;
       }
     }

@@ -16,22 +16,22 @@ NProgress.configure({
 
 /**
  * 顶部进度条组件
- * 
+ *
  * 自动在路由切换时显示加载进度
- * 
+ *
  * 特性：
  * - 路由切换自动显示/隐藏
  * - 可自定义样式
  * - 支持手动触发
- * 
+ *
  * @example
  * ```tsx
  * // 在 layout.tsx 中使用
  * <ProgressBar />
- * 
+ *
  * // 手动触发
  * import NProgress from 'nprogress';
- * 
+ *
  * NProgress.start(); // 开始
  * NProgress.inc();   // 增加
  * NProgress.done();  // 完成
@@ -61,7 +61,7 @@ export default function ProgressBar() {
 
 /**
  * 手动进度条控制
- * 
+ *
  * 用于 API 请求或其他异步操作
  */
 export const progress = {
@@ -110,4 +110,3 @@ export const progress = {
     }
   },
 };
-

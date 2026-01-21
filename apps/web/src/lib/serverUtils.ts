@@ -208,12 +208,17 @@ export function getProxyWalletConfig(): {
   }
 
   const proxyWalletFactoryAddress = normalizeEthAddressMaybe(
-    process.env.PROXY_WALLET_FACTORY_ADDRESS
+    process.env.PROXY_WALLET_FACTORY_ADDRESS || process.env.NEXT_PUBLIC_PROXY_WALLET_FACTORY_ADDRESS
   );
-  const safeFactoryAddress = normalizeEthAddressMaybe(process.env.SAFE_FACTORY_ADDRESS);
-  const safeSingletonAddress = normalizeEthAddressMaybe(process.env.SAFE_SINGLETON_ADDRESS);
+  const safeFactoryAddress = normalizeEthAddressMaybe(
+    process.env.SAFE_FACTORY_ADDRESS || process.env.NEXT_PUBLIC_SAFE_FACTORY_ADDRESS
+  );
+  const safeSingletonAddress = normalizeEthAddressMaybe(
+    process.env.SAFE_SINGLETON_ADDRESS || process.env.NEXT_PUBLIC_SAFE_SINGLETON_ADDRESS
+  );
   const safeFallbackHandlerAddress = normalizeEthAddressMaybe(
-    process.env.SAFE_FALLBACK_HANDLER_ADDRESS
+    process.env.SAFE_FALLBACK_HANDLER_ADDRESS ||
+      process.env.NEXT_PUBLIC_SAFE_FALLBACK_HANDLER_ADDRESS
   );
 
   const config: ProxyWalletConfig = {
@@ -230,12 +235,6 @@ export function getProxyWalletConfig(): {
         ok: false,
         error: "Safe proxy wallet requires SAFE_FACTORY_ADDRESS and SAFE_SINGLETON_ADDRESS",
       };
-    }
-  }
-
-  if (rawType === "proxy") {
-    if (!config.proxyWalletFactoryAddress) {
-      return { ok: false, error: "Proxy wallet requires PROXY_WALLET_FACTORY_ADDRESS" };
     }
   }
 

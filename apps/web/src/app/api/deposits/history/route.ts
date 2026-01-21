@@ -16,6 +16,9 @@ type Item = {
   value: string;
   valueFormatted: string;
   timestamp?: number;
+  confirmations?: number;
+  requiredConfirmations?: number;
+  status?: "pending" | "confirmed";
 };
 
 const transferIface = new ethers.Interface([
@@ -125,6 +128,19 @@ export async function GET(req: NextRequest) {
     );
 
     const items: Item[] = [];
+    const rowsToUpsert: Array<{
+      wallet_address: string;
+      proxy_address: string;
+      chain_id: number;
+      token_address: string;
+      tx_hash: string;
+      log_index: number;
+      block_number: number;
+      block_timestamp?: string | null;
+      from_address: string;
+      to_address: string;
+      value: string;
+    }> = [];
     for (const log of sorted) {
       try {
         const parsed = transferIface.parseLog(log as any);
@@ -132,17 +148,83 @@ export async function GET(req: NextRequest) {
         const to = String(parsed?.args?.to || "");
         const value = BigInt(parsed?.args?.value || 0n);
         const valueFormatted = ethers.formatUnits(value, 6);
+        const blockNumber = Number(log.blockNumber || 0);
+        const logIndex = Number((log as any).index ?? (log as any).logIndex ?? 0);
+        const ts = blockTs.get(blockNumber) || undefined;
         items.push({
           txHash: String(log.transactionHash || ""),
-          blockNumber: Number(log.blockNumber || 0),
+          blockNumber,
           from,
           to,
           value: value.toString(),
           valueFormatted,
-          timestamp: blockTs.get(Number(log.blockNumber || 0)) || undefined,
+          timestamp: ts,
+        });
+        rowsToUpsert.push({
+          wallet_address: baseAddress,
+          proxy_address: proxyAddress,
+          chain_id: chainId,
+          token_address: usdcAddress.toLowerCase(),
+          tx_hash: String(log.transactionHash || ""),
+          log_index: logIndex,
+          block_number: blockNumber,
+          block_timestamp: ts ? new Date(ts * 1000).toISOString() : null,
+          from_address: from.toLowerCase(),
+          to_address: to.toLowerCase(),
+          value: value.toString(),
         });
       } catch {}
     }
+
+    if (rowsToUpsert.length > 0) {
+      try {
+        await client.from("deposit_records").upsert(rowsToUpsert, {
+          onConflict: "tx_hash,log_index",
+          ignoreDuplicates: true,
+        });
+      } catch {}
+    }
+
+    let { data: storedRows, error: readErr } = await client
+      .from("deposit_records")
+      .select(
+        "tx_hash,log_index,block_number,block_timestamp,from_address,to_address,value,token_address"
+      )
+      .eq("proxy_address", proxyAddress)
+      .eq("chain_id", chainId)
+      .eq("token_address", usdcAddress.toLowerCase())
+      .order("block_number", { ascending: false })
+      .order("log_index", { ascending: false })
+      .limit(limit);
+
+    if (readErr) {
+      storedRows = [];
+    }
+
+    const requiredConfirmations = 12;
+    const mappedItems =
+      storedRows && Array.isArray(storedRows)
+        ? storedRows.map((row: any) => {
+            const blockNumber = Number(row.block_number || 0);
+            const confirmations = blockNumber > 0 ? Math.max(0, latest - blockNumber + 1) : 0;
+            const status = confirmations >= requiredConfirmations ? "confirmed" : "pending";
+            const timestamp = row.block_timestamp
+              ? Math.floor(new Date(row.block_timestamp).getTime() / 1000)
+              : undefined;
+            return {
+              txHash: String(row.tx_hash || ""),
+              blockNumber,
+              from: String(row.from_address || ""),
+              to: String(row.to_address || ""),
+              value: String(row.value || "0"),
+              valueFormatted: ethers.formatUnits(BigInt(String(row.value || "0")), 6),
+              timestamp,
+              confirmations,
+              requiredConfirmations,
+              status,
+            } as Item;
+          })
+        : items;
 
     return withNoStore(
       successResponse(
@@ -153,7 +235,7 @@ export async function GET(req: NextRequest) {
           windowBlocks,
           fromBlock,
           toBlock: latest,
-          items,
+          items: mappedItems,
         },
         "ok"
       )

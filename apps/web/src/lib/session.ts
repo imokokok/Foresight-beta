@@ -19,27 +19,6 @@ function resolveCookieDomain(req?: NextRequest): string | undefined {
   try {
     if (process.env.NODE_ENV !== "production") return undefined;
 
-    const base = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
-    if (!base) return undefined;
-
-    let appHost = "";
-    try {
-      appHost = new URL(base).hostname || "";
-    } catch {
-      return undefined;
-    }
-    const parts = appHost
-      .toLowerCase()
-      .split(".")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (parts.length < 2) return undefined;
-    const root = parts.slice(-2).join(".");
-    if (!root) return undefined;
-    if (root === "localhost" || root.endsWith(".localhost")) return undefined;
-    if (root === "vercel.app") return undefined;
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(root)) return undefined;
-
     const reqHostRaw = String(
       (req?.headers?.get("x-forwarded-host") ||
         req?.headers?.get("host") ||
@@ -49,9 +28,44 @@ function resolveCookieDomain(req?: NextRequest): string | undefined {
       .split(",")[0]
       .trim()
       .toLowerCase();
-    if (reqHostRaw && reqHostRaw !== root && !reqHostRaw.endsWith(`.${root}`)) return undefined;
 
-    return `.${root}`;
+    const base = String(process.env.NEXT_PUBLIC_APP_URL || "").trim();
+
+    const getHostParts = (host: string) =>
+      host
+        .toLowerCase()
+        .split(".")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    const pickRoot = (host: string) => {
+      const parts = getHostParts(host);
+      if (parts.length < 2) return undefined;
+      const root = parts.slice(-2).join(".");
+      if (!root) return undefined;
+      if (root === "localhost" || root.endsWith(".localhost")) return undefined;
+      if (root === "vercel.app") return undefined;
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(root)) return undefined;
+      return root;
+    };
+
+    if (base) {
+      try {
+        const appHost = new URL(base).hostname || "";
+        const root = pickRoot(appHost);
+        if (root) {
+          if (reqHostRaw && reqHostRaw !== root && !reqHostRaw.endsWith(`.${root}`)) {
+            return undefined;
+          }
+          return `.${root}`;
+        }
+      } catch {}
+    }
+    if (reqHostRaw) {
+      const root = pickRoot(reqHostRaw);
+      if (root) return `.${root}`;
+    }
+    return undefined;
   } catch {
     return undefined;
   }

@@ -27,6 +27,7 @@
     "close": "关闭",
     "retry": "重试",
     "refresh": "刷新",
+    "loginRequiredForDeposit": "请先登录后再入金。",
     "loadFailed": "加载失败",
     "switchLanguage": "切换语言",
     "openUserMenu": "打开用户菜单",
@@ -745,7 +746,10 @@
       "title": "入金记录",
       "empty": "暂无入金记录（当前扫描最近区块窗口）。",
       "itemMeta": "来自 {from} · 区块 {block}",
-      "details": "详情"
+      "details": "详情",
+      "statusConfirmed": "已确认",
+      "statusPending": "确认中",
+      "confirmations": "({confirmations}/{required})"
     },
     "bridge": {
       "title": "跨链引导（可选）",
@@ -753,7 +757,11 @@
     },
     "toast": {
       "depositArrivedTitle": "入金到账",
-      "depositArrivedDescription": "+{amount} {symbol}"
+      "depositArrivedDescription": "+{amount} {symbol}",
+      "depositPendingTitle": "入金确认中",
+      "depositPendingDescription": "已检测到 +{amount} {symbol}，等待链上确认",
+      "depositConfirmedTitle": "入金已确认",
+      "depositConfirmedDescription": "+{amount} {symbol} 可用于交易"
     },
     "errors": {
       "loginRequiredForAddress": "请先登录后再获取入金地址",

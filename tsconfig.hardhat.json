@@ -14,4 +14,3 @@
   "include": ["scripts/**/*.ts", "test/**/*.ts", "hardhat.config.cjs"],
   "exclude": ["node_modules", "apps", "services"]
 }
-

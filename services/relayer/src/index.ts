@@ -35,7 +35,7 @@ import {
 } from "./monitoring/contractEvents.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
-import { closeRateLimiter } from "./ratelimit/index.js";
+import { closeRateLimiter, createRateLimitMiddleware } from "./ratelimit/index.js";
 import { RedisSlidingWindowLimiter, type RateLimitRequest } from "./ratelimit/slidingWindow.js";
 import { healthRoutes, clusterRoutes } from "./routes/index.js";
 import {
@@ -1105,6 +1105,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(requestIdMiddleware);
 app.use(requestLoggerMiddleware);
 app.use(metricsMiddleware);
+app.use(createRateLimitMiddleware());
 
 // 🚀 Phase 1: 添加健康检查路由
 app.use(healthRoutes);

@@ -27,6 +27,7 @@
     "close": "Close",
     "retry": "Retry",
     "refresh": "Refresh",
+    "loginRequiredForDeposit": "Please log in to deposit.",
     "loadFailed": "Failed to load",
     "switchLanguage": "Switch language",
     "openUserMenu": "Open user menu",
@@ -741,7 +742,10 @@
       "title": "Deposit history",
       "empty": "No deposit history yet (scanning recent blocks window).",
       "itemMeta": "From {from} · Block {block}",
-      "details": "Details"
+      "details": "Details",
+      "statusConfirmed": "Confirmed",
+      "statusPending": "Pending",
+      "confirmations": "({confirmations}/{required})"
     },
     "bridge": {
       "title": "Bridging (optional)",
@@ -749,7 +753,11 @@
     },
     "toast": {
       "depositArrivedTitle": "Deposit received",
-      "depositArrivedDescription": "+{amount} {symbol}"
+      "depositArrivedDescription": "+{amount} {symbol}",
+      "depositPendingTitle": "Deposit pending",
+      "depositPendingDescription": "Detected +{amount} {symbol}, waiting for confirmations",
+      "depositConfirmedTitle": "Deposit confirmed",
+      "depositConfirmedDescription": "+{amount} {symbol} is ready to trade"
     },
     "errors": {
       "loginRequiredForAddress": "Please log in to fetch your deposit address",

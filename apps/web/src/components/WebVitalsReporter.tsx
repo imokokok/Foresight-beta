@@ -5,7 +5,7 @@ import { initWebVitals } from "@/lib/webVitals";
 
 /**
  * Web Vitals 报告组件
- * 
+ *
  * 自动初始化性能监控
  */
 export default function WebVitalsReporter() {
@@ -15,4 +15,3 @@ export default function WebVitalsReporter() {
 
   return null;
 }
-

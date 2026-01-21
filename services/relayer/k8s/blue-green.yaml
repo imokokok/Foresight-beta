@@ -68,7 +68,7 @@ metadata:
     app: foresight-relayer
     color: green
 spec:
-  replicas: 0  # 初始为 0，部署新版本时扩展
+  replicas: 0 # 初始为 0，部署新版本时扩展
   selector:
     matchLabels:
       app: foresight-relayer
@@ -127,7 +127,7 @@ spec:
   type: ClusterIP
   selector:
     app: foresight-relayer
-    color: blue  # 切换时修改这里
+    color: blue # 切换时修改这里
   ports:
     - name: http
       port: 3000
@@ -156,4 +156,3 @@ spec:
     - name: websocket
       port: 3006
       targetPort: 3006
-

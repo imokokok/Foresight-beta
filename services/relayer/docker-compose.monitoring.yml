@@ -115,4 +115,3 @@ volumes:
 networks:
   foresight-network:
     driver: bridge
-

@@ -13,6 +13,7 @@ import {
   type UserProfileInfoResponse,
 } from "@/hooks/useQueries";
 import { handleApiError } from "@/lib/toast";
+import { logClientErrorToApi } from "@/lib/errorReporting";
 
 export type WalletStep =
   | "select"
@@ -277,6 +278,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setWalletStep("connecting");
       const connectRes = await connectWalletWithResult(walletType as any);
       if (!connectRes.success) {
+        logClientErrorToApi(
+          new Error(`wallet_connect_failed:${String(connectRes.error || "unknown")}`),
+          { silent: true }
+        );
         setWalletError(connectRes.error);
         setWalletStep("select");
         return;
@@ -300,6 +305,9 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
 
       if (!res.success) {
         console.error("Sign-in with wallet failed:", res.error);
+        logClientErrorToApi(new Error(`wallet_signin_failed:${String(res.error || "unknown")}`), {
+          silent: true,
+        });
         setWalletError(res.error || tGlobal("errors.wallet.loginError"));
         setWalletStep("select");
         setSelectedWallet(null);
@@ -336,6 +344,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       onClose();
     } catch (error) {
       console.error("Wallet connection failed:", error);
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "wallet_connect_failed")),
+        { silent: true }
+      );
       setWalletError(
         String((error as any)?.message || error || tGlobal("errors.wallet.loginError"))
       );
@@ -370,7 +382,12 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       }
       router.push(`/login/callback?${params.toString()}`);
       onClose();
-    } catch {}
+    } catch (error) {
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "email_magic_link_failed")),
+        { silent: true }
+      );
+    }
     setEmailLoading(false);
   };
 
@@ -398,7 +415,12 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
         return;
       }
       onClose();
-    } catch {}
+    } catch (error) {
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "email_otp_verify_failed")),
+        { silent: true }
+      );
+    }
     setEmailLoading(false);
   };
 
@@ -482,6 +504,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       startResendCountdown(60);
     } catch (error: any) {
       handleApiError(error, "walletModal.errors.otpSendFailed");
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "email_otp_request_failed")),
+        { silent: true }
+      );
       const raw = error as any;
       const inner =
         raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
@@ -542,6 +568,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setResendLeft(0);
     } catch (error: any) {
       handleApiError(error, "walletModal.errors.otpVerifyFailed");
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "email_otp_verify_failed")),
+        { silent: true }
+      );
       const raw = error as any;
       const inner =
         raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
@@ -579,6 +609,10 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       setSignupToken(null);
     } catch (error: any) {
       handleApiError(error, "walletModal.errors.unknown");
+      logClientErrorToApi(
+        error instanceof Error ? error : new Error(String(error || "email_signup_failed")),
+        { silent: true }
+      );
       setProfileError(String(error?.message || "Failed to complete signup"));
     } finally {
       setEmailLoading(false);

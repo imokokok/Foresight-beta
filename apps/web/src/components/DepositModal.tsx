@@ -41,6 +41,9 @@ type DepositHistoryItem = {
   valueFormatted: string;
   timestamp?: number;
   explorerUrl?: string;
+  confirmations?: number;
+  requiredConfirmations?: number;
+  status?: "pending" | "confirmed";
 };
 
 const erc20ReadAbi = [
@@ -123,6 +126,9 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [history, setHistory] = useState<DepositHistoryItem[]>([]);
+
+  const historyInitRef = useRef(false);
+  const historySnapshotRef = useRef<Map<string, string>>(new Map());
 
   const onrampTemplate = String(process.env.NEXT_PUBLIC_ONRAMP_URL_TEMPLATE || "").trim();
 
@@ -236,6 +242,43 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
         ...it,
         explorerUrl: `${explorerBase}/tx/${it.txHash}`,
       }));
+      const nextMap = new Map<string, string>();
+      if (!historyInitRef.current) {
+        historyInitRef.current = true;
+        for (const it of mapped) {
+          if (it.txHash) nextMap.set(it.txHash, it.status || "pending");
+        }
+      } else {
+        for (const it of mapped) {
+          if (!it.txHash) continue;
+          const nextStatus = it.status || "pending";
+          const prevStatus = historySnapshotRef.current.get(it.txHash);
+          nextMap.set(it.txHash, nextStatus);
+          if (!prevStatus) {
+            const amount = it.valueFormatted || "0";
+            const symbol = tokenSymbol || "USDC";
+            if (nextStatus === "confirmed") {
+              toast.success(
+                tDeposit("toast.depositConfirmedTitle"),
+                formatTranslation(tDeposit("toast.depositConfirmedDescription"), { amount, symbol })
+              );
+            } else {
+              toast.info(
+                tDeposit("toast.depositPendingTitle"),
+                formatTranslation(tDeposit("toast.depositPendingDescription"), { amount, symbol })
+              );
+            }
+          } else if (prevStatus === "pending" && nextStatus === "confirmed") {
+            const amount = it.valueFormatted || "0";
+            const symbol = tokenSymbol || "USDC";
+            toast.success(
+              tDeposit("toast.depositConfirmedTitle"),
+              formatTranslation(tDeposit("toast.depositConfirmedDescription"), { amount, symbol })
+            );
+          }
+        }
+      }
+      historySnapshotRef.current = nextMap;
       setHistory(mapped);
     } catch (e: any) {
       setHistory([]);
@@ -243,7 +286,7 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     } finally {
       setHistoryLoading(false);
     }
-  }, [explorerBase, onClose, onRequireLogin, tDeposit]);
+  }, [explorerBase, onClose, onRequireLogin, tDeposit, tokenSymbol]);
 
   useEffect(() => {
     if (!open) return;
@@ -253,6 +296,8 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
     setHistoryError(null);
     setRawBalance(0n);
     lastSeenBalanceRef.current = 0n;
+    historyInitRef.current = false;
+    historySnapshotRef.current = new Map();
     void fetchProxy();
   }, [open, fetchProxy]);
 
@@ -548,14 +593,42 @@ export default function DepositModal({ open, onClose, onRequireLogin }: DepositM
                       className="py-2 flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 tabular-nums">
-                          +{it.valueFormatted} {tokenSymbol}
+                        <div className="flex items-center gap-2">
+                          <div className="text-xs font-semibold text-gray-900 tabular-nums">
+                            +{it.valueFormatted} {tokenSymbol}
+                          </div>
+                          {it.status ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                it.status === "confirmed"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {it.status === "confirmed"
+                                ? tDeposit("history.statusConfirmed")
+                                : tDeposit("history.statusPending")}
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-[11px] text-gray-500 truncate">
                           {formatTranslation(tDeposit("history.itemMeta"), {
                             from: shortAddress(it.from),
                             block: it.blockNumber,
                           })}
+                          {it.status ? (
+                            <>
+                              {it.confirmations != null && it.requiredConfirmations ? (
+                                <>
+                                  {" · "}
+                                  {formatTranslation(tDeposit("history.confirmations"), {
+                                    confirmations: it.confirmations,
+                                    required: it.requiredConfirmations,
+                                  })}
+                                </>
+                              ) : null}
+                            </>
+                          ) : null}
                         </div>
                       </div>
                       <button

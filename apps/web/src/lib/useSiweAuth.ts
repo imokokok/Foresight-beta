@@ -45,7 +45,10 @@ async function fetchNonce(): Promise<{ nonce: string; message: string }> {
   nonceCache.inFlight = (async () => {
     const maxAttempts = 3;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const res = await fetch("/api/auth/challenge/nonce", { method: "GET" });
+      const res = await fetch("/api/auth/challenge/nonce", {
+        method: "GET",
+        credentials: "include",
+      });
       if (res.ok) {
         const json = await res.json().catch(() => null);
         const nonce = typeof json?.nonce === "string" ? String(json.nonce) : "";
@@ -160,6 +163,7 @@ export function useSiweAuth(params: Params) {
         verifyRes = await fetch("/api/auth/challenge/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             address,
             signature,
