@@ -5,16 +5,25 @@ import { useParams } from "next/navigation";
 import { ethers } from "ethers";
 import { useWallet } from "@/contexts/WalletContext";
 import { useFollowPrediction } from "@/hooks/useFollowPrediction";
-import { createOrderDomain } from "@/lib/orderVerification";
-import { ORDER_TYPES } from "@/types/market";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { normalizeAddress } from "@/lib/address";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
-import { API_BASE, RELAYER_BASE, buildMarketKey } from "./_lib/constants";
-import { safeJson } from "./_lib/http";
-import { executeSafeTransaction } from "@/lib/safeUtils";
+import {
+  buildMarketPlanPreview,
+  buildOrdersFromFills,
+  buildMarketConfirmMessage,
+  fetchMarketPlanPayload,
+  type MarketPlanPreview,
+} from "./_lib/orderbookPlan";
+import {
+  submitLimitOrder,
+  submitMarketOrderDirect,
+  submitMarketOrderWithAa,
+  submitMarketOrderWithAaReadonly,
+  submitMarketOrderWithProxy,
+} from "./_lib/orderFlow";
 import {
   createBrowserProvider,
   ensureNetwork,
@@ -22,7 +31,6 @@ import {
   parseUnitsByDecimals,
   resolveAddresses,
 } from "./_lib/wallet";
-import type { PredictionDetail } from "./_lib/types";
 export type { PredictionDetail } from "./_lib/types";
 
 import type { MarketInfo } from "./_lib/marketTypes";
@@ -31,20 +39,14 @@ import { useMarketInfo } from "./_lib/hooks/useMarketInfo";
 import { useOrderbookDepthPolling } from "./_lib/hooks/useOrderbookDepthPolling";
 import { useTradesPolling } from "./_lib/hooks/useTradesPolling";
 import { useUserOpenOrders } from "./_lib/hooks/useUserOpenOrders";
+import { useProxyAddress } from "./_lib/hooks/useProxyAddress";
+import { useTokenBalancePolling } from "./_lib/hooks/useTokenBalancePolling";
+import { useOutcomeBalancePolling } from "./_lib/hooks/useOutcomeBalancePolling";
 import { cancelOrderAction } from "./_lib/actions/cancelOrder";
 import { mintAction } from "./_lib/actions/mint";
 import { redeemAction } from "./_lib/actions/redeem";
-import { trySubmitAaCalls, isAaEnabled } from "./_lib/aaUtils";
+import { isAaEnabled } from "./_lib/aaUtils";
 import { getFallbackRpcUrl } from "@/lib/walletProviderUtils";
-
-type MarketPlanPreview = {
-  slippagePercent: number;
-  avgPrice: number;
-  worstPrice: number;
-  totalCost: number;
-  filledAmount: number;
-  partialFill: boolean;
-};
 
 type ConfirmState = null | {
   message: string;
@@ -78,9 +80,6 @@ export function usePredictionDetail() {
   const [orderMsg, setOrderMsg] = useState<string | null>(null);
 
   const [balance, setBalance] = useState<string>("0.00");
-  const [usdcBalance, setUsdcBalance] = useState<string>("0.00");
-  const [rawUsdcBalance, setRawUsdcBalance] = useState<string>("0");
-  const [shareBalance, setShareBalance] = useState<string>("0");
   const [mintInput, setMintInput] = useState<string>("");
   const { trades } = useTradesPolling(market, predictionIdRaw, tradeOutcome);
   const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
@@ -88,10 +87,33 @@ export function usePredictionDetail() {
 
   // Proxy Wallet State
   const [useProxy, setUseProxy] = useState(false);
-  const [proxyAddress, setProxyAddress] = useState<string | undefined>(undefined);
-  const [proxyBalance, setProxyBalance] = useState<string>("0.00");
-  const [rawProxyBalance, setRawProxyBalance] = useState<string>("0");
-  const [proxyShareBalance, setProxyShareBalance] = useState<string>("0");
+  const proxyAddress = useProxyAddress(account);
+  const usdcBalance = useTokenBalancePolling({
+    market,
+    address: account || undefined,
+    walletProvider,
+    switchNetwork,
+  });
+  const shareBalance = useOutcomeBalancePolling({
+    market,
+    address: account || undefined,
+    walletProvider,
+    switchNetwork,
+    tradeOutcome,
+  });
+  const proxyBalance = useTokenBalancePolling({
+    market,
+    address: proxyAddress,
+    walletProvider,
+    switchNetwork,
+  });
+  const proxyShareBalance = useOutcomeBalancePolling({
+    market,
+    address: proxyAddress,
+    walletProvider,
+    switchNetwork,
+    tradeOutcome,
+  });
 
   const [marketConfirmState, setMarketConfirmState] = useState<ConfirmState>(null);
   const closeMarketConfirm = useCallback(() => setMarketConfirmState(null), []);
@@ -146,152 +168,6 @@ export function usePredictionDetail() {
     });
   }, [account, predictionId]);
 
-  // 读取真实 USDC 余额（用于交易面板展示）
-  useEffect(() => {
-    let cancelled = false;
-    if (!market || !account || !walletProvider) return;
-
-    const run = async () => {
-      try {
-        const provider = await createBrowserProvider(walletProvider);
-        // 尽量确保读到的余额来自正确网络
-        await ensureNetwork(provider, market.chain_id, switchNetwork);
-        const signer = await provider.getSigner();
-        const { tokenContract, decimals } = await getCollateralTokenContract(
-          market,
-          signer,
-          erc20Abi
-        );
-        const bal = await tokenContract.balanceOf(account);
-        const human = Number(ethers.formatUnits(bal, decimals));
-        if (!cancelled) setUsdcBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
-      } catch {
-        // ignore
-      }
-    };
-
-    void run();
-    const timer = setInterval(run, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [market, account, walletProvider, switchNetwork]);
-
-  // 读取当前 outcome 的可卖份额（ERC1155 balance）
-  useEffect(() => {
-    let cancelled = false;
-    if (!market || !account || !walletProvider) return;
-
-    const run = async () => {
-      try {
-        const provider = await createBrowserProvider(walletProvider);
-        await ensureNetwork(provider, market.chain_id, switchNetwork);
-        const signer = await provider.getSigner();
-        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-        const outcomeTokenAddress = await marketContract.outcomeToken();
-        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-        // OutcomeToken1155.computeTokenId(market, outcomeIndex) = (uint160(market) << 32) | outcomeIndex
-        const tokenId = (BigInt(market.market) << 32n) | BigInt(tradeOutcome);
-        const bal = await outcome1155.balanceOf(account, tokenId);
-        if (!cancelled) setShareBalance(BigInt(bal).toString());
-      } catch {
-        // ignore
-      }
-    };
-
-    void run();
-    const timer = setInterval(run, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [market, account, walletProvider, switchNetwork, tradeOutcome]);
-
-  // Fetch proxy wallet info
-  useEffect(() => {
-    if (!account) {
-      setProxyAddress(undefined);
-      return;
-    }
-
-    const fetchProxy = async () => {
-      try {
-        const res = await fetch("/api/wallets/proxy", {
-          method: "POST",
-        });
-        const json = await safeJson(res);
-        if (json.success && json.data?.address) {
-          setProxyAddress(json.data.address);
-        }
-      } catch (e) {
-        console.error("Failed to fetch proxy wallet", e);
-      }
-    };
-
-    fetchProxy();
-  }, [account]);
-
-  // Fetch proxy balance (USDC)
-  useEffect(() => {
-    let cancelled = false;
-    if (!market || !proxyAddress || !walletProvider) return;
-
-    const run = async () => {
-      try {
-        const provider = await createBrowserProvider(walletProvider);
-        await ensureNetwork(provider, market.chain_id, switchNetwork);
-        const signer = await provider.getSigner();
-        const { tokenContract, decimals } = await getCollateralTokenContract(
-          market,
-          signer,
-          erc20Abi
-        );
-        const bal = await tokenContract.balanceOf(proxyAddress);
-        const human = Number(ethers.formatUnits(bal, decimals));
-        if (!cancelled) setProxyBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
-      } catch {
-        // ignore
-      }
-    };
-
-    void run();
-    const timer = setInterval(run, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [market, proxyAddress, walletProvider, switchNetwork]);
-
-  // Fetch proxy share balance
-  useEffect(() => {
-    let cancelled = false;
-    if (!market || !proxyAddress || !walletProvider) return;
-
-    const run = async () => {
-      try {
-        const provider = await createBrowserProvider(walletProvider);
-        await ensureNetwork(provider, market.chain_id, switchNetwork);
-        const signer = await provider.getSigner();
-        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-        const outcomeTokenAddress = await marketContract.outcomeToken();
-        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-        const tokenId = (BigInt(market.market) << 32n) | BigInt(tradeOutcome);
-        const bal = await outcome1155.balanceOf(proxyAddress, tokenId);
-        if (!cancelled) setProxyShareBalance(BigInt(bal).toString());
-      } catch {
-        // ignore
-      }
-    };
-
-    void run();
-    const timer = setInterval(run, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [market, proxyAddress, walletProvider, switchNetwork, tradeOutcome]);
-
   // 根据买/卖切换展示的余额：买显示 USDC (or Proxy USDC)，卖显示可卖份额
   useEffect(() => {
     if (tradeSide === "sell") {
@@ -330,49 +206,18 @@ export function usePredictionDetail() {
             if (!cancelled) setMarketPlanPreview(null);
             return;
           }
-          const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
-          const qs = new URLSearchParams({
-            contract: market.market,
-            chainId: String(market.chain_id),
-            marketKey,
-            outcome: String(tradeOutcome),
-            side: tradeSide,
-            amount: amountBN.toString(),
+          const payload = await fetchMarketPlanPayload({
+            market: market as MarketInfo,
+            predictionIdRaw,
+            tradeOutcome,
+            tradeSide,
+            amountBN,
           });
-          const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
-          const planJson = await safeJson(planRes);
-          if (!planJson.success || !planJson.data) {
+          if (!payload || payload.filledBN === 0n) {
             if (!cancelled) setMarketPlanPreview(null);
             return;
           }
-          const plan = planJson.data as any;
-          const filledRaw = BigInt(String(plan.filledAmount || "0"));
-          if (filledRaw === 0n) {
-            if (!cancelled) setMarketPlanPreview(null);
-            return;
-          }
-          const totalRaw = BigInt(String(plan.total || "0"));
-          const avgPriceRaw = BigInt(String(plan.avgPrice || "0"));
-          const worstPriceRaw = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
-          const slippageBpsNum = Number(String(plan.slippageBps || "0"));
-          const filledAmount = Number(filledRaw) / 1e18;
-          const totalCost = Number(totalRaw) / 1e6;
-          const avgPriceFromTotal =
-            filledAmount > 0 && totalCost > 0 ? totalCost / filledAmount : 0;
-          const avgPrice = avgPriceFromTotal > 0 ? avgPriceFromTotal : Number(avgPriceRaw) / 1e6;
-          const worstPrice = Number(worstPriceRaw) / 1e6;
-          const slippagePercent = (slippageBpsNum || 0) / 100;
-          const partialFill = filledRaw < amountBN;
-          if (!cancelled) {
-            setMarketPlanPreview({
-              slippagePercent,
-              avgPrice,
-              worstPrice,
-              totalCost,
-              filledAmount,
-              partialFill,
-            });
-          }
+          if (!cancelled) setMarketPlanPreview(buildMarketPlanPreview(payload, amountBN));
         } catch {
           if (!cancelled) setMarketPlanPreview(null);
         } finally {
@@ -592,54 +437,32 @@ export function usePredictionDetail() {
           }
         })();
 
-        const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
-        const qs = new URLSearchParams({
-          contract: market.market,
-          chainId: String(market.chain_id),
-          marketKey,
-          outcome: String(tradeOutcome),
-          side: tradeSide,
-          amount: amountBN.toString(),
+        const payload = await fetchMarketPlanPayload({
+          market,
+          predictionIdRaw,
+          tradeOutcome,
+          tradeSide,
+          amountBN,
         });
-        const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
-        const planJson = await safeJson(planRes);
-        if (!planJson.success || !planJson.data) {
-          throw new Error(planJson.message || tTrading("orderFlow.fetchPlanFailed"));
+        if (!payload) {
+          throw new Error(tTrading("orderFlow.fetchPlanFailed"));
         }
-        const plan = planJson.data as any;
-        const filledBN = BigInt(String(plan.filledAmount || "0"));
-        if (filledBN === 0n) throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
+        if (payload.filledBN === 0n) {
+          throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
+        }
 
-        const totalCostBN = BigInt(String(plan.total || "0"));
-        const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
-        const worstPriceBN = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
-        const slippageBpsNum = Number(String(plan.slippageBps || "0"));
-        const fills = Array.isArray(plan.fills) ? (plan.fills as any[]) : [];
-
-        const filledHuman = Number(ethers.formatUnits(filledBN, 18));
-        const avgPriceHuman = Number(ethers.formatUnits(avgPriceBN, decimals));
-        const worstPriceHuman = Number(ethers.formatUnits(worstPriceBN, decimals));
-        const totalHuman = Number(ethers.formatUnits(totalCostBN, decimals));
-
-        const slippagePercent = (slippageBpsNum || 0) / 100;
-        if (slippagePercent > maxSlippage) {
+        const { message: confirmMsg, isSlippageTooHigh } = buildMarketConfirmMessage({
+          payload,
+          amountBN,
+          decimals,
+          tradeSide,
+          maxSlippage,
+          tTrading,
+          formatTranslation,
+        });
+        if (isSlippageTooHigh) {
           throw createUserError(tTrading("orderFlow.slippageTooHigh"));
         }
-
-        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
-        const confirmMsg = formatTranslation(tTrading("orderFlow.marketConfirm"), {
-          side: sideLabel,
-          filled: String(filledHuman),
-          total: String(Number(ethers.formatUnits(amountBN, 18))),
-          avgPrice: Number.isFinite(avgPriceHuman)
-            ? avgPriceHuman.toFixed(4)
-            : String(avgPriceHuman),
-          worstPrice: Number.isFinite(worstPriceHuman)
-            ? worstPriceHuman.toFixed(4)
-            : String(worstPriceHuman),
-          totalCost: Number.isFinite(totalHuman) ? totalHuman.toFixed(2) : String(totalHuman),
-          slippage: slippagePercent.toFixed(2),
-        });
 
         setMarketConfirmState({
           message: confirmMsg,
@@ -647,87 +470,33 @@ export function usePredictionDetail() {
             setIsSubmitting(true);
             setOrderMsg(null);
             try {
-              const ordersArr: any[] = [];
-              const sigArr: string[] = [];
-              const fillArr: bigint[] = [];
-              for (const f of fills) {
-                const fillAmount = BigInt(String(f.fillAmount || "0"));
-                if (fillAmount <= 0n) continue;
-                const req = f.req || {};
-                ordersArr.push({
-                  maker: String(req.maker),
-                  outcomeIndex: Number(req.outcomeIndex),
-                  isBuy: Boolean(req.isBuy),
-                  price: BigInt(String(req.price)),
-                  amount: BigInt(String(req.amount)),
-                  salt: BigInt(String(req.salt)),
-                  expiry: BigInt(String(req.expiry || "0")),
-                });
-                sigArr.push(String(f.signature));
-                fillArr.push(fillAmount);
-              }
+              const { ordersArr, sigArr, fillArr } = buildOrdersFromFills(payload.fills);
 
               if (ordersArr.length === 0) {
                 throw createUserError(tTrading("orderFlow.noFillableOrders"));
               }
 
-              const calls: Array<{ to: string; data: string }> = [];
-              if (tradeSide === "buy") {
-                const erc20Iface = new ethers.Interface(erc20Abi);
-                const approveData = erc20Iface.encodeFunctionData("approve", [
-                  market.market,
-                  ethers.MaxUint256,
-                ]);
-                calls.push({ to: collateralToken, data: approveData });
-              } else {
-                const marketContract = new ethers.Contract(market.market, marketAbi, readProvider);
-                const outcomeTokenAddress = await marketContract.outcomeToken();
-                const erc1155Iface = new ethers.Interface(erc1155Abi);
-                const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
-                  market.market,
-                  true,
-                ]);
-                calls.push({ to: String(outcomeTokenAddress), data: approveData });
-              }
+              const matchingMessage = formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                count: ordersArr.length,
+              });
 
-              const marketIface = new ethers.Interface(marketAbi);
-              const batchFillData = marketIface.encodeFunctionData("batchFill", [
+              await submitMarketOrderWithAaReadonly({
+                market,
+                tradeSide,
+                amountBN,
+                filledBN: payload.filledBN,
                 ordersArr,
                 sigArr,
                 fillArr,
-              ]);
-              calls.push({ to: market.market, data: batchFillData });
-
-              setOrderMsg(
-                formatTranslation(tTrading("orderFlow.matchingInProgress"), {
-                  count: ordersArr.length,
-                })
-              );
-
-              const res = await trySubmitAaCalls({ chainId: market.chain_id, calls });
-              const txHash = res?.txHash || "";
-              if (txHash) {
-                try {
-                  await fetch(`${API_BASE}/orderbook/report-trade`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      chainId: market.chain_id,
-                      txHash,
-                      contract: market.market,
-                    }),
-                  });
-                } catch {}
-              }
-
-              if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
-              else setOrderMsg(tTrading("orderFlow.filled"));
-              setAmountInput("");
-              await refreshUserOrders();
-              toast.success(
-                tTrading("toast.orderSuccessTitle"),
-                tTrading("toast.orderSuccessDesc")
-              );
+                collateralToken,
+                readProvider,
+                matchingMessage,
+                tTrading,
+                setOrderMsg,
+                setAmountInput,
+                refreshUserOrders,
+                toast,
+              });
             } catch (e: any) {
               handleOrderError(e);
             } finally {
@@ -761,317 +530,112 @@ export function usePredictionDetail() {
       );
 
       if (orderMode === "best") {
-        const marketKey = buildMarketKey(market.chain_id, predictionIdRaw);
-        const qs = new URLSearchParams({
-          contract: market.market,
-          chainId: String(market.chain_id),
-          marketKey,
-          outcome: String(tradeOutcome),
-          side: tradeSide,
-          amount: amountBN.toString(),
+        const payload = await fetchMarketPlanPayload({
+          market,
+          predictionIdRaw,
+          tradeOutcome,
+          tradeSide,
+          amountBN,
         });
-        // 一次性拉取“成交计划”（包含将要吃掉的具体订单及每单 fillAmount）
-        const planRes = await fetch(`${API_BASE}/orderbook/market-plan?${qs.toString()}`);
-        const planJson = await safeJson(planRes);
-        if (!planJson.success || !planJson.data) {
-          throw new Error(planJson.message || tTrading("orderFlow.fetchPlanFailed"));
+        if (!payload) {
+          throw new Error(tTrading("orderFlow.fetchPlanFailed"));
         }
-        const plan = planJson.data as any;
-        const filledBN = BigInt(String(plan.filledAmount || "0"));
-        if (filledBN === 0n) throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
+        if (payload.filledBN === 0n) {
+          throw createUserError(tTrading("orderFlow.insufficientLiquidity"));
+        }
 
-        const totalCostBN = BigInt(String(plan.total || "0"));
-        const avgPriceBN = BigInt(String(plan.avgPrice || "0"));
-        const bestPriceBN = BigInt(String(plan.bestPrice || "0"));
-        const worstPriceBN = BigInt(String(plan.worstPrice || plan.bestPrice || "0"));
-        const slippageBpsNum = Number(String(plan.slippageBps || "0"));
-        const fills = Array.isArray(plan.fills) ? (plan.fills as any[]) : [];
-
-        const formatPriceNumber = (v: bigint) => {
-          try {
-            return Number(ethers.formatUnits(v, decimals));
-          } catch {
-            return Number(v);
-          }
-        };
-        const formatAmountNumber = (v: bigint) => {
-          try {
-            return Number(ethers.formatUnits(v, 18));
-          } catch {
-            return Number(v);
-          }
-        };
-
-        const filledHuman = formatAmountNumber(filledBN);
-        const avgPriceHuman = formatPriceNumber(avgPriceBN);
-        const worstPriceHuman = formatPriceNumber(worstPriceBN);
-        const totalHuman = formatPriceNumber(totalCostBN);
-
-        const slippagePercent = (slippageBpsNum || 0) / 100;
-        if (slippagePercent > maxSlippage) {
+        const { message: confirmMsg, isSlippageTooHigh } = buildMarketConfirmMessage({
+          payload,
+          amountBN,
+          decimals,
+          tradeSide,
+          maxSlippage,
+          tTrading,
+          formatTranslation,
+        });
+        if (isSlippageTooHigh) {
           throw createUserError(tTrading("orderFlow.slippageTooHigh"));
         }
-
-        const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
-        const avgPriceStr = avgPriceHuman.toFixed(4);
-        const worstPriceStr = worstPriceHuman.toFixed(4);
-        const totalStr = totalHuman.toFixed(2);
-        const filledStr = String(filledHuman);
-        const totalAmountStr = String(formatAmountNumber(amountBN));
-        const slippageStr = slippagePercent.toFixed(2);
-        const confirmMsg = formatTranslation(tTrading("orderFlow.marketConfirm"), {
-          side: sideLabel,
-          filled: filledStr,
-          total: totalAmountStr,
-          avgPrice: avgPriceStr,
-          worstPrice: worstPriceStr,
-          totalCost: totalStr,
-          slippage: slippageStr,
-        });
         setMarketConfirmState({
           message: confirmMsg,
           onConfirm: async () => {
             setIsSubmitting(true);
             setOrderMsg(null);
             try {
-              const ordersArr: any[] = [];
-              const sigArr: string[] = [];
-              const fillArr: bigint[] = [];
-              for (const f of fills) {
-                const fillAmount = BigInt(String(f.fillAmount || "0"));
-                if (fillAmount <= 0n) continue;
-                const req = f.req || {};
-                ordersArr.push({
-                  maker: String(req.maker),
-                  outcomeIndex: Number(req.outcomeIndex),
-                  isBuy: Boolean(req.isBuy),
-                  price: BigInt(String(req.price)),
-                  amount: BigInt(String(req.amount)),
-                  salt: BigInt(String(req.salt)),
-                  expiry: BigInt(String(req.expiry || "0")),
-                });
-                sigArr.push(String(f.signature));
-                fillArr.push(fillAmount);
-              }
+              const { ordersArr, sigArr, fillArr } = buildOrdersFromFills(payload.fills);
 
               if (ordersArr.length === 0) {
                 throw createUserError(tTrading("orderFlow.noFillableOrders"));
               }
 
+              const matchingMessage = formatTranslation(tTrading("orderFlow.matchingInProgress"), {
+                count: ordersArr.length,
+              });
+
               if (useProxyVal && proxyAddressVal) {
-                const code = await provider.getCode(proxyAddressVal);
-                if (!code || code === "0x") {
-                  throw createUserError(
-                    "Proxy wallet not activated. Please deposit funds first to activate."
-                  );
-                }
-
-                if (tradeSide === "buy") {
-                  const allowance = await tokenContract.allowance(proxyAddressVal, market.market);
-                  if (allowance < totalCostBN) {
-                    setOrderMsg(tTrading("orderFlow.approving"));
-                    const erc20Iface = new ethers.Interface(erc20Abi);
-                    const approveData = erc20Iface.encodeFunctionData("approve", [
-                      market.market,
-                      ethers.MaxUint256,
-                    ]);
-                    const tx = await executeSafeTransaction(
-                      signer,
-                      proxyAddressVal,
-                      String(tokenContract.target),
-                      approveData
-                    );
-                    await tx.wait();
-                  }
-                } else {
-                  const marketContract = new ethers.Contract(market.market, marketAbi, provider);
-                  const outcomeTokenAddress = await marketContract.outcomeToken();
-                  const outcome1155 = new ethers.Contract(
-                    outcomeTokenAddress,
-                    erc1155Abi,
-                    provider
-                  );
-                  const isApproved = await outcome1155.isApprovedForAll(
-                    proxyAddressVal,
-                    market.market
-                  );
-                  if (!isApproved) {
-                    setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-                    const erc1155Iface = new ethers.Interface(erc1155Abi);
-                    const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
-                      market.market,
-                      true,
-                    ]);
-                    const tx = await executeSafeTransaction(
-                      signer,
-                      proxyAddressVal,
-                      String(outcomeTokenAddress),
-                      approveData
-                    );
-                    await tx.wait();
-                  }
-                }
-
-                setOrderMsg(
-                  formatTranslation(tTrading("orderFlow.matchingInProgress"), {
-                    count: ordersArr.length,
-                  })
-                );
-                const marketIface = new ethers.Interface(marketAbi);
-                const batchFillData = marketIface.encodeFunctionData("batchFill", [
+                await submitMarketOrderWithProxy({
+                  market,
+                  tradeSide,
+                  amountBN,
+                  totalCostBN: payload.totalCostBN,
+                  filledBN: payload.filledBN,
                   ordersArr,
                   sigArr,
                   fillArr,
-                ]);
-                const tx = await executeSafeTransaction(
+                  provider,
                   signer,
-                  proxyAddressVal,
-                  market.market,
-                  batchFillData
-                );
-                const receipt = await tx.wait();
-
-                try {
-                  await fetch(`${API_BASE}/orderbook/report-trade`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      chainId: market.chain_id,
-                      txHash: receipt.hash,
-                      contract: market.market,
-                    }),
-                  });
-                } catch {}
-
-                if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
-                else setOrderMsg(tTrading("orderFlow.filled"));
-                setAmountInput("");
-                await refreshUserOrders();
-                toast.success(
-                  tTrading("toast.orderSuccessTitle"),
-                  tTrading("toast.orderSuccessDesc")
-                );
+                  tokenContract,
+                  proxyAddress: proxyAddressVal,
+                  matchingMessage,
+                  tTrading,
+                  setOrderMsg,
+                  setAmountInput,
+                  refreshUserOrders,
+                  toast,
+                });
                 return;
               }
 
               if (isAaEnabled()) {
-                try {
-                  const calls = [];
-                  if (tradeSide === "buy") {
-                    const erc20Iface = new ethers.Interface(erc20Abi);
-                    const approveData = erc20Iface.encodeFunctionData("approve", [
-                      market.market,
-                      ethers.MaxUint256,
-                    ]);
-                    calls.push({ to: String(tokenContract.target), data: approveData });
-                  } else {
-                    const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-                    const outcomeTokenAddress = await marketContract.outcomeToken();
-                    const erc1155Iface = new ethers.Interface(erc1155Abi);
-                    const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
-                      market.market,
-                      true,
-                    ]);
-                    calls.push({ to: outcomeTokenAddress, data: approveData });
-                  }
-
-                  const marketIface = new ethers.Interface(marketAbi);
-                  const batchFillData = marketIface.encodeFunctionData("batchFill", [
-                    ordersArr,
-                    sigArr,
-                    fillArr,
-                  ]);
-                  calls.push({ to: market.market, data: batchFillData });
-
-                  setOrderMsg(
-                    formatTranslation(tTrading("orderFlow.matchingInProgress"), {
-                      count: ordersArr.length,
-                    })
-                  );
-
-                  const res = await trySubmitAaCalls({ chainId: market.chain_id, calls });
-                  const txHash = res?.txHash || "";
-
-                  if (txHash) {
-                    try {
-                      await fetch(`${API_BASE}/orderbook/report-trade`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          chainId: market.chain_id,
-                          txHash,
-                          contract: market.market,
-                        }),
-                      });
-                    } catch {}
-                  }
-
-                  if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
-                  else setOrderMsg(tTrading("orderFlow.filled"));
-                  setAmountInput("");
-                  await refreshUserOrders();
-                  toast.success(
-                    tTrading("toast.orderSuccessTitle"),
-                    tTrading("toast.orderSuccessDesc")
-                  );
-                  return;
-                } catch (e: any) {
-                  console.error("AA batchFill failed", e);
-                }
-              }
-
-              if (tradeSide === "buy") {
-                const allowance = await tokenContract.allowance(account, market.market);
-                if (allowance < totalCostBN) {
-                  setOrderMsg(tTrading("orderFlow.approving"));
-                  const txApp = await tokenContract.approve(market.market, ethers.MaxUint256);
-                  await txApp.wait();
-                }
-              } else {
-                const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-                const outcomeTokenAddress = await marketContract.outcomeToken();
-                const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-                const isApproved = await outcome1155.isApprovedForAll(account, market.market);
-                if (!isApproved) {
-                  setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-                  const tx1155 = await outcome1155.setApprovalForAll(market.market, true);
-                  await tx1155.wait();
-                }
-              }
-
-              if (!RELAYER_BASE) {
-                throw new Error(tTrading("orderFlow.relayerNotConfigured"));
-              }
-
-              const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-              setOrderMsg(
-                formatTranslation(tTrading("orderFlow.matchingInProgress"), {
-                  count: ordersArr.length,
-                })
-              );
-              const tx = await marketContract.batchFill(ordersArr, sigArr, fillArr);
-              const receipt = await tx.wait();
-
-              try {
-                await fetch(`${API_BASE}/orderbook/report-trade`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    chainId: market.chain_id,
-                    txHash: receipt.hash,
-                    contract: market.market,
-                  }),
+                const ok = await submitMarketOrderWithAa({
+                  market,
+                  tradeSide,
+                  amountBN,
+                  filledBN: payload.filledBN,
+                  ordersArr,
+                  sigArr,
+                  fillArr,
+                  tokenContract,
+                  signer,
+                  matchingMessage,
+                  tTrading,
+                  setOrderMsg,
+                  setAmountInput,
+                  refreshUserOrders,
+                  toast,
                 });
-              } catch {}
+                if (ok) return;
+              }
 
-              if (filledBN < amountBN) setOrderMsg(tTrading("orderFlow.partialFilled"));
-              else setOrderMsg(tTrading("orderFlow.filled"));
-              setAmountInput("");
-              await refreshUserOrders();
-              toast.success(
-                tTrading("toast.orderSuccessTitle"),
-                tTrading("toast.orderSuccessDesc")
-              );
+              await submitMarketOrderDirect({
+                market,
+                tradeSide,
+                amountBN,
+                totalCostBN: payload.totalCostBN,
+                filledBN: payload.filledBN,
+                ordersArr,
+                sigArr,
+                fillArr,
+                tokenContract,
+                signer,
+                account,
+                matchingMessage,
+                tTrading,
+                setOrderMsg,
+                setAmountInput,
+                refreshUserOrders,
+                toast,
+              });
             } catch (e: any) {
               handleOrderError(e);
             } finally {
@@ -1090,197 +654,27 @@ export function usePredictionDetail() {
 
       priceBN = parseUnitsByDecimals(priceFloat.toString(), decimals);
 
-      if (tradeSide === "buy") {
-        // cost6 = amount18 * price6Per1e18 / 1e18
-        const cost = (amountBN * priceBN) / 1_000_000_000_000_000_000n;
-
-        if (useProxy && proxyAddress) {
-          const code = await provider.getCode(proxyAddress);
-          if (!code || code === "0x") {
-            throw createUserError(
-              "Proxy wallet not activated. Please deposit funds first to activate."
-            );
-          }
-          const allowance = await tokenContract.allowance(proxyAddress, market.market);
-          if (allowance < cost) {
-            setOrderMsg(tTrading("orderFlow.approving"));
-            const erc20Iface = new ethers.Interface(erc20Abi);
-            const approveData = erc20Iface.encodeFunctionData("approve", [
-              market.market,
-              ethers.MaxUint256,
-            ]);
-            const tx = await executeSafeTransaction(
-              signer,
-              proxyAddress,
-              String(tokenContract.target),
-              approveData
-            );
-            await tx.wait();
-            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
-          }
-        } else {
-          const allowance = await tokenContract.allowance(account, market.market);
-          if (allowance < cost) {
-            setOrderMsg(tTrading("orderFlow.approving"));
-            const tx = await tokenContract.approve(market.market, ethers.MaxUint256);
-            await tx.wait();
-            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
-          }
-        }
-      } else {
-        const marketContract = new ethers.Contract(market.market, marketAbi, signer);
-        const outcomeTokenAddress = await marketContract.outcomeToken();
-        const outcome1155 = new ethers.Contract(outcomeTokenAddress, erc1155Abi, signer);
-
-        if (useProxy && proxyAddress) {
-          const code = await provider.getCode(proxyAddress);
-          if (!code || code === "0x") {
-            throw createUserError(
-              "Proxy wallet not activated. Please deposit funds first to activate."
-            );
-          }
-          const isApproved = await outcome1155.isApprovedForAll(proxyAddress, market.market);
-          if (!isApproved) {
-            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-            const erc1155Iface = new ethers.Interface(erc1155Abi);
-            const approveData = erc1155Iface.encodeFunctionData("setApprovalForAll", [
-              market.market,
-              true,
-            ]);
-            const tx = await executeSafeTransaction(
-              signer,
-              proxyAddress,
-              String(outcomeTokenAddress),
-              approveData
-            );
-            await tx.wait();
-            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
-          }
-        } else {
-          const isApproved = await outcome1155.isApprovedForAll(account, market.market);
-          if (!isApproved) {
-            setOrderMsg(tTrading("orderFlow.outcomeTokenApproving"));
-            const tx = await outcome1155.setApprovalForAll(market.market, true);
-            await tx.wait();
-            setOrderMsg(tTrading("orderFlow.approveThenPlace"));
-          }
-        }
-      }
-
-      const salt = (() => {
-        try {
-          const c = globalThis.crypto;
-          if (!c || typeof c.getRandomValues !== "function") {
-            return String(Date.now());
-          }
-          const arr = new Uint32Array(2);
-          c.getRandomValues(arr);
-          return ((BigInt(arr[0]) << 32n) | BigInt(arr[1])).toString();
-        } catch {
-          return String(Date.now());
-        }
-      })();
-      const expiry = Math.floor(Date.now() / 1000) + 3600 * 24;
-
-      const orderMaker = useProxyVal && proxyAddressVal ? proxyAddressVal : account;
-
-      const value = {
-        maker: orderMaker,
-        outcomeIndex: BigInt(tradeOutcome),
-        price: priceBN,
-        amount: amountBN,
-        isBuy: tradeSide === "buy",
-        salt: BigInt(salt),
-        expiry: BigInt(expiry),
-      };
-
-      const domain = createOrderDomain(market.chain_id, market.market);
-      const signature = await signer.signTypedData(domain as any, ORDER_TYPES as any, value as any);
-
-      const mk = `${market.chain_id}:${predictionIdRaw}`;
-      const tifForOrder = tif === "GTC" ? undefined : tif;
-      const payload = {
-        order: {
-          maker: orderMaker,
-          outcomeIndex: tradeOutcome,
-          isBuy: tradeSide === "buy",
-          price: priceBN.toString(),
-          amount: amountBN.toString(),
-          salt,
-          expiry,
-          ...(tifForOrder ? { tif: tifForOrder } : {}),
-          ...(postOnly ? { postOnly: true } : {}),
-        },
-        signature,
-        chainId: market.chain_id,
-        contract: market.market,
-        verifyingContract: market.market,
-        marketKey: mk,
-        eventId: Number(predictionIdRaw),
-      };
-
-      if (RELAYER_BASE) {
-        try {
-          const resV2 = await fetch(`${RELAYER_BASE}/v2/orders`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              marketKey: mk,
-              chainId: market.chain_id,
-              verifyingContract: market.market,
-              signature,
-              order: payload.order,
-            }),
-            signal: AbortSignal.timeout(5000),
-          });
-
-          const jsonV2 = await safeJson(resV2 as any);
-          if ((jsonV2 as any).success) {
-            const data = (jsonV2 as any).data || {};
-            const filledStr = String(data.filledAmount ?? "0");
-            let filled = 0n;
-            try {
-              filled = BigInt(filledStr);
-            } catch {
-              filled = 0n;
-            }
-            const status = String((data as any).status || "");
-
-            if (status === "canceled" && filled === 0n) {
-              setOrderMsg(tTrading("orderFlow.canceled"));
-            } else if (filled === 0n) {
-              setOrderMsg(tTrading("orderFlow.orderSuccess"));
-            } else if (filled < amountBN) {
-              setOrderMsg(tTrading("orderFlow.partialFilled"));
-            } else {
-              setOrderMsg(tTrading("orderFlow.filled"));
-            }
-
-            setAmountInput("");
-            await refreshUserOrders();
-            toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
-            return;
-          }
-        } catch (err) {
-          console.error("[orderFlow] v2 order submit failed, falling back to v1:", err);
-        }
-      }
-
-      const res = await fetch(`${API_BASE}/orderbook/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      await submitLimitOrder({
+        market,
+        account,
+        predictionIdRaw,
+        tradeSide,
+        tradeOutcome,
+        amountBN,
+        priceBN,
+        tif,
+        postOnly,
+        useProxyVal,
+        proxyAddressVal,
+        provider,
+        signer,
+        tokenContract,
+        tTrading,
+        setOrderMsg,
+        setAmountInput,
+        refreshUserOrders,
+        toast,
       });
-
-      const json = await safeJson(res);
-      if (json.success) {
-        setOrderMsg(tTrading("orderFlow.orderSuccess"));
-        setAmountInput("");
-        await refreshUserOrders();
-        toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
-      } else {
-        throw new Error(json.message || tTrading("orderFlow.orderFailedFallback"));
-      }
     } catch (e: any) {
       handleOrderError(e);
     } finally {
