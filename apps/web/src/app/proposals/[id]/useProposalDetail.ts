@@ -64,7 +64,7 @@ async function fetchProposalThreadById(idNum: number | null): Promise<ThreadView
 }
 
 export function useProposalDetail(id: string) {
-  const { account, formatAddress } = useWallet();
+  const { account, formatAddress, isAuthenticated, siweLogin } = useWallet();
   const idNum = normalizePositiveId(id);
   const isValidId = isValidPositiveId(idNum);
 
@@ -236,6 +236,13 @@ export function useProposalDetail(id: string) {
   const resubmit = useCallback(async () => {
     if (!thread || !canResubmit) return;
     try {
+      if (!isAuthenticated) {
+        const authRes = await siweLogin();
+        if (!authRes.success) {
+          toast.error(authRes.error || t("errors.wallet.verifyFailed"));
+          return;
+        }
+      }
       const res = await fetch(`/api/review/proposals/${thread.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,7 +261,7 @@ export function useProposalDetail(id: string) {
     } catch (e: any) {
       handleApiError(e, "proposals.detail.resubmitFailed");
     }
-  }, [thread, canResubmit, refresh]);
+  }, [thread, canResubmit, isAuthenticated, siweLogin, refresh]);
 
   const stats = useMemo(() => computeThreadStats(thread), [thread]);
 

@@ -10,22 +10,23 @@ import {
 import { normalizeId } from "@/lib/ids";
 import { ApiResponses } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+function normalizeActionVerb(v: string): string {
+  const s = String(v || "").trim();
+  if (s === "priceReach" || s === "willHappen" || s === "willWin") return s;
+  if (s === "价格达到") return "priceReach";
+  if (s === "将会发生") return "willHappen";
+  if (s === "将会赢得") return "willWin";
+  return s;
+}
+
 function actionLabel(v: string): string {
   const normalized = normalizeActionVerb(v);
-  if (normalized === "价格达到") return "价格是否会达到";
-  if (normalized === "将会发生") return "是否将会发生";
-  if (normalized === "将会赢得") return "是否将会赢得";
+  if (normalized === "priceReach") return "价格是否会达到";
+  if (normalized === "willHappen") return "是否将会发生";
+  if (normalized === "willWin") return "是否将会赢得";
   if (!normalized) return "是否将会发生";
   if (normalized.includes("是否")) return normalized;
   return `是否${normalized}`;
-}
-
-function normalizeActionVerb(v: string): string {
-  const s = String(v || "").trim();
-  if (s === "priceReach") return "价格达到";
-  if (s === "willHappen") return "将会发生";
-  if (s === "willWin") return "将会赢得";
-  return s;
 }
 
 export async function POST(req: NextRequest) {

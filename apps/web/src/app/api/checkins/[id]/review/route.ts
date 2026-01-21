@@ -5,6 +5,7 @@ import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
   logApiError,
+  logApiEvent,
   getSessionAddress,
   normalizeAddress,
 } from "@/lib/serverUtils";
@@ -69,6 +70,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return ApiResponses.databaseError("Failed to query check-in", chkErr.message);
     }
     if (!chk) return ApiResponses.notFound("Check-in record not found");
+    const currentStatus = String(chk.review_status || "pending");
+    if (currentStatus === action) {
+      return NextResponse.json({ message: "ok", data: chk }, { status: 200 });
+    }
+    if (currentStatus === "approved" || currentStatus === "rejected") {
+      return ApiResponses.conflict("Check-in already reviewed");
+    }
 
     const { data: rawFlag, error: fErr } = await client
       .from("flags")
@@ -96,11 +104,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         reviewed_at: new Date().toISOString(),
       } as Database["public"]["Tables"]["flag_checkins"]["Update"])
       .eq("id", checkinId)
+      .eq("review_status", "pending")
+      .is("reviewed_at", null)
       .select("*")
       .maybeSingle();
     if (uErr) {
       logApiError("POST /api/checkins/[id]/review update_failed", uErr);
       return ApiResponses.databaseError("Failed to update check-in review", uErr.message);
+    }
+    if (!upd) {
+      return ApiResponses.conflict("Check-in already reviewed");
     }
 
     // 若 flags 当前为 pending_review，审核后回到 active
@@ -139,6 +152,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     } catch (e) {
       logApiError("POST /api/checkins/[id]/review notification insert failed", e);
     }
+    logApiEvent("flags.checkin_reviewed", {
+      flag_id: chk.flag_id,
+      checkin_id: checkinId,
+      reviewer_id,
+      action,
+    });
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });
   } catch (e: any) {

@@ -10,26 +10,32 @@ vi.mock("../../../predictions/_lib/createPrediction", () => {
   };
 });
 
-vi.mock("@/lib/supabase.server", () => {
-  const existingThread = {
-    id: 1,
-    review_status: "pending_review",
-    review_reason: null,
-  };
+let existingThread = {
+  id: 1,
+  review_status: "pending_review",
+  review_reason: null,
+  reviewed_by: null,
+  reviewed_at: null,
+};
 
+vi.mock("@/lib/supabase.server", () => {
   const makeSelectQuery = () => ({
     eq: () => ({
       maybeSingle: async () => ({ data: existingThread, error: null }),
     }),
   });
 
-  const makeUpdateQuery = (payload: any) => ({
-    eq: () => ({
+  const makeUpdateQuery = (payload: any) => {
+    Object.assign(existingThread, payload);
+    const chain = () => ({
+      eq: () => chain(),
+      is: () => chain(),
       select: () => ({
         maybeSingle: async () => ({ data: { ...existingThread, ...payload }, error: null }),
       }),
-    }),
-  });
+    });
+    return chain();
+  };
 
   const client = {
     from: () => ({
@@ -57,6 +63,7 @@ vi.mock("@/lib/serverUtils", () => {
     getSessionAddress: vi.fn(),
     normalizeAddress: (addr: string) => addr.toLowerCase(),
     logApiError: vi.fn(),
+    logApiEvent: vi.fn(),
   };
 });
 
@@ -66,6 +73,13 @@ describe("POST /api/review/proposals/[id] - 审核员操作", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    existingThread = {
+      id: 1,
+      review_status: "pending_review",
+      review_reason: null,
+      reviewed_by: null,
+      reviewed_at: null,
+    };
   });
 
   it("应该拒绝缺少 action 的请求", async () => {

@@ -15,6 +15,15 @@ export const revalidate = 30; // 30秒缓存
 
 function normalizeActionVerb(v: string): string {
   const s = String(v || "").trim();
+  if (s === "priceReach" || s === "willHappen" || s === "willWin") return s;
+  if (s === "价格达到") return "priceReach";
+  if (s === "将会发生") return "willHappen";
+  if (s === "将会赢得") return "willWin";
+  return s;
+}
+
+function actionVerbLabel(v: string): string {
+  const s = normalizeActionVerb(v);
   if (s === "priceReach") return "价格达到";
   if (s === "willHappen") return "将会发生";
   if (s === "willWin") return "将会赢得";
@@ -80,6 +89,10 @@ export async function GET(req: NextRequest) {
       deadline: t.deadline == null ? null : String(t.deadline || ""),
       title_preview: t.title_preview == null ? null : String(t.title_preview || ""),
       criteria_preview: t.criteria_preview == null ? null : String(t.criteria_preview || ""),
+      primary_source_url: t.primary_source_url == null ? null : String(t.primary_source_url || ""),
+      outcomes: Array.isArray(t.outcomes) ? t.outcomes : null,
+      extra_links: Array.isArray(t.extra_links) ? t.extra_links : null,
+      image_urls: Array.isArray(t.image_urls) ? t.image_urls : null,
       created_prediction_id:
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       review_status: String(t.review_status || "pending_review"),
@@ -216,27 +229,65 @@ export async function POST(req: NextRequest) {
     const criteria_preview = String(body?.criteriaPreview ?? body?.criteria_preview ?? "")
       .trim()
       .slice(0, 4000);
+    const primarySourceUrl = String(
+      body?.primarySourceUrl ?? body?.primary_source_url ?? ""
+    ).trim();
+    const outcomesRaw = body?.outcomes;
+    const extraLinksRaw = body?.extraLinks ?? body?.extra_links;
+    const imageUrlsRaw = body?.imageUrls ?? body?.image_urls;
+    const outcomes =
+      Array.isArray(outcomesRaw) && outcomesRaw.length > 0
+        ? outcomesRaw
+            .map((x: unknown) => String(x || "").trim())
+            .filter(Boolean)
+            .slice(0, 16)
+        : [];
+    const extraLinks =
+      Array.isArray(extraLinksRaw) && extraLinksRaw.length > 0
+        ? extraLinksRaw
+            .map((x: unknown) => String(x || "").trim())
+            .filter(Boolean)
+            .slice(0, 16)
+        : [];
+    const imageUrls =
+      Array.isArray(imageUrlsRaw) && imageUrlsRaw.length > 0
+        ? imageUrlsRaw
+            .map((x: unknown) => String(x || "").trim())
+            .filter(Boolean)
+            .slice(0, 16)
+        : [];
 
     let content = rawContent;
+    const details: string[] = [];
+    if (subject_name) details.push(`Subject Name: ${subject_name}`);
+    if (action_verb) details.push(`Action Verb: ${actionVerbLabel(action_verb)}`);
+    if (target_value) details.push(`Target Value: ${target_value}`);
+    if (deadline) details.push(`Deadline: ${deadline}`);
+    if (criteria_preview) details.push(`Criteria: ${criteria_preview}`);
+    const extraParts: string[] = [];
+    if (primarySourceUrl) extraParts.push(`Primary Source: ${primarySourceUrl}`);
+    if (outcomes.length > 0) {
+      extraParts.push(`Outcomes: ${outcomes.join(", ")}`);
+    }
+    if (extraLinks.length > 0) {
+      extraParts.push(`Extra Links: ${extraLinks.join(", ")}`);
+    }
+    if (imageUrls.length > 0) {
+      extraParts.push(`Images: ${imageUrls.join(", ")}`);
+    }
     if (textLengthWithoutSpaces(content) < 40) {
-      const hasMetadata =
-        !!title_preview ||
-        !!criteria_preview ||
-        !!subject_name ||
-        !!action_verb ||
-        !!target_value ||
-        !!deadline;
-      if (hasMetadata) {
+      if (title_preview || details.length > 0 || extraParts.length > 0) {
         const parts: string[] = [];
-        parts.push(title_preview || title);
-        parts.push("---");
-        if (subject_name) parts.push(`Subject Name: ${subject_name}`);
-        if (action_verb) parts.push(`Action Verb: ${action_verb}`);
-        if (target_value) parts.push(`Target Value: ${target_value}`);
-        if (deadline) parts.push(`Deadline: ${deadline}`);
-        if (criteria_preview) parts.push(`Criteria: ${criteria_preview}`);
+        if (title_preview || title) parts.push(title_preview || title);
+        if (details.length > 0 || extraParts.length > 0) {
+          parts.push("---");
+          parts.push(...details, ...extraParts);
+        }
         content = parts.join("\n").slice(0, 8000);
       }
+    } else if (extraParts.length > 0) {
+      const appended = ["", "---", ...extraParts].join("\n");
+      content = `${content}${appended}`.slice(0, 8000);
     }
 
     if (textLengthWithoutSpaces(content) < 40) {
@@ -256,6 +307,10 @@ export async function POST(req: NextRequest) {
         deadline,
         title_preview,
         criteria_preview,
+        primary_source_url: primarySourceUrl || null,
+        outcomes,
+        extra_links: extraLinks,
+        image_urls: imageUrls,
       })
       .select()
       .maybeSingle();

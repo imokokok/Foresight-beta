@@ -24,6 +24,10 @@ export type FlagItem = {
   verification_type: "self" | "witness";
   proof_image_url?: string;
   proof_comment?: string;
+  latest_checkin_image_url?: string | null;
+  latest_checkin_note?: string | null;
+  latest_checkin_at?: string | null;
+  latest_checkin_review_status?: string | null;
   created_at: string;
   user_id: string;
   witness_id?: string;
@@ -130,6 +134,7 @@ export const FlagCard = memo(function FlagCard({
   };
 
   const { progress, daysActive, remainText, totalDays, tier } = calculateStats();
+  const proofImageUrl = flag.latest_checkin_image_url || flag.proof_image_url;
 
   // Random rotation for "sticker/photo" vibe
   const rotate = Math.random() * 2 - 1;
@@ -271,10 +276,10 @@ export const FlagCard = memo(function FlagCard({
 
             <div className="flex items-center justify-between mt-auto pt-2">
               <div className="flex -space-x-2 overflow-hidden">
-                {flag.proof_image_url ? (
+                {proofImageUrl ? (
                   <div className="w-10 h-10 rounded-full border-2 border-white shadow-md overflow-hidden ring-2 ring-gray-100 relative z-10">
                     <LazyImage
-                      src={flag.proof_image_url}
+                      src={proofImageUrl}
                       alt={flag.title || tFlags("card.proofImageAlt")}
                       className="w-full h-full object-cover rounded-full"
                       placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"

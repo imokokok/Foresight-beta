@@ -4,6 +4,7 @@ import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
   logApiError,
+  logApiEvent,
   getSessionAddress,
   normalizeAddress,
 } from "@/lib/serverUtils";
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (Number.isNaN(deadline.getTime()))
       return ApiResponses.internalError("Invalid flag deadline");
     if (now > deadline) return ApiResponses.badRequest("Flag deadline has passed, cannot check in");
+    if (flag.status === "success" || flag.status === "failed") {
+      return ApiResponses.badRequest("Flag already settled");
+    }
 
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const next = new Date(start.getTime() + 86400000);
@@ -110,6 +114,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       logApiError("POST /api/flags/[id]/checkin history insert failed", e);
     }
 
+    const isSelfSupervised =
+      flag.verification_type === "self" ||
+      (!flag.witness_id && String(flag.user_id || "").toLowerCase() === userId.toLowerCase());
+
+    const canAutoApprove =
+      (flag?.verification_type === "witness" && String(flag?.witness_id || "") === "official") ||
+      isSelfSupervised;
+
     const { data: insertedCheckin, error: insertErr } = await client
       .from("flag_checkins")
       .insert({
@@ -117,41 +129,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         user_id: userId,
         note,
         image_url: imageUrl || null,
+        review_status: canAutoApprove ? "approved" : "pending",
+        reviewer_id: canAutoApprove ? (isSelfSupervised ? "self" : "official") : null,
+        reviewed_at: canAutoApprove ? new Date().toISOString() : null,
       } as Database["public"]["Tables"]["flag_checkins"]["Insert"])
       .select("*")
       .maybeSingle();
     if (insertErr || !insertedCheckin?.id) {
       logApiError("POST /api/flags/[id]/checkin insert failed", insertErr);
       return ApiResponses.databaseError("Check-in failed", insertErr?.message || "insert_failed");
-    }
-
-    const isSelfSupervised =
-      flag.verification_type === "self" ||
-      (!flag.witness_id && String(flag.user_id || "").toLowerCase() === userId.toLowerCase());
-
-    const canAutoApprove =
-      insertedCheckin?.id &&
-      ((flag?.verification_type === "witness" && String(flag?.witness_id || "") === "official") ||
-        isSelfSupervised);
-
-    if (canAutoApprove) {
-      const checkinId = insertedCheckin?.id;
-      if (!checkinId) {
-        throw new Error("Missing checkin id for auto-approve");
-      }
-
-      try {
-        await client
-          .from("flag_checkins")
-          .update({
-            review_status: "approved",
-            reviewer_id: isSelfSupervised ? "self" : "official",
-            reviewed_at: new Date().toISOString(),
-          } as Database["public"]["Tables"]["flag_checkins"]["Update"])
-          .eq("id", checkinId);
-      } catch (e) {
-        logApiError("POST /api/flags/[id]/checkin auto-approve update failed", e);
-      }
     }
 
     const tier = getFlagTierFromFlag(flag);
@@ -175,18 +161,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       }
     }
 
-    let newStatus =
+    const newStatus: Database["public"]["Tables"]["flags"]["Update"]["status"] =
       flag.verification_type === "witness" && String(flag?.witness_id || "") !== "official"
         ? "pending_review"
         : "active";
 
+    const updatePayload: Database["public"]["Tables"]["flags"]["Update"] = {
+      status: newStatus,
+    };
+    if (note) updatePayload.proof_comment = note;
+    if (imageUrl) updatePayload.proof_image_url = imageUrl;
+
     let { data, error } = await client
       .from("flags")
-      .update({
-        proof_comment: note || null,
-        proof_image_url: imageUrl || null,
-        status: newStatus,
-      })
+      .update(updatePayload)
       .eq("id", flagId)
       .select("*")
       .maybeSingle();
@@ -203,6 +191,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return ApiResponses.databaseError("Check-in failed", fallback.error.message);
       data = fallback.data;
     }
+    logApiEvent("flags.checkin_created", {
+      flag_id: flagId,
+      checkin_id: insertedCheckin?.id,
+      user_id: userId,
+      review_status: canAutoApprove ? "approved" : "pending",
+      status: newStatus,
+      sticker_earned: !!rewardedSticker,
+    });
+
     return NextResponse.json(
       {
         message: "ok",

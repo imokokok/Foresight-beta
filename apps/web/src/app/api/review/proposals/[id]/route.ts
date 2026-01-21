@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
-import { getSessionAddress, logApiError, normalizeAddress } from "@/lib/serverUtils";
+import { getSessionAddress, logApiError, logApiEvent, normalizeAddress } from "@/lib/serverUtils";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
 import { normalizeCategory } from "@/lib/categories";
@@ -9,12 +9,68 @@ import { createPrediction } from "../../../predictions/_lib/createPrediction";
 
 type ForumThreadRow = Database["public"]["Tables"]["forum_threads"]["Row"];
 
-function actionLabel(v: string): string {
+function normalizeActionVerb(v: string): string {
   const s = String(v || "").trim();
+  if (s === "priceReach" || s === "willHappen" || s === "willWin") return s;
+  if (s === "价格达到") return "priceReach";
+  if (s === "将会发生") return "willHappen";
+  if (s === "将会赢得") return "willWin";
+  return s;
+}
+
+function actionLabel(v: string): string {
+  const s = normalizeActionVerb(v);
   if (s === "priceReach") return "价格是否会达到";
   if (s === "willHappen") return "是否将会发生";
   if (s === "willWin") return "是否将会赢得";
   return "是否将会发生";
+}
+
+function normalizeStringArray(value: unknown, max = 16): string[] {
+  let arr: unknown[] = [];
+  if (Array.isArray(value)) {
+    arr = value;
+  } else if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        arr = parsed;
+      } else {
+        arr = value.split(",");
+      }
+    } catch {
+      arr = value.split(",");
+    }
+  }
+  return arr
+    .map((x) => String(x || "").trim())
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function normalizeOutcomeLabels(value: unknown, max = 8): string[] {
+  const base = Array.isArray(value) ? value : normalizeStringArray(value, max);
+  return base
+    .map((x) => {
+      if (x && typeof x === "object" && "label" in (x as any)) {
+        return String((x as any).label || "").trim();
+      }
+      return String(x || "").trim();
+    })
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function normalizeUrlList(value: unknown, max = 16): string[] {
+  return normalizeStringArray(value, max).filter((v) => /^https?:\/\//i.test(v));
+}
+
+function pickFirstUrl(values: string[]): string {
+  for (const v of values) {
+    const s = String(v || "").trim();
+    if (s && /^https?:\/\//i.test(s)) return s;
+  }
+  return "";
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -80,14 +136,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           review_status: "pending_review",
           reviewed_by: null,
           reviewed_at: null,
-        } as Partial<ForumThreadRow> as never)
+        } as any)
         .eq("id", threadId)
+        .eq("review_status", "needs_changes")
+        .eq("reviewed_by", existingRow.reviewed_by || null)
+        .eq("reviewed_at", existingRow.reviewed_at || null)
         .select("*")
         .maybeSingle();
       if (error) {
         logApiError("POST /api/review/proposals/[id] resubmit_update_failed", error);
         return ApiResponses.databaseError("update_failed", error.message);
       }
+      if (!data) {
+        return ApiResponses.conflict("review_in_progress");
+      }
+      logApiEvent("proposals.resubmitted", {
+        thread_id: threadId,
+        user_id: walletAddress,
+      });
       return NextResponse.json({ item: data }, { status: 200 });
     }
     if ((action === "reject" || action === "needs_changes") && !reason.trim()) {
@@ -117,25 +183,90 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
     const now = new Date().toISOString();
     const existingRow = existing as any;
-    let reviewStatus = String(existingRow.review_status || "");
-    const updatePayload: any = {
-      reviewed_by: auth.userId,
-      reviewed_at: now,
-      review_reason: reason || existingRow.review_reason || null,
-    };
+    const currentStatus = String(existingRow.review_status || "pending_review");
+    const isPending = currentStatus === "pending_review";
+    const canEditMetadata = currentStatus === "pending_review" || currentStatus === "needs_changes";
+    const reviewedBy = normalizeAddress(String(existingRow.reviewed_by || ""));
+    if (
+      isPending &&
+      existingRow.reviewed_at &&
+      reviewedBy &&
+      reviewedBy !== normalizeAddress(auth.userId) &&
+      (action === "approve" ||
+        action === "reject" ||
+        action === "needs_changes" ||
+        action === "edit_metadata")
+    ) {
+      return ApiResponses.conflict("review_in_progress");
+    }
+    if ((action === "approve" || action === "reject" || action === "needs_changes") && !isPending) {
+      return ApiResponses.invalidParameters("invalid_status");
+    }
+    if (action === "edit_metadata" && !canEditMetadata) {
+      return ApiResponses.invalidParameters("invalid_status");
+    }
+
+    if (action === "reject" || action === "needs_changes") {
+      const reviewStatus = action === "reject" ? "rejected" : "needs_changes";
+      const { data, error } = await client
+        .from("forum_threads")
+        .update({
+          review_status: reviewStatus,
+          reviewed_by: auth.userId,
+          reviewed_at: now,
+          review_reason: reason || existingRow.review_reason || null,
+        } as any)
+        .eq("id", threadId)
+        .eq("review_status", "pending_review")
+        .is("reviewed_at", null)
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logApiError("POST /api/review/proposals/[id] update_failed", error);
+        return ApiResponses.databaseError("update_failed", error.message);
+      }
+      if (!data) {
+        return ApiResponses.conflict("review_in_progress");
+      }
+      logApiEvent("proposals.reviewed", {
+        thread_id: threadId,
+        action,
+        reviewer_id: auth.userId,
+      });
+      return NextResponse.json({ item: data }, { status: 200 });
+    }
 
     if (action === "approve") {
-      reviewStatus = "approved";
-      if (!existingRow.created_prediction_id) {
-        let title = String(existingRow.title_preview || "").trim();
+      const { data: locked, error: lockErr } = await client
+        .from("forum_threads")
+        .update({
+          reviewed_by: auth.userId,
+          reviewed_at: now,
+        } as any)
+        .eq("id", threadId)
+        .eq("review_status", "pending_review")
+        .is("reviewed_at", null)
+        .select("*")
+        .maybeSingle();
+      if (lockErr) {
+        logApiError("POST /api/review/proposals/[id] lock_failed", lockErr);
+        return ApiResponses.databaseError("update_failed", lockErr.message);
+      }
+      if (!locked) {
+        return ApiResponses.conflict("review_in_progress");
+      }
+      const lockedRow = locked as any;
+      let createdPredictionId = lockedRow.created_prediction_id || null;
+      if (!createdPredictionId) {
+        let title = String(lockedRow.title_preview || "").trim();
         if (!title) {
-          const subj = existingRow.subject_name || "";
-          const verb = existingRow.action_verb || "";
-          const target = existingRow.target_value || "";
+          const subj = lockedRow.subject_name || "";
+          const verb = lockedRow.action_verb || "";
+          const target = lockedRow.target_value || "";
           if (subj && verb && target) {
             title = `${subj}${actionLabel(verb)}${target}`;
           } else {
-            title = existingRow.title || "Untitled Prediction";
+            title = lockedRow.title || "Untitled Prediction";
           }
         }
         title = String(title || "")
@@ -143,46 +274,99 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           .slice(0, 200);
 
         const seed = (title || "prediction").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-        const imageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
+        const fallbackImageUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=400&backgroundColor=b6e3f4,c0aede,d1d4f9&radius=20`;
 
         const fallbackDeadline = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
         let deadline = fallbackDeadline;
-        if (existingRow.deadline) {
-          const d = new Date(String(existingRow.deadline));
+        if (lockedRow.deadline) {
+          const d = new Date(String(lockedRow.deadline));
           if (Number.isFinite(d.getTime())) deadline = d.toISOString();
         }
+
+        const outcomes = normalizeOutcomeLabels(lockedRow.outcomes, 8);
+        const extraLinks = normalizeUrlList(lockedRow.extra_links, 16);
+        const imageUrls = normalizeUrlList(lockedRow.image_urls, 16);
+        const primarySource = String(
+          lockedRow.primary_source_url || (lockedRow as any).primarySourceUrl || ""
+        ).trim();
+        const referenceUrl = pickFirstUrl([primarySource, ...extraLinks]);
+        const imageUrl = pickFirstUrl(imageUrls) || fallbackImageUrl;
+        const predictionType = outcomes.length >= 3 ? "multi" : "binary";
+        const predictionOutcomes =
+          predictionType === "multi" ? outcomes.map((label) => ({ label })) : [];
 
         try {
           const result = await createPrediction(client, {
             title: title || "Untitled",
-            description: String(existingRow.title_preview || title || "No description")
+            description: String(
+              lockedRow.content || lockedRow.title_preview || title || "No description"
+            )
               .trim()
               .slice(0, 4000),
-            category: normalizeCategory(String(existingRow.category || "更多")).slice(0, 32),
+            category: normalizeCategory(String(lockedRow.category || "更多")).slice(0, 32),
             deadline,
             minStake: 0.1,
             criteria: String(
-              existingRow.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成"
+              lockedRow.criteria_preview || "以客观可验证来源为准，截止前满足条件视为达成"
             )
               .trim()
               .slice(0, 4000),
             image_url: imageUrl,
+            reference_url: referenceUrl || "",
+            type: predictionType,
+            outcomes: predictionOutcomes,
           });
           if (result.newPrediction?.id) {
-            updatePayload.created_prediction_id = result.newPrediction.id;
+            createdPredictionId = result.newPrediction.id;
           }
         } catch (err: any) {
           logApiError("Failed to create prediction on approve", err);
+          await client
+            .from("forum_threads")
+            .update({
+              reviewed_by: null,
+              reviewed_at: null,
+            } as any)
+            .eq("id", threadId)
+            .eq("reviewed_by", auth.userId)
+            .eq("reviewed_at", now);
           return ApiResponses.internalError("failed_to_create_market", err.message);
         }
       }
+      const finalPayload: Record<string, unknown> = {
+        review_status: "approved",
+        review_reason: reason || lockedRow.review_reason || null,
+      };
+      if (createdPredictionId) {
+        finalPayload.created_prediction_id = createdPredictionId;
+      }
+      const { data, error } = await client
+        .from("forum_threads")
+        .update(finalPayload as any)
+        .eq("id", threadId)
+        .eq("review_status", "pending_review")
+        .eq("reviewed_by", auth.userId)
+        .eq("reviewed_at", now)
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logApiError("POST /api/review/proposals/[id] update_failed", error);
+        return ApiResponses.databaseError("update_failed", error.message);
+      }
+      if (!data) {
+        return ApiResponses.conflict("review_in_progress");
+      }
+      logApiEvent("proposals.reviewed", {
+        thread_id: threadId,
+        action,
+        reviewer_id: auth.userId,
+        prediction_id: createdPredictionId || data.created_prediction_id,
+      });
+      return NextResponse.json({ item: data }, { status: 200 });
     }
-    if (action === "reject") reviewStatus = "rejected";
-    if (action === "needs_changes") reviewStatus = "needs_changes";
-
-    updatePayload.review_status = reviewStatus;
 
     if (action === "edit_metadata" && patch && typeof patch === "object") {
+      const updatePayload: Record<string, unknown> = {};
       const allowedKeys = [
         "category",
         "deadline",
@@ -191,6 +375,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         "subject_name",
         "action_verb",
         "target_value",
+        "primary_source_url",
+        "outcomes",
+        "extra_links",
+        "image_urls",
       ];
       const safePatch = patch as Record<string, unknown>;
       for (const key of allowedKeys) {
@@ -233,7 +421,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
               continue;
             }
             if (key === "action_verb") {
-              updatePayload.action_verb = String(value || "")
+              updatePayload.action_verb = normalizeActionVerb(String(value || ""))
                 .trim()
                 .slice(0, 40);
               continue;
@@ -244,21 +432,53 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
                 .slice(0, 120);
               continue;
             }
+            if (key === "primary_source_url") {
+              const raw = String(value || "").trim();
+              if (!raw) {
+                updatePayload.primary_source_url = null;
+                continue;
+              }
+              if (!/^https?:\/\//i.test(raw)) {
+                return ApiResponses.invalidParameters("invalid_primary_source_url");
+              }
+              updatePayload.primary_source_url = raw.slice(0, 2048);
+              continue;
+            }
+            if (key === "outcomes") {
+              updatePayload.outcomes = normalizeOutcomeLabels(value, 8);
+              continue;
+            }
+            if (key === "extra_links") {
+              updatePayload.extra_links = normalizeUrlList(value, 16);
+              continue;
+            }
+            if (key === "image_urls") {
+              updatePayload.image_urls = normalizeUrlList(value, 16);
+              continue;
+            }
           }
         }
       }
+      const { data, error } = await client
+        .from("forum_threads")
+        .update(updatePayload as any)
+        .eq("id", threadId)
+        .select("*")
+        .maybeSingle();
+      if (error) {
+        logApiError("POST /api/review/proposals/[id] update_failed", error);
+        return ApiResponses.databaseError("update_failed", error.message);
+      }
+      logApiEvent("proposals.metadata_edited", {
+        thread_id: threadId,
+        reviewer_id: auth.userId,
+      });
+      return NextResponse.json({ item: data }, { status: 200 });
     }
-    const { data, error } = await client
-      .from("forum_threads")
-      .update(updatePayload as never)
-      .eq("id", threadId)
-      .select("*")
-      .maybeSingle();
-    if (error) {
-      logApiError("POST /api/review/proposals/[id] update_failed", error);
-      return ApiResponses.databaseError("update_failed", error.message);
+    if (action === "edit_metadata") {
+      return ApiResponses.invalidParameters("invalid_patch");
     }
-    return NextResponse.json({ item: data }, { status: 200 });
+    return ApiResponses.invalidParameters("invalid_action");
   } catch (e: any) {
     logApiError("POST /api/review/proposals/[id] unhandled error", e);
     const detail = e?.message || String(e);

@@ -98,6 +98,7 @@ vi.mock("@/lib/serverUtils", () => {
       return text ? JSON.parse(text) : {};
     }),
     logApiError: vi.fn(),
+    logApiEvent: vi.fn(),
     getSessionAddress: vi.fn().mockResolvedValue("0xabc0000000000000000000000000000000000000"),
   };
 });

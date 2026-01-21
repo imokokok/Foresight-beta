@@ -4,6 +4,7 @@ import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
   logApiError,
+  logApiEvent,
   getSessionAddress,
   normalizeAddress,
 } from "@/lib/serverUtils";
@@ -95,6 +96,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const now = new Date();
     if (now < end) return ApiResponses.badRequest("Flag deadline has not passed, cannot settle");
+
+    if (String(flag.verification_type || "") === "witness") {
+      const pending = await client
+        .from("flag_checkins")
+        .select("id", { count: "exact", head: true })
+        .eq("flag_id", flagId)
+        .eq("review_status", "pending");
+      if (pending.error) {
+        return ApiResponses.databaseError(
+          "Failed to query pending check-ins",
+          pending.error.message
+        );
+      }
+      if (Number(pending.count || 0) > 0) {
+        return ApiResponses.conflict("Pending check-ins require review before settlement");
+      }
+    }
 
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
 
@@ -240,6 +258,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     } catch (e) {
       logApiError("POST /api/flags/[id]/settle update flag status failed", e);
     }
+
+    logApiEvent("flags.settled", {
+      flag_id: flagId,
+      status,
+      approvedDays,
+      totalDays,
+      ratio,
+      threshold: settleRule.threshold,
+      minDays: effectiveMinDays,
+    });
 
     return NextResponse.json(
       {

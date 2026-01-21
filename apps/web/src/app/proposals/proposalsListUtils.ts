@@ -55,6 +55,16 @@ export type ProposalItem = {
   category?: string | null;
   review_status?: string | null;
   review_reason?: string | null;
+  subject_name?: string | null;
+  action_verb?: string | null;
+  target_value?: string | null;
+  deadline?: string | null;
+  title_preview?: string | null;
+  criteria_preview?: string | null;
+  primary_source_url?: string | null;
+  outcomes?: string[] | null;
+  extra_links?: string[] | null;
+  image_urls?: string[] | null;
   userVote?: "up" | "down";
 };
 

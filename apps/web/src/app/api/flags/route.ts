@@ -4,6 +4,7 @@ import { Database } from "@/lib/database.types";
 import {
   parseRequestBody,
   logApiError,
+  logApiEvent,
   getSessionAddress,
   normalizeAddress,
 } from "@/lib/serverUtils";
@@ -25,13 +26,25 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await client
       .from("flags")
-      .select("*")
+      .select("*, flag_checkins(id,note,image_url,created_at,review_status)")
       .or(`user_id.eq.${sessionViewer},witness_id.eq.${sessionViewer}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("created_at", { foreignTable: "flag_checkins", ascending: false })
+      .limit(1, { foreignTable: "flag_checkins" });
     if (error) {
       return ApiResponses.databaseError("Failed to fetch flags", error.message);
     }
-    return NextResponse.json({ flags: data || [] }, { status: 200 });
+    const flags = (data || []).map((f: any) => {
+      const latest = Array.isArray(f?.flag_checkins) ? f.flag_checkins[0] : null;
+      return {
+        ...f,
+        latest_checkin_image_url: latest?.image_url || null,
+        latest_checkin_note: latest?.note || null,
+        latest_checkin_at: latest?.created_at || null,
+        latest_checkin_review_status: latest?.review_status || null,
+      };
+    });
+    return NextResponse.json({ flags }, { status: 200 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Failed to fetch flags";
     return ApiResponses.internalError(
@@ -237,6 +250,15 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       logApiError("POST /api/flags witness invite insert failed", e);
+    }
+    if (data?.id) {
+      logApiEvent("flags.created", {
+        flag_id: data.id,
+        owner_id: ownerId,
+        verification_type,
+        witness_id: witnessIdToUse || null,
+        prediction_id: predictionIdToUse,
+      });
     }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
   } catch (e: unknown) {

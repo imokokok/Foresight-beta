@@ -44,10 +44,14 @@ vi.mock("@/lib/supabase.server", () => {
           },
           update: () => ({
             eq: () => ({
-              select: () => ({
-                maybeSingle: async () => ({
-                  data: { ...checkin, review_status: "approved" },
-                  error: null,
+              eq: () => ({
+                is: () => ({
+                  select: () => ({
+                    maybeSingle: async () => ({
+                      data: { ...checkin, review_status: "approved" },
+                      error: null,
+                    }),
+                  }),
                 }),
               }),
             }),
@@ -103,6 +107,7 @@ vi.mock("@/lib/serverUtils", () => {
       return text ? JSON.parse(text) : {};
     }),
     logApiError: vi.fn(),
+    logApiEvent: vi.fn(),
     getSessionAddress: vi.fn().mockResolvedValue("0xabc0000000000000000000000000000000000000"),
     normalizeAddress: (addr: string) => addr.toLowerCase(),
   };
