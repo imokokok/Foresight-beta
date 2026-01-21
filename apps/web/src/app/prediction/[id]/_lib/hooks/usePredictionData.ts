@@ -38,7 +38,7 @@ export function usePredictionData(predictionIdRaw: string | number | undefined) 
     return () => {
       cancelled = true;
     };
-  }, [predictionIdRaw]);
+  }, [predictionIdRaw, tCommon]);
 
   return { prediction, setPrediction, loading, error, setError };
 }
