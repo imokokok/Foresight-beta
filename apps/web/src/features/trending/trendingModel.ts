@@ -313,7 +313,18 @@ export const filterEventsByStatus = (events: TrendingEvent[], status: string | n
 export const sortEvents = (events: TrendingEvent[], sortBy: FilterSortState["sortBy"]) => {
   const now = Date.now();
 
+  const isEventActive = (event: TrendingEvent) => {
+    if (event.status === "completed" || event.status === "cancelled") return false;
+    const deadlineTime = new Date(String(event.deadline || "")).getTime();
+    return Number.isFinite(deadlineTime) && deadlineTime > now;
+  };
+
   const compareTrending = (a: TrendingEvent, b: TrendingEvent) => {
+    const activeA = isEventActive(a);
+    const activeB = isEventActive(b);
+    if (activeA && !activeB) return -1;
+    if (!activeA && activeB) return 1;
+
     const fa = Number(a.followers_count || 0);
     const fb = Number(b.followers_count || 0);
     if (fb !== fa) return fb - fa;
@@ -339,6 +350,11 @@ export const sortEvents = (events: TrendingEvent[], sortBy: FilterSortState["sor
   };
 
   const compareEnding = (a: TrendingEvent, b: TrendingEvent) => {
+    const activeA = isEventActive(a);
+    const activeB = isEventActive(b);
+    if (activeA && !activeB) return -1;
+    if (!activeA && activeB) return 1;
+
     const da = new Date(String(a.deadline || 0)).getTime();
     const db = new Date(String(b.deadline || 0)).getTime();
     if (da !== db) return da - db;
@@ -346,6 +362,11 @@ export const sortEvents = (events: TrendingEvent[], sortBy: FilterSortState["sor
   };
 
   const comparePopular = (a: TrendingEvent, b: TrendingEvent) => {
+    const activeA = isEventActive(a);
+    const activeB = isEventActive(b);
+    if (activeA && !activeB) return -1;
+    if (!activeA && activeB) return 1;
+
     const fa = Number(a.followers_count || 0);
     const fb = Number(b.followers_count || 0);
     if (fb !== fa) return fb - fa;
