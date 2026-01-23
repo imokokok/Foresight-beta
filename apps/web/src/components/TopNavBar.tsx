@@ -9,7 +9,7 @@ import MobileMenu from "./MobileMenu";
 import { useTopNavBarLogic } from "./topNavBar/useTopNavBarLogic";
 import { WalletSection } from "./topNavBar/WalletSection";
 import { NotificationsPanel } from "./topNavBar/NotificationsPanel";
-import { useTranslations } from "@/lib/i18n";
+import { useLocale, useTranslations } from "@/lib/i18n";
 import { Modal } from "@/components/ui/Modal";
 
 export default function TopNavBar() {

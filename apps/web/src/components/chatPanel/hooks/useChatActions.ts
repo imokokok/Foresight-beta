@@ -1,17 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useWallet } from "@/contexts/WalletContext";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import type { ChatMessageView } from "../types";
+import { buildDebatePrefix } from "../utils/debateUtils";
 
 type ReplyToMessage = {
   id: string;
   user_id?: string;
   content?: string;
 };
-import { buildDebatePrefix } from "../utils/debateUtils";
 
 export function useChatActions({
   eventId,
@@ -23,12 +22,12 @@ export function useChatActions({
   setMessages,
   setPartition,
 }: {
-  eventId: string;
+  eventId: number | string;
   account: string | null | undefined;
   partition: "chat" | "debate" | "forum";
   debateMode: boolean;
-  debateStance: "for" | "against" | null;
-  debateKind: "reason" | "evidence" | "rebuttal" | null;
+  debateStance: NonNullable<ChatMessageView["debate_stance"]>;
+  debateKind: NonNullable<ChatMessageView["debate_kind"]>;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessageView[]>>;
   setPartition: (p: "chat" | "debate" | "forum") => void;
 }) {
@@ -59,8 +58,7 @@ export function useChatActions({
       setSending(true);
       setSendError(null);
       try {
-        const replyToId =
-          replyTo?.id && /^\d+$/.test(replyTo.id) ? Number(replyTo.id) : (null as any);
+        const replyToId = replyTo?.id && /^\d+$/.test(replyTo.id) ? Number(replyTo.id) : null;
         const res = await fetch("/api/discussions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

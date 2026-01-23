@@ -5,7 +5,7 @@ import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import type { ChatPanelProps } from "./chatPanel/types";
+import type { ChatMessageView, ChatPanelProps } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
 import { useNameMap } from "./chatPanel/hooks/useNameMap";
@@ -59,7 +59,7 @@ export default function ChatPanel({
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
-  const [replyTo, setReplyTo] = useState<{ id: string; user_id?: string; content?: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
   const {
     debateMode,
     setDebateMode,

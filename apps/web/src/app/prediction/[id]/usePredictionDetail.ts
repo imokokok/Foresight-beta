@@ -12,11 +12,9 @@ import { normalizeAddress } from "@/lib/address";
 
 import { erc1155Abi, erc20Abi, marketAbi } from "./_lib/abis";
 import {
-  buildMarketPlanPreview,
   buildOrdersFromFills,
   buildMarketConfirmMessage,
   fetchMarketPlanPayload,
-  type MarketPlanPreview,
 } from "./_lib/orderbookPlan";
 import {
   submitLimitOrder,
@@ -43,16 +41,15 @@ import { useUserOpenOrders } from "./_lib/hooks/useUserOpenOrders";
 import { useProxyAddress } from "./_lib/hooks/useProxyAddress";
 import { useTokenBalancePolling } from "./_lib/hooks/useTokenBalancePolling";
 import { useOutcomeBalancePolling } from "./_lib/hooks/useOutcomeBalancePolling";
+import { useTradingState } from "./_lib/hooks/useTradingState";
+import { useOrderErrorHandling } from "./_lib/hooks/useOrderErrorHandling";
+import { useMarketConfirm } from "./_lib/hooks/useMarketConfirm";
+import { useMarketPlanPreview } from "./_lib/hooks/useMarketPlanPreview";
 import { cancelOrderAction } from "./_lib/actions/cancelOrder";
 import { mintAction } from "./_lib/actions/mint";
 import { redeemAction } from "./_lib/actions/redeem";
 import { isAaEnabled } from "./_lib/aaUtils";
 import { getFallbackRpcUrl } from "@/lib/walletProviderUtils";
-
-type ConfirmState = null | {
-  message: string;
-  onConfirm: () => void | Promise<void>;
-};
 
 export function usePredictionDetail() {
   const params = useParams();
@@ -68,23 +65,47 @@ export function usePredictionDetail() {
   const { prediction, loading, error } = usePredictionData(predictionIdRaw);
   const { market } = useMarketInfo(predictionIdRaw);
 
-  const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
-  const [tradeOutcome, setTradeOutcome] = useState<number>(0);
-  const [priceInput, setPriceInput] = useState<string>("");
-  const [amountInput, setAmountInput] = useState<string>("");
-  const [orderMode, setOrderMode] = useState<"limit" | "best">("best");
-  const [tif, setTif] = useState<"GTC" | "IOC" | "FOK">("GTC");
-  const [postOnly, setPostOnly] = useState(false);
-  const [maxSlippage, setMaxSlippage] = useState<number>(1);
-  const [editingOrderSalt, setEditingOrderSalt] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderMsg, setOrderMsg] = useState<string | null>(null);
+  // 使用自定义 hooks
+  const tradingState = useTradingState();
+  const {
+    tradeSide,
+    setTradeSide,
+    tradeOutcome,
+    setTradeOutcome,
+    priceInput,
+    setPriceInput,
+    amountInput,
+    setAmountInput,
+    orderMode,
+    setOrderMode,
+    tif,
+    setTif,
+    postOnly,
+    setPostOnly,
+    maxSlippage,
+    setMaxSlippage,
+    editingOrderSalt,
+    setEditingOrderSalt,
+    isSubmitting,
+    setIsSubmitting,
+    orderMsg,
+    setOrderMsg,
+  } = tradingState;
+
+  const { createUserError, handleOrderError } = useOrderErrorHandling(tradeSide);
+  const marketConfirm = useMarketConfirm();
+  const { marketPlanPreview, marketPlanLoading } = useMarketPlanPreview({
+    market,
+    predictionIdRaw,
+    tradeOutcome,
+    tradeSide,
+    amountInput,
+    orderMode,
+  });
 
   const [balance, setBalance] = useState<string>("0.00");
   const [mintInput, setMintInput] = useState<string>("");
   const { trades } = useTradesPolling(market, predictionIdRaw, tradeOutcome);
-  const [marketPlanPreview, setMarketPlanPreview] = useState<MarketPlanPreview | null>(null);
-  const [marketPlanLoading, setMarketPlanLoading] = useState(false);
 
   // Proxy Wallet State
   const [useProxy, setUseProxy] = useState(false);
@@ -116,17 +137,10 @@ export function usePredictionDetail() {
     tradeOutcome,
   });
 
-  const [marketConfirmState, setMarketConfirmState] = useState<ConfirmState>(null);
-  const closeMarketConfirm = useCallback(() => setMarketConfirmState(null), []);
   const cancelMarketConfirm = useCallback(() => {
-    setMarketConfirmState(null);
+    marketConfirm.cancelMarketConfirm();
     setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
-  }, [tTrading]);
-  const runMarketConfirm = useCallback(() => {
-    const action = marketConfirmState?.onConfirm;
-    closeMarketConfirm();
-    void action?.();
-  }, [closeMarketConfirm, marketConfirmState]);
+  }, [tTrading, marketConfirm]);
 
   const { depthBuy, depthSell, bestBid, bestAsk } = useOrderbookDepthPolling({
     market,
@@ -182,58 +196,6 @@ export function usePredictionDetail() {
     }
   }, [tradeSide, usdcBalance, shareBalance, useProxy, proxyBalance, proxyShareBalance]);
 
-  useEffect(() => {
-    if (!market || !predictionIdRaw) {
-      setMarketPlanPreview(null);
-      return;
-    }
-    if (orderMode !== "best") {
-      setMarketPlanPreview(null);
-      return;
-    }
-    const amountVal = parseFloat(amountInput);
-    if (!amountInput || isNaN(amountVal) || amountVal <= 0) {
-      setMarketPlanPreview(null);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      const run = async () => {
-        try {
-          setMarketPlanLoading(true);
-          const amountBN = parseUnitsByDecimals(amountInput, 18);
-          if (amountBN <= 0n) {
-            if (!cancelled) setMarketPlanPreview(null);
-            return;
-          }
-          const payload = await fetchMarketPlanPayload({
-            market: market as MarketInfo,
-            predictionIdRaw,
-            tradeOutcome,
-            tradeSide,
-            amountBN,
-          });
-          if (!payload || payload.filledBN === 0n) {
-            if (!cancelled) setMarketPlanPreview(null);
-            return;
-          }
-          if (!cancelled) setMarketPlanPreview(buildMarketPlanPreview(payload, amountBN));
-        } catch {
-          if (!cancelled) setMarketPlanPreview(null);
-        } finally {
-          if (!cancelled) setMarketPlanLoading(false);
-        }
-      };
-      void run();
-    }, 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [market, predictionIdRaw, tradeOutcome, tradeSide, amountInput, orderMode]);
-
   const cancelOrder = async (salt: string) => {
     if (!account || !market || !walletProvider || !predictionIdRaw) return;
 
@@ -285,108 +247,6 @@ export function usePredictionDetail() {
       proxyAddress,
     });
   };
-
-  const createUserError = useCallback((message: string) => {
-    const err: any = new Error(message);
-    err.__fsUser = true;
-    return err;
-  }, []);
-
-  const getErrorMeta = useCallback((e: any) => {
-    const code =
-      typeof e?.code === "string"
-        ? String(e.code)
-        : typeof e?.error?.code === "string"
-          ? String(e.error.code)
-          : "";
-
-    const candidates = [
-      typeof e?.shortMessage === "string" ? e.shortMessage : "",
-      typeof e?.reason === "string" ? e.reason : "",
-      typeof e?.info?.error?.message === "string" ? e.info.error.message : "",
-      typeof e?.error?.message === "string" ? e.error.message : "",
-      typeof e?.message === "string" ? e.message : "",
-    ]
-      .map((s) => String(s || "").trim())
-      .filter(Boolean);
-
-    const rawMessage = candidates[0] || "";
-    const isUser = !!e?.__fsUser;
-
-    return { code, rawMessage, isUser };
-  }, []);
-
-  const handleOrderError = useCallback(
-    (e: any) => {
-      const meta = getErrorMeta(e);
-      const lower = meta.rawMessage.toLowerCase();
-
-      const looksRejected =
-        meta.code === "ACTION_REJECTED" ||
-        lower.includes("user rejected") ||
-        lower.includes("user denied") ||
-        lower.includes("rejected the request") ||
-        lower.includes("request rejected") ||
-        lower.includes("denied");
-
-      const looksInsufficientFunds =
-        meta.code === "INSUFFICIENT_FUNDS" ||
-        lower.includes("insufficient funds") ||
-        lower.includes("insufficient balance") ||
-        lower.includes("insufficient") ||
-        lower.includes("balance too low");
-
-      const looksTimeout =
-        meta.code === "TIMEOUT" ||
-        meta.code === "NETWORK_ERROR" ||
-        lower.includes("timeout") ||
-        lower.includes("timed out") ||
-        lower.includes("failed to fetch") ||
-        lower.includes("network error");
-
-      let msg =
-        meta.rawMessage ||
-        (looksRejected
-          ? tTrading("orderFlow.userRejected")
-          : looksInsufficientFunds
-            ? tTrading("orderFlow.insufficientFunds")
-            : looksTimeout
-              ? tTrading("orderFlow.rpcTimeout")
-              : tTrading("orderFlow.tradeFailed"));
-
-      if (tradeSide === "sell") {
-        const looksLikeNoBalance =
-          looksInsufficientFunds ||
-          lower.includes("no tokens") ||
-          lower.includes("not enough") ||
-          lower.includes("balance");
-        if (looksLikeNoBalance) {
-          msg = tTrading("orderFlow.sellNoBalance");
-        } else {
-          msg = `${msg} ${tTrading("orderFlow.sellMaybeNoMint")}`;
-        }
-      }
-      setOrderMsg(msg);
-
-      if (looksRejected) {
-        toast.info(msg);
-        return;
-      }
-
-      logClientErrorToApi(
-        new Error(`trade_submit_failed:${meta.code || "unknown"}:${meta.rawMessage || msg}`),
-        { silent: true }
-      );
-
-      if (meta.isUser) {
-        toast.warning(msg);
-        return;
-      }
-
-      toast.error(tTrading("toast.orderFailedTitle"), msg || tTrading("toast.orderFailedDesc"));
-    },
-    [getErrorMeta, tTrading, tradeSide]
-  );
 
   const submitOrder = async (options?: { useProxy?: boolean; proxyAddress?: string }) => {
     const useProxyVal = options?.useProxy ?? useProxy;
@@ -470,7 +330,7 @@ export function usePredictionDetail() {
           throw createUserError(tTrading("orderFlow.slippageTooHigh"));
         }
 
-        setMarketConfirmState({
+        marketConfirm.setMarketConfirm({
           message: confirmMsg,
           onConfirm: async () => {
             setIsSubmitting(true);
@@ -504,7 +364,7 @@ export function usePredictionDetail() {
                 toast,
               });
             } catch (e: any) {
-              handleOrderError(e);
+              handleOrderError(e, setOrderMsg);
             } finally {
               setIsSubmitting(false);
             }
@@ -562,7 +422,7 @@ export function usePredictionDetail() {
         if (isSlippageTooHigh) {
           throw createUserError(tTrading("orderFlow.slippageTooHigh"));
         }
-        setMarketConfirmState({
+        marketConfirm.setMarketConfirm({
           message: confirmMsg,
           onConfirm: async () => {
             setIsSubmitting(true);
@@ -643,7 +503,7 @@ export function usePredictionDetail() {
                 toast,
               });
             } catch (e: any) {
-              handleOrderError(e);
+              handleOrderError(e, setOrderMsg);
             } finally {
               setIsSubmitting(false);
             }
@@ -682,7 +542,7 @@ export function usePredictionDetail() {
         toast,
       });
     } catch (e: any) {
-      handleOrderError(e);
+      handleOrderError(e, setOrderMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -735,11 +595,11 @@ export function usePredictionDetail() {
     cancelOrder,
     marketPlanPreview,
     marketPlanLoading,
-    marketConfirmOpen: marketConfirmState !== null,
-    marketConfirmMessage: marketConfirmState?.message || null,
+    marketConfirmOpen: marketConfirm.marketConfirmOpen,
+    marketConfirmMessage: marketConfirm.marketConfirmMessage,
     cancelMarketConfirm,
-    runMarketConfirm,
-    closeMarketConfirm,
+    runMarketConfirm: marketConfirm.runMarketConfirm,
+    closeMarketConfirm: marketConfirm.closeMarketConfirm,
     useProxy,
     setUseProxy,
     proxyAddress,
