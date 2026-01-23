@@ -301,6 +301,7 @@ export class BatchSettler extends EventEmitter {
 
       // 保存到数据库
       await this.saveBatchToDb(batch);
+      await this.updateSettlementForFills(batch.fills, "submitted", batch.id);
     } catch (error: any) {
       settlementLogger.error(
         "BatchSettler failed to submit batch",
@@ -391,6 +392,7 @@ export class BatchSettler extends EventEmitter {
               });
 
               await this.saveConfirmationToDb(batch);
+              await this.updateSettlementForFills(batch.fills, "confirmed", batch.id);
 
               await this.ingestFillsFromReceipt(receipt, batch.chainId);
               for (const fill of batch.fills) {
@@ -519,6 +521,48 @@ export class BatchSettler extends EventEmitter {
         { onConflict: "fill_id" }
       );
     }
+
+    await this.updateSettlementForFills(batch.fills, "failed", batch.id);
+  }
+
+  private async updateSettlementForFills(
+    fills: SettlementFill[],
+    status: string,
+    batchId?: string
+  ): Promise<void> {
+    if (!supabaseAdmin) return;
+    if (!fills.length) return;
+
+    const orderUpdates: Record<string, any> = { settlement_status: status };
+    if (batchId) {
+      orderUpdates.settlement_batch_id = batchId;
+    } else if (status === "pending") {
+      orderUpdates.settlement_batch_id = null;
+    }
+
+    const tradeUpdates: Record<string, any> = {};
+    if (batchId) {
+      tradeUpdates.settlement_batch_id = batchId;
+    } else if (status === "pending") {
+      tradeUpdates.settlement_batch_id = null;
+    }
+
+    const marketAddress = this.marketAddress.toLowerCase();
+    for (const fill of fills) {
+      const maker = fill.order.maker.toLowerCase();
+      const salt = fill.order.salt.toString();
+      await supabaseAdmin
+        .from("orders")
+        .update(orderUpdates)
+        .eq("chain_id", this.chainId)
+        .eq("verifying_contract", marketAddress)
+        .eq("maker_address", maker)
+        .eq("maker_salt", salt);
+
+      if (Object.keys(tradeUpdates).length > 0) {
+        await supabaseAdmin.from("trades").update(tradeUpdates).eq("tx_hash", `pending-${fill.id}`);
+      }
+    }
   }
 
   private buildFailedFillPayload(fill: SettlementFill): any {
@@ -603,7 +647,7 @@ export class BatchSettler extends EventEmitter {
       const nowIso = new Date().toISOString();
       const { data, error } = await supabaseAdmin
         .from("failed_fills")
-        .select("id,fill_id,retry_count,next_retry_at,payload")
+        .select("id,fill_id,retry_count,next_retry_at,payload,batch_id")
         .eq("chain_id", this.chainId)
         .eq("market_address", this.marketAddress.toLowerCase())
         .is("resolved_at", null)
@@ -642,6 +686,13 @@ export class BatchSettler extends EventEmitter {
               fill: fill || undefined,
             });
           }
+          if (fill) {
+            await this.updateSettlementForFills(
+              [fill],
+              "failed",
+              rowAny.batch_id ? String(rowAny.batch_id) : undefined
+            );
+          }
           continue;
         }
 
@@ -679,6 +730,7 @@ export class BatchSettler extends EventEmitter {
           continue;
         }
 
+        await this.updateSettlementForFills([fill], "pending");
         this.addFill(fill);
       }
     } finally {
