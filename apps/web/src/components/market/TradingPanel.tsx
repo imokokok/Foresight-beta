@@ -5,9 +5,8 @@ import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import { TradeTabContent } from "./tradingPanel/TradeTabContent";
 import { DepthTabContent } from "./tradingPanel/DepthTabContent";
 import { HistoryTabContent, OrdersTabContent } from "./tradingPanel/OrdersHistoryTabs";
-
-const BIGINT_ZERO = BigInt(0);
-const BIGINT_THRESHOLD = BigInt("1000000000000");
+import { PositionCard } from "./ui/PositionCard";
+import { decodePrice, formatPrice, formatAmount, BIGINT_THRESHOLD } from "./utils/priceUtils";
 
 type MarketPlanPreview = {
   slippagePercent: number;
@@ -136,44 +135,6 @@ export function TradingPanel(props: TradingPanelProps) {
   const tCommon = useTranslations("common");
   const tAuth = useTranslations("auth");
   const tWallet = useTranslations("wallet");
-
-  const decodePrice = (p: string) => {
-    try {
-      const v = BigInt(p);
-      if (v === BIGINT_ZERO) return 0;
-      const decimals = v > BIGINT_THRESHOLD ? 18 : 6;
-      const val = Number(formatUnits(v, decimals));
-      return Number.isFinite(val) ? val : 0;
-    } catch {
-      return 0;
-    }
-  };
-
-  const formatPrice = (p: string, showCents = false) => {
-    try {
-      const val = decodePrice(p);
-      if (val === 0) return "-";
-      if (showCents) {
-        if (val < 1) return (val * 100).toFixed(1) + "¢";
-      }
-      return val.toFixed(2);
-    } catch {
-      return "-";
-    }
-  };
-
-  const formatAmount = (raw: string) => {
-    try {
-      const v = BigInt(raw);
-      if (v === BIGINT_ZERO) return "0";
-      if (v > BIGINT_THRESHOLD) {
-        return Number(formatUnits(v, 18)).toFixed(4);
-      }
-      return raw;
-    } catch {
-      return raw;
-    }
-  };
 
   const fillPrice = (p: string) => {
     setOrderMode("limit");

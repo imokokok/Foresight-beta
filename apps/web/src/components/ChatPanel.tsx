@@ -12,89 +12,14 @@ import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
 import { useNameMap } from "./chatPanel/hooks/useNameMap";
 import { getAccentClass } from "./chatPanel/utils/colors";
 import { mergeMessages } from "./chatPanel/utils/mergeMessages";
+import { buildDebatePrefix } from "./chatPanel/utils/debateUtils";
+import { useDebatePreferences } from "./chatPanel/hooks/useDebatePreferences";
 import { ChatHeader } from "./chatPanel/ui/ChatHeader";
 import { MessagesList } from "./chatPanel/ui/MessagesList";
 import { ChatInputArea } from "./chatPanel/ui/ChatInputArea";
+import { PartitionTabs } from "./chatPanel/ui/PartitionTabs";
 import EmptyState from "@/components/EmptyState";
 import { AlertTriangle, Loader2 } from "lucide-react";
-
-function buildDebatePrefix(
-  stance: NonNullable<ChatMessageView["debate_stance"]>,
-  kind: NonNullable<ChatMessageView["debate_kind"]>
-) {
-  return `[debate:stance=${stance};kind=${kind}]`;
-}
-
-function parseDebatePrefs(raw: string | null) {
-  if (!raw) return null;
-  try {
-    const obj = JSON.parse(raw) as Partial<{
-      debateMode: boolean;
-      debateStance: ChatMessageView["debate_stance"];
-      debateKind: ChatMessageView["debate_kind"];
-      debateFilter: "all" | "debate" | "normal";
-      partition: "chat" | "debate" | "forum";
-      stanceFilter: "all" | "pro" | "con" | "uncertain";
-      kindFilter: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
-    }>;
-    if (typeof obj !== "object" || obj === null) return null;
-    const next: {
-      debateMode?: boolean;
-      debateStance?: NonNullable<ChatMessageView["debate_stance"]>;
-      debateKind?: NonNullable<ChatMessageView["debate_kind"]>;
-      partition?: "chat" | "debate" | "forum";
-      stanceFilter?: "all" | "pro" | "con" | "uncertain";
-      kindFilter?: "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary";
-    } = {};
-    if (typeof obj.debateMode === "boolean") next.debateMode = obj.debateMode;
-    if (
-      obj.debateStance === "pro" ||
-      obj.debateStance === "con" ||
-      obj.debateStance === "uncertain"
-    ) {
-      next.debateStance = obj.debateStance;
-    }
-    if (
-      obj.debateKind === "claim" ||
-      obj.debateKind === "evidence" ||
-      obj.debateKind === "rebuttal" ||
-      obj.debateKind === "question" ||
-      obj.debateKind === "summary"
-    ) {
-      next.debateKind = obj.debateKind;
-    }
-    if (obj.partition === "chat" || obj.partition === "debate") {
-      next.partition = obj.partition;
-    } else if (obj.partition === "forum") {
-      next.partition = "forum";
-    } else if (obj.debateFilter === "debate") {
-      next.partition = "debate";
-    } else if (obj.debateFilter === "normal" || obj.debateFilter === "all") {
-      next.partition = "chat";
-    }
-    if (
-      obj.stanceFilter === "all" ||
-      obj.stanceFilter === "pro" ||
-      obj.stanceFilter === "con" ||
-      obj.stanceFilter === "uncertain"
-    ) {
-      next.stanceFilter = obj.stanceFilter;
-    }
-    if (
-      obj.kindFilter === "all" ||
-      obj.kindFilter === "claim" ||
-      obj.kindFilter === "evidence" ||
-      obj.kindFilter === "rebuttal" ||
-      obj.kindFilter === "question" ||
-      obj.kindFilter === "summary"
-    ) {
-      next.kindFilter = obj.kindFilter;
-    }
-    return next;
-  } catch {
-    return null;
-  }
-}
 
 export default function ChatPanel({
   eventId,
@@ -137,16 +62,20 @@ export default function ChatPanel({
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
   const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
-  const [partition, setPartition] = useState<"chat" | "debate" | "forum">("chat");
-  const [stanceFilter, setStanceFilter] = useState<"all" | "pro" | "con" | "uncertain">("all");
-  const [kindFilter, setKindFilter] = useState<
-    "all" | "claim" | "evidence" | "rebuttal" | "question" | "summary"
-  >("all");
-  const [debateMode, setDebateMode] = useState(false);
-  const [debateStance, setDebateStance] =
-    useState<NonNullable<ChatMessageView["debate_stance"]>>("pro");
-  const [debateKind, setDebateKind] =
-    useState<NonNullable<ChatMessageView["debate_kind"]>>("claim");
+  const {
+    debateMode,
+    setDebateMode,
+    debateStance,
+    setDebateStance,
+    debateKind,
+    setDebateKind,
+    partition,
+    setPartition,
+    stanceFilter,
+    setStanceFilter,
+    kindFilter,
+    setKindFilter,
+  } = useDebatePreferences(eventId);
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
@@ -210,46 +139,6 @@ export default function ChatPanel({
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages.length, forumMessages.length]);
-
-  useEffect(() => {
-    const key = `chat:debatePrefs:${eventId}`;
-    const prefs = parseDebatePrefs(
-      typeof window !== "undefined" ? window.localStorage.getItem(key) : null
-    );
-    if (!prefs) return;
-    if (prefs.debateMode !== undefined) setDebateMode(prefs.debateMode);
-    if (prefs.debateStance) setDebateStance(prefs.debateStance);
-    if (prefs.debateKind) setDebateKind(prefs.debateKind);
-    if (prefs.partition) setPartition(prefs.partition);
-    if (prefs.stanceFilter) setStanceFilter(prefs.stanceFilter);
-    if (prefs.kindFilter) setKindFilter(prefs.kindFilter);
-  }, [eventId]);
-
-  useEffect(() => {
-    const key = `chat:debatePrefs:${eventId}`;
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(
-        key,
-        JSON.stringify({
-          debateMode,
-          debateStance,
-          debateKind,
-          partition,
-          stanceFilter,
-          kindFilter,
-        })
-      );
-    } catch {}
-  }, [eventId, debateMode, debateStance, debateKind, partition, stanceFilter, kindFilter]);
-
-  useEffect(() => {
-    if (partition === "debate") {
-      setDebateMode(true);
-    } else {
-      setDebateMode(false);
-    }
-  }, [partition]);
 
   const mergedMessages = useMemo(
     () => mergeMessages(messages, forumMessages),
@@ -441,34 +330,7 @@ export default function ChatPanel({
         />
       )}
 
-      <div className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-bg)]/60 backdrop-blur-md flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
-          {tChat("topics.sectionTitle")}
-        </span>
-        {(
-          [
-            { value: "chat", labelKey: "topics.chat" },
-            { value: "debate", labelKey: "topics.debate" },
-            { value: "forum", labelKey: "topics.forum" },
-          ] as const
-        ).map((t) => {
-          const isActive = partition === t.value;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setPartition(t.value)}
-              className={`px-2 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                isActive
-                  ? "bg-brand/10 border-brand/40 text-brand-700 dark:text-brand-300"
-                  : "bg-[var(--card-bg)] border-[var(--card-border)] text-slate-500 hover:border-brand/30 hover:text-brand-700 dark:hover:text-brand-300"
-              }`}
-            >
-              {tChat(t.labelKey)}
-            </button>
-          );
-        })}
-      </div>
+      <PartitionTabs partition={partition} setPartition={setPartition} tChat={tChat} />
 
       {loadFailed ? (
         <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 bg-transparent custom-scrollbar">
