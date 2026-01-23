@@ -120,496 +120,547 @@
     }
   },
   "forum": {
-    "title": "Community discussions",
+    "title": "Discussions de la communauté",
     "meta": {
-      "title": "Foresight Prediction Forum - Event discussions and strategy research",
-      "description": "Join the Foresight forum to discuss prediction events, share data-driven trading strategies, and learn from other forecasters.",
-      "ogTitle": "Foresight Prediction Forum - Event discussions and strategy research",
-      "ogDescription": "Community hub for on-chain prediction event discussions, data analysis, and strategy reviews.",
-      "twitterTitle": "Foresight Prediction Forum - Event discussions and strategy research",
-      "twitterDescription": "Join the Foresight community to discuss prediction events and market moves in depth."
+      "title": "Forum de prédiction Foresight - Discussions d'événements et recherche de stratégies",
+      "description": "Rejoignez le forum Foresight pour discuter des événements de prédiction, partager des stratégies de trading basées sur les données et apprendre d'autres prévisionnistes.",
+      "ogTitle": "Forum de prédiction Foresight - Discussions d'événements et recherche de stratégies",
+      "ogDescription": "Carrefour communautaire pour les discussions sur les événements de prédiction on-chain, l'analyse de données et les revues de stratégies.",
+      "twitterTitle": "Forum de prédiction Foresight - Discussions d'événements et recherche de stratégies",
+      "twitterDescription": "Rejoignez la communauté Foresight pour discuter en profondeur des événements de prédiction et des mouvements du marché."
     },
     "sidebarTitle": "Forum",
-    "sidebarSubtitle": "Community",
-    "liveDiscussion": "Live discussion",
-    "followersLabel": "Followers",
-    "followersLabelShort": "Follows",
-    "categoryLabel": "Category",
-    "selectTopicMobile": "Select Topic",
-    "allTopics": "All topics",
-    "topicCount": "{count} topics",
-    "platformDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
-    "loginRequired": "Connect wallet to start a thread",
-    "guestFallback": "Guest",
-    "connectAndSign": "Connect & sign",
-    "chatRoom": "Chat room",
-    "chatSidebarDescription": "Real-time chat and light-weight discussion around this prediction event.",
-    "relatedPrediction": "Related prediction",
-    "viewMarket": "View market",
-    "loadingTopic": "Loading topics...",
-    "loadFailed": "Failed to load, please try again later",
-    "selectTopic": "Select a topic to start the discussion",
-    "searchPlaceholder": "Search topics or discussions...",
-    "noTopics": "No topics available",
-    "loadingMore": "Loading more...",
-    "loadMore": "Load more",
-    "topicCountLoaded": "Loaded {loaded}/{total} topics",
-    "newTopics": "{count} new topics",
-    "pullToRefresh": "Pull to refresh",
-    "releaseToRefresh": "Release to refresh",
-    "refreshing": "Refreshing...",
-    "emptyTopics": "No topics",
+    "sidebarSubtitle": "Communauté",
+    "liveDiscussion": "Discussion en direct",
+    "followersLabel": "Abonnés",
+    "followersLabelShort": "Abonnements",
+    "categoryLabel": "Catégorie",
+    "selectTopicMobile": "Sélectionner un sujet",
+    "allTopics": "Tous les sujets",
+    "topicCount": "{count} sujets",
+    "platformDescription": "Le forum Foresight est le cœur de la communauté pour les participants aux marchés de prédiction afin de partager des analyses et des stratégies. Vous pouvez créer des sujets pour discuter d'événements réels ou rejoindre des analyses approfondies des prédictions existantes.",
+    "loginRequired": "Connectez votre portefeuille pour démarrer un fil",
+    "guestFallback": "Invité",
+    "connectAndSign": "Connecter et signer",
+    "chatRoom": "Salon de chat",
+    "chatSidebarDescription": "Discussion en temps réel et échanges légers autour de cet événement de prédiction.",
+    "relatedPrediction": "Prédiction liée",
+    "viewMarket": "Voir le marché",
+    "loadingTopic": "Chargement des sujets...",
+    "loadFailed": "Échec du chargement, veuillez réessayer plus tard",
+    "selectTopic": "Sélectionnez un sujet pour démarrer la discussion",
+    "searchPlaceholder": "Rechercher des sujets ou des discussions...",
+    "noTopics": "Aucun sujet disponible",
+    "loadingMore": "Chargement en cours...",
+    "loadMore": "Charger plus",
+    "topicCountLoaded": "{loaded}/{total} sujets chargés",
+    "newTopics": "{count} nouveaux sujets",
+    "pullToRefresh": "Tirer pour actualiser",
+    "releaseToRefresh": "Relâchez pour actualiser",
+    "refreshing": "Actualisation...",
+    "emptyTopics": "Aucun sujet",
     "sidebar": {
-      "loadedTopics": "Loaded topics",
-      "totalTopics": "Total topics",
-      "summaryTitle": "The forum is Foresight's live discussion control room",
-      "summaryBody": "This is where real-time conversations, event breakdowns and strategy discussions around prediction markets happen, helping you get fresh community perspectives before and after you place trades.",
-      "helperPrefix": "Want to see live markets first? Head to",
-      "helperTrending": "Trending",
-      "helperMiddle": "to browse prices and volume. If you just want to float an idea, start a thread in the",
+      "loadedTopics": "Sujets chargés",
+      "totalTopics": "Total des sujets",
+      "summaryTitle": "Le forum est la salle de contrôle des discussions en direct de Foresight",
+      "summaryBody": "C'est ici que se déroulent les conversations en temps réel, les analyses d'événements et les discussions stratégiques autour des marchés de prédiction, vous aidant à obtenir de nouvelles perspectives de la communauté avant et après vos trades.",
+      "helperPrefix": "Vous voulez voir les marchés en direct ? Allez à",
+      "helperTrending": "Tendances",
+      "helperMiddle": "pour parcourir les prix et le volume. Si vous voulez simplement proposer une idée, créez un fil dans le",
       "helperForum": "Forum",
-      "helperSuffix": "and gather some early feedback.",
-      "views": "Views",
-      "viewHot": "By followers",
-      "viewNew": "By creation time",
-      "viewTop": "By combined metrics",
-      "gotoMarketCta": "Explore markets"
+      "helperSuffix": "et recueillir les premiers retours.",
+      "views": "Vues",
+      "viewHot": "Par abonnés",
+      "viewNew": "Par date de création",
+      "viewTop": "Par métriques combinées",
+      "gotoMarketCta": "Explorer les marchés"
     },
     "form": {
-      "subjectPlaceholder": "Subject name",
+      "subjectPlaceholder": "Nom du sujet",
       "action": {
-        "priceReach": "price reaches",
-        "willWin": "will win",
-        "willHappen": "will happen"
+        "priceReach": "le prix atteint",
+        "willWin": "gagnera",
+        "willHappen": "se produira"
       },
-      "targetPlaceholder": "Target value / condition",
-      "deadlinePlaceholder": "Deadline",
-      "categoryLabel": "Category",
+      "targetPlaceholder": "Valeur / Condition cible",
+      "deadlinePlaceholder": "Date limite",
+      "categoryLabel": "Catégorie",
       "category": {
-        "tech": "Technology",
-        "entertainment": "Entertainment",
-        "politics": "Politics",
-        "weather": "Weather",
+        "tech": "Technologie",
+        "entertainment": "Divertissement",
+        "politics": "Politique",
+        "weather": "Météo",
         "sports": "Sports",
-        "business": "Business",
+        "business": "Affaires",
         "crypto": "Crypto",
-        "more": "More"
+        "more": "Plus"
       },
-      "previewTitle": "Title preview",
-      "previewCriteria": "Settlement criteria",
-      "previewTitleFallback": "Complete the form to generate a title",
-      "previewCriteriaFallback": "Complete the form to generate settlement criteria",
-      "submitPosting": "Publishing…",
-      "submit": "Publish thread",
+      "previewTitle": "Aperçu du titre",
+      "previewCriteria": "Critères de règlement",
+      "previewTitleFallback": "Complétez le formulaire pour générer un titre",
+      "previewCriteriaFallback": "Complétez le formulaire pour générer les critères de règlement",
+      "submitPosting": "Publication…",
+      "submit": "Publier le fil",
       "errors": {
-        "subjectRequired": "Please enter a subject name",
-        "targetRequired": "Please enter a target value or condition",
-        "deadlineRequired": "Please enter a deadline",
-        "deadlineInvalid": "Invalid deadline format",
-        "deadlinePast": "Deadline must be later than now",
-        "categoryRequired": "Please select a category"
+        "subjectRequired": "Veuillez entrer un nom de sujet",
+        "targetRequired": "Veuillez entrer une valeur ou condition cible",
+        "deadlineRequired": "Veuillez entrer une date limite",
+        "deadlineInvalid": "Format de date limite invalide",
+        "deadlinePast": "La date limite doit être ultérieure à maintenant",
+        "categoryRequired": "Veuillez sélectionner une catégorie"
       }
     },
     "preview": {
       "title": {
-        "priceReach": "Price of {subjectName} reaches {target} before {deadline}",
-        "willWin": "{subjectName} will win {target} before {deadline}",
-        "willHappen": "{subjectName} will have {target} happen before {deadline}",
-        "default": "{subjectName} will {action}{target} before {deadline}"
+        "priceReach": "Le prix de {subjectName} atteint {target} avant {deadline}",
+        "willWin": "{subjectName} gagnera {target} avant {deadline}",
+        "willHappen": "{subjectName} aura {target} se produire avant {deadline}",
+        "default": "{subjectName} {action}{target} avant {deadline}"
       },
       "criteria": {
-        "priceReach": "Based on authoritative price data sources, reaching or exceeding the target before the deadline counts as success",
-        "willWin": "Based on official event results, winning the title before the deadline counts as success",
-        "willHappen": "Based on official announcements or reputable media reports, the event happening before the deadline counts as success",
-        "default": "Based on objective verifiable sources, meeting the condition before the deadline counts as success"
+        "priceReach": "Basé sur des sources de données de prix fiables, atteindre ou dépasser la cible avant la date limite compte comme un succès",
+        "willWin": "Basé sur les résultats officiels de l'événement, gagner le titre avant la date limite compte comme un succès",
+        "willHappen": "Basé sur les annonces officielles ou les rapports médiatiques fiables, l'événement se produisant avant la date limite compte comme un succès",
+        "default": "Basé sur des sources vérifiables objectives, remplir la condition avant la date limite compte comme un succès"
       }
     },
     "list": {
-      "loading": "Loading…",
-      "empty": "No threads yet"
+      "loading": "Chargement…",
+      "empty": "Aucun fil encore"
     },
     "thread": {
       "meta": {
-        "prefix": "By",
-        "in": "at",
+        "prefix": "Par",
+        "in": "à",
         "suffix": ""
       },
       "vote": {
-        "upvoted": "Upvoted",
-        "downvoted": "Downvoted"
+        "upvoted": "Upvoté",
+        "downvoted": "Downvoté"
       }
     },
     "comments": {
-      "title": "Comments"
+      "title": "Commentaires"
     },
     "reply": {
-      "placeholder": "Write a comment…",
-      "sending": "Sending…",
-      "submit": "Comment",
-      "commentPosted": "Comment posted"
+      "placeholder": "Écrire un commentaire…",
+      "sending": "Envoi…",
+      "submit": "Commenter",
+      "commentPosted": "Commentaire publié"
     },
     "errors": {
-      "loadFailed": "Failed to load",
-      "createFailed": "Failed to create thread",
-      "commentFailed": "Failed to post comment",
-      "voteFailed": "Failed to vote",
-      "walletRequired": "Please connect your wallet first",
-      "walletRequiredForVote": "Connect your wallet before voting",
-      "alreadyVoted": "You have already voted"
+      "loadFailed": "Échec du chargement",
+      "createFailed": "Échec de la création du fil",
+      "commentFailed": "Échec de l'envoi du commentaire",
+      "voteFailed": "Échec du vote",
+      "walletRequired": "Veuillez d'abord connecter votre portefeuille",
+      "walletRequiredForVote": "Connectez votre portefeuille avant de voter",
+      "alreadyVoted": "Vous avez déjà voté"
     },
-    "categoryFallback": "Topic",
-    "roomIdLabel": "Room ID",
-    "roomIdFooter": "Chat room ID: #{id}",
-    "backToForum": "Back to forum"
+    "categoryFallback": "Sujet",
+    "roomIdLabel": "ID du salon",
+    "roomIdFooter": "ID du salon de chat: #{id}",
+    "backToForum": "Retour au forum"
   },
   "proposals": {
     "meta": {
-      "title": "Foresight Proposals Square - Create new prediction markets and governance votes",
-      "description": "On the Foresight Proposals Square you can submit new prediction market ideas and governance topics for crypto, macro, AI and more, then let the community discuss and vote before they turn into live on-chain markets.",
-      "ogTitle": "Foresight Proposals Square - Create new prediction markets and governance votes",
-      "ogDescription": "Start and browse governance and market design proposals that pave the way for future popular prediction markets and on-chain trading activity on Foresight.",
-      "twitterTitle": "Foresight Proposals Square - Create new prediction markets and governance votes",
-      "twitterDescription": "Launch or join proposal discussions and help the community design new prediction markets and governance processes."
+      "title": "Place des propositions Foresight - Créer de nouveaux marchés de prédiction et votes de gouvernance",
+      "description": "Sur la Place des propositions Foresight, vous pouvez soumettre de nouvelles idées de marchés de prédiction et des sujets de gouvernance pour la crypto, la macro, l'IA et plus encore, puis laisser la communauté discuter et voter avant qu'ils ne deviennent des marchés on-chain en direct.",
+      "ogTitle": "Place des propositions Foresight - Créer de nouveaux marchés de prédiction et votes de gouvernance",
+      "ogDescription": "Lancez et parcourez les propositions de gouvernance et de conception de marchés qui ouvrent la voie à de futurs marchés de prédiction populaires et une activité de trading on-chain sur Foresight.",
+      "twitterTitle": "Place des propositions Foresight - Créer de nouveaux marchés de prédiction et votes de gouvernance",
+      "twitterDescription": "Lancez ou participez aux discussions de propositions et aidez la communauté à concevoir de nouveaux marchés de prédiction et processus de gouvernance."
     },
     "share": {
-      "buttonLabel": "Share",
-      "copyLinkSuccessTitle": "Link copied",
-      "copyLinkSuccessDesc": "Proposal link copied to clipboard.",
-      "copyLinkUnsupportedTitle": "Automatic copy not available",
-      "copyLinkFailedTitle": "Copy failed",
-      "copyLinkFailedDesc": "Please copy the link from the address bar manually."
+      "buttonLabel": "Partager",
+      "copyLinkSuccessTitle": "Lien copié",
+      "copyLinkSuccessDesc": "Lien de la proposition copié dans le presse-papiers.",
+      "copyLinkUnsupportedTitle": "Copie automatique non disponible",
+      "copyLinkFailedTitle": "Échec de la copie",
+      "copyLinkFailedDesc": "Veuillez copier le lien depuis la barre d'adresse manuellement."
     },
     "page": {
-      "mobileTitle": "Proposals",
-      "searchPlaceholder": "Search proposals...",
-      "searchAria": "Search proposals",
-      "jsonLdName": "Foresight Proposals Square",
-      "jsonLdDescription": "On the Foresight Proposals Square you can start new prediction market ideas and governance topics, and let the community discuss and vote before they become full markets.",
-      "breadcrumbHome": "Home",
-      "breadcrumbProposals": "Proposals Square"
+      "mobileTitle": "Propositions",
+      "searchPlaceholder": "Rechercher des propositions...",
+      "searchAria": "Rechercher des propositions",
+      "jsonLdName": "Place des propositions Foresight",
+      "jsonLdDescription": "Sur la Place des propositions Foresight, vous pouvez lancer de nouvelles idées de marchés de prédiction et des sujets de gouvernance, et laisser la communauté discuter et voter avant qu'ils ne deviennent des marchés complets.",
+      "breadcrumbHome": "Accueil",
+      "breadcrumbProposals": "Place des propositions"
     },
     "sidebar": {
-      "member": "Member",
-      "myPosts": "My proposals",
-      "totalPosts": "Total proposals",
-      "summaryTitle": "The Proposals Square is Foresight's product manager panel",
-      "summaryBody": "Start new prediction market ideas or governance proposals and let the community discuss and vote before they go live as full markets.",
-      "helperPrefix": "Want to see live markets first? Go to",
-      "helperTrending": "Trending",
-      "helperMiddle": "to browse existing events. If your idea is not ready yet, visit the",
+      "member": "Membre",
+      "myPosts": "Mes propositions",
+      "totalPosts": "Total des propositions",
+      "summaryTitle": "La Place des propositions est le panneau du gestionnaire de produits de Foresight",
+      "summaryBody": "Lancez de nouvelles idées de marchés de prédiction ou des propositions de gouvernance et laissez la communauté discuter et voter avant qu'ils ne deviennent des marchés complets.",
+      "helperPrefix": "Vous voulez voir les marchés en direct ? Allez à",
+      "helperTrending": "Tendances",
+      "helperMiddle": "pour parcourir les événements existants. Si votre idée n'est pas encore prête, consultez le",
       "helperForum": "Forum",
-      "helperSuffix": "to gather early feedback.",
-      "views": "Views",
-      "viewHot": "Hot & Trending",
-      "viewNew": "Newest First",
-      "viewTop": "Top Voted",
-      "reviewWorkbench": "Open review workbench"
+      "helperSuffix": "pour recueillir des premiers retours.",
+      "views": "Vues",
+      "viewHot": "Tendances",
+      "viewNew": "Plus récentes",
+      "viewTop": "Top votées",
+      "reviewWorkbench": "Ouvrir l'espace de révision"
     },
     "card": {
-      "badge": "Proposal",
-      "statusPending": "Pending review",
-      "statusApproved": "Approved",
-      "statusRejected": "Rejected",
-      "hot": "Hot",
-      "authorLabel": "Author",
-      "commentCount": "{count} comments",
-      "timeJustNow": "Just now",
-      "timeMinutesAgo": "{count} minutes ago",
-      "timeHoursAgo": "{count} hours ago",
-      "timeDaysAgo": "{count} days ago"
+      "badge": "Proposition",
+      "statusPending": "En attente de révision",
+      "statusApproved": "Approuvée",
+      "statusRejected": "Rejetée",
+      "hot": "Tendances",
+      "authorLabel": "Auteur",
+      "commentCount": "{count} commentaires",
+      "timeJustNow": "À l'instant",
+      "timeMinutesAgo": "Il y a {count} minutes",
+      "timeHoursAgo": "Il y a {count} heures",
+      "timeDaysAgo": "Il y a {count} jours"
     },
     "detail": {
-      "authorBadge": "Author",
-      "collapseContent": "Collapse proposal",
-      "expandContent": "View full proposal",
-      "marketHint": "This proposal already has a linked on-chain prediction market. You can go to the market page to observe price signals or trade directly.",
-      "marketButton": "Go to market",
-      "comments": "comments",
+      "authorBadge": "Auteur",
+      "collapseContent": "Réduire la proposition",
+      "expandContent": "Voir la proposition complète",
+      "marketHint": "Cette proposition est déjà liée à un marché de prédiction on-chain. Vous pouvez aller sur la page du marché pour observer les signaux de prix ou trader directement.",
+      "marketButton": "Aller au marché",
+      "comments": "commentaires",
       "discussionCount": "{count} discussions",
-      "resubmitButton": "Resubmit for review",
-      "resubmitHint": "After applying the review feedback, you can resubmit this proposal.",
-      "resubmitSuccess": "Proposal resubmitted for review.",
-      "resubmitFailed": "Resubmission failed. Please try again later."
+      "resubmitButton": "Resoumettre pour révision",
+      "resubmitHint": "Après avoir appliqué les commentaires de révision, vous pouvez resoumettre cette proposition.",
+      "resubmitSuccess": "Proposition resoumise pour révision.",
+      "resubmitFailed": "La resoumission a échoué. Veuillez réessayer plus tard."
     },
     "comment": {
       "authorBadge": "OP",
-      "replyButton": "Reply",
-      "replyPlaceholder": "Write your reply..."
+      "replyButton": "Répondre",
+      "replyPlaceholder": "Écrivez votre réponse..."
     },
     "detailSidebar": {
-      "detailsTitle": "Details",
-      "statusLabel": "Status",
-      "statusActive": "Active",
-      "categoryLabel": "Category",
-      "categoryFallback": "General",
-      "createdLabel": "Created",
-      "statsTitle": "Stats",
-      "commentsLabel": "Comments",
+      "detailsTitle": "Détails",
+      "statusLabel": "Statut",
+      "statusActive": "Actif",
+      "categoryLabel": "Catégorie",
+      "categoryFallback": "Général",
+      "createdLabel": "Créé le",
+      "statsTitle": "Statistiques",
+      "commentsLabel": "Commentaires",
       "votesLabel": "Votes",
-      "proposalId": "Proposal ID: #{id}"
+      "proposalId": "ID de proposition: #{id}"
     },
     "intro": {
-      "description": "The proposal detail page shows the full context, explanation and discussion for a prediction market or governance topic, so participants can fully understand it before voting or creating a market.",
-      "helperPrefix": "Want to explore other proposals? Go back to",
-      "helperProposals": "Proposals Square",
-      "helperMiddle": "to view all topics. If you care more about events that may become live markets, go to",
-      "helperTrending": "Trending",
-      "helperMiddle2": "or continue the conversation in the",
+      "description": "La page de détails de la proposition montre le contexte complet, l'explication et la discussion pour un marché de prédiction ou un sujet de gouvernance, afin que les participants puissent le comprendre pleinement avant de voter ou de créer un marché.",
+      "helperPrefix": "Vous voulez explorer d'autres propositions ? Retournez à",
+      "helperProposals": "Place des propositions",
+      "helperMiddle": "pour voir tous les sujets. Si vous vous intéressez davantage aux événements qui peuvent devenir des marchés en direct, allez à",
+      "helperTrending": "Tendances",
+      "helperMiddle2": "ou continuez la conversation dans le",
       "helperForum": "Forum",
       "helperSuffix": "."
     },
     "create": {
-      "title": "New Proposal",
-      "subtitle": "Share your ideas with the community",
-      "tabPost": "Post",
-      "tabImage": "Media",
-      "tabLink": "Link",
-      "titlePlaceholder": "What's on your mind?",
-      "contentPlaceholderPost": "Elaborate on your proposal...",
-      "contentPlaceholderLink": "Paste URL here...",
-      "contentPlaceholderImage": "Add a caption...",
-      "categoryLabel": "Select Category",
-      "cancel": "Cancel",
-      "submit": "Submit proposal",
-      "submitting": "Submitting..."
+      "title": "Nouvelle proposition",
+      "subtitle": "Partagez vos idées avec la communauté",
+      "tabPost": "Poster",
+      "tabImage": "Médias",
+      "tabLink": "Lien",
+      "titlePlaceholder": "Qu'avez-vous en tête ?",
+      "contentPlaceholderPost": "Développez votre proposition...",
+      "contentPlaceholderLink": "Collez l'URL ici...",
+      "contentPlaceholderImage": "Ajoutez une légende...",
+      "categoryLabel": "Sélectionner une catégorie",
+      "cancel": "Annuler",
+      "submit": "Soumettre la proposition",
+      "submitting": "Soumission en cours...",
+      "subjectNameLabel": "Nom du sujet",
+      "subjectNamePlaceholder": "ex. BTC, Trump, Apple",
+      "actionVerbLabel": "Type d'action",
+      "actionVerbWillHappen": "Se produira",
+      "actionVerbPriceReach": "Le prix atteint",
+      "actionVerbWillWin": "Gagnera",
+      "targetValueLabel": "Cible",
+      "targetValuePlaceholder": "ex. 100000, gagne, passe",
+      "resolutionTimeLabel": "Expiration / Temps de résolution",
+      "outcomesLabel": "Résultats",
+      "addOption": "Ajouter une option",
+      "outcomePlaceholderYes": "Oui",
+      "outcomePlaceholderNo": "Non",
+      "outcomePlaceholderIndex": "Résultat {index}",
+      "primarySourceLabel": "URL de la source principale (obligatoire)",
+      "useMarketTemplate": "Utiliser le modèle de marché",
+      "marketTemplateCriteria": "Utiliser des sources objectives et vérifiables ; les conditions remplies avant l'heure d'expiration comptent comme réalisées ; en cas d'ambiguïté, suivre l'annonce officielle de la source principale.",
+      "criteriaLabel": "Critères de résolution (obligatoire)",
+      "criteriaPlaceholder": "Définissez clairement ce qui compte comme Oui/Non et quelles sources sont valides...",
+      "descriptionLabel": "Description (optionnel)",
+      "extraLinksLabel": "Liens supplémentaires (optionnel)",
+      "addLink": "Ajouter un lien",
+      "extraLinksHint": "Vous pouvez ajouter plusieurs sources ou liens de référence",
+      "mediaLabel": "Images / Médias (optionnel)",
+      "uploading": "Envoi en cours...",
+      "imageCount": "{count} images",
+      "selectImage": "Sélectionner une image",
+      "errors": {
+        "subjectNameRequired": "Veuillez entrer un nom de sujet",
+        "actionVerbRequired": "Veuillez sélectionner un type d'action",
+        "targetValueRequired": "Veuillez entrer une valeur cible",
+        "resolutionTimeRequired": "Veuillez entrer une heure d'expiration/résolution",
+        "resolutionTimeInFuture": "L'heure d'expiration/résolution doit être dans le futur",
+        "outcomesMin2": "Au moins 2 résultats sont requis",
+        "criteriaMinLength": "Veuillez fournir des critères de résolution (au moins 20 caractères)",
+        "primarySourceInvalid": "Veuillez entrer une URL de source principale valide (http/https)"
+      }
     },
     "actions": {
-      "newProposal": "New Proposal"
+      "newProposal": "Nouvelle proposition"
     },
     "list": {
-      "loading": "Loading governance data...",
-      "emptyTitle": "No proposals yet",
-      "emptyDescription": "Be the first to share your idea with the community.",
-      "createButton": "Create Proposal"
+      "loading": "Chargement des données de gouvernance...",
+      "emptyTitle": "Aucune proposition encore",
+      "emptyDescription": "Soyez le premier à partager votre idée avec la communauté.",
+      "createButton": "Créer une proposition"
     },
     "right": {
-      "featuredTitle": "Featured",
-      "featuredViewAll": "View All",
-      "officialV2Title": "Protocol Upgrade v2.0",
-      "officialV2Desc": "Major architecture overhaul and gas optimizations",
-      "officialTreasuryTitle": "Q3 Treasury Report",
-      "officialTreasuryDesc": "Budget allocation review for next quarter",
-      "officialGrantsTitle": "Community Grants",
-      "officialGrantsDesc": "Funding program for ecosystem builders",
-      "insightLabel": "Insight",
-      "randomAnalyzing": "Analyzing...",
-      "randomNext": "Next Insight",
-      "governanceTitle": "Governance",
-      "governanceThresholdLabel": "Proposal Threshold",
+      "featuredTitle": "En vedette",
+      "featuredViewAll": "Voir tout",
+      "officialV2Title": "Mise à jour du protocole v2.0",
+      "officialV2Desc": "Refonte majeure de l'architecture et optimisations de gas",
+      "officialTreasuryTitle": "Rapport de trésorerie T3",
+      "officialTreasuryDesc": "Revue de l'allocation budgétaire pour le prochain trimestre",
+      "officialGrantsTitle": "Subventions communautaires",
+      "officialGrantsDesc": "Programme de financement pour les créateurs de l'écosystème",
+      "insightLabel": "Perspective",
+      "randomAnalyzing": "Analyse en cours...",
+      "randomNext": "Perspective suivante",
+      "governanceTitle": "Gouvernance",
+      "governanceThresholdLabel": "Seuil de proposition",
       "governanceThresholdValue": "100 VP",
-      "governanceVotingPeriodLabel": "Voting Period",
-      "governanceVotingPeriodValue": "3 Days",
+      "governanceVotingPeriodLabel": "Période de vote",
+      "governanceVotingPeriodValue": "3 jours",
       "governanceQuorumLabel": "Quorum",
       "governanceQuorumValue": "10%",
-      "governanceLearnMore": "Learn More"
+      "governanceLearnMore": "En savoir plus"
     },
     "review": {
-      "title": "Proposal Review Workbench",
-      "subtitle": "Only available to accounts with review permissions",
-      "backToProposals": "Back to Proposals Square",
-      "pendingListTitle": "Proposals pending review",
-      "loading": "Loading proposals...",
-      "empty": "No proposals are waiting for review",
-      "untitled": "Untitled proposal",
-      "noDescription": "No description",
-      "uncategorized": "Uncategorized",
-      "detailTitle": "Proposal details & actions",
-      "openProposalPage": "Open on proposal page",
-      "selectPrompt": "Select a proposal from the list on the left",
-      "fieldTitle": "Title",
-      "fieldBody": "Body",
-      "fieldAuthor": "Author",
-      "fieldStatus": "Current status",
-      "fieldReviewNote": "Review notes",
-      "noBody": "No body",
-      "reviewReasonPlaceholder": "Explain why it is rejected or needs changes to help the author understand",
-      "actionApprove": "Approve",
-      "actionNeedsChanges": "Needs changes",
-      "actionReject": "Reject",
-      "hintAutoMarket": "Hint: Only approved proposals will be used to auto-generate prediction markets",
-      "loadFailed": "Failed to load. You may not have permission to access this page.",
-      "alertReasonRequired": "Please enter a reason",
-      "alertSubmitFailed": "Submission failed",
-      "reviewedByLine": "Reviewed by {reviewer} · {time}"
+      "title": "Espace de révision des propositions",
+      "subtitle": "Disponible uniquement pour les comptes avec permissions de révision",
+      "backToProposals": "Retour à la Place des propositions",
+      "pendingListTitle": "Propositions en attente de révision",
+      "loading": "Chargement des propositions...",
+      "empty": "Aucune proposition n'attend de révision",
+      "untitled": "Proposition sans titre",
+      "noDescription": "Pas de description",
+      "uncategorized": "Non catégorisé",
+      "detailTitle": "Détails et actions de la proposition",
+      "openProposalPage": "Ouvrir sur la page de proposition",
+      "selectPrompt": "Sélectionnez une proposition dans la liste à gauche",
+      "fieldTitle": "Titre",
+      "fieldBody": "Corps",
+      "fieldAuthor": "Auteur",
+      "fieldStatus": "Statut actuel",
+      "fieldReviewNote": "Notes de révision",
+      "noBody": "Pas de corps",
+      "reviewReasonPlaceholder": "Expliquez pourquoi elle est rejetée ou nécessite des modifications pour aider l'auteur à comprendre",
+      "actionApprove": "Approuver",
+      "actionNeedsChanges": "Nécessite des modifications",
+      "actionReject": "Rejeter",
+      "hintAutoMarket": "Astuce : Seules les propositions approuvées seront utilisées pour générer automatiquement des marchés de prédiction",
+      "loadFailed": "Échec du chargement. Vous n'avez peut-être pas la permission d'accéder à cette page.",
+      "alertReasonRequired": "Veuillez entrer une raison",
+      "alertSubmitFailed": "La soumission a échoué",
+      "reviewedByLine": "Révisé par {reviewer} · {time}"
     },
     "discussion": {
-      "badge": "Proposal Chat",
-      "badgeComments": "{count} replies",
-      "filterByTime": "By time",
-      "filterByHot": "By popularity",
-      "filterOnlyAuthor": "Only author",
-      "summary": "Total {count} comments",
-      "currentUser": "You: {name}",
-      "walletNotConnected": "Wallet not connected",
-      "inputPlaceholder": "Share your thoughts and help the community fully discuss this proposal…"
+      "badge": "Discussion de proposition",
+      "badgeComments": "{count} réponses",
+      "filterByTime": "Par temps",
+      "filterByHot": "Par popularité",
+      "filterOnlyAuthor": "Auteur uniquement",
+      "summary": "Total {count} commentaires",
+      "currentUser": "Vous : {name}",
+      "walletNotConnected": "Portefeuille non connecté",
+      "inputPlaceholder": "Partagez vos réflexions et aidez la communauté à discuter pleinement de cette proposition..."
     },
     "inspirations": [
-      "Will AI achieve AGI by 2026?",
-      "Will humans land on Mars before 2030?",
-      "Is Bitcoin hitting $100k this year?",
-      "Who wins the next World Cup?",
-      "Will Apple release a folding iPhone?"
+      "L'IA atteindra-t-elle l'AGI d'ici 2026 ?",
+      "Les humains atterriront-ils sur Mars avant 2030 ?",
+      "Le Bitcoin atteindra-t-il 100k$ cette année ?",
+      "Qui gagnera la prochaine Coupe du Monde ?",
+      "Apple sortira-t-il un iPhone pliable ?"
     ]
   },
   "chat": {
     "quickPrompt": {
-      "reason": "What’s the data or story behind this prediction?",
-      "update": "Any fresh updates or interesting new signals?",
-      "opinion": "I feel the probability is higher because…"
+      "reason": "Quelles sont les donnees ou l'histoire derriere cette prediction ?",
+      "update": "Des mises a jour recentes ou de nouveaux signaux interessants ?",
+      "opinion": "Je pense que la probabilite est plus elevee parce que..."
     },
     "message": {
       "opBadge": "OP",
-      "reply": "Reply"
+      "reply": "Repondre",
+      "more": "Plus",
+      "muted": "Muet",
+      "mute": "Rendre muet",
+      "unmute": "Rendre la parole",
+      "reportSpam": "Signalement : spam",
+      "reportAbuse": "Signalement : abus/harcelement",
+      "reportMisinfo": "Signalement : desinformation",
+      "delete": "Supprimer le message",
+      "deleteConfirm": "Supprimer ce message ?",
+      "deleted": "Message supprime",
+      "deleteFailed": "Echec de la suppression",
+      "reported": "Signale",
+      "reportFailed": "Echec du signalement"
     },
     "topics": {
-      "sectionTitle": "Topics",
-      "chat": "Chat",
-      "debate": "Debate",
-      "all": "All",
-      "market": "Market",
+      "sectionTitle": "Sujets",
+      "chat": "Discussion",
+      "debate": "Debat",
+      "forum": "Forum",
+      "all": "Tous",
+      "market": "Marche",
       "meta": "Meta",
-      "offtopic": "Off-topic"
+      "offtopic": "Hors sujet"
     },
     "debate": {
-      "toggle": "Debate mode",
+      "toggle": "Mode debat",
       "stance": {
-        "pro": "For",
-        "con": "Against",
-        "uncertain": "Uncertain"
+        "pro": "Pour",
+        "con": "Contre",
+        "uncertain": "Incertain"
       },
       "kind": {
-        "claim": "Claim",
-        "evidence": "Evidence",
-        "rebuttal": "Rebuttal",
+        "claim": "Affirmation",
+        "evidence": "Preuve",
+        "rebuttal": "Refutation",
         "question": "Question",
-        "summary": "Summary"
+        "summary": "Resume"
       },
       "filters": {
-        "sectionTitle": "Filter",
-        "stanceLabel": "Stance",
+        "sectionTitle": "Filtre",
+        "stanceLabel": "Position",
         "kindLabel": "Type",
         "count": "{count}",
-        "all": "All",
-        "debate": "Debate only",
-        "normal": "Normal only"
+        "all": "Tous",
+        "debate": "Debat uniquement",
+        "normal": "Discussion uniquement"
       },
       "actions": {
-        "rebuttal": "Rebut",
-        "question": "Ask"
+        "rebuttal": "Refuter",
+        "question": "Demander"
       },
       "panel": {
-        "on": "On",
-        "off": "Off",
-        "offHint": "When on, your text/images will carry debate labels",
-        "hide": "Hide",
-        "close": "Close"
+        "on": "Active",
+        "off": "Desactive",
+        "offHint": "Quand active, vos textes/images porteront des etiquettes de debat",
+        "hide": "Masquer",
+        "close": "Fermer"
       }
     },
     "header": {
-      "title": "Chat room",
-      "withTopic": "Chat room · {title}",
-      "youLabel": "You: {name}",
-      "walletDisconnected": "Wallet not connected yet"
+      "title": "Salon de chat",
+      "withTopic": "Salon de chat - {title}",
+      "youLabel": "Vous : {name}",
+      "walletDisconnected": "Portefeuille non connecte"
     },
     "announcement": {
-      "badge": "Announcement",
-      "empty": "No announcements yet"
+      "badge": "Annonce",
+      "empty": "Aucune annonce pour le moment"
     },
     "empty": {
-      "title": "No messages yet",
-      "description": "There is no discussion here yet. Share your first insight and start the conversation!",
-      "actionLabel": "Send the first message",
-      "defaultInput": "Hi! 👋 Happy to join the discussion"
+      "title": "Aucun message encore",
+      "description": "Il n'y a pas encore de discussion ici. Partagez votre premiere analyse et lancez la conversation !",
+      "actionLabel": "Envoyer le premier message",
+      "defaultInput": "Salut ! Ravi de rejoindre la discussion"
     },
     "input": {
-      "walletRequired": "To send a message, first connect your wallet 💬",
-      "connectAndSign": "Connect & sign to join the chat",
-      "connectWalletCta": "Connect your wallet to join the conversation",
-      "placeholder": "Type a message, press Enter to send, Shift+Enter for new line",
-      "markdownHint": "Markdown supported",
-      "enterHint": "Press Enter to send, Shift+Enter for new line",
-      "toggleEmojisAria": "Toggle emoji picker",
-      "sending": "Sending…",
-      "send": "Send",
-      "uploadImage": "Upload Image",
-      "stickers": "Stickers",
-      "uploadFailed": "Image didn’t upload this time. Try again in a bit."
+      "walletRequired": "Pour envoyer un message, connectez d'abord votre portefeuille",
+      "connectAndSign": "Connecter et signer pour rejoindre la discussion",
+      "connectWalletCta": "Connectez votre portefeuille pour rejoindre la conversation",
+      "placeholder": "Tapez un message, appuyez sur Entree pour envoyer, Maj+Entree pour nouvelle ligne",
+      "markdownHint": "Markdown support",
+      "enterHint": "Appuyez sur Entree pour envoyer, Maj+Entree pour nouvelle ligne",
+      "toggleEmojisAria": "Activer/desactiver le selecteur d'emojis",
+      "sending": "Envoi...",
+      "send": "Envoyer",
+      "uploadImage": "Telecharger une image",
+      "stickers": "Autocollants",
+      "uploadFailed": "L'image n'a pas ete telechargee cette fois. Reessayez dans un instant."
     },
     "errors": {
-      "walletRequired": "We need to connect your wallet first so your message can go through.",
-      "sendFailed": "Your message didn’t go through this time. Try again in a moment."
+      "walletRequired": "Nous devons d'abord connecter votre portefeuille pour que votre message puisse passer.",
+      "sendFailed": "Votre message n'est pas passe cette fois. Reessayez dans un instant."
     },
     "onboarding": {
-      "title": "Share your little prediction universe",
-      "subtitle": "This is a cozy corner for honest thoughts, gentle debates and kind curiosity.",
+      "title": "Partagez votre univers de predictions",
+      "subtitle": "C'est un coin chaleureux pour des pensees honnetes, des debats doux et une curiosite bienveillante.",
       "step1": {
-        "title": "Start with a simple hello",
-        "desc": "A \"Hi, I’m here!\" is more than enough. Human, messy, honest messages are very welcome."
+        "title": "Commencez par un simple bonjour",
+        "desc": "Un 'Salut, je suis la !' suffit amplement. Les messages humains, chaotiques et honnetes sont les bienvenus."
       },
       "step2": {
-        "title": "Tell us what you’re sensing",
-        "desc": "Share data, headlines or just a gut feeling. Imperfect takes are part of the fun."
+        "title": "Dites-nous ce que vous ressentez",
+        "desc": "Partagez des donnees, des titres ou juste une impression. Les prises de position imparfaites font partie du plaisir."
       },
       "step3": {
-        "title": "Co-create the bigger picture",
-        "desc": "Your little piece of insight plus everyone else’s perspectives makes the market much smarter."
+        "title": "Co-creez la grande image",
+        "desc": "Votre petite parcelle d'analyse plus les perspectives de tout le monde rendent le marche beaucoup plus intelligent."
       },
-      "footer": "It’s okay to take your time. The world is loud; here we’re here to listen first.",
-      "cta": "Got it, let’s start chatting"
+      "footer": "C'est OK de prendre votre temps. Le monde est bruyant ; ici, nous sommes la pour ecouter en premier.",
+      "cta": "C'est compris, commencons a discuter"
     }
   },
   "auth": {
     "login": "Se connecter",
-    "logout": "Logout",
-    "register": "Register",
-    "connectWallet": "Connect Wallet",
-    "disconnectWallet": "Disconnect",
-    "signMessage": "Sign Message",
-    "welcome": "Welcome to Foresight",
-    "signToConnect": "Sign to connect",
-    "siweStatement": "Welcome to Foresight! Sign to connect your wallet.",
-    "loggedIn": "Logged in",
-    "noEmail": "No email",
-    "supabaseNotConfigured": "Supabase is not configured"
+    "logout": "Deconnexion",
+    "register": "S'inscrire",
+    "connectWallet": "Connecter le portefeuille",
+    "disconnectWallet": "Deconnecter",
+    "signMessage": "Signer le message",
+    "welcome": "Bienvenue sur Foresight",
+    "signToConnect": "Signer pour connecter",
+    "siweStatement": "Bienvenue sur Foresight ! Signez pour connecter votre portefeuille.",
+    "loggedIn": "Connecte",
+    "noEmail": "Pas d'email",
+    "supabaseNotConfigured": "Supabase n'est pas configure"
   },
   "wallet": {
-    "connected": "Connected",
-    "disconnected": "Disconnected",
+    "connected": "Connecte",
+    "disconnected": "Deconnecte",
     "balance": "Solde",
-    "address": "Address",
-    "copyAddress": "Copier l’adresse",
-    "addressCopied": "Address Copied",
-    "viewOnExplorer": "View on Explorer",
-    "switchNetwork": "Switch Network",
-    "refreshBalance": "Refresh Balance",
-    "noWallet": "No wallet detected",
-    "installMetaMask": "Install MetaMask",
-    "connectFailedTitle": "Wallet connection failed",
-    "installMetaMaskExtension": "Install MetaMask browser extension",
-    "unknownNetwork": "Unknown network",
-    "notDetected": "{walletName} extension not detected",
-    "installPrompt": "Please install the official extension, then return and refresh the page.",
-    "safeInstallHint": "Only install from official sources for security.",
-    "refreshAfterInstall": "Refresh the page after installation to continue connecting.",
-    "goInstall": "Install",
-    "later": "Later"
+    "address": "Adresse",
+    "copyAddress": "Copier l'adresse",
+    "addressCopied": "Adresse copiée",
+    "viewOnExplorer": "Voir sur l'explorateur",
+    "switchNetwork": "Changer de réseau",
+    "refreshBalance": "Actualiser le solde",
+    "noWallet": "Aucun portefeuille detecte",
+    "installMetaMask": "Installer MetaMask",
+    "connectFailedTitle": "Echec de connexion du portefeuille",
+    "installMetaMaskExtension": "Installer l'extension de navigateur MetaMask",
+    "unknownNetwork": "Reseau inconnu",
+    "notDetected": "Extension {walletName} non detectee",
+    "installPrompt": "Veuillez installer l'extension officielle, puis retourner et actualiser la page.",
+    "safeInstallHint": "Pour la securite, installez uniquement depuis des sources officielles.",
+    "refreshAfterInstall": "Actualisez la page apres l'installation pour continuer la connexion.",
+    "goInstall": "Installer",
+    "later": "Plus tard"
   },
   "mobileNav": {
-    "menuOpen": "Open menu",
-    "menuClose": "Close menu",
-    "marketSubtitle": "Prediction market",
+    "menuOpen": "Ouvrir le menu",
+    "menuClose": "Fermer le menu",
+    "marketSubtitle": "Marche de prediction",
     "items": {
-      "home": "Home",
-      "trending": "Trending",
-      "search": "Search",
+      "home": "Accueil",
+      "trending": "Tendances",
+      "search": "Rechercher",
       "forum": "Discussion",
-      "me": "Me",
-      "settings": "Settings"
+      "me": "Moi",
+      "settings": "Parametres"
     },
     "wallet": {
-      "connected": "Wallet connected",
-      "disconnect": "Disconnect",
-      "connect": "Connect wallet"
+      "connected": "Portefeuille connecte",
+      "disconnect": "Deconnecter",
+      "connect": "Connecter le portefeuille"
     }
   },
   "prediction": {
@@ -641,32 +692,32 @@
     "myOrders": "My Orders",
     "orderBook": "Order Book",
     "depth": "Depth",
-    "bids": "Bids",
-    "asks": "Asks",
-    "filled": "Filled",
-    "open": "Open",
-    "tabTrade": "Trade",
-    "tabChart": "Chart",
-    "tabOutcomes": "Outcomes",
-    "tabInfo": "Info",
-    "selectOutcome": "Select outcome",
-    "orderType": "Order type",
-    "autoMatchBest": "Auto match best price",
-    "sharesUnit": "Shares",
-    "totalInvestment": "Total investment",
-    "potentialReturn": "Potential return",
-    "submitting": "Processing…",
-    "emptyBids": "No bids yet",
-    "emptyAsks": "No asks yet",
-    "emptyOrders": "No open orders",
-    "emptyTrades": "No trades yet",
-    "bestBid": "Best bid: {price}",
-    "bestAsk": "Best ask: {price}",
-    "tabHistory": "Trades",
+    "bids": "Offres d'achat",
+    "asks": "Offres de vente",
+    "filled": "Rempli",
+    "open": "Ouvert",
+    "tabTrade": "Trader",
+    "tabChart": "Graphique",
+    "tabOutcomes": "Resultats",
+    "tabInfo": "Infos",
+    "selectOutcome": "Selectionner le resultat",
+    "orderType": "Type d'ordre",
+    "autoMatchBest": "Correspondance automatique au meilleur prix",
+    "sharesUnit": "Parts",
+    "totalInvestment": "Investissement total",
+    "potentialReturn": "Retour potentiel",
+    "submitting": "Traitement...",
+    "emptyBids": "Aucune offre d'achat pour le moment",
+    "emptyAsks": "Aucune offre de vente pour le moment",
+    "emptyOrders": "Aucun ordre ouvert",
+    "emptyTrades": "Aucune transaction pour le moment",
+    "bestBid": "Meilleure offre d'achat : {price}",
+    "bestAsk": "Meilleure offre de vente : {price}",
+    "tabHistory": "Transactions",
     "steps": {
-      "connectWallet": "Connect wallet",
-      "placeOrder": "Choose direction and place order",
-      "manageOrders": "Manage orders and fills"
+      "connectWallet": "Connecter le portefeuille",
+      "placeOrder": "Choisir la direction et passer l'ordre",
+      "manageOrders": "Gerer les ordres et les remplissages"
     },
     "hints": {
       "sellToolsTitle": "Outils de vente",
@@ -683,98 +734,98 @@
       "maxSixDecimals": "Jusqu’à 6 décimales"
     },
     "preview": {
-      "title": "Order preview",
-      "priceTimesAmount": "Price × Quantity",
-      "thisTradePay": "This trade will pay",
-      "thisTradeReceive": "This trade will receive",
-      "feeEstimated": "Est. matching fee (Taker 0.4%)",
-      "ifOutcomeHappens": "If this outcome happens",
-      "positionValuePrefix": "Position value about ",
-      "positionValueMiddle": ", return ",
-      "empty": "Enter price and quantity to see a live preview of this order.",
-      "avgExecutionPrice": "Est. avg execution price",
-      "worstExecutionPriceShort": "Est. worst execution price",
-      "slippage": "Est. slippage",
-      "estimatedFilledAmount": "Est. filled amount",
-      "partialFillHint": "Order may only partially fill at current liquidity.",
-      "loadingSlippage": "Calculating market slippage preview…",
-      "positionImpactTitle": "Position after this trade",
-      "currentPositionShares": "Current position size",
-      "thisTradeDeltaShares": "Change from this trade",
-      "afterTradeShares": "Estimated position after trade",
-      "currentStake": "Current cumulative investment",
-      "afterTradeStake": "Cumulative investment after trade",
-      "currentAvgPrice": "Current average entry price",
-      "afterTradeAvgPrice": "Average price after trade",
-      "markPrice": "Mark price",
-      "markPnl": "PnL (mark)"
+      "title": "Apercu de la commande",
+      "priceTimesAmount": "Prix x Quantite",
+      "thisTradePay": "Cette transaction paiera",
+      "thisTradeReceive": "Cette transaction recevra",
+      "feeEstimated": "Frais de correspondance est. (Preneur 0.4%)",
+      "ifOutcomeHappens": "Si ce resultat se produit",
+      "positionValuePrefix": "Valeur de la position environ ",
+      "positionValueMiddle": ", retour de ",
+      "empty": "Entrez le prix et la quantite pour voir un apercu en direct de cette commande.",
+      "avgExecutionPrice": "Prix d'execution moy. est.",
+      "worstExecutionPriceShort": "Pire prix d'execution est.",
+      "slippage": "Glissement est.",
+      "estimatedFilledAmount": "Montant rempli est.",
+      "partialFillHint": "La commande peut ne etre que partiellement remplie avec la liquidite actuelle.",
+      "loadingSlippage": "Calcul de l'apercu du glissement du marche...",
+      "positionImpactTitle": "Position apres cette transaction",
+      "currentPositionShares": "Taille de la position actuelle",
+      "thisTradeDeltaShares": "Changement de cette transaction",
+      "afterTradeShares": "Position estimee apres la transaction",
+      "currentStake": "Investissement cumule actuel",
+      "afterTradeStake": "Investissement cumule apres la transaction",
+      "currentAvgPrice": "Prix d'entree moyen actuel",
+      "afterTradeAvgPrice": "Prix moyen apres la transaction",
+      "markPrice": "Prix de marque",
+      "markPnl": "PnL (marque)"
     },
     "mintPanel": {
-      "title": "Sell prep",
-      "subtitle": "Need outcome tokens?",
-      "amountPlaceholder": "Amount (USDC)",
-      "mint": "Mint",
-      "redeem": "Redeem",
-      "description": "Mint converts USDC to Yes+No tokens (1:1). Redeem burns Yes+No to get USDC back."
+      "title": "Preparation a la vente",
+      "subtitle": "Vous avez besoin de jetons de resultat ?",
+      "amountPlaceholder": "Montant (USDC)",
+      "mint": "Emettre",
+      "redeem": "Redeemer",
+      "description": "L'emission convertit USDC en jetons Oui+Non (1:1). Le redeem brule les jetons Oui+Non pour recuperer USDC."
     },
     "toast": {
-      "cancelOrderSuccessTitle": "Order canceled",
-      "cancelOrderSuccessDesc": "Your order has been canceled successfully.",
-      "cancelOrderFailedTitle": "Failed to cancel order",
-      "retryLater": "Please try again later",
-      "orderSuccessTitle": "Order in the book",
-      "orderSuccessDesc": "Your view is now part of this market’s story. You can always hop into the chat room to see how others are thinking about it.",
-      "orderFailedTitle": "This trade didn’t go through",
-      "orderFailedDesc": "Balances and networks glitch sometimes. Adjust a bit and try again."
+      "cancelOrderSuccessTitle": "Commande annulee",
+      "cancelOrderSuccessDesc": "Votre commande a ete annulee avec succes.",
+      "cancelOrderFailedTitle": "Echec de l'annulation de la commande",
+      "retryLater": "Veuillez reessayer plus tard",
+      "orderSuccessTitle": "Commande dans le carnet",
+      "orderSuccessDesc": "Votre vue fait desormais partie de l'histoire de ce marche. Vous pouvez toujours acceder au salon de chat pour voir ce que les autres en pensent.",
+      "orderFailedTitle": "Cette transaction n'a pas abouti",
+      "orderFailedDesc": "Les soldes et les reseaux ont parfois des bugs. Ajustez un peu et reessayez."
     },
     "orderFlow": {
-      "marketNotLoaded": "Market data is still on its way. Try again in a moment.",
-      "walletRequired": "Connect your wallet first so we can write this idea into the market.",
-      "walletNotReady": "Your wallet is still waking up. Give it a second and try again.",
-      "invalidAmount": "This amount looks a bit off. Double-check your input.",
-      "invalidAmountPrecision": "The amount is a bit too precise. Up to 6 decimals are supported.",
-      "invalidPrice": "Price must be between 0 and 1. Try nudging it into that range.",
-      "switchNetwork": "Please switch to the correct network (Chain ID: {chainId}) and we’ll continue.",
-      "fetchPlanFailed": "We couldn’t fetch a trade plan right now. A quick refresh later might help.",
-      "insufficientLiquidity": "There aren’t enough matching orders yet to complete this trade.",
-      "noFillableOrders": "No existing orders currently line up with this one.",
-      "relayerNotConfigured": "The matching helper isn’t ready yet, so market orders can’t run for now.",
-      "matchingInProgress": "Matching your trade… (batch {count}). Hang on a moment.",
-      "partialFilled": "Only part of your order filled. The rest didn’t find a match yet.",
-      "filled": "This trade has been filled.",
-      "approving": "Asking the contract for permission on your behalf…",
-      "outcomeTokenApproving": "Opening permission to use your outcome tokens for this market…",
-      "approveThenPlace": "Approval looks good. Continuing with the order now.",
-      "orderSuccess": "Order placed successfully.",
-      "orderFailedFallback": "This order didn’t go through. It’s okay to try again later.",
-      "tradeFailed": "This trade ran into an issue. We can adjust a bit and try again.",
-      "userRejected": "Canceled in wallet.",
-      "insufficientFunds": "Not enough balance to complete this transaction.",
-      "rpcTimeout": "Network is a bit unstable right now. Try again in a moment.",
-      "sellNoBalance": "Sell failed: not enough outcome tokens right now. You can mint some below first, then try again.",
-      "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
-      "canceled": "Order canceled.",
-      "cancelFailed": "The order wasn’t canceled this time. You can try again in a bit.",
-      "slippageTooHigh": "The estimated slippage for this market order is above your limit. Try reducing the size or allowing a higher slippage threshold and place it again.",
-      "marketConfirm": "You’re about to place a market {side} order.\n\nSummary:\n- Est. filled amount: {filled} / {total} shares\n- Est. avg execution price: {avgPrice} USDC\n- Est. worst execution price: {worstPrice} USDC\n- Est. total cost: {totalCost} USDC\n- Est. slippage: {slippage}%\n\nContinue?"
+      "marketNotLoaded": "Les donnees du marche sont encore en route. Reessayez dans un instant.",
+      "walletRequired": "Connectez d'abord votre portefeuille pour que nous puissions ecrire cette idee dans le marche.",
+      "walletNotReady": "Votre portefeuille est encore en train de se reveiller. Donnez-lui une seconde et reessayez.",
+      "invalidAmount": "Ce montant semble un peu incorrect. Verifiez votre saisie.",
+      "invalidAmountPrecision": "Le montant est un peu trop precis. Jusqu'a 6 decimales sont supportees.",
+      "invalidPrice": "Le prix doit etre compris entre 0 et 1. Essayez de le deplacer dans cette plage.",
+      "switchNetwork": "Veuillez basculer vers le bon reseau (ID de reseau : {chainId}) et nous continuerons.",
+      "fetchPlanFailed": "Nous n'avons pas pu recuperer un plan de transaction pour le moment. Un rafraichissement rapide pourrait aider.",
+      "insufficientLiquidity": "Il n'y a pas assez d'ordres de correspondance pour terminer cette transaction.",
+      "noFillableOrders": "Aucun ordre existant ne correspond actuellement a celui-ci.",
+      "relayerNotConfigured": "L'assistant de correspondance n'est pas pret, donc les ordres au marche ne peuvent pas fonctionner pour le moment.",
+      "matchingInProgress": "Correspondance de votre transaction... (lot {count}). Patientez un instant.",
+      "partialFilled": "Seule une partie de votre commande a ete atteinte. Le reste n'a pas encore trouve de correspondance.",
+      "filled": "Cette transaction a ete realisee.",
+      "approving": "Demande d'autorisation au contrat pour votre compte...",
+      "outcomeTokenApproving": "Ouverture de l'autorisation d'utiliser vos jetons de resultat pour ce marche...",
+      "approveThenPlace": "L'approbation semble bonne. Continuation avec la commande maintenant.",
+      "orderSuccess": "Commande passee avec succes.",
+      "orderFailedFallback": "Cette commande n'a pas abouti. C'est OK de reessayer plus tard.",
+      "tradeFailed": "Cette transaction a rencontre un probleme. Nous pouvons ajuster un peu et reessayer.",
+      "userRejected": "Annule dans le portefeuille.",
+      "insufficientFunds": "Solde insuffisant pour terminer cette transaction.",
+      "rpcTimeout": "Le reseau est un peu instable en ce moment. Reessayez dans un instant.",
+      "sellNoBalance": "Echec de la vente : pas assez de jetons de resultat pour le moment. Vous pouvez en emettre ci-dessous d'abord, puis reessayer.",
+      "sellMaybeNoMint": "Si vous n'avez pas encore emis, vous n'avez peut-etre pas de jetons a vendre. Emettez-en un peu ci-dessous et reessayez.",
+      "canceled": "Commande annulee.",
+      "cancelFailed": "La commande n'a pas ete annulee cette fois. Vous pouvez reessayer dans un instant.",
+      "slippageTooHigh": "Le glissement estime pour cette commande au marche est au-dessus de votre limite. Essayez de reduire la taille ou d'autoriser un seuil de glissement plus eleve et repassez la commande.",
+      "marketConfirm": "Vous etes sur le point de passer une commande au marche {side}.\n\nResume :\n- Montant estime remplit : {filled} / {total} parts\n- Prix d'execution moyen est. : {avgPrice} USDC\n- Pire prix d'execution est. : {worstPrice} USDC\n- Cout total est. : {totalCost} USDC\n- Glissement est. : {slippage}%\n\nContinuer ?"
     },
     "mintFlow": {
-      "prepare": "Preparing to mint…",
-      "approveUsdc": "Please approve USDC…",
-      "minting": "Minting…",
-      "estimateFailed": "Mint gas estimation failed, please check balance or permissions: {reason}",
-      "success": "Mint successful! You can now sell your outcome tokens.",
-      "failed": "Mint failed: {reason}",
-      "unknownError": "Unknown error"
+      "prepare": "Preparation de l'emission...",
+      "approveUsdc": "Veuillez approuver USDC...",
+      "minting": "Emission en cours...",
+      "estimateFailed": "Echec de l'estimation du gas pour l'emission. Veuillez verifier le solde ou les autorisations : {reason}",
+      "success": "Emission reussie ! Vous pouvez maintenant vendre vos jetons de resultat.",
+      "failed": "Echec de l'emission : {reason}",
+      "unknownError": "Erreur inconnue"
     },
     "redeemFlow": {
-      "prepare": "Preparing to redeem…",
-      "approveOutcomeToken": "Please approve the outcome tokens…",
-      "redeeming": "Redeeming…",
-      "marketNotResolved": "Le marché n’a pas encore été résolu. Résolvez-le d’abord dans le panneau de Règlement, puis procédez au rachat.",
-      "success": "Redeem successful! USDC has been returned.",
-      "failed": "Redeem failed: {reason}",
-      "unknownError": "Unknown error"
+      "prepare": "Preparation du redeem...",
+      "approveOutcomeToken": "Veuillez approuver les jetons de resultat...",
+      "redeeming": "Redeem en cours...",
+      "marketNotResolved": "Le marche n'a pas encore ete resolu. Resolvez-le d'abord dans le panneau de Reglement, puis procédez au redeem.",
+      "success": "Redeem reussi ! USDC a ete retourne.",
+      "failed": "Echec du redeem : {reason}",
+      "unknownError": "Erreur inconnue"
     }
   },
   "settlement": {
@@ -799,1255 +850,1255 @@
   },
   "market": {
     "breadcrumbs": {
-      "home": "Home",
-      "trending": "Trending",
-      "predictionDetail": "Prediction detail"
+      "home": "Accueil",
+      "trending": "Tendances",
+      "predictionDetail": "Detail de la prediction"
     },
     "header": {
-      "statusActive": "Active",
-      "statusEnded": "Ended",
-      "totalVolume": "Total Volume",
-      "liquidity": "Liquidity (Est.)",
+      "statusActive": "Actif",
+      "statusEnded": "Termine",
+      "totalVolume": "Volume Total",
+      "liquidity": "Liquidite (Est.)",
       "participants": "Participants",
-      "deadline": "Deadline",
-      "follow": "Follow",
-      "following": "Following"
+      "deadline": "Date limite",
+      "follow": "Suivre",
+      "following": "Suivi"
     },
     "tabs": {
-      "desc": "Market details",
-      "rules": "Resolution rules",
+      "desc": "Details du marche",
+      "rules": "Regles de resolution",
       "comments": "Discussion"
     },
     "about": {
-      "title": "About this market",
-      "referenceSource": "Reference source",
-      "feeTitle": "About fees",
-      "feeBody": "On Foresight, day-to-day trading carries little to no extra fees. Only when a market is resolved and you redeem winning positions do we charge a 2% fee on the redeemed amount, which is used for the protocol and market-making incentives, with no hidden or additional charges."
+      "title": "A propos de ce marche",
+      "referenceSource": "Source de reference",
+      "feeTitle": "A propos des frais",
+      "feeBody": "Sur Foresight, le trading quotidien comporte peu ou pas de frais supplementaires. C'est uniquement lorsqu'un marche est resolu et que vous redeemez des positions gagneantes que nous prelevons des frais de 2% sur le montant redeeme, qui sont utilises pour le protocole et les incitations de market-making, sans frais caches ou supplementaires."
     },
     "rules": {
-      "criteriaTitle": "Resolution criteria",
-      "arbitrator": "Arbitrator",
-      "resolutionTime": "Resolution time",
-      "resolutionTimeValue": "Within 24 hours after {deadline}",
-      "arbitratorName": "Foresight Oracle Committee"
+      "criteriaTitle": "Criteria de resolution",
+      "arbitrator": "Arbitre",
+      "resolutionTime": "Temps de resolution",
+      "resolutionTimeValue": "Dans les 24 heures apres {deadline}",
+      "arbitratorName": "Comite Oracle Foresight"
     },
     "comments": {
-      "loading": "Loading comments...",
-      "loadPreviewFailed": "Failed to load discussion preview, please try again later",
-      "migratedToForum": "Discussions have been moved to the dedicated chat room in the forum",
-      "migrationReason": "To keep all opinions, strategies and reviews in one place, inline discussions are no longer provided here. You can continue the conversation in the Foresight forum chat room for this event.",
-      "chatPreview": "Chat room preview",
-      "totalPosts": "{count} posts and replies",
-      "noDiscussion": "No discussions yet. Be the first to start a topic in the forum!",
-      "forumDescription": "The Foresight forum is the core community for prediction market participants to share insights and strategies. You can create topics to discuss real-world events or join deep analysis of existing predictions.",
-      "gotoChat": "Go to chat room",
-      "chatHint": "In the forum you can view full message history, topic lists and related prediction markets. It’s also a good place to review your trades with others.",
-      "discoverEvents": "Go to",
-      "orCreateNew": "to discover events to discuss, or",
-      "createNewProposal": "create a new prediction"
+      "loading": "Chargement des commentaires...",
+      "loadPreviewFailed": "Echec du chargement de l'apercu de la discussion, Veuillez reessayer plus tard",
+      "migratedToForum": "Les discussions ont ete deplacees vers le salon de chat dedie dans le forum",
+      "migrationReason": "Pour garder toutes les opinions, strategies et revues en un seul endroit, les discussions integrees ne sont plus fournies ici. Vous pouvez continuer la conversation dans le salon de chat du forum Foresight pour cet evenement.",
+      "chatPreview": "Apercu du salon de chat",
+      "totalPosts": "{count} messages et reponses",
+      "noDiscussion": "Pas encore de discussions. Soyez le premier a demarrer un sujet dans le forum !",
+      "forumDescription": "Le forum Foresight est le coeur de la communaute pour les participants aux marches de prediction pour partager des analyses et des strategies. Vous pouvez creer des sujets pour discuter d'evenements reels ou rejoindre des analyses approfondies des predictions existantes.",
+      "gotoChat": "Aller au salon de chat",
+      "chatHint": "Dans le forum vous pouvez voir l'historique complet des messages, les listes de sujets et les marches de prediction lies. C'est aussi un bon endroit pour revisionner vos transactions avec les autres.",
+      "discoverEvents": "Aller a",
+      "orCreateNew": "pour decouvrir des evenements a discuter, ou",
+      "createNewProposal": "creer une nouvelle prediction"
     },
     "chart": {
-      "loading": "Market data loading...",
-      "outcomeFallback": "Outcome {index}"
+      "loading": "Chargement des donnees du marche...",
+      "outcomeFallback": "Resultat {index}"
     },
     "outcomes": {
-      "multiDistribution": "Multi-outcome probability distribution",
-      "realTimeUpdate": "Updated in real-time based on market prices"
+      "multiDistribution": "Distribution de probabilite multi-resultats",
+      "realTimeUpdate": "Mise a jour en temps reel basee sur les prix du marche"
     },
     "detail": {
-      "notFound": "Prediction event not found",
-      "priceHint": "Price represents the implied probability of the event. You can buy or sell positions at any time and quickly adjust when your view changes.",
-      "myPosition": "My position",
-      "stake": "Stake",
+      "notFound": "Evenement de prediction non trouve",
+      "priceHint": "Le prix represente la probabilite implicite de l'evenement. Vous pouvez acheter ou vendre des positions a tout moment et ajuster rapidement lorsque votre opinion change.",
+      "myPosition": "Ma position",
+      "stake": "Mise",
       "pnl": "PnL",
-      "implied": "Implied",
-      "proposalOriginHint": "This prediction market originates from community discussions in the Proposals Square. You can go back to the original proposal to continue exchanging ideas and iteration suggestions.",
-      "viewProposal": "View proposal",
-      "defaultDescription": "On-chain prediction market event. Trade your views on a decentralized blockchain-based prediction market platform.",
-      "defaultTitle": "Foresight Prediction Market Event",
-      "yesLabel": "Yes",
-      "noLabel": "No"
+      "implied": "Implicite",
+      "proposalOriginHint": "Ce marche de prediction provient des discussions de la communaute dans la Place des Propositions. Vous pouvez retourner a la proposition originale pour continuer a echanger des idees et des suggestions d'iteration.",
+      "viewProposal": "Voir la proposition",
+      "defaultDescription": "Evenement de marche de prediction on-chain. Tradez vos opinions sur une plateforme de marches de prediction decentralisee basee sur la blockchain.",
+      "defaultTitle": "Evenement de Marche de Prediction Foresight",
+      "yesLabel": "Oui",
+      "noLabel": "Non"
     },
     "searchPage": {
-      "metaTitle": "Foresight Global Search - Discover Prediction Markets & Proposals",
-      "metaDescription": "Quickly discover trending prediction markets, community proposals and discussions through Foresight global search. Connect events, governance and strategy research with keywords.",
-      "jsonLdName": "Foresight Global Search",
-      "jsonLdDescription": "Foresight global search results page, aggregating on-chain prediction markets, proposal square and discussion content to help you quickly find related events and topics.",
-      "heading": "Global Search",
-      "body": "You can use the search box in the top right corner (⌘K) to quickly search prediction markets, proposals and discussion content. This page is for external links and SEO descriptions. When you trigger search from the navigation bar, the global search panel will open.",
-      "queryHint": "The current URL contains query parameter q={query}. You can enter in the top search box again for real-time results."
-    }
-  },
-  "filters": {
-    "categoryLabel": "Category Filter",
-    "categories": {
-      "all": "All",
-      "crypto": "Crypto",
-      "sports": "Sports",
-      "politics": "Politics",
-      "tech": "Technology",
-      "entertainment": "Entertainment",
-      "weather": "Weather",
-      "business": "Business",
-      "other": "Other",
-      "more": "More"
-    },
-    "sort": {
-      "trending": {
-        "label": "Trending first",
-        "description": "Sort by attention and activity"
-      },
-      "newest": {
-        "label": "Newest",
-        "description": "Sort by creation time (newest first)"
-      },
-      "ending": {
-        "label": "Ending soon",
-        "description": "Sort by deadline (earliest first)"
-      },
-      "popular": {
-        "label": "Most followed",
-        "description": "Sort by number of followers"
-      }
-    },
-    "status": {
-      "all": "All statuses",
-      "active": "Active",
-      "pending": "Pending",
-      "ended": "Ended"
-    },
-    "actions": {
-      "filter": "Filter",
-      "clear": "Clear",
-      "statusFilter": "Status filter",
-      "currentFilter": "Current filter:"
-    }
-  },
-  "errors": {
-    "somethingWrong": "Oups ! Une erreur s’est produite !",
-    "pageNotFound": "Page not found",
-    "serverError": "Server error",
-    "networkError": "Network error",
-    "tryAgain": "Try again",
-    "goHome": "Back to home",
-    "contactSupport": "Contact support",
-    "debugInfo": "Debug info",
-    "noErrorMessage": "No error message",
-    "digestLabel": "Digest",
-    "followActionFailed": "Follow action failed, please try again later",
-    "componentLoadFailed": "Component failed to load",
-    "errorOccurred": "An error occurred",
-    "unknownError": "An unknown error occurred, please try again later",
-    "viewDetails": "View error details",
-    "errorMessage": "Error message",
-    "stackTrace": "Stack trace",
-    "componentStack": "Component stack",
-    "refreshPage": "Refresh page",
-    "autoReported": "Error automatically reported. We will fix it soon.",
-    "loadFailed": "Load failed",
-    "contentUnavailable": "This content is temporarily unavailable",
-    "imageLoadFailed": "Image failed to load",
-    "network": {
-      "title": "Network error",
-      "description": "Please check your connection and try again"
-    },
-    "api": {
-      "400": {
-        "title": "Bad request",
-        "description": "The submitted data format is invalid"
-      },
-      "401": {
-        "title": "Unauthorized",
-        "description": "Please connect your wallet and log in first"
-      },
-      "403": {
-        "title": "Forbidden",
-        "description": "You do not have permission to perform this action"
-      },
-      "404": {
-        "title": "Not found",
-        "description": "The requested content could not be found"
-      },
-      "409": {
-        "title": "Conflict",
-        "description": "The operation conflicts with existing data"
-      },
-      "429": {
-        "title": "Too many requests",
-        "description": "Please try again later"
-      },
-      "500": {
-        "title": "Server error",
-        "description": "The server encountered an issue, please try again later"
-      },
-      "503": {
-        "title": "Service unavailable",
-        "description": "The service is under maintenance, please try again later"
-      }
-    },
-    "business": {
-      "ORDER_EXPIRED": {
-        "title": "Order expired",
-        "description": "This order is no longer valid. Please refresh the order book and try again"
-      },
-      "INSUFFICIENT_BALANCE": {
-        "title": "Insufficient balance",
-        "description": "Your available balance is not enough to complete this action"
-      },
-      "MARKET_CLOSED": {
-        "title": "Market closed",
-        "description": "This market is closed and no longer accepts new orders"
-      }
-    },
-    "wallet": {
-      "notDetected": "No wallet detected. Please install a wallet extension.",
-      "connectFirst": "Please connect your wallet first",
-      "nonceFetchFailed": "Failed to fetch nonce (status {status})",
-      "nonceInvalid": "Could not get nonce. Please refresh the page and try again.",
-      "signatureRejected": "You cancelled the signature request",
-      "signatureFailed": "Signature failed, please try again",
-      "verifyFailed": "Verification failed, please try again",
-      "loginError": "Login failed, please try again",
-      "loggingIn": "Login in progress, please wait",
-      "providerUnavailable": "Wallet provider is unavailable",
-      "permissionsFailed": "Failed to request wallet permissions",
-      "addNetworkFailed": "Failed to add network, please try again later",
-      "networkNotConfigured": "Please add this network in your wallet",
-      "switchRejected": "You cancelled the network switch",
-      "useInBrowser": "Please use your wallet in a browser environment",
-      "installExtension": "Please install a wallet browser extension",
-      "okxNotInstalled": "OKX Wallet is not installed or not injected correctly. Please install the extension and refresh the page.",
-      "walletNotInitialized": "Wallet is not initialized correctly. Please refresh the page and try again.",
-      "okxNotInitialized": "OKX Wallet is not initialized correctly. Please refresh the page and try again.",
-      "connectFailed": "Failed to connect wallet",
-      "multisigFailed": "Multisig signing failed"
-    }
-  },
-  "accessibility": {
-    "number": {
-      "million": "{value} million",
-      "thousand": "{value} thousand"
-    },
-    "date": {
-      "today": "Today",
-      "yesterday": "Yesterday",
-      "daysAgo": "{count} days ago"
-    }
-  },
-  "login": {
-    "tabEmail": "Email login",
-    "tabWallet": "Wallet login",
-    "close": "Close",
-    "emailContinueTitle": "Continue with email",
-    "emailContinueDescription": "We will send you an email with a login link and a 6-digit code.",
-    "emailLabel": "Email address",
-    "emailPlaceholder": "you@example.com",
-    "sendOtp": "Send code",
-    "sendMagicLink": "Send magic link",
-    "agreePrefix": "By continuing, you agree to our",
-    "terms": "Terms of Service",
-    "and": "and",
-    "privacy": "Privacy Policy",
-    "agreeSuffix": ".",
-    "switchToWallet": "You can also switch to “Wallet login”.",
-    "otpTitle": "Enter the 6-digit code from your email",
-    "otpDescriptionPrefix": "We have sent an email to",
-    "otpDescriptionSuffix": ".",
-    "verifyAndLogin": "Verify and log in",
-    "resend": "Resend",
-    "otpHint": "You can also complete login by clicking the link in the email.",
-    "walletContinueTitle": "Continue with wallet",
-    "walletContinueDescription": "Supports popular wallets (MetaMask, Coinbase, Binance, OKX, etc.).",
-    "notInstalled": "Not installed",
-    "clickToConnect": "Click to connect",
-    "detectingWallets": "Detecting installed wallet extensions…",
-    "switchToEmail": "You can also switch to “Email login”."
-  },
-  "walletModal": {
-    "title": "Log in to Foresight",
-    "subtitle": "Continue with email or wallet",
-    "steps": {
-      "connectWallet": "Connect wallet",
-      "signIn": "Sign to log in",
-      "completeProfile": "Complete profile"
-    },
-    "hints": {
-      "selectLoginMethod": "Choose email login or connect a wallet",
-      "connectingWallet": "Connecting wallet, please confirm in your wallet",
-      "requestingPermissions": "Requesting wallet permissions",
-      "signToLogin": "Please sign the message in your wallet to log in",
-      "completingMultisig": "Completing multisig confirmation",
-      "completeProfileAndVerifyEmail": "Please complete your profile and verify your email",
-      "emailVerifiedSaveProfile": "Email verified, you can now save your profile",
-      "walletBoundComplete": "Wallet successfully linked, you can start using Foresight"
-    },
-    "profile": {
-      "title": "Complete user information",
-      "usernameLabel": "Username",
-      "usernamePlaceholder": "e.g. alice_01",
-      "sendOtpWithValidity": "Send code (valid for 15 minutes)",
-      "verifiedTag": "Verified",
-      "verifyEmail": "Verify email",
-      "otpTip": "The code is valid for 15 minutes. 3 failed attempts will lock for 1 hour.",
-      "resendHintPrefix": "Resend available in ",
-      "resendHintSuffix": "s",
-      "rememberMe": "Remember me",
-      "submit": "Save and continue",
-      "later": "Maybe later",
-      "emailInvalid": "Email format is invalid, please check and try again.",
-      "or": "or"
-    },
-    "devCodePreviewPrefix": "Dev verification code: ",
-    "errors": {
-      "invalidWalletAddress": "Invalid wallet address: must start with 0x and be 40 hex characters",
-      "usernameEmailRequired": "Username and email are required",
-      "usernameInvalid": "Invalid username: 3–20 characters, letters, numbers and underscore only",
-      "emailFormatInvalid": "Invalid email format: use a standard email such as name@example.com",
-      "emailNotVerified": "Please verify your email code first",
-      "submitFailed": "Submit failed",
-      "otpSendFailed": "Failed to send verification code",
-      "otpVerifyFailed": "Verification failed"
-    }
-  },
-  "search": {
-    "placeholder": "Search predictions, topics, users...",
-    "resultsTitle": "Search results",
-    "emptyTitle": "No results found",
-    "emptyDescription": "Try other keywords or browse hot searches",
-    "recentTitle": "Recent searches",
-    "clear": "Clear",
-    "hotTitle": "Hot searches",
-    "clearSearchAria": "Clear search",
-    "hintConfirm": "Confirm",
-    "hintClose": "Close",
-    "hintOpen": "Open search",
-    "hot": {
-      "usElection": "US election",
-      "btcPrice": "BTC price",
-      "worldCup": "World Cup",
-      "ai": "AI development",
-      "climate": "Climate change"
-    }
-  },
-  "trending": {
-    "hero": {
-      "globalClimateSummit": {
-        "title": "Global Climate Summit",
-        "description": "Discussing global strategies to tackle climate change"
-      },
-      "aiSafetySummit": {
-        "title": "AI Safety Conference",
-        "description": "Focusing on AI regulation and safety issues"
-      },
-      "globalFinanceForum": {
-        "title": "International Finance Forum",
-        "description": "Exploring digital currencies and the future of the economy"
-      },
-      "charitySportsMatch": {
-        "title": "Charity Sports Match",
-        "description": "Global athletes joining forces for charity"
-      },
-      "extremeWeatherAlert": {
-        "title": "Extreme Weather Alert",
-        "description": "Multiple regions issuing extreme weather warnings"
-      },
-      "techProductLaunch": {
-        "title": "New Tech Product Launch",
-        "description": "The latest tech products making a stunning debut"
-      },
-      "worldChampionshipFinal": {
-        "title": "World Championship Final",
-        "description": "Top teams clash in the ultimate showdown"
-      }
-    },
-    "category": {
-      "tech": "Technology",
-      "entertainment": "Entertainment",
-      "politics": "Politics",
-      "weather": "Weather",
-      "sports": "Sports",
-      "business": "Business",
-      "crypto": "Crypto",
-      "more": "More"
-    },
-    "metrics": {
-      "marketVol": "Market Vol",
-      "greed": "Greed",
-      "poolSize": "Pool Size",
-      "participants": "Participants",
-      "events": "Events",
-      "successRate": "Success Rate"
-    },
-    "badges": {
-      "dailyPick": "Daily Pick",
-      "trending": "Trending"
-    },
-    "platformDescription": "Foresight is a prediction market that helps you turn “I have a feeling…” into priced positions. Log your calls, see how others are pricing the same event, and get early signals before reality plays out.",
-    "sections": {
-      "popularCategories": "Popular Categories",
-      "hotEvents": "Trending Events",
-      "descPart1": "Want to participate from the idea stage? Start at",
-      "descPart2": "to propose or vote, approved markets will appear here; for research and insights, visit the",
-      "descPart3": "to browse discussions linked to these markets; to turn trading into long-term challenges, go to",
-      "descPart4": "to set goals and check your performance on the",
-      "descPart5": "; you can also use",
-      "descPart6": "to quickly find events related to your interests.",
-      "searchLink": "Search"
-    },
-    "actions": {
-      "viewAll": "View All",
-      "placePrediction": "Place Prediction",
-      "viewDetails": "View Details",
-      "createPrediction": "Create Prediction"
-    },
-    "search": {
-      "placeholder": "Search events...",
-      "activeLabel": "Search:",
-      "clear": "Clear search",
-      "resultPrefix": "Found ",
-      "resultSuffix": " events"
-    },
-    "empty": {
-      "title": "No predictions yet",
-      "description": "There are no prediction events available. Try switching categories or create a new one!",
-      "searchTitle": "No results for this search",
-      "searchDescription": "Try a different keyword, or clear the search above.",
-      "filteredTitle": "No events match your filters",
-      "filteredDescription": "Try adjusting filters or resetting them to see more events."
-    },
-    "footer": {
-      "copyright": "© 2025 Foresight. All rights reserved."
-    },
-    "state": {
-      "loading": "Loading data...",
-      "errorTitle": "Failed to load",
-      "reload": "Reload",
-      "loadMore": "Loading more...",
-      "scrollHint": "Scroll down to load more",
-      "allLoadedPrefix": "Showing all ",
-      "allLoadedSuffix": " predictions"
-    },
-    "card": {
-      "volumePrefix": "Volume $",
-      "optionFallbackPrefix": "Option "
-    },
-    "login": {
-      "title": "Please sign in",
-      "description": "Following prediction events requires connecting your wallet. Click the “Connect Wallet” button in the top-right corner to sign in.",
-      "benefitsTitle": "After signing in you can:",
-      "benefitFollow": "Follow prediction events you care about",
-      "benefitParticipate": "Participate in predictions and staking",
-      "benefitRewards": "Earn prediction rewards",
-      "later": "Maybe later",
-      "now": "Sign in now"
-    },
-    "admin": {
-      "page": {
-        "badge": "Admin Console",
-        "description": "Configure core data for the global prediction markets here. Please ensure rules are precise and unambiguous.",
-        "backToList": "Back to list",
-        "immutableWarning": "Important: Some key fields (such as title and deadline) cannot be edited after publishing.",
-        "submit": "Create now"
-      },
-      "draft": {
-        "savedMsg": "Draft saved",
-        "savedToastTitle": "Draft saved",
-        "savedToastDesc": "Your progress has been safely stored locally.",
-        "restoreConfirm": "A previous draft was found. Do you want to continue editing it?",
-        "restoredToastTitle": "Draft restored",
-        "restoredToastDesc": "You can continue editing from where you left off.",
-        "clearConfirm": "Are you sure you want to clear this draft? This action cannot be undone and all content will be lost.",
-        "clearedMsg": "Draft cleared",
-        "autoSavedPrefix": "Auto-saved at",
-        "menuLabel": "Draft actions",
-        "menuTitle": "Draft management",
-        "saveCurrent": "Save current draft",
-        "reset": "Discard and reset"
-      },
-      "section": {
-        "basicTitle": "Basic information",
-        "basicSubtitle": "Configure the core identifying parameters of the market",
-        "detailsTitle": "Detailed rules",
-        "detailsSubtitle": "Describe the prediction background and resolution criteria",
-        "typeTitle": "Prediction type and options",
-        "typeSubtitle": "Configure the outcomes users can choose"
-      },
-      "type": {
-        "binary": "Binary prediction",
-        "multi": "Multi-outcome prediction"
-      },
-      "multi": {
-        "optionsTitle": "Options list",
-        "addOption": "Add option",
-        "optionLabelPlaceholder": "Option name (e.g. Yes, No)",
-        "optionDescriptionPlaceholder": "Additional description",
-        "optionImagePlaceholder": "Image URL",
-        "optionColorPlaceholder": "Hex color"
-      },
-      "createFailed": "Create failed",
-      "createSuccess": "Created successfully",
-      "editDialogTitle": "Edit Event",
-      "fieldTitle": "Title",
-      "fieldTitlePlaceholder": "For example: Will Bitcoin price break $150,000 by 2025?",
-      "fieldCategory": "Category",
-      "fieldStatus": "Status",
-      "fieldDeadline": "Deadline",
-      "fieldMinStake": "Minimum Stake",
-      "fieldMinStakeLabel": "Minimum stake (USDC)",
-      "fieldDescription": "Background description",
-      "fieldDescriptionPlaceholder": "Describe the background, scope and other key information of this prediction in detail...",
-      "fieldCriteria": "Resolution criteria (Oracle Criteria)",
-      "fieldCriteriaPlaceholder": "For example: CoinMarketCap closing price at the deadline will be used as reference",
-      "fieldReferenceUrl": "Reference link (optional)",
-      "fieldReferenceUrlPlaceholder": "For example: https://coinmarketcap.com/ ...",
-      "confirmDelete": "Are you sure you want to delete this event?",
-      "updateFailed": "Update failed",
-      "deleteFailed": "Delete failed",
-      "updateSuccessTitle": "Update successful",
-      "updateSuccessDesc": "Prediction event has been updated successfully",
-      "deleteSuccessTitle": "Deletion successful",
-      "deleteSuccessDesc": "Prediction event has been deleted",
-      "retryLater": "Please try again later",
-      "cancel": "Cancel",
-      "saving": "Saving…",
-      "save": "Save",
-      "editAria": "Edit",
-      "deleteAria": "Delete",
-      "deadlinePlaceholder": "Select deadline"
-    }
-  },
-  "flags": {
-    "meta": {
-      "title": "Foresight Achievement Flags - Challenge badges and growth goals",
-      "description": "On the Foresight Achievement Flags page you can create and complete challenge tasks, unlock badges, and connect your personal goals with prediction markets, proposals, and community discussions.",
-      "ogTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
-      "ogDescription": "Set long-term challenges, track your progress, and use Flags as a bridge between real-world goals and prediction markets.",
-      "twitterTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
-      "twitterDescription": "Create and complete Flags to turn your ideas into commitments and visible progress."
-    },
-    "header": {
-      "title": "My Vision Board",
-      "badge": "Dream Big!",
-      "activeLabel": "Active",
-      "achievedLabel": "Achieved",
-      "tipPrefix": "Want to combine real-world goals with prediction markets? You can create a Flag from events in",
-      "tipTrending": "Trending",
-      "tipTrendingAction": ", start long-term challenges in",
-      "tipProposals": "Proposals",
-      "tipProposalsAction": ", check active challengers on",
-      "tipLeaderboard": "Leaderboard",
-      "tipLeaderboardAction": ", and find inspiration in",
-      "tipForum": "Forum",
-      "tipOr": "or",
-      "tipSearch": "Global Search",
-      "tipSuffix": "."
-    },
-    "page": {
-      "jsonLdName": "Foresight Achievement Flags",
-      "jsonLdDescription": "Create and complete challenge tasks on the Foresight Achievement Flags page, unlock achievement badges, record your prediction growth path, and connect with prediction markets, proposals and community discussions.",
-      "breadcrumbHome": "Home",
-      "breadcrumbFlags": "Achievement Flags"
-    },
-    "stats": {
-      "ongoingBadge": "Ongoing",
-      "flagsLabel": "Flags",
-      "activeDescription": "Challenges currently in progress",
-      "achievedBadge": "Achieved",
-      "goalsLabel": "Goals",
-      "successDescription": "Goals you have already achieved",
-      "focusLabel": "Focus Score",
-      "scoreBadge": "Score"
-    },
-    "card": {
-      "status": {
-        "active": "Active",
-        "pending_review": "Pending review",
-        "success": "Challenge succeeded",
-        "failed": "Challenge failed"
-      },
-      "time": {
-        "finished": "Finished",
-        "daysLeftSuffix": " days left",
-        "hoursLeftSuffix": " hours left",
-        "daysLabel": "Days"
-      },
-      "verification": {
-        "self": "Self check",
-        "friend": "Friend check"
-      },
-      "proofImageAlt": "Check-in image",
-      "tier": {
-        "light": "Light",
-        "standard": "Standard",
-        "intense": "Intense",
-        "hardcore": "Hardcore"
-      },
-      "actions": {
-        "history": "History",
-        "checkin": "Check in",
-        "settle": "Settle"
-      }
-    },
-    "invites": {
-      "textPrefix": "You have ",
-      "textSuffix": " check-ins waiting for review",
-      "button": "Review now"
-    },
-    "gallery": {
-      "button": "Sticker Gallery"
+      "metaTitle": "Recherche Globale Foresight - Decouvrez les Marches de Prediction et les Propositions",
+      "metaDescription": "Decouvrez rapidement les marches de prediction tendance, les propositions de la communaute et les discussions grace a la recherche globale Foresight. Connectez les evenements, la gouvernance et la recherche de strategie avec des mots-cles.",
+      "jsonLdName": "Recherche Globale Foresight",
+      "jsonLdDescription": "Page de resultats de recherche globale Foresight, agregant les marches de prediction on-chain, la place des propositions et le contenu des discussions pour vous aider a trouver rapidement les evenements et sujets lies.",
+      "heading": "Recherche Globale",
+      "body": "Vous pouvez utiliser la case de recherche en haut a droite (Cmd+K) pour rechercher rapidement des marches de prediction, des propositions et du contenu de discussion. Cette page est pour les liens externes et les descriptions SEO. Lorsque vous declenchez la recherche depuis la barre de navigation, le panneau de recherche globale s'ouvrira.",
+      "queryHint": "L'URL actuelle contient le parametre de requete q={query}. Vous pouvez entrer a nouveau dans la case de recherche en haut pour des resultats en temps reel."
     },
     "filters": {
-      "all": "All",
-      "active": "Active",
-      "success": "Done",
-      "witnessRequests": "Witness requests"
-    },
-    "state": {
-      "loading": "Loading your vision board..."
-    },
-    "createCard": {
-      "title": "Pin a new goal",
-      "subtitle": "Start a new journey"
-    },
-    "sidebar": {
-      "trendingTitle": "Trending",
-      "viewAll": "View All",
-      "quote": {
-        "text": "\"The only bad workout is the one that didn't happen.\"",
-        "label": "Daily Motivation"
-      }
-    },
-    "official": {
-      "title": "Official Featured Challenges",
-      "subtitle": "Over 10 curated challenge templates",
-      "cta": "Start now",
-      "templates": {
-        "early_bird": {
-          "title": "Early Bird Challenge",
-          "description": "Wake up and check in before 8 AM for 7 days"
+      "categoryLabel": "Filtre de Categorie",
+      "categories": {
+        "all": "Tout",
+        "crypto": "Crypto",
+        "sports": "Sports",
+        "politics": "Politique",
+        "tech": "Technologie",
+        "entertainment": "Divertissement",
+        "weather": "Meteo",
+        "business": "Business",
+        "other": "Autre",
+        "more": "Plus"
+      },
+      "sort": {
+        "trending": {
+          "label": "Tendance en premier",
+          "description": "Trier par attention et activite"
         },
-        "reading_marathon": {
-          "title": "Reading Marathon",
-          "description": "Read at least 30 minutes every day for 30 days"
+        "newest": {
+          "label": "Plus recent",
+          "description": "Trier par date de creation (plus recent en premier)"
         },
-        "fitness_pro": {
-          "title": "Fitness Pro",
-          "description": "Work out 3 times a week and keep it up for 4 weeks"
+        "ending": {
+          "label": "Bientot termine",
+          "description": "Trier par date limite (plus tot en premier)"
         },
-        "weather_prophet": {
-          "title": "Weather Prophet",
-          "description": "Predict tomorrow's weather and observe daily changes"
-        },
-        "no_takeout": {
-          "title": "No Takeout Today",
-          "description": "Cook for yourself or eat healthy, skip all takeout orders"
-        },
-        "sleep_early": {
-          "title": "Night Owl Buster",
-          "description": "Put your phone down and fall asleep before 11 PM tonight"
-        },
-        "walk_10k": {
-          "title": "Walk 10,000 Steps",
-          "description": "Explore the city on foot and stay active"
-        },
-        "digital_detox": {
-          "title": "Be Here Now",
-          "description": "Stay off your phone and enjoy 1 hour of quiet focus"
-        },
-        "declutter": {
-          "title": "Declutter Day",
-          "description": "Let go of one unneeded item and travel lighter"
-        },
-        "call_parents": {
-          "title": "Call Your Parents",
-          "description": "Give your parents a call and share your recent life"
+        "popular": {
+          "label": "Plus suivi",
+          "description": "Trier par nombre de followers"
         }
-      }
-    },
-    "rules": {
-      "title": "Rules & Rewards",
-      "tiers": "Tiers",
-      "dropRates": "Drop Rates",
-      "light": "Light (1-7 days): needs roughly 70% of days approved to succeed, with a solid chance to drop a sticker at settlement.",
-      "standard": "Standard (8-14 days): usually requires at least 5 approved days and around a 75% completion ratio.",
-      "intense": "Intense (15-30 days): expects at least 10 approved days and a strong overall completion ratio, with higher drop chances when you succeed.",
-      "hardcore": "Hardcore (>30 days): tuned for higher completion ratios (around 85%) and more days, with better odds of high-rarity stickers.",
-      "settleRuleHint": "The system automatically adjusts the required days and completion ratio based on how long your Flag runs, so longer challenges have stricter but clearer success criteria.",
-      "rewardHint": "Both check-ins and final settlement can drop stickers; longer and better-completed challenges enjoy noticeably higher drop rates and rarities."
-    },
-    "settleModal": {
-      "title": "Settle Challenge",
-      "subtitle": "Review your journey and claim rewards",
-      "confirm": "Confirm Settle",
-      "cancel": "Cancel",
-      "warning": "You cannot check in after settlement. Rewards will be calculated based on your progress."
-    },
-    "checkin": {
-      "title": "Capturing Your Grit 📝",
-      "subtitle": "Every small step forward deserves a huge high-five!",
-      "noteLabel": "How's your heart feeling?",
-      "notePlaceholder": "Jot down a thought, even a single word matters...",
-      "imageLabel": "Snap a little joy",
-      "imagePlaceholder": "Paste an image link to freeze this precious moment",
-      "cancel": "Maybe later",
-      "submit": "Log my progress ✨",
-      "submitLoading": "Tucking your effort into the time machine...",
-      "sideTitle": "Check-in moment",
-      "sidePrefix": "You’ve already stayed on the path of",
-      "sideSuffix": "for quite a while now!"
-    },
-    "history": {
-      "title": "Challenge History",
-      "witnessLabel": "Witness",
-      "empty": "No check-ins yet",
-      "intro": {
-        "witness": "Carefully review each check-in. Your judgment directly decides whether this challenge is regarded as completed.",
-        "default": "Look back on every step and see how your persistence adds up."
-      },
-      "labels": {
-        "currentWitnessTask": "Current review task",
-        "challengeTopic": "Challenge topic",
-        "initiator": "Creator",
-        "challengeDuration": "Challenge period",
-        "successCondition": "Success condition"
-      },
-      "successCondition": {
-        "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio.",
-        "dynamic": "Réussite avec au moins {minDays} jours approuvés et ≥{threshold}% de réalisation."
-      },
-      "actions": {
-        "approve": "Approve",
-        "reject": "Reject"
       },
       "status": {
-        "waitingReview": "Waiting for review",
-        "approved": "Verified",
-        "rejected": "Rejected"
+        "all": "Tous les statuts",
+        "active": "Actif",
+        "pending": "En attente",
+        "termine": "Termine"
       },
-      "reviewReason": {
-        "approved": "Looks good",
-        "rejected": "Witness rejected"
+      "actions": {
+        "filter": "Filtrer",
+        "clear": "Effacer",
+        "statusFilter": "Filtre de statut",
+        "currentFilter": "Filtre actuel :"
       }
     },
-    "toast": {
-      "walletRequiredTitle": "Connect your wallet first ✨",
-      "walletRequiredDesc": "Once we're linked up, we can plant this new Flag together.",
-      "titleRequiredTitle": "Give your goal a name",
-      "titleRequiredDesc": "Add a simple title like \"Evening walk\" to get started.",
-      "witnessRequiredTitle": "Missing your witness buddy",
-      "witnessRequiredDesc": "Add their ID or address so someone can cheer you on.",
-      "siweFailedTitle": "Verification failed",
-      "siweFailedDesc": "Please sign the message again to verify your wallet.",
-      "createSuccessTitle": "New Flag planted 🌱",
-      "createSuccessDesc": "It's now pinned to your board, waiting for your first check-in.",
-      "createFailedTitle": "Flag not created yet",
-      "createFailedDesc": "The network is a bit moody—try again in a moment.",
-      "loadFailedTitle": "Vision board didn't load quite right",
-      "noDataTitle": "Your board is still blank",
-      "noDataDesc": "Try planting a tiny, today-doable goal as your first Flag.",
-      "checkinSuccessTitle": "Check-in saved 🌟",
-      "checkinSuccessDesc": "Your effort is safely logged, and you even unlocked a new sticker!",
-      "checkinFailedTitle": "Check-in ran into a hiccup",
-      "checkinFailedDesc": "Looks like a network wobble—wait a bit and tap again.",
-      "checkinExpiredTitle": "Time's up for this Flag",
-      "checkinExpiredDesc": "This challenge has wrapped up—pat yourself on the back and start a new one ✨",
-      "reviewFailedTitle": "Review couldn't be submitted",
-      "reviewFailedDesc": "The connection flickered—give it a moment and try again.",
-      "settleConfirmMessage": "Settle this Flag now? We'll refund based on progress and gently wrap up this journey.",
-      "settleSuccessTitle": "Flag settled ✅",
-      "statusLabel": "Status",
-      "approvedDaysLabel": "Approved days",
-      "ratioLabel": "Completion rate",
-      "ruleLabel": "Rule",
-      "settleFailedTitle": "Settlement didn't go through",
-      "retryLater": "Please try again in a little while.",
-      "checkinSuccessNoStickerDesc": "Your effort is saved—no sticker this time, but many more rolls ahead.",
-      "noStickerSuffix": "no sticker this time, but there are plenty more chances."
-    },
-    "modal": {
-      "header": {
-        "joinChallengeTitle": "Join Challenge",
-        "joinChallengeSubtitle": "Let's do this together!",
-        "newFlagTitle": "New Flag",
-        "newFlagSubtitle": "Start your journey today"
+    "errors": {
+      "somethingWrong": "Oups ! Une erreur s’est produite !",
+      "pageNotFound": "Page not found",
+      "serverError": "Server error",
+      "networkError": "Network error",
+      "tryAgain": "Try again",
+      "goHome": "Back to home",
+      "contactSupport": "Contact support",
+      "debugInfo": "Debug info",
+      "noErrorMessage": "No error message",
+      "digestLabel": "Digest",
+      "followActionFailed": "Follow action failed, please try again later",
+      "componentLoadFailed": "Component failed to load",
+      "errorOccurred": "An error occurred",
+      "unknownError": "An unknown error occurred, please try again later",
+      "viewDetails": "View error details",
+      "errorMessage": "Error message",
+      "stackTrace": "Stack trace",
+      "componentStack": "Component stack",
+      "refreshPage": "Refresh page",
+      "autoReported": "Error automatically reported. We will fix it soon.",
+      "loadFailed": "Load failed",
+      "contentUnavailable": "This content is temporarily unavailable",
+      "imageLoadFailed": "Image failed to load",
+      "network": {
+        "title": "Network error",
+        "description": "Please check your connection and try again"
       },
-      "form": {
-        "titleLabel": "Flag Title",
-        "titlePlaceholder": "e.g. Read 10 pages daily",
-        "descLabel": "Details & Rules",
-        "descPlaceholder": "Describe your plan...",
-        "verificationLabel": "Verification",
-        "selfCheck": "Self Check",
-        "friendCheck": "Friend Check",
-        "witnessLabel": "Witness ID / Address",
-        "witnessPlaceholder": "Enter friend's ID or Address",
-        "targetDateLabel": "Target Date (Optional)",
-        "targetDatePlaceholder": "Select Date"
-      },
-      "footer": {
-        "cancel": "Cancel",
-        "joinNow": "Join Now",
-        "createFlag": "Create Flag"
-      },
-      "templates": {
-        "early_morning": {
-          "title": "Early wake-up {hour}:00 check-in",
-          "desc": "Goal: Wake up and check in before {hour}:00\\nProof: Morning note or photo"
+      "api": {
+        "400": {
+          "title": "Bad request",
+          "description": "The submitted data format is invalid"
         },
-        "drink_water_8": {
-          "title": "Drink {cups} cups of water",
-          "desc": "Goal: Drink {cups} cups of water today\\nProof: Simple log or photo"
+        "401": {
+          "title": "Unauthorized",
+          "description": "Please connect your wallet and log in first"
         },
-        "steps_10k": {
-          "title": "Steps ≥ {steps}",
-          "desc": "Goal: Reach at least {steps} steps today\\nProof: Screenshot from your device"
+        "403": {
+          "title": "Forbidden",
+          "description": "You do not have permission to perform this action"
         },
-        "read_20_pages": {
-          "title": "Read {pages} pages",
-          "desc": "Goal: Read {pages} pages today\\nProof: Book title and page numbers"
+        "404": {
+          "title": "Not found",
+          "description": "The requested content could not be found"
         },
-        "meditate_10m": {
-          "title": "Meditate for {minutes} minutes",
-          "desc": "Goal: Meditate for {minutes} minutes\\nProof: Timer log or screenshot"
+        "409": {
+          "title": "Conflict",
+          "description": "The operation conflicts with existing data"
         },
-        "sleep_before_11": {
-          "title": "Sleep before {hour}:00",
-          "desc": "Goal: Go to bed before {hour}:00 today\\nProof: Personal note or app screenshot"
+        "429": {
+          "title": "Too many requests",
+          "description": "Please try again later"
         },
-        "sunlight_20m": {
-          "title": "Sunlight for {minutes} minutes",
-          "desc": "Goal: Get {minutes} minutes of sunlight\\nProof: Place and time record"
+        "500": {
+          "title": "Server error",
+          "description": "The server encountered an issue, please try again later"
         },
-        "tidy_room_10m": {
-          "title": "Tidy your room for {minutes} minutes",
-          "desc": "Goal: Tidy up for at least {minutes} minutes\\nProof: Before-and-after photos"
+        "503": {
+          "title": "Service unavailable",
+          "description": "The service is under maintenance, please try again later"
         }
       },
-      "flow": {
-        "roleOfficial": "Companion",
-        "roleUser": "Dreamer",
-        "stepIndicator": {
-          "step1": "Step 1: Seed",
-          "step2": "Step 2: Nurture",
-          "step3": "Step 3: Launch"
+      "business": {
+        "ORDER_EXPIRED": {
+          "title": "Order expired",
+          "description": "This order is no longer valid. Please refresh the order book and try again"
         },
-        "step2Title": "How do we witness this together? 🤝",
-        "step2Subtitle": "Choose the kind of accountability that motivates you most",
-        "selfCheckDescription": "Being honest with yourself is the coolest thing.",
-        "friendCheckDescription": "Find a trusted friend so you can keep each other on track.",
-        "step3Title": "Finally, pick a deadline 📅",
-        "step3Subtitle": "Give your future self a small ritual to look forward to",
-        "readyTitle": "Ready to go?",
-        "readySubtitle": "Once you set this goal, we'll stay with you all the way.",
-        "backButton": "Back",
-        "nextButton": "Next step"
-      }
-    }
-  },
-  "profile": {
-    "avatarAlt": "Profile avatar",
-    "username": {
-      "anonymous": "Anonymous user",
-      "walletDisconnected": "Wallet not connected"
-    },
-    "disconnected": {
-      "title": "Wallet not connected",
-      "description": "Connect your wallet to view your predictions, history, and follows.",
-      "actionConnect": "Connect wallet"
-    },
-    "sidebar": {
-      "tabs": {
-        "overview": "Overview",
-        "predictions": "My predictions",
-        "makerEarnings": "Maker earnings",
-        "history": "Browsing history",
-        "following": "Following",
-        "security": "Account & Security"
-      },
-      "stats": {
-        "predictions": "Preds",
-        "followers": "Followers",
-        "following": "Following",
-        "history": "History"
-      },
-      "settings": "Settings",
-      "disconnect": "Disconnect"
-    },
-    "security": {
-      "emailChangeTitle": "Change email",
-      "emailChangeNeedVerified": "Verify your email before changing it.",
-      "currentEmail": "Current email",
-      "newEmail": "New email",
-      "newEmailPlaceholder": "new@example.com",
-      "otpPlaceholder": "123456",
-      "emailChangeVerifyOld": "Send code to current email",
-      "emailChangeConfirmOld": "Confirm current email code",
-      "emailChangeSendNew": "Send code to new email",
-      "emailChangeConfirmNew": "Confirm new email code",
-      "sessionsTitle": "Devices",
-      "revokeAll": "Sign out all devices",
-      "noSessions": "No active sessions",
-      "unknownMethod": "Unknown",
-      "currentSession": "This device",
-      "createdAt": "Created",
-      "lastSeenAt": "Last active",
-      "ip": "IP",
-      "device": "Device",
-      "revoke": "Sign out",
-      "auditTitle": "Recent sign-ins",
-      "noAudit": "No sign-in history"
-    },
-    "overview": {
-      "cards": {
-        "totalInvested": "Total stake",
-        "totalPnl": "Total PnL",
-        "winRate": "Win rate",
-        "eventsCount": "Events joined",
-        "eventsSummary": "Joined {count} predictions"
-      },
-      "activity": {
-        "title": "Recent activity",
-        "type": {
-          "buy": "Buy",
-          "settle": "Settlement",
-          "view": "View"
+        "INSUFFICIENT_BALANCE": {
+          "title": "Insufficient balance",
+          "description": "Your available balance is not enough to complete this action"
         },
-        "item": {
-          "buy": "Bought Yes - Bitcoin 100k",
-          "settle": "Settled profit +$50",
-          "view": "Viewed SpaceX topic"
-        },
-        "timeExample": "2 hours ago"
+        "MARKET_CLOSED": {
+          "title": "Market closed",
+          "description": "This market is closed and no longer accepts new orders"
+        }
+      },
+      "wallet": {
+        "notDetected": "No wallet detected. Please install a wallet extension.",
+        "connectFirst": "Please connect your wallet first",
+        "nonceFetchFailed": "Failed to fetch nonce (status {status})",
+        "nonceInvalid": "Could not get nonce. Please refresh the page and try again.",
+        "signatureRejected": "You cancelled the signature request",
+        "signatureFailed": "Signature failed, please try again",
+        "verifyFailed": "Verification failed, please try again",
+        "loginError": "Login failed, please try again",
+        "loggingIn": "Login in progress, please wait",
+        "providerUnavailable": "Wallet provider is unavailable",
+        "permissionsFailed": "Failed to request wallet permissions",
+        "addNetworkFailed": "Failed to add network, please try again later",
+        "networkNotConfigured": "Please add this network in your wallet",
+        "switchRejected": "You cancelled the network switch",
+        "useInBrowser": "Please use your wallet in a browser environment",
+        "installExtension": "Please install a wallet browser extension",
+        "okxNotInstalled": "OKX Wallet is not installed or not injected correctly. Please install the extension and refresh the page.",
+        "walletNotInitialized": "Wallet is not initialized correctly. Please refresh the page and try again.",
+        "okxNotInitialized": "OKX Wallet is not initialized correctly. Please refresh the page and try again.",
+        "connectFailed": "Failed to connect wallet",
+        "multisigFailed": "Multisig signing failed"
       }
     },
-    "predictions": {
+    "accessibility": {
+      "number": {
+        "million": "{value} million",
+        "thousand": "{value} thousand"
+      },
+      "date": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "daysAgo": "{count} days ago"
+      }
+    },
+    "login": {
+      "tabEmail": "Email login",
+      "tabWallet": "Wallet login",
+      "close": "Close",
+      "emailContinueTitle": "Continue with email",
+      "emailContinueDescription": "We will send you an email with a login link and a 6-digit code.",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "sendOtp": "Send code",
+      "sendMagicLink": "Send magic link",
+      "agreePrefix": "By continuing, you agree to our",
+      "terms": "Terms of Service",
+      "and": "and",
+      "privacy": "Privacy Policy",
+      "agreeSuffix": ".",
+      "switchToWallet": "You can also switch to “Wallet login”.",
+      "otpTitle": "Enter the 6-digit code from your email",
+      "otpDescriptionPrefix": "We have sent an email to",
+      "otpDescriptionSuffix": ".",
+      "verifyAndLogin": "Verify and log in",
+      "resend": "Resend",
+      "otpHint": "You can also complete login by clicking the link in the email.",
+      "walletContinueTitle": "Continue with wallet",
+      "walletContinueDescription": "Supports popular wallets (MetaMask, Coinbase, Binance, OKX, etc.).",
+      "notInstalled": "Not installed",
+      "clickToConnect": "Click to connect",
+      "detectingWallets": "Detecting installed wallet extensions…",
+      "switchToEmail": "You can also switch to “Email login”."
+    },
+    "walletModal": {
+      "title": "Log in to Foresight",
+      "subtitle": "Continue with email or wallet",
+      "steps": {
+        "connectWallet": "Connect wallet",
+        "signIn": "Sign to log in",
+        "completeProfile": "Complete profile"
+      },
+      "hints": {
+        "selectLoginMethod": "Choose email login or connect a wallet",
+        "connectingWallet": "Connecting wallet, please confirm in your wallet",
+        "requestingPermissions": "Requesting wallet permissions",
+        "signToLogin": "Please sign the message in your wallet to log in",
+        "completingMultisig": "Completing multisig confirmation",
+        "completeProfileAndVerifyEmail": "Please complete your profile and verify your email",
+        "emailVerifiedSaveProfile": "Email verified, you can now save your profile",
+        "walletBoundComplete": "Wallet successfully linked, you can start using Foresight"
+      },
+      "profile": {
+        "title": "Complete user information",
+        "usernameLabel": "Username",
+        "usernamePlaceholder": "e.g. alice_01",
+        "sendOtpWithValidity": "Send code (valid for 15 minutes)",
+        "verifiedTag": "Verified",
+        "verifyEmail": "Verify email",
+        "otpTip": "The code is valid for 15 minutes. 3 failed attempts will lock for 1 hour.",
+        "resendHintPrefix": "Resend available in ",
+        "resendHintSuffix": "s",
+        "rememberMe": "Remember me",
+        "submit": "Save and continue",
+        "later": "Maybe later",
+        "emailInvalid": "Email format is invalid, please check and try again.",
+        "or": "or"
+      },
+      "devCodePreviewPrefix": "Dev verification code: ",
       "errors": {
-        "loadFailed": "Failed to load predictions"
+        "invalidWalletAddress": "Invalid wallet address: must start with 0x and be 40 hex characters",
+        "usernameEmailRequired": "Username and email are required",
+        "usernameInvalid": "Invalid username: 3–20 characters, letters, numbers and underscore only",
+        "emailFormatInvalid": "Invalid email format: use a standard email such as name@example.com",
+        "emailNotVerified": "Please verify your email code first",
+        "submitFailed": "Submit failed",
+        "otpSendFailed": "Failed to send verification code",
+        "otpVerifyFailed": "Verification failed"
+      }
+    },
+    "search": {
+      "placeholder": "Search predictions, topics, users...",
+      "resultsTitle": "Search results",
+      "emptyTitle": "No results found",
+      "emptyDescription": "Try other keywords or browse hot searches",
+      "recentTitle": "Recent searches",
+      "clear": "Clear",
+      "hotTitle": "Hot searches",
+      "clearSearchAria": "Clear search",
+      "hintConfirm": "Confirm",
+      "hintClose": "Close",
+      "hintOpen": "Open search",
+      "hot": {
+        "usElection": "US election",
+        "btcPrice": "BTC price",
+        "worldCup": "World Cup",
+        "ai": "AI development",
+        "climate": "Climate change"
+      }
+    },
+    "trending": {
+      "hero": {
+        "globalClimateSummit": {
+          "title": "Global Climate Summit",
+          "description": "Discussing global strategies to tackle climate change"
+        },
+        "aiSafetySummit": {
+          "title": "AI Safety Conference",
+          "description": "Focusing on AI regulation and safety issues"
+        },
+        "globalFinanceForum": {
+          "title": "International Finance Forum",
+          "description": "Exploring digital currencies and the future of the economy"
+        },
+        "charitySportsMatch": {
+          "title": "Charity Sports Match",
+          "description": "Global athletes joining forces for charity"
+        },
+        "extremeWeatherAlert": {
+          "title": "Extreme Weather Alert",
+          "description": "Multiple regions issuing extreme weather warnings"
+        },
+        "techProductLaunch": {
+          "title": "New Tech Product Launch",
+          "description": "The latest tech products making a stunning debut"
+        },
+        "worldChampionshipFinal": {
+          "title": "World Championship Final",
+          "description": "Top teams clash in the ultimate showdown"
+        }
+      },
+      "category": {
+        "tech": "Technology",
+        "entertainment": "Entertainment",
+        "politics": "Politics",
+        "weather": "Weather",
+        "sports": "Sports",
+        "business": "Business",
+        "crypto": "Crypto",
+        "more": "More"
+      },
+      "metrics": {
+        "marketVol": "Market Vol",
+        "greed": "Greed",
+        "poolSize": "Pool Size",
+        "participants": "Participants",
+        "events": "Events",
+        "successRate": "Success Rate"
+      },
+      "badges": {
+        "dailyPick": "Daily Pick",
+        "trending": "Trending"
+      },
+      "platformDescription": "Foresight is a prediction market that helps you turn “I have a feeling…” into priced positions. Log your calls, see how others are pricing the same event, and get early signals before reality plays out.",
+      "sections": {
+        "popularCategories": "Popular Categories",
+        "hotEvents": "Trending Events",
+        "descPart1": "Want to participate from the idea stage? Start at",
+        "descPart2": "to propose or vote, approved markets will appear here; for research and insights, visit the",
+        "descPart3": "to browse discussions linked to these markets; to turn trading into long-term challenges, go to",
+        "descPart4": "to set goals and check your performance on the",
+        "descPart5": "; you can also use",
+        "descPart6": "to quickly find events related to your interests.",
+        "searchLink": "Search"
+      },
+      "actions": {
+        "viewAll": "View All",
+        "placePrediction": "Place Prediction",
+        "viewDetails": "View Details",
+        "createPrediction": "Create Prediction"
+      },
+      "search": {
+        "placeholder": "Search events...",
+        "activeLabel": "Search:",
+        "clear": "Clear search",
+        "resultPrefix": "Found ",
+        "resultSuffix": " events"
       },
       "empty": {
         "title": "No predictions yet",
-        "description": "Join your first prediction!"
+        "description": "There are no prediction events available. Try switching categories or create a new one!",
+        "searchTitle": "No results for this search",
+        "searchDescription": "Try a different keyword, or clear the search above.",
+        "filteredTitle": "No events match your filters",
+        "filteredDescription": "Try adjusting filters or resetting them to see more events."
       },
-      "header": "My predictions",
-      "alt": {
-        "cover": "Prediction cover"
+      "footer": {
+        "copyright": "© 2025 Foresight. All rights reserved."
       },
-      "labels": {
-        "stake": "Stake",
-        "participants": "{count} participants",
-        "yourSideProbability": "Market probability of your chosen side",
-        "volumePrefix": "Volume $"
+      "state": {
+        "loading": "Loading data...",
+        "errorTitle": "Failed to load",
+        "reload": "Reload",
+        "loadMore": "Loading more...",
+        "scrollHint": "Scroll down to load more",
+        "allLoadedPrefix": "Showing all ",
+        "allLoadedSuffix": " predictions"
+      },
+      "card": {
+        "volumePrefix": "Volume $",
+        "optionFallbackPrefix": "Option "
+      },
+      "login": {
+        "title": "Please sign in",
+        "description": "Following prediction events requires connecting your wallet. Click the “Connect Wallet” button in the top-right corner to sign in.",
+        "benefitsTitle": "After signing in you can:",
+        "benefitFollow": "Follow prediction events you care about",
+        "benefitParticipate": "Participate in predictions and staking",
+        "benefitRewards": "Earn prediction rewards",
+        "later": "Maybe later",
+        "now": "Sign in now"
+      },
+      "admin": {
+        "page": {
+          "badge": "Admin Console",
+          "description": "Configure core data for the global prediction markets here. Please ensure rules are precise and unambiguous.",
+          "backToList": "Back to list",
+          "immutableWarning": "Important: Some key fields (such as title and deadline) cannot be edited after publishing.",
+          "submit": "Create now"
+        },
+        "draft": {
+          "savedMsg": "Draft saved",
+          "savedToastTitle": "Draft saved",
+          "savedToastDesc": "Your progress has been safely stored locally.",
+          "restoreConfirm": "A previous draft was found. Do you want to continue editing it?",
+          "restoredToastTitle": "Draft restored",
+          "restoredToastDesc": "You can continue editing from where you left off.",
+          "clearConfirm": "Are you sure you want to clear this draft? This action cannot be undone and all content will be lost.",
+          "clearedMsg": "Draft cleared",
+          "autoSavedPrefix": "Auto-saved at",
+          "menuLabel": "Draft actions",
+          "menuTitle": "Draft management",
+          "saveCurrent": "Save current draft",
+          "reset": "Discard and reset"
+        },
+        "section": {
+          "basicTitle": "Basic information",
+          "basicSubtitle": "Configure the core identifying parameters of the market",
+          "detailsTitle": "Detailed rules",
+          "detailsSubtitle": "Describe the prediction background and resolution criteria",
+          "typeTitle": "Prediction type and options",
+          "typeSubtitle": "Configure the outcomes users can choose"
+        },
+        "type": {
+          "binary": "Binary prediction",
+          "multi": "Multi-outcome prediction"
+        },
+        "multi": {
+          "optionsTitle": "Options list",
+          "addOption": "Add option",
+          "optionLabelPlaceholder": "Option name (e.g. Yes, No)",
+          "optionDescriptionPlaceholder": "Additional description",
+          "optionImagePlaceholder": "Image URL",
+          "optionColorPlaceholder": "Hex color"
+        },
+        "createFailed": "Create failed",
+        "createSuccess": "Created successfully",
+        "editDialogTitle": "Edit Event",
+        "fieldTitle": "Title",
+        "fieldTitlePlaceholder": "For example: Will Bitcoin price break $150,000 by 2025?",
+        "fieldCategory": "Category",
+        "fieldStatus": "Status",
+        "fieldDeadline": "Deadline",
+        "fieldMinStake": "Minimum Stake",
+        "fieldMinStakeLabel": "Minimum stake (USDC)",
+        "fieldDescription": "Background description",
+        "fieldDescriptionPlaceholder": "Describe the background, scope and other key information of this prediction in detail...",
+        "fieldCriteria": "Resolution criteria (Oracle Criteria)",
+        "fieldCriteriaPlaceholder": "For example: CoinMarketCap closing price at the deadline will be used as reference",
+        "fieldReferenceUrl": "Reference link (optional)",
+        "fieldReferenceUrlPlaceholder": "For example: https://coinmarketcap.com/ ...",
+        "confirmDelete": "Are you sure you want to delete this event?",
+        "updateFailed": "Update failed",
+        "deleteFailed": "Delete failed",
+        "updateSuccessTitle": "Update successful",
+        "updateSuccessDesc": "Prediction event has been updated successfully",
+        "deleteSuccessTitle": "Deletion successful",
+        "deleteSuccessDesc": "Prediction event has been deleted",
+        "retryLater": "Please try again later",
+        "cancel": "Cancel",
+        "saving": "Saving…",
+        "save": "Save",
+        "editAria": "Edit",
+        "deleteAria": "Delete",
+        "deadlinePlaceholder": "Select deadline"
       }
     },
-    "history": {
-      "empty": {
-        "title": "No browsing history",
-        "description": "Explore more interesting predictions!"
+    "flags": {
+      "meta": {
+        "title": "Foresight Achievement Flags - Challenge badges and growth goals",
+        "description": "On the Foresight Achievement Flags page you can create and complete challenge tasks, unlock badges, and connect your personal goals with prediction markets, proposals, and community discussions.",
+        "ogTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
+        "ogDescription": "Set long-term challenges, track your progress, and use Flags as a bridge between real-world goals and prediction markets.",
+        "twitterTitle": "Foresight Achievement Flags - Challenge badges and growth goals",
+        "twitterDescription": "Create and complete Flags to turn your ideas into commitments and visible progress."
       },
-      "title": "Browsing history",
-      "alt": {
-        "cover": "History cover"
+      "header": {
+        "title": "My Vision Board",
+        "badge": "Dream Big!",
+        "activeLabel": "Active",
+        "achievedLabel": "Achieved",
+        "tipPrefix": "Want to combine real-world goals with prediction markets? You can create a Flag from events in",
+        "tipTrending": "Trending",
+        "tipTrendingAction": ", start long-term challenges in",
+        "tipProposals": "Proposals",
+        "tipProposalsAction": ", check active challengers on",
+        "tipLeaderboard": "Leaderboard",
+        "tipLeaderboardAction": ", and find inspiration in",
+        "tipForum": "Forum",
+        "tipOr": "or",
+        "tipSearch": "Global Search",
+        "tipSuffix": "."
+      },
+      "page": {
+        "jsonLdName": "Foresight Achievement Flags",
+        "jsonLdDescription": "Create and complete challenge tasks on the Foresight Achievement Flags page, unlock achievement badges, record your prediction growth path, and connect with prediction markets, proposals and community discussions.",
+        "breadcrumbHome": "Home",
+        "breadcrumbFlags": "Achievement Flags"
+      },
+      "stats": {
+        "ongoingBadge": "Ongoing",
+        "flagsLabel": "Flags",
+        "activeDescription": "Challenges currently in progress",
+        "achievedBadge": "Achieved",
+        "goalsLabel": "Goals",
+        "successDescription": "Goals you have already achieved",
+        "focusLabel": "Focus Score",
+        "scoreBadge": "Score"
+      },
+      "card": {
+        "status": {
+          "active": "Active",
+          "pending_review": "Pending review",
+          "success": "Challenge succeeded",
+          "failed": "Challenge failed"
+        },
+        "time": {
+          "finished": "Finished",
+          "daysLeftSuffix": " days left",
+          "hoursLeftSuffix": " hours left",
+          "daysLabel": "Days"
+        },
+        "verification": {
+          "self": "Self check",
+          "friend": "Friend check"
+        },
+        "proofImageAlt": "Check-in image",
+        "tier": {
+          "light": "Light",
+          "standard": "Standard",
+          "intense": "Intense",
+          "hardcore": "Hardcore"
+        },
+        "actions": {
+          "history": "History",
+          "checkin": "Check in",
+          "settle": "Settle"
+        }
+      },
+      "invites": {
+        "textPrefix": "You have ",
+        "textSuffix": " check-ins waiting for review",
+        "button": "Review now"
+      },
+      "gallery": {
+        "button": "Sticker Gallery"
+      },
+      "filters": {
+        "all": "All",
+        "active": "Active",
+        "success": "Done",
+        "witnessRequests": "Witness requests"
+      },
+      "state": {
+        "loading": "Loading your vision board..."
+      },
+      "createCard": {
+        "title": "Pin a new goal",
+        "subtitle": "Start a new journey"
+      },
+      "sidebar": {
+        "trendingTitle": "Trending",
+        "viewAll": "View All",
+        "quote": {
+          "text": "\"The only bad workout is the one that didn't happen.\"",
+          "label": "Daily Motivation"
+        }
+      },
+      "official": {
+        "title": "Official Featured Challenges",
+        "subtitle": "Over 10 curated challenge templates",
+        "cta": "Start now",
+        "templates": {
+          "early_bird": {
+            "title": "Early Bird Challenge",
+            "description": "Wake up and check in before 8 AM for 7 days"
+          },
+          "reading_marathon": {
+            "title": "Reading Marathon",
+            "description": "Read at least 30 minutes every day for 30 days"
+          },
+          "fitness_pro": {
+            "title": "Fitness Pro",
+            "description": "Work out 3 times a week and keep it up for 4 weeks"
+          },
+          "weather_prophet": {
+            "title": "Weather Prophet",
+            "description": "Predict tomorrow's weather and observe daily changes"
+          },
+          "no_takeout": {
+            "title": "No Takeout Today",
+            "description": "Cook for yourself or eat healthy, skip all takeout orders"
+          },
+          "sleep_early": {
+            "title": "Night Owl Buster",
+            "description": "Put your phone down and fall asleep before 11 PM tonight"
+          },
+          "walk_10k": {
+            "title": "Walk 10,000 Steps",
+            "description": "Explore the city on foot and stay active"
+          },
+          "digital_detox": {
+            "title": "Be Here Now",
+            "description": "Stay off your phone and enjoy 1 hour of quiet focus"
+          },
+          "declutter": {
+            "title": "Declutter Day",
+            "description": "Let go of one unneeded item and travel lighter"
+          },
+          "call_parents": {
+            "title": "Call Your Parents",
+            "description": "Give your parents a call and share your recent life"
+          }
+        }
+      },
+      "rules": {
+        "title": "Rules & Rewards",
+        "tiers": "Tiers",
+        "dropRates": "Drop Rates",
+        "light": "Light (1-7 days): needs roughly 70% of days approved to succeed, with a solid chance to drop a sticker at settlement.",
+        "standard": "Standard (8-14 days): usually requires at least 5 approved days and around a 75% completion ratio.",
+        "intense": "Intense (15-30 days): expects at least 10 approved days and a strong overall completion ratio, with higher drop chances when you succeed.",
+        "hardcore": "Hardcore (>30 days): tuned for higher completion ratios (around 85%) and more days, with better odds of high-rarity stickers.",
+        "settleRuleHint": "The system automatically adjusts the required days and completion ratio based on how long your Flag runs, so longer challenges have stricter but clearer success criteria.",
+        "rewardHint": "Both check-ins and final settlement can drop stickers; longer and better-completed challenges enjoy noticeably higher drop rates and rarities."
+      },
+      "settleModal": {
+        "title": "Settle Challenge",
+        "subtitle": "Review your journey and claim rewards",
+        "confirm": "Confirm Settle",
+        "cancel": "Cancel",
+        "warning": "You cannot check in after settlement. Rewards will be calculated based on your progress."
+      },
+      "checkin": {
+        "title": "Capturing Your Grit 📝",
+        "subtitle": "Every small step forward deserves a huge high-five!",
+        "noteLabel": "How's your heart feeling?",
+        "notePlaceholder": "Jot down a thought, even a single word matters...",
+        "imageLabel": "Snap a little joy",
+        "imagePlaceholder": "Paste an image link to freeze this precious moment",
+        "cancel": "Maybe later",
+        "submit": "Log my progress ✨",
+        "submitLoading": "Tucking your effort into the time machine...",
+        "sideTitle": "Check-in moment",
+        "sidePrefix": "You’ve already stayed on the path of",
+        "sideSuffix": "for quite a while now!"
+      },
+      "history": {
+        "title": "Challenge History",
+        "witnessLabel": "Witness",
+        "empty": "No check-ins yet",
+        "intro": {
+          "witness": "Carefully review each check-in. Your judgment directly decides whether this challenge is regarded as completed.",
+          "default": "Look back on every step and see how your persistence adds up."
+        },
+        "labels": {
+          "currentWitnessTask": "Current review task",
+          "challengeTopic": "Challenge topic",
+          "initiator": "Creator",
+          "challengeDuration": "Challenge period",
+          "successCondition": "Success condition"
+        },
+        "successCondition": {
+          "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio.",
+          "dynamic": "Réussite avec au moins {minDays} jours approuvés et ≥{threshold}% de réalisation."
+        },
+        "actions": {
+          "approve": "Approve",
+          "reject": "Reject"
+        },
+        "status": {
+          "waitingReview": "Waiting for review",
+          "approved": "Verified",
+          "rejected": "Rejected"
+        },
+        "reviewReason": {
+          "approved": "Looks good",
+          "rejected": "Witness rejected"
+        }
+      },
+      "toast": {
+        "walletRequiredTitle": "Connect your wallet first ✨",
+        "walletRequiredDesc": "Once we're linked up, we can plant this new Flag together.",
+        "titleRequiredTitle": "Give your goal a name",
+        "titleRequiredDesc": "Add a simple title like \"Evening walk\" to get started.",
+        "witnessRequiredTitle": "Missing your witness buddy",
+        "witnessRequiredDesc": "Add their ID or address so someone can cheer you on.",
+        "siweFailedTitle": "Verification failed",
+        "siweFailedDesc": "Please sign the message again to verify your wallet.",
+        "createSuccessTitle": "New Flag planted 🌱",
+        "createSuccessDesc": "It's now pinned to your board, waiting for your first check-in.",
+        "createFailedTitle": "Flag not created yet",
+        "createFailedDesc": "The network is a bit moody—try again in a moment.",
+        "loadFailedTitle": "Vision board didn't load quite right",
+        "noDataTitle": "Your board is still blank",
+        "noDataDesc": "Try planting a tiny, today-doable goal as your first Flag.",
+        "checkinSuccessTitle": "Check-in saved 🌟",
+        "checkinSuccessDesc": "Your effort is safely logged, and you even unlocked a new sticker!",
+        "checkinFailedTitle": "Check-in ran into a hiccup",
+        "checkinFailedDesc": "Looks like a network wobble—wait a bit and tap again.",
+        "checkinExpiredTitle": "Time's up for this Flag",
+        "checkinExpiredDesc": "This challenge has wrapped up—pat yourself on the back and start a new one ✨",
+        "reviewFailedTitle": "Review couldn't be submitted",
+        "reviewFailedDesc": "The connection flickered—give it a moment and try again.",
+        "settleConfirmMessage": "Settle this Flag now? We'll refund based on progress and gently wrap up this journey.",
+        "settleSuccessTitle": "Flag settled ✅",
+        "statusLabel": "Status",
+        "approvedDaysLabel": "Approved days",
+        "ratioLabel": "Completion rate",
+        "ruleLabel": "Rule",
+        "settleFailedTitle": "Settlement didn't go through",
+        "retryLater": "Please try again in a little while.",
+        "checkinSuccessNoStickerDesc": "Your effort is saved—no sticker this time, but many more rolls ahead.",
+        "noStickerSuffix": "no sticker this time, but there are plenty more chances."
+      },
+      "modal": {
+        "header": {
+          "joinChallengeTitle": "Join Challenge",
+          "joinChallengeSubtitle": "Let's do this together!",
+          "newFlagTitle": "New Flag",
+          "newFlagSubtitle": "Start your journey today"
+        },
+        "form": {
+          "titleLabel": "Flag Title",
+          "titlePlaceholder": "e.g. Read 10 pages daily",
+          "descLabel": "Details & Rules",
+          "descPlaceholder": "Describe your plan...",
+          "verificationLabel": "Verification",
+          "selfCheck": "Self Check",
+          "friendCheck": "Friend Check",
+          "witnessLabel": "Witness ID / Address",
+          "witnessPlaceholder": "Enter friend's ID or Address",
+          "targetDateLabel": "Target Date (Optional)",
+          "targetDatePlaceholder": "Select Date"
+        },
+        "footer": {
+          "cancel": "Cancel",
+          "joinNow": "Join Now",
+          "createFlag": "Create Flag"
+        },
+        "templates": {
+          "early_morning": {
+            "title": "Early wake-up {hour}:00 check-in",
+            "desc": "Goal: Wake up and check in before {hour}:00\\nProof: Morning note or photo"
+          },
+          "drink_water_8": {
+            "title": "Drink {cups} cups of water",
+            "desc": "Goal: Drink {cups} cups of water today\\nProof: Simple log or photo"
+          },
+          "steps_10k": {
+            "title": "Steps ≥ {steps}",
+            "desc": "Goal: Reach at least {steps} steps today\\nProof: Screenshot from your device"
+          },
+          "read_20_pages": {
+            "title": "Read {pages} pages",
+            "desc": "Goal: Read {pages} pages today\\nProof: Book title and page numbers"
+          },
+          "meditate_10m": {
+            "title": "Meditate for {minutes} minutes",
+            "desc": "Goal: Meditate for {minutes} minutes\\nProof: Timer log or screenshot"
+          },
+          "sleep_before_11": {
+            "title": "Sleep before {hour}:00",
+            "desc": "Goal: Go to bed before {hour}:00 today\\nProof: Personal note or app screenshot"
+          },
+          "sunlight_20m": {
+            "title": "Sunlight for {minutes} minutes",
+            "desc": "Goal: Get {minutes} minutes of sunlight\\nProof: Place and time record"
+          },
+          "tidy_room_10m": {
+            "title": "Tidy your room for {minutes} minutes",
+            "desc": "Goal: Tidy up for at least {minutes} minutes\\nProof: Before-and-after photos"
+          }
+        },
+        "flow": {
+          "roleOfficial": "Companion",
+          "roleUser": "Dreamer",
+          "stepIndicator": {
+            "step1": "Step 1: Seed",
+            "step2": "Step 2: Nurture",
+            "step3": "Step 3: Launch"
+          },
+          "step2Title": "How do we witness this together? 🤝",
+          "step2Subtitle": "Choose the kind of accountability that motivates you most",
+          "selfCheckDescription": "Being honest with yourself is the coolest thing.",
+          "friendCheckDescription": "Find a trusted friend so you can keep each other on track.",
+          "step3Title": "Finally, pick a deadline 📅",
+          "step3Subtitle": "Give your future self a small ritual to look forward to",
+          "readyTitle": "Ready to go?",
+          "readySubtitle": "Once you set this goal, we'll stay with you all the way.",
+          "backButton": "Back",
+          "nextButton": "Next step"
+        }
       }
     },
-    "following": {
-      "empty": {
-        "title": "No follows yet",
-        "description": "Discover prediction events or traders you are interested in!"
+    "profile": {
+      "avatarAlt": "Profile avatar",
+      "username": {
+        "anonymous": "Anonymous user",
+        "walletDisconnected": "Wallet not connected"
       },
-      "title": "Following",
-      "tabEvents": "Events",
-      "tabUsers": "Traders",
-      "alt": {
-        "cover": "Followed item cover"
+      "disconnected": {
+        "title": "Wallet not connected",
+        "description": "Connect your wallet to view your predictions, history, and follows.",
+        "actionConnect": "Connect wallet"
       },
-      "labels": {
-        "followers": "{count} followers",
-        "deadline": "Ends on {date}"
+      "sidebar": {
+        "tabs": {
+          "overview": "Overview",
+          "predictions": "My predictions",
+          "makerEarnings": "Maker earnings",
+          "history": "Browsing history",
+          "following": "Following",
+          "security": "Account & Security"
+        },
+        "stats": {
+          "predictions": "Preds",
+          "followers": "Followers",
+          "following": "Following",
+          "history": "History"
+        },
+        "settings": "Settings",
+        "disconnect": "Disconnect"
+      },
+      "security": {
+        "emailChangeTitle": "Change email",
+        "emailChangeNeedVerified": "Verify your email before changing it.",
+        "currentEmail": "Current email",
+        "newEmail": "New email",
+        "newEmailPlaceholder": "new@example.com",
+        "otpPlaceholder": "123456",
+        "emailChangeVerifyOld": "Send code to current email",
+        "emailChangeConfirmOld": "Confirm current email code",
+        "emailChangeSendNew": "Send code to new email",
+        "emailChangeConfirmNew": "Confirm new email code",
+        "sessionsTitle": "Devices",
+        "revokeAll": "Sign out all devices",
+        "noSessions": "No active sessions",
+        "unknownMethod": "Unknown",
+        "currentSession": "This device",
+        "createdAt": "Created",
+        "lastSeenAt": "Last active",
+        "ip": "IP",
+        "device": "Device",
+        "revoke": "Sign out",
+        "auditTitle": "Recent sign-ins",
+        "noAudit": "No sign-in history"
+      },
+      "overview": {
+        "cards": {
+          "totalInvested": "Total stake",
+          "totalPnl": "Total PnL",
+          "winRate": "Win rate",
+          "eventsCount": "Events joined",
+          "eventsSummary": "Joined {count} predictions"
+        },
+        "activity": {
+          "title": "Recent activity",
+          "type": {
+            "buy": "Buy",
+            "settle": "Settlement",
+            "view": "View"
+          },
+          "item": {
+            "buy": "Bought Yes - Bitcoin 100k",
+            "settle": "Settled profit +$50",
+            "view": "Viewed SpaceX topic"
+          },
+          "timeExample": "2 hours ago"
+        }
+      },
+      "predictions": {
+        "errors": {
+          "loadFailed": "Failed to load predictions"
+        },
+        "empty": {
+          "title": "No predictions yet",
+          "description": "Join your first prediction!"
+        },
+        "header": "My predictions",
+        "alt": {
+          "cover": "Prediction cover"
+        },
+        "labels": {
+          "stake": "Stake",
+          "participants": "{count} participants",
+          "yourSideProbability": "Market probability of your chosen side",
+          "volumePrefix": "Volume $"
+        }
+      },
+      "history": {
+        "empty": {
+          "title": "No browsing history",
+          "description": "Explore more interesting predictions!"
+        },
+        "title": "Browsing history",
+        "alt": {
+          "cover": "History cover"
+        }
+      },
+      "following": {
+        "empty": {
+          "title": "No follows yet",
+          "description": "Discover prediction events or traders you are interested in!"
+        },
+        "title": "Following",
+        "tabEvents": "Events",
+        "tabUsers": "Traders",
+        "alt": {
+          "cover": "Followed item cover"
+        },
+        "labels": {
+          "followers": "{count} followers",
+          "deadline": "Ends on {date}"
+        }
+      },
+      "makerEarnings": {
+        "title": "Maker earnings",
+        "subtitle": "Rewards and pending claimable balance",
+        "cards": {
+          "pendingReward": "Pending reward (USDC)",
+          "stakedForesight": "Staked Foresight",
+          "walletForesight": "Wallet Foresight"
+        },
+        "actions": {
+          "refresh": "Refresh",
+          "claim": "Claim rewards",
+          "claimed": "Claimed",
+          "viewOnExplorer": "Explorer"
+        },
+        "hints": {
+          "notConfigured": "LPFeeStaking address is not configured",
+          "viewOnly": "View-only. Claim requires the same wallet address"
+        },
+        "empty": {
+          "noAddress": "Address not found",
+          "connectWallet": "Connect wallet to view maker earnings"
+        },
+        "errors": {
+          "loadFailed": "Failed to load maker earnings",
+          "notConfigured": "Contract address is not configured",
+          "notYourWallet": "Connected wallet does not match this address",
+          "claimFailed": "Claim failed, please try again"
+        }
+      },
+      "followers": {
+        "empty": {
+          "title": "No followers yet",
+          "description": "Share your insights to attract followers!"
+        }
+      },
+      "wallet": {
+        "connectFirst": "Please connect your wallet first",
+        "addressCopied": "Address copied",
+        "copyAddress": "Failed to copy address, please try again."
+      },
+      "follow": {
+        "followSuccess": "Followed successfully",
+        "unfollowSuccess": "Unfollowed",
+        "failed": "Action failed",
+        "loading": "Processing...",
+        "unfollowButton": "Unfollow",
+        "followTraderButton": "Follow this trader"
       }
     },
-    "makerEarnings": {
-      "title": "Maker earnings",
-      "subtitle": "Rewards and pending claimable balance",
-      "cards": {
-        "pendingReward": "Pending reward (USDC)",
-        "stakedForesight": "Staked Foresight",
-        "walletForesight": "Wallet Foresight"
-      },
-      "actions": {
-        "refresh": "Refresh",
-        "claim": "Claim rewards",
-        "claimed": "Claimed",
-        "viewOnExplorer": "Explorer"
-      },
-      "hints": {
-        "notConfigured": "LPFeeStaking address is not configured",
-        "viewOnly": "View-only. Claim requires the same wallet address"
-      },
-      "empty": {
-        "noAddress": "Address not found",
-        "connectWallet": "Connect wallet to view maker earnings"
-      },
-      "errors": {
-        "loadFailed": "Failed to load maker earnings",
-        "notConfigured": "Contract address is not configured",
-        "notYourWallet": "Connected wallet does not match this address",
-        "claimFailed": "Claim failed, please try again"
-      }
+    "onboarding": {
+      "closeGuide": "Close guide",
+      "intro": "In this {category}prediction market, you can trade your views on event outcomes by buying different options. The price represents the market consensus on the event's probability.",
+      "tradingTip": "The trading panel is on the right (desktop) or accessible via the bottom button (mobile). Charts and order book data help you observe market sentiment and price changes.",
+      "browseMore": "Want to browse more events?",
+      "trendingLink": "Trending",
+      "forumLink": "Forum"
     },
-    "followers": {
-      "empty": {
-        "title": "No followers yet",
-        "description": "Share your insights to attract followers!"
-      }
+    "loading": {
+      "predictionDetail": "Loading prediction event details...",
+      "trendingEvents": "Loading trending events…"
     },
-    "wallet": {
-      "connectFirst": "Please connect your wallet first",
-      "addressCopied": "Address copied",
-      "copyAddress": "Failed to copy address, please try again."
+    "adminPerformance": {
+      "title": "Performance Dashboard",
+      "subtitle": "Real-time Web Vitals and performance metrics",
+      "refresh": "Refresh",
+      "period": {
+        "day1": "Past 1 day",
+        "day7": "Past 7 days",
+        "day30": "Past 30 days"
+      },
+      "metrics": {
+        "LCP": "Largest Contentful Paint",
+        "INP": "Interaction to Next Paint",
+        "CLS": "Cumulative Layout Shift",
+        "FCP": "First Contentful Paint",
+        "TTFB": "Time to First Byte"
+      },
+      "rating": {
+        "good": "Good",
+        "needsImprovement": "Needs improvement",
+        "poor": "Poor"
+      },
+      "percentGood": "{percent}% good",
+      "sampleCount": "Based on {count} samples",
+      "noData": "No data",
+      "noDataHint": "Please try again later or ensure Web Vitals is properly integrated in the frontend"
     },
-    "follow": {
+    "leaderboard": {
+      "meta": {
+        "title": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+        "description": "View top predictors’ historical earnings, win rates, and risk profiles on the Foresight earnings leaderboard to discover wallets with consistent profits and trading styles.",
+        "ogTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+        "ogDescription": "Browse leaderboard performance to find long-term profitable strategy accounts and how they trade across markets.",
+        "twitterTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
+        "twitterDescription": "See which Foresight traders are the most consistent and sharp in their predictions."
+      },
+      "title": "Earnings Leaderboard",
+      "subtitle": "Top Earners",
+      "week": "This Week",
+      "month": "This Month",
+      "avatarAlt": "{name}'s avatar",
+      "viewAll": "View full leaderboard",
+      "pageTitle": "Leaderboard",
+      "seasonBadge": "Season 4 · Week 12",
+      "heroSubtitle": "Who's the smartest predictor? 🧠",
+      "heroDescription": "Follow top strategies and climb the ranks!",
+      "introText": "Foresight leaderboard ranks traders based on prediction earnings and win rate, helping you discover wallets with consistent profits and trading styles.",
+      "linkHint": "Want to see what these top traders are betting on? Visit",
+      "linkTrending": "Trending Predictions",
+      "linkMiddle": "to browse live markets, or follow their insights in the",
+      "linkForum": "Forum",
+      "linkSuffix": ".",
+      "timeRange": {
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "all": "All Time"
+      },
+      "category": {
+        "profit": "Winnings",
+        "winrate": "Accuracy",
+        "streak": "Streak"
+      },
+      "card": {
+        "totalProfit": "Total Volume",
+        "winRate": "Win Rate",
+        "tradesCount": "Trades",
+        "rankTrader": "Rank & Trader",
+        "performanceTrend": "Performance Trend",
+        "winningsStatus": "Winnings & Status"
+      },
+      "sidebar": {
+        "mySpot": "My Spot ✨",
+        "weekly": "Weekly",
+        "currentRank": "Current Rank",
+        "currentProfit": "Volume",
+        "followers": "Followers",
+        "nextRank": "Gap to Next",
+        "top100": "Gap to Top 100",
+        "topRank": "Top 1",
+        "inTop100": "In Top 100",
+        "notRanked": "Not Ranked Yet",
+        "startTrading": "Start trading to get ranked",
+        "explorePredictions": "Explore Predictions",
+        "viewFullProfile": "View Full Profile",
+        "searchPlaceholder": "Search traders...",
+        "searchResults": "Matching traders found",
+        "noResults": "No matching traders found",
+        "trendingNow": "Trending Now 🔥",
+        "activeUsers": "active users",
+        "connectToView": "Connect wallet to view your ranking",
+        "connectWallet": "Connect Wallet",
+        "comingSoon": "Coming Soon",
+        "noTrending": "No trending predictions"
+      },
+      "loadMore": "Load More Traders",
+      "allLoaded": "All traders displayed",
+      "noData": "No leaderboard data",
+      "loading": "Loading...",
+      "loadingData": "Loading leaderboard..."
+    },
+    "userCard": {
+      "volume": "Volume",
+      "winRate": "Win Rate",
+      "trades": "Trades",
+      "followers": "Followers",
+      "viewProfile": "View Full Profile",
+      "follow": "Follow",
+      "unfollow": "Unfollow",
       "followSuccess": "Followed successfully",
       "unfollowSuccess": "Unfollowed",
-      "failed": "Action failed",
-      "loading": "Processing...",
-      "unfollowButton": "Unfollow",
-      "followTraderButton": "Follow this trader"
-    }
-  },
-  "onboarding": {
-    "closeGuide": "Close guide",
-    "intro": "In this {category}prediction market, you can trade your views on event outcomes by buying different options. The price represents the market consensus on the event's probability.",
-    "tradingTip": "The trading panel is on the right (desktop) or accessible via the bottom button (mobile). Charts and order book data help you observe market sentiment and price changes.",
-    "browseMore": "Want to browse more events?",
-    "trendingLink": "Trending",
-    "forumLink": "Forum"
-  },
-  "loading": {
-    "predictionDetail": "Loading prediction event details...",
-    "trendingEvents": "Loading trending events…"
-  },
-  "adminPerformance": {
-    "title": "Performance Dashboard",
-    "subtitle": "Real-time Web Vitals and performance metrics",
-    "refresh": "Refresh",
-    "period": {
-      "day1": "Past 1 day",
-      "day7": "Past 7 days",
-      "day30": "Past 30 days"
+      "pleaseConnectWallet": "Please connect your wallet first",
+      "followFailed": "Action failed, please try again",
+      "loading": "Processing..."
     },
-    "metrics": {
-      "LCP": "Largest Contentful Paint",
-      "INP": "Interaction to Next Paint",
-      "CLS": "Cumulative Layout Shift",
-      "FCP": "First Contentful Paint",
-      "TTFB": "Time to First Byte"
-    },
-    "rating": {
-      "good": "Good",
-      "needsImprovement": "Needs improvement",
-      "poor": "Poor"
-    },
-    "percentGood": "{percent}% good",
-    "sampleCount": "Based on {count} samples",
-    "noData": "No data",
-    "noDataHint": "Please try again later or ensure Web Vitals is properly integrated in the frontend"
-  },
-  "leaderboard": {
-    "meta": {
-      "title": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
-      "description": "View top predictors’ historical earnings, win rates, and risk profiles on the Foresight earnings leaderboard to discover wallets with consistent profits and trading styles.",
-      "ogTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
-      "ogDescription": "Browse leaderboard performance to find long-term profitable strategy accounts and how they trade across markets.",
-      "twitterTitle": "Foresight Earnings Leaderboard - Top prediction traders and strategies",
-      "twitterDescription": "See which Foresight traders are the most consistent and sharp in their predictions."
-    },
-    "title": "Earnings Leaderboard",
-    "subtitle": "Top Earners",
-    "week": "This Week",
-    "month": "This Month",
-    "avatarAlt": "{name}'s avatar",
-    "viewAll": "View full leaderboard",
-    "pageTitle": "Leaderboard",
-    "seasonBadge": "Season 4 · Week 12",
-    "heroSubtitle": "Who's the smartest predictor? 🧠",
-    "heroDescription": "Follow top strategies and climb the ranks!",
-    "introText": "Foresight leaderboard ranks traders based on prediction earnings and win rate, helping you discover wallets with consistent profits and trading styles.",
-    "linkHint": "Want to see what these top traders are betting on? Visit",
-    "linkTrending": "Trending Predictions",
-    "linkMiddle": "to browse live markets, or follow their insights in the",
-    "linkForum": "Forum",
-    "linkSuffix": ".",
-    "timeRange": {
-      "weekly": "Weekly",
-      "monthly": "Monthly",
-      "all": "All Time"
-    },
-    "category": {
-      "profit": "Winnings",
-      "winrate": "Accuracy",
-      "streak": "Streak"
-    },
-    "card": {
-      "totalProfit": "Total Volume",
-      "winRate": "Win Rate",
-      "tradesCount": "Trades",
-      "rankTrader": "Rank & Trader",
-      "performanceTrend": "Performance Trend",
-      "winningsStatus": "Winnings & Status"
-    },
-    "sidebar": {
-      "mySpot": "My Spot ✨",
-      "weekly": "Weekly",
-      "currentRank": "Current Rank",
-      "currentProfit": "Volume",
-      "followers": "Followers",
-      "nextRank": "Gap to Next",
-      "top100": "Gap to Top 100",
-      "topRank": "Top 1",
-      "inTop100": "In Top 100",
-      "notRanked": "Not Ranked Yet",
-      "startTrading": "Start trading to get ranked",
-      "explorePredictions": "Explore Predictions",
-      "viewFullProfile": "View Full Profile",
-      "searchPlaceholder": "Search traders...",
-      "searchResults": "Matching traders found",
-      "noResults": "No matching traders found",
-      "trendingNow": "Trending Now 🔥",
-      "activeUsers": "active users",
-      "connectToView": "Connect wallet to view your ranking",
-      "connectWallet": "Connect Wallet",
-      "comingSoon": "Coming Soon",
-      "noTrending": "No trending predictions"
-    },
-    "loadMore": "Load More Traders",
-    "allLoaded": "All traders displayed",
-    "noData": "No leaderboard data",
-    "loading": "Loading...",
-    "loadingData": "Loading leaderboard..."
-  },
-  "userCard": {
-    "volume": "Volume",
-    "winRate": "Win Rate",
-    "trades": "Trades",
-    "followers": "Followers",
-    "viewProfile": "View Full Profile",
-    "follow": "Follow",
-    "unfollow": "Unfollow",
-    "followSuccess": "Followed successfully",
-    "unfollowSuccess": "Unfollowed",
-    "pleaseConnectWallet": "Please connect your wallet first",
-    "followFailed": "Action failed, please try again",
-    "loading": "Processing..."
-  },
-  "stickerGallery": {
-    "title": "Sticker Collection",
-    "filters": {
-      "all": "All",
-      "unlocked": "Unlocked",
-      "locked": "Locked",
-      "rarityAll": "All rarities"
-    },
-    "search": {
-      "placeholder": "Search by name or description..."
-    },
-    "stats": {
-      "visible": "Showing {current}/{total}"
-    },
-    "sidebar": {
-      "placeholder": "Tap any unlocked sticker on the left to see details"
-    },
-    "rarity": {
-      "legendary": "Legendary",
-      "epic": "Epic",
-      "rare": "Rare",
-      "common": "Common"
-    },
-    "reveal": {
-      "openRewardCta": "Tap to open your reward",
-      "collectButton": "Add to collection"
-    },
-    "stickers": {
-      "s1": {
-        "name": "Slack-off Kitty",
-        "desc": "Another hardworking day of strategic slacking."
+    "stickerGallery": {
+      "title": "Sticker Collection",
+      "filters": {
+        "all": "All",
+        "unlocked": "Unlocked",
+        "locked": "Locked",
+        "rarityAll": "All rarities"
       },
-      "s2": {
-        "name": "Growing Strong",
-        "desc": "Getting a little better every single day."
+      "search": {
+        "placeholder": "Search by name or description..."
       },
-      "s3": {
-        "name": "Skyrocket",
-        "desc": "Wuhu! Lift off!"
+      "stats": {
+        "visible": "Showing {current}/{total}"
       },
-      "s4": {
-        "name": "Muscle Shiba",
-        "desc": "Persistence is victory."
+      "sidebar": {
+        "placeholder": "Tap any unlocked sticker on the left to see details"
       },
-      "s5": {
-        "name": "King of Flags",
-        "desc": "So this is the world of the strong."
+      "rarity": {
+        "legendary": "Legendary",
+        "epic": "Epic",
+        "rare": "Rare",
+        "common": "Common"
       },
-      "s6": {
-        "name": "Rainbow Hype",
-        "desc": "You are the best."
+      "reveal": {
+        "openRewardCta": "Tap to open your reward",
+        "collectButton": "Add to collection"
       },
-      "s7": {
-        "name": "Diamond Will",
-        "desc": "Resolve harder than diamond."
-      },
-      "s8": {
-        "name": "Unicorn",
-        "desc": "The one and only you."
+      "stickers": {
+        "s1": {
+          "name": "Slack-off Kitty",
+          "desc": "Another hardworking day of strategic slacking."
+        },
+        "s2": {
+          "name": "Growing Strong",
+          "desc": "Getting a little better every single day."
+        },
+        "s3": {
+          "name": "Skyrocket",
+          "desc": "Wuhu! Lift off!"
+        },
+        "s4": {
+          "name": "Muscle Shiba",
+          "desc": "Persistence is victory."
+        },
+        "s5": {
+          "name": "King of Flags",
+          "desc": "So this is the world of the strong."
+        },
+        "s6": {
+          "name": "Rainbow Hype",
+          "desc": "You are the best."
+        },
+        "s7": {
+          "name": "Diamond Will",
+          "desc": "Resolve harder than diamond."
+        },
+        "s8": {
+          "name": "Unicorn",
+          "desc": "The one and only you."
+        }
       }
+    },
+    "notifications": {
+      "fallbackWitnessInviteTitle": "Challenge invite",
+      "fallbackCheckinReviewTitle": "Check-in review update",
+      "fallbackGenericTitle": "Notifications",
+      "pendingReviewTitle": "Pending check-in reviews",
+      "pendingReviewMessage": "{count} check-ins need your review",
+      "flagCheckinReminderTitle": "Daily check-in reminder",
+      "flagCheckinReminderMessage": "{count} flags have not been checked in today",
+      "centerTitle": "Notifications",
+      "ariaLabel": "Notifications",
+      "empty": "No notifications",
+      "summary": "Total {count} pending alerts",
+      "markAllRead": "Mark all as read",
+      "markAllReadLoading": "Marking...",
+      "loading": "Loading notifications...",
+      "loadFailed": "Failed to load notifications",
+      "retry": "Retry",
+      "loadMore": "Load more",
+      "archive": "Clear",
+      "archiveAll": "Clear all",
+      "archiveAllLoading": "Clearing...",
+      "filterAll": "All",
+      "filterSystem": "System",
+      "filterReview": "Review",
+      "filterChallenge": "Challenge",
+      "emptyFiltered": "No notifications for this filter",
+      "confirmArchiveOne": "Clear this notification? It will no longer appear in the list.",
+      "confirmArchiveAll": "Clear all current notifications? They will no longer appear in the list."
+    },
+    "adminRoles": {
+      "title": "Role Management",
+      "description": "Admin only. Grant or revoke reviewer permissions for users.",
+      "refreshList": "Refresh list",
+      "userList": "User list",
+      "totalUsers": "{count} users, showing up to 200",
+      "loading": "Loading user list...",
+      "empty": "No users to display, or you lack permission.",
+      "loadFailed": "Failed to load, you may not have permission",
+      "updateFailed": "Update failed",
+      "walletAddress": "Wallet address",
+      "username": "Username",
+      "email": "Email",
+      "isAdmin": "Admin",
+      "isReviewer": "Reviewer",
+      "actions": "Actions",
+      "saving": "Saving...",
+      "grantReviewer": "Grant reviewer",
+      "revokeReviewer": "Revoke reviewer"
     }
-  },
-  "notifications": {
-    "fallbackWitnessInviteTitle": "Challenge invite",
-    "fallbackCheckinReviewTitle": "Check-in review update",
-    "fallbackGenericTitle": "Notifications",
-    "pendingReviewTitle": "Pending check-in reviews",
-    "pendingReviewMessage": "{count} check-ins need your review",
-    "flagCheckinReminderTitle": "Daily check-in reminder",
-    "flagCheckinReminderMessage": "{count} flags have not been checked in today",
-    "centerTitle": "Notifications",
-    "ariaLabel": "Notifications",
-    "empty": "No notifications",
-    "summary": "Total {count} pending alerts",
-    "markAllRead": "Mark all as read",
-    "markAllReadLoading": "Marking...",
-    "loading": "Loading notifications...",
-    "loadFailed": "Failed to load notifications",
-    "retry": "Retry",
-    "loadMore": "Load more",
-    "archive": "Clear",
-    "archiveAll": "Clear all",
-    "archiveAllLoading": "Clearing...",
-    "filterAll": "All",
-    "filterSystem": "System",
-    "filterReview": "Review",
-    "filterChallenge": "Challenge",
-    "emptyFiltered": "No notifications for this filter",
-    "confirmArchiveOne": "Clear this notification? It will no longer appear in the list.",
-    "confirmArchiveAll": "Clear all current notifications? They will no longer appear in the list."
-  },
-  "adminRoles": {
-    "title": "Role Management",
-    "description": "Admin only. Grant or revoke reviewer permissions for users.",
-    "refreshList": "Refresh list",
-    "userList": "User list",
-    "totalUsers": "{count} users, showing up to 200",
-    "loading": "Loading user list...",
-    "empty": "No users to display, or you lack permission.",
-    "loadFailed": "Failed to load, you may not have permission",
-    "updateFailed": "Update failed",
-    "walletAddress": "Wallet address",
-    "username": "Username",
-    "email": "Email",
-    "isAdmin": "Admin",
-    "isReviewer": "Reviewer",
-    "actions": "Actions",
-    "saving": "Saving...",
-    "grantReviewer": "Grant reviewer",
-    "revokeReviewer": "Revoke reviewer"
   }
 }
