@@ -1,13 +1,59 @@
 import { z } from "zod";
-import dotenv from "dotenv";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { createHash, timingSafeEqual } from "node:crypto";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "..", "..", "..");
-dotenv.config({ path: path.join(repoRoot, ".env") });
-dotenv.config({ path: path.join(repoRoot, ".env.local") });
+import {
+  BUNDLER_PRIVATE_KEY,
+  OPERATOR_PRIVATE_KEY,
+  RELAYER_GASLESS_SIGNER_PRIVATE_KEY,
+  CUSTODIAL_SIGNER_PRIVATE_KEY,
+  GASLESS_ENABLED,
+  ENTRYPOINT_ADDRESS,
+  CHAIN_ID,
+  RPC_URL,
+  RELAYER_PORT,
+} from "./env.js";
+import {
+  AaUserOpDraftSchema,
+  AaUserOpSimulateSchema,
+  AaUserOpSubmitSchema,
+  BigIntFromNumberishSchema,
+  CancelV2Schema,
+  CandlesQuerySchema,
+  CustodialSignSchema,
+  DepthQuerySchema,
+  GaslessOrderSchema,
+  HexAddressSchema,
+  HexDataOrEmptySchema,
+  HexDataSchema,
+  QueueQuerySchema,
+  TradeReportSchema,
+  UserOperationSchema,
+  V2CloseMarketSchema,
+  V2DepthQuerySchema,
+  V2RegisterSettlerSchema,
+  V2StatsQuerySchema,
+} from "./validation.js";
+
+export {
+  BUNDLER_PRIVATE_KEY,
+  OPERATOR_PRIVATE_KEY,
+  RELAYER_GASLESS_SIGNER_PRIVATE_KEY,
+  CUSTODIAL_SIGNER_PRIVATE_KEY,
+  AA_ENABLED,
+  EMBEDDED_AUTH_ENABLED,
+  GASLESS_ENABLED,
+  RELAYER_GASLESS_PAYMASTER_URL,
+  ENTRYPOINT_ADDRESS,
+  CHAIN_ID,
+  RELAYER_LEADER_PROXY_URL,
+  RELAYER_LEADER_URL,
+  PROXY_WALLET_TYPE,
+  PROXY_WALLET_FACTORY_ADDRESS,
+  SAFE_FACTORY_ADDRESS,
+  SAFE_SINGLETON_ADDRESS,
+  SAFE_FALLBACK_HANDLER_ADDRESS,
+  RPC_URL,
+  RELAYER_PORT,
+} from "./env.js";
 
 // 🚀 Phase 1: 导入监控和日志模块
 import { logger, matchingLogger } from "./monitoring/logger.js";
@@ -21,15 +67,6 @@ import {
   stopMetricsTimers,
 } from "./monitoring/metrics.js";
 import {
-  healthService,
-  createSupabaseHealthChecker,
-  createRedisHealthChecker,
-  createRpcHealthChecker,
-  createMatchingEngineHealthChecker,
-  createOrderbookReadinessChecker,
-  createWriteProxyReadinessChecker,
-} from "./monitoring/health.js";
-import {
   initContractEventListener,
   closeContractEventListener,
 } from "./monitoring/contractEvents.js";
@@ -38,276 +75,43 @@ import {
   marketsInvalidatedTotal,
   marketsActive,
 } from "./monitoring/contractEvents.js";
-import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
+import { closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
 import { closeRateLimiter, createRateLimitMiddleware } from "./ratelimit/index.js";
 import { RedisSlidingWindowLimiter, type RateLimitRequest } from "./ratelimit/slidingWindow.js";
 import { healthRoutes, clusterRoutes } from "./routes/index.js";
+import { registerRootRoutes } from "./routes/rootRoutes.js";
 import {
   metricsMiddleware,
   requestIdMiddleware,
   requestLoggerMiddleware,
 } from "./middleware/index.js";
+import { createApiKeyAuth } from "./http/apiKeyAuth.js";
+import { createIdempotency } from "./http/idempotency.js";
+import { microCacheGet, microCacheSet, type MicroCacheEntry } from "./utils/microCache.js";
+import {
+  clampNumber,
+  maybeNonEmptyString,
+  pickFirstNonEmptyString,
+  readIntEnv,
+  readNumberEnv,
+} from "./utils/envNumbers.js";
+import { parseV2OrderInput } from "./utils/orderInput.js";
+import {
+  createGaslessQuotaStore,
+  createIntentStore,
+  type TradeIntentRecord,
+} from "./utils/gaslessStore.js";
 
-// 🚀 Phase 2: 导入集群和高可用模块
-import { initClusterManager, closeClusterManager, getClusterManager } from "./cluster/index.js";
-import { initDatabasePool, closeDatabasePool } from "./database/index.js";
-import { initChainReconciler, closeChainReconciler } from "./reconciliation/index.js";
-import { initBalanceChecker, closeBalanceChecker } from "./reconciliation/balanceChecker.js";
+import { closeClusterManager, getClusterManager } from "./cluster/index.js";
+import { closeDatabasePool } from "./database/index.js";
+import { closeChainReconciler } from "./reconciliation/index.js";
+import { closeBalanceChecker } from "./reconciliation/balanceChecker.js";
+import { registerGracefulShutdown } from "./server/gracefulShutdown.js";
+import { startRelayerServer } from "./server/serverStartup.js";
+import { createBackgroundLoops } from "./server/backgroundLoops.js";
 
 let clusterIsActive = false;
-
-// 环境变量校验与读取
-const EthPrivateKeySchema = z.preprocess(
-  (v) => {
-    const s = typeof v === "string" ? v.trim() : "";
-    if (/^[0-9a-fA-F]{64}$/.test(s)) return "0x" + s;
-    return s;
-  },
-  z.string().regex(/^0x[0-9a-fA-F]{64}$/)
-);
-
-const EthAddressSchema = z.preprocess(
-  (v) => {
-    const s = typeof v === "string" ? v.trim() : "";
-    if (/^[0-9a-fA-F]{40}$/.test(s)) return "0x" + s;
-    return s;
-  },
-  z.string().regex(/^0x[0-9a-fA-F]{40}$/)
-);
-
-const BoolSchema = z.preprocess((v) => {
-  if (typeof v === "boolean") return v;
-  if (typeof v !== "string") return v;
-  const s = v.trim().toLowerCase();
-  if (s === "1" || s === "true" || s === "yes" || s === "on") return true;
-  if (s === "0" || s === "false" || s === "no" || s === "off") return false;
-  return v;
-}, z.boolean());
-
-function maybeNonEmptyString(v: unknown): string | undefined {
-  if (typeof v !== "string") return undefined;
-  const s = v.trim();
-  return s.length > 0 ? s : undefined;
-}
-
-function pickFirstNonEmptyString(...values: unknown[]): string | undefined {
-  for (const v of values) {
-    const s = typeof v === "string" ? v.trim() : "";
-    if (s) return s;
-  }
-  return undefined;
-}
-
-function maybeUrl(v: unknown): string | undefined {
-  const s = maybeNonEmptyString(v);
-  if (!s) return undefined;
-  try {
-    const u = new URL(s);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return undefined;
-    return u.toString();
-  } catch {
-    return undefined;
-  }
-}
-
-function maybeIntString(v: unknown): string | undefined {
-  const s = maybeNonEmptyString(v);
-  if (!s) return undefined;
-  if (!/^\d+$/.test(s)) return undefined;
-  return s;
-}
-
-function maybeBoolString(v: unknown): string | undefined {
-  const s = maybeNonEmptyString(v);
-  if (!s) return undefined;
-  const lower = s.toLowerCase();
-  if (
-    lower === "1" ||
-    lower === "0" ||
-    lower === "true" ||
-    lower === "false" ||
-    lower === "yes" ||
-    lower === "no" ||
-    lower === "on" ||
-    lower === "off"
-  ) {
-    return lower;
-  }
-  return undefined;
-}
-
-function maybeEthPrivateKey(v: unknown): string | undefined {
-  const s = maybeNonEmptyString(v);
-  if (!s) return undefined;
-  if (/^[0-9a-fA-F]{64}$/.test(s)) return "0x" + s;
-  if (/^0x[0-9a-fA-F]{64}$/.test(s)) return s;
-  return undefined;
-}
-
-function maybeEthAddress(v: unknown): string | undefined {
-  const s = maybeNonEmptyString(v);
-  if (!s) return undefined;
-  if (/^[0-9a-fA-F]{40}$/.test(s)) return "0x" + s;
-  if (/^0x[0-9a-fA-F]{40}$/.test(s)) return s;
-  return undefined;
-}
-
-const EnvSchema = z.object({
-  BUNDLER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
-  OPERATOR_PRIVATE_KEY: EthPrivateKeySchema.optional(),
-  RELAYER_GASLESS_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
-  CUSTODIAL_SIGNER_PRIVATE_KEY: EthPrivateKeySchema.optional(),
-  AA_ENABLED: BoolSchema.optional(),
-  GASLESS_ENABLED: BoolSchema.optional(),
-  EMBEDDED_AUTH_ENABLED: BoolSchema.optional(),
-  RELAYER_GASLESS_PAYMASTER_URL: z.string().url().optional(),
-  ENTRYPOINT_ADDRESS: EthAddressSchema.optional(),
-  RPC_URL: z.string().url().optional(),
-  CHAIN_ID: z
-    .preprocess(
-      (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
-      z.number().int().positive()
-    )
-    .optional(),
-  RELAYER_LEADER_PROXY_URL: z.string().url().optional(),
-  RELAYER_LEADER_URL: z.string().url().optional(),
-  RELAYER_PORT: z
-    .preprocess(
-      (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
-      z.number().int().positive()
-    )
-    .optional(),
-  PORT: z
-    .preprocess(
-      (v) => (typeof v === "string" && v.length > 0 ? Number(v) : v),
-      z.number().int().positive()
-    )
-    .optional(),
-  NEXT_PUBLIC_PROXY_WALLET_TYPE: z.enum(["safe", "safe4337", "proxy"]).optional(),
-  PROXY_WALLET_FACTORY_ADDRESS: EthAddressSchema.optional(),
-  SAFE_FACTORY_ADDRESS: EthAddressSchema.optional(),
-  SAFE_SINGLETON_ADDRESS: EthAddressSchema.optional(),
-  SAFE_FALLBACK_HANDLER_ADDRESS: EthAddressSchema.optional(),
-});
-
-const DEFAULT_RPC_URLS: Record<number, string> = {
-  80002: "https://rpc-amoy.polygon.technology/",
-  137: "https://polygon-rpc.com",
-  11155111: "https://rpc.sepolia.org",
-};
-
-const preChainId = (() => {
-  const s = maybeIntString(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID);
-  if (!s) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Missing CHAIN_ID");
-    }
-    return 80002;
-  }
-  const n = s ? Number(s) : NaN;
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 80002;
-})();
-
-const rawEnv = {
-  BUNDLER_PRIVATE_KEY: maybeEthPrivateKey(
-    process.env.BUNDLER_PRIVATE_KEY || process.env.PRIVATE_KEY
-  ),
-  OPERATOR_PRIVATE_KEY: maybeEthPrivateKey(process.env.OPERATOR_PRIVATE_KEY),
-  RELAYER_GASLESS_SIGNER_PRIVATE_KEY: maybeEthPrivateKey(
-    process.env.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
-  ),
-  AA_ENABLED: maybeBoolString(
-    process.env.AA_ENABLED || process.env.NEXT_PUBLIC_AA_ENABLED || process.env.aa_enabled
-  ),
-  GASLESS_ENABLED: maybeBoolString(
-    process.env.GASLESS_ENABLED || process.env.AA_ENABLED || process.env.NEXT_PUBLIC_AA_ENABLED
-  ),
-  EMBEDDED_AUTH_ENABLED: maybeBoolString(
-    process.env.EMBEDDED_AUTH_ENABLED ||
-      process.env.NEXT_PUBLIC_EMBEDDED_AUTH_ENABLED ||
-      process.env.embedded_auth_enabled
-  ),
-  CUSTODIAL_SIGNER_PRIVATE_KEY: maybeEthPrivateKey(process.env.CUSTODIAL_SIGNER_PRIVATE_KEY),
-  RELAYER_GASLESS_PAYMASTER_URL: maybeUrl(process.env.RELAYER_GASLESS_PAYMASTER_URL),
-  ENTRYPOINT_ADDRESS: maybeEthAddress(
-    process.env.ENTRYPOINT_ADDRESS || process.env.NEXT_PUBLIC_ENTRYPOINT_ADDRESS
-  ),
-  RPC_URL: maybeUrl(
-    pickFirstNonEmptyString(
-      process.env.RPC_URL,
-      process.env.NEXT_PUBLIC_RPC_URL,
-      preChainId === 80002 ? process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY : undefined,
-      preChainId === 137 ? process.env.NEXT_PUBLIC_RPC_POLYGON : undefined,
-      preChainId === 11155111 ? process.env.NEXT_PUBLIC_RPC_SEPOLIA : undefined
-    )
-  ),
-  CHAIN_ID: maybeIntString(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID),
-  RELAYER_LEADER_PROXY_URL: maybeUrl(process.env.RELAYER_LEADER_PROXY_URL),
-  RELAYER_LEADER_URL: maybeUrl(process.env.RELAYER_LEADER_URL),
-  RELAYER_PORT: maybeIntString(process.env.RELAYER_PORT),
-  PORT: maybeIntString(process.env.PORT),
-  NEXT_PUBLIC_PROXY_WALLET_TYPE: (() => {
-    const t = String(process.env.NEXT_PUBLIC_PROXY_WALLET_TYPE || "")
-      .trim()
-      .toLowerCase();
-    return t === "safe" || t === "safe4337" || t === "proxy" ? (t as any) : undefined;
-  })(),
-  PROXY_WALLET_FACTORY_ADDRESS: maybeEthAddress(process.env.PROXY_WALLET_FACTORY_ADDRESS),
-  SAFE_FACTORY_ADDRESS: maybeEthAddress(process.env.SAFE_FACTORY_ADDRESS),
-  SAFE_SINGLETON_ADDRESS: maybeEthAddress(process.env.SAFE_SINGLETON_ADDRESS),
-  SAFE_FALLBACK_HANDLER_ADDRESS: maybeEthAddress(process.env.SAFE_FALLBACK_HANDLER_ADDRESS),
-};
-
-const parsed = EnvSchema.safeParse(rawEnv);
-if (!parsed.success) {
-  console.warn("Relayer env invalid:", parsed.error.flatten().fieldErrors);
-}
-
-export const BUNDLER_PRIVATE_KEY = parsed.success ? parsed.data.BUNDLER_PRIVATE_KEY : undefined;
-export const OPERATOR_PRIVATE_KEY = parsed.success ? parsed.data.OPERATOR_PRIVATE_KEY : undefined;
-export const RELAYER_GASLESS_SIGNER_PRIVATE_KEY = parsed.success
-  ? parsed.data.RELAYER_GASLESS_SIGNER_PRIVATE_KEY
-  : undefined;
-export const AA_ENABLED = parsed.success ? (parsed.data.AA_ENABLED ?? false) : false;
-export const EMBEDDED_AUTH_ENABLED = parsed.success
-  ? (parsed.data.EMBEDDED_AUTH_ENABLED ?? false)
-  : false;
-export const CUSTODIAL_SIGNER_PRIVATE_KEY = parsed.success
-  ? parsed.data.CUSTODIAL_SIGNER_PRIVATE_KEY
-  : undefined;
-export const GASLESS_ENABLED = (() => {
-  if (!parsed.success) return false;
-  const aa = Boolean(parsed.data.AA_ENABLED ?? false);
-  const gasless = Boolean(parsed.data.GASLESS_ENABLED ?? parsed.data.AA_ENABLED ?? false);
-  return aa && gasless;
-})();
-export const RELAYER_GASLESS_PAYMASTER_URL = parsed.success
-  ? parsed.data.RELAYER_GASLESS_PAYMASTER_URL
-  : undefined;
-export const ENTRYPOINT_ADDRESS = parsed.success ? parsed.data.ENTRYPOINT_ADDRESS : undefined;
-export const CHAIN_ID = parsed.success ? (parsed.data.CHAIN_ID ?? 80002) : 80002;
-export const RELAYER_LEADER_PROXY_URL = parsed.success
-  ? parsed.data.RELAYER_LEADER_PROXY_URL
-  : undefined;
-export const RELAYER_LEADER_URL = parsed.success ? parsed.data.RELAYER_LEADER_URL : undefined;
-export const PROXY_WALLET_TYPE = parsed.success
-  ? parsed.data.NEXT_PUBLIC_PROXY_WALLET_TYPE
-  : undefined;
-export const PROXY_WALLET_FACTORY_ADDRESS = parsed.success
-  ? parsed.data.PROXY_WALLET_FACTORY_ADDRESS
-  : undefined;
-export const SAFE_FACTORY_ADDRESS = parsed.success ? parsed.data.SAFE_FACTORY_ADDRESS : undefined;
-export const SAFE_SINGLETON_ADDRESS = parsed.success
-  ? parsed.data.SAFE_SINGLETON_ADDRESS
-  : undefined;
-export const SAFE_FALLBACK_HANDLER_ADDRESS = parsed.success
-  ? parsed.data.SAFE_FALLBACK_HANDLER_ADDRESS
-  : undefined;
-const DEFAULT_RPC_URL = DEFAULT_RPC_URLS[CHAIN_ID] || "http://127.0.0.1:8545";
-export const RPC_URL = (parsed.success ? parsed.data.RPC_URL : undefined) || DEFAULT_RPC_URL;
-export const RELAYER_PORT =
-  (parsed.success ? (parsed.data.RELAYER_PORT ?? parsed.data.PORT) : undefined) ?? 3000;
 import express from "express";
 import cors from "cors";
 import { ethers, Contract } from "ethers";
@@ -320,15 +124,20 @@ import {
   getQueue,
   getOrderTypes,
   ingestTrade,
-  ingestTradesByLogs,
   getCandles,
 } from "./orderbook.js";
 
 // 🚀 导入新的撮合引擎
-import { MatchingEngine, MarketWebSocketServer, type OrderInput } from "./matching/index.js";
+import { MatchingEngine, type OrderInput } from "./matching/index.js";
+import type { MarketWebSocketServer } from "./matching/index.js";
 import { clusterFollowerRejectedTotal } from "./monitoring/metrics.js";
-import { proxyToLeader } from "./cluster/leaderProxy.js";
-import { ClusteredWebSocketServer } from "./cluster/websocketCluster.js";
+import {
+  getCachedLeaderId,
+  getLeaderProxyUrl,
+  proxyToLeader,
+  sendNotLeader,
+} from "./cluster/leaderProxy.js";
+import type { ClusteredWebSocketServer } from "./cluster/websocketCluster.js";
 import {
   MetaTransactionHandler,
   type MetaTransactionRequest,
@@ -406,325 +215,32 @@ matchingEngine.on("settlement_event", (event) => {
   logger.info("Settlement event", { type: event.type, ...event });
 });
 
-function readNumberEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (typeof raw !== "string") return fallback;
-  const trimmed = raw.trim();
-  if (!trimmed) return fallback;
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function readIntEnv(name: string, fallback: number): number {
-  return Math.trunc(readNumberEnv(name, fallback));
-}
-
-function clampNumber(n: number, min: number, max: number): number {
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
-
-type ApiKeyEntry = {
-  keyId: string;
-  keyHash: string;
-  keyBytes: Uint8Array;
-  scopes: Set<string>;
-};
-
-function buildApiKeyHash(rawKey: string): string {
-  return createHash("sha256").update(rawKey).digest("hex");
-}
-
-function buildApiKeyIdFromHash(keyHash: string): string {
-  return keyHash.slice(0, 16);
-}
-
-function parseApiKeysEnv(): ApiKeyEntry[] {
-  const raw = String(process.env.RELAYER_API_KEYS || "").trim();
-  if (!raw) return [];
-  const entries: ApiKeyEntry[] = [];
-  for (const token of raw
-    .split(",")
-    .map((v) => v.trim())
-    .filter((v) => v.length > 0)) {
-    const parts = token.split(":");
-    const key = (parts[0] || "").trim();
-    if (!key) continue;
-    const scopesRaw = parts.slice(1).join(":").trim();
-    const scopes =
-      scopesRaw.length > 0
-        ? new Set(
-            scopesRaw
-              .split("|")
-              .map((v) => v.trim())
-              .filter((v) => v.length > 0)
-          )
-        : new Set<string>(["*"]);
-    const keyHash = buildApiKeyHash(key);
-    entries.push({
-      keyId: buildApiKeyIdFromHash(keyHash),
-      keyHash,
-      keyBytes: Buffer.from(key),
-      scopes,
-    });
-  }
-  return entries;
-}
-
-const apiKeys: ApiKeyEntry[] = parseApiKeysEnv();
-
-function getClientIp(req: express.Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) {
-    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
-    const ip = String(ips || "").trim();
-    if (ip) return ip;
-  }
-  const realIp = req.headers["x-real-ip"];
-  if (realIp) {
-    const ip = Array.isArray(realIp) ? realIp[0] : realIp;
-    const v = String(ip || "").trim();
-    if (v) return v;
-  }
-  const ip = (req.ip || req.socket.remoteAddress || "").toString().trim();
-  return ip || "unknown";
-}
-
-function getApiKeyFromRequest(req: express.Request): string | null {
-  const direct = req.headers["x-api-key"];
-  if (typeof direct === "string") {
-    const v = direct.trim();
-    if (v) return v;
-  }
-  const auth = req.headers.authorization;
-  if (typeof auth === "string") {
-    const m = auth.match(/^ApiKey\s+(.+)$/i);
-    if (m) {
-      const v = String(m[1] || "").trim();
-      if (v) return v;
-    }
-  }
-  return null;
-}
-
-function verifyApiKeyEnv(rawKey: string): ApiKeyEntry | null {
-  const candidate = Buffer.from(rawKey);
-  for (const entry of apiKeys) {
-    if (candidate.length !== entry.keyBytes.length) continue;
-    if (timingSafeEqual(candidate, entry.keyBytes)) return entry;
-  }
-  return null;
-}
-
-function hasScope(scopes: Set<string>, scope: string): boolean {
-  if (scopes.has("*")) return true;
-  if (scopes.has("admin")) return true;
-  return scopes.has(scope);
-}
-
-type ResolvedApiKey = {
-  keyId: string;
-  keyHash: string;
-  scopes: Set<string>;
-  source: "env" | "redis";
-};
-
-const apiKeyPositiveCache = new Map<string, MicroCacheEntry<ResolvedApiKey>>();
-const apiKeyNegativeCache = new Map<string, MicroCacheEntry<true>>();
-
-function authIsEnabled(): boolean {
-  const envKeysEnabled = apiKeys.length > 0;
-  const redisEnabled =
-    String(process.env.RELAYER_API_KEYS_REDIS || "")
-      .trim()
-      .toLowerCase() === "true";
-  return envKeysEnabled || redisEnabled;
-}
-
-function parseScopesValue(raw: string): Set<string> {
-  const trimmed = raw.trim();
-  if (!trimmed) return new Set<string>();
-  try {
-    const parsed = JSON.parse(trimmed) as any;
-    if (Array.isArray(parsed)) {
-      return new Set<string>(parsed.map((v) => String(v || "").trim()).filter((v) => v.length > 0));
-    }
-    if (parsed && typeof parsed === "object" && Array.isArray(parsed.scopes)) {
-      return new Set<string>(
-        parsed.scopes.map((v: any) => String(v || "").trim()).filter((v: string) => v.length > 0)
-      );
-    }
-  } catch {}
-  return new Set<string>(
-    trimmed
-      .split("|")
-      .map((v) => v.trim())
-      .filter((v) => v.length > 0)
-  );
-}
-
-async function resolveApiKey(rawKey: string): Promise<ResolvedApiKey | null> {
-  const keyHash = buildApiKeyHash(rawKey);
-  const cached = microCacheGet(apiKeyPositiveCache, keyHash);
-  if (cached) return cached;
-  const negCached = microCacheGet(apiKeyNegativeCache, keyHash);
-  if (negCached) return null;
-
-  const envHit = verifyApiKeyEnv(rawKey);
-  if (envHit) {
-    const resolved: ResolvedApiKey = {
-      keyId: envHit.keyId,
-      keyHash: envHit.keyHash,
-      scopes: envHit.scopes,
-      source: "env",
-    };
-    microCacheSet(
-      apiKeyPositiveCache,
-      keyHash,
-      Math.max(50, readIntEnv("RELAYER_API_KEY_CACHE_MS", 5000)),
-      resolved,
-      20000
-    );
-    return resolved;
-  }
-
-  const redisEnabled =
-    String(process.env.RELAYER_API_KEYS_REDIS || "")
-      .trim()
-      .toLowerCase() === "true";
-  if (!redisEnabled) {
-    microCacheSet(
-      apiKeyNegativeCache,
-      keyHash,
-      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
-      true,
-      20000
-    );
-    return null;
-  }
-
-  const redis = getRedisClient();
-  if (!redis.isReady()) {
-    microCacheSet(
-      apiKeyNegativeCache,
-      keyHash,
-      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
-      true,
-      20000
-    );
-    return null;
-  }
-
-  const rawScopes = await redis.hGet("relayer:api_keys", keyHash);
-  if (!rawScopes) {
-    microCacheSet(
-      apiKeyNegativeCache,
-      keyHash,
-      Math.max(50, readIntEnv("RELAYER_API_KEY_NEG_CACHE_MS", 500)),
-      true,
-      20000
-    );
-    return null;
-  }
-
-  const scopes = parseScopesValue(rawScopes);
-  if (scopes.size === 0) scopes.add("*");
-  const resolved: ResolvedApiKey = {
-    keyId: buildApiKeyIdFromHash(keyHash),
-    keyHash,
-    scopes,
-    source: "redis",
+function sendApiError(
+  req: express.Request,
+  res: express.Response,
+  status: number,
+  payload: { message: string; detail?: any; errorCode?: string | null }
+) {
+  const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
+  const body = {
+    success: false,
+    message: payload.message,
+    ...(typeof payload.detail !== "undefined" ? { detail: payload.detail } : {}),
+    ...(typeof payload.errorCode !== "undefined" ? { errorCode: payload.errorCode } : {}),
+    ...(requestId ? { requestId } : {}),
   };
-  microCacheSet(
-    apiKeyPositiveCache,
-    keyHash,
-    Math.max(50, readIntEnv("RELAYER_API_KEY_CACHE_MS", 5000)),
-    resolved,
-    20000
-  );
-  return resolved;
+  res.status(status).json(body);
+  return body;
 }
 
-function requireApiKey(scope: string, action: string) {
-  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (!authIsEnabled()) return next();
-    const raw = getApiKeyFromRequest(req);
-    if (!raw) {
-      apiAuthFailuresTotal.inc({ path: req.path, reason: "missing" });
-      apiKeyRequestsTotal.inc({
-        action,
-        path: req.path,
-        result: "denied",
-        key_id: "missing",
-      });
-      adminActionsTotal.inc({ action, result: "denied" });
-      return sendApiError(req, res, 401, {
-        message: "API key required",
-        errorCode: "API_KEY_REQUIRED",
-      });
-    }
-    const entry = await resolveApiKey(raw);
-    if (!entry) {
-      apiAuthFailuresTotal.inc({ path: req.path, reason: "invalid" });
-      apiKeyRequestsTotal.inc({
-        action,
-        path: req.path,
-        result: "denied",
-        key_id: buildApiKeyIdFromHash(buildApiKeyHash(raw)),
-      });
-      adminActionsTotal.inc({ action, result: "denied" });
-      return sendApiError(req, res, 401, {
-        message: "API key invalid",
-        errorCode: "API_KEY_INVALID",
-      });
-    }
-    if (!hasScope(entry.scopes, scope)) {
-      apiAuthFailuresTotal.inc({ path: req.path, reason: "forbidden" });
-      apiKeyRequestsTotal.inc({
-        action,
-        path: req.path,
-        result: "denied",
-        key_id: entry.keyId,
-      });
-      adminActionsTotal.inc({ action, result: "denied" });
-      return sendApiError(req, res, 403, {
-        message: "API key forbidden",
-        errorCode: "API_KEY_FORBIDDEN",
-      });
-    }
-    (req as any).apiKeyId = entry.keyId;
-    (req as any).apiKeyScopes = Array.from(entry.scopes);
-    apiKeyRequestsTotal.inc({
-      action,
-      path: req.path,
-      result: "allowed",
-      key_id: entry.keyId,
-    });
-    adminActionsTotal.inc({ action, result: "allowed" });
-    return next();
-  };
-}
-
-function getRateLimitIdentityFromResolvedKey(
-  key: ResolvedApiKey | null,
-  req: express.Request
-): string {
-  if (key) return `api:${key.keyId}`;
-  const raw = getApiKeyFromRequest(req);
-  if (raw) {
-    const keyHash = buildApiKeyHash(raw);
-    return `api:${buildApiKeyIdFromHash(keyHash)}`;
-  }
-  return `ip:${getClientIp(req)}`;
-}
-
-type RateTier = "admin" | "trader" | "anon";
-
-function getRateTierFromScopes(scopes: Set<string> | null): RateTier {
-  if (!scopes) return "anon";
-  if (scopes.has("admin")) return "admin";
-  return "trader";
-}
+const {
+  requireApiKey,
+  resolveApiKey,
+  getApiKeyFromRequest,
+  getClientIp,
+  getRateLimitIdentityFromResolvedKey,
+  getRateTierFromScopes,
+} = createApiKeyAuth(readIntEnv, sendApiError);
 
 function createRoleBasedLimiter(
   envPrefix: string,
@@ -812,327 +328,13 @@ const limitGasless = createRoleBasedLimiter("RELAYER_RATE_LIMIT_GASLESS", {
   windowMs: 60000,
 });
 
-type IdempotencyEntry = {
-  expiresAtMs: number;
-  status: number;
-  body: any;
-};
-
-const idempotencyStore = new Map<string, IdempotencyEntry>();
-let idempotencyCleanupIter: IterableIterator<[string, IdempotencyEntry]> | null = null;
-let idempotencyLastCleanupAtMs = 0;
-
-function cleanupIdempotencyStore(nowMs: number, maxScan: number) {
-  if (!idempotencyCleanupIter) {
-    idempotencyCleanupIter = idempotencyStore.entries();
-  }
-  let scanned = 0;
-  while (scanned < maxScan) {
-    const n = idempotencyCleanupIter.next();
-    if (n.done) {
-      idempotencyCleanupIter = null;
-      break;
-    }
-    scanned += 1;
-    const [k, v] = n.value;
-    if (v.expiresAtMs <= nowMs) idempotencyStore.delete(k);
-  }
-}
-
-function getIdempotencyKey(req: express.Request, extra: string): string | null {
-  const headerKey = String(req.headers["x-idempotency-key"] || "").trim();
-  const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
-  const base = headerKey || requestId;
-  if (!base) return null;
-  return `${req.method}:${extra}:${base}`;
-}
-
-function getIdempotencyRedisKey(key: string): string {
-  return `idempotency:${key}`;
-}
-
-async function getIdempotencyEntry(key: string): Promise<IdempotencyEntry | null> {
-  const entry = idempotencyStore.get(key);
-  if (entry) {
-    if (entry.expiresAtMs <= Date.now()) {
-      idempotencyStore.delete(key);
-    } else {
-      return entry;
-    }
-  }
-
-  if (process.env.RELAYER_IDEMPOTENCY_REDIS === "false") return null;
-
-  const redis = getRedisClient();
-  if (!redis.isReady()) return null;
-
-  const raw = await redis.get(getIdempotencyRedisKey(key));
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as IdempotencyEntry;
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      typeof parsed.expiresAtMs !== "number" ||
-      typeof parsed.status !== "number"
-    ) {
-      return null;
-    }
-    if (parsed.expiresAtMs <= Date.now()) return null;
-    idempotencyStore.set(key, parsed);
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-async function setIdempotencyEntry(key: string, status: number, body: any): Promise<void> {
-  const ttlMs = Math.max(1000, readIntEnv("RELAYER_IDEMPOTENCY_TTL_MS", 60000));
-  const entry: IdempotencyEntry = {
-    expiresAtMs: Date.now() + ttlMs,
-    status,
-    body,
-  };
-  idempotencyStore.set(key, entry);
-  const now = Date.now();
-  if (
-    (idempotencyStore.size > 2000 && now - idempotencyLastCleanupAtMs > 1000) ||
-    idempotencyStore.size > 8000
-  ) {
-    idempotencyLastCleanupAtMs = now;
-    cleanupIdempotencyStore(now, idempotencyStore.size > 8000 ? 2000 : 200);
-  }
-  const hardCap = Math.max(1000, readIntEnv("RELAYER_IDEMPOTENCY_MAX_KEYS", 10000));
-  if (idempotencyStore.size > hardCap) {
-    cleanupIdempotencyStore(now, 5000);
-    while (idempotencyStore.size > hardCap) {
-      const oldestKey = idempotencyStore.keys().next().value;
-      if (!oldestKey) break;
-      idempotencyStore.delete(oldestKey);
-    }
-  }
-
-  if (process.env.RELAYER_IDEMPOTENCY_REDIS === "false") return;
-  const redis = getRedisClient();
-  if (!redis.isReady()) return;
-
-  const ttlSeconds = Math.max(1, Math.floor(ttlMs / 1000));
-  try {
-    await redis.set(getIdempotencyRedisKey(key), JSON.stringify(entry), ttlSeconds);
-  } catch {}
-}
-
-function getLeaderProxyUrl(): string {
-  return String(
-    process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
-  ).trim();
-}
-
-type LeaderIdCache = {
-  leaderId: string | null;
-  expiresAtMs: number;
-  inFlight: Promise<string | null> | null;
-};
-
-const leaderIdCache: LeaderIdCache = {
-  leaderId: null,
-  expiresAtMs: 0,
-  inFlight: null,
-};
-
-async function getCachedLeaderId(
-  cluster: ReturnType<typeof getClusterManager>
-): Promise<string | null> {
-  const known = cluster.getKnownLeaderId();
-  if (known) return known;
-  const now = Date.now();
-  const ttlMs = Math.max(200, readIntEnv("RELAYER_LEADER_ID_CACHE_MS", 1000));
-  if (leaderIdCache.leaderId && now < leaderIdCache.expiresAtMs) {
-    return leaderIdCache.leaderId;
-  }
-  if (leaderIdCache.inFlight) return leaderIdCache.inFlight;
-  leaderIdCache.inFlight = cluster
-    .getLeaderId()
-    .catch(() => null)
-    .then((id) => {
-      leaderIdCache.leaderId = id;
-      leaderIdCache.expiresAtMs = Date.now() + ttlMs;
-      leaderIdCache.inFlight = null;
-      return id;
-    });
-  return leaderIdCache.inFlight;
-}
-
-type MicroCacheEntry<T> = { expiresAtMs: number; value: T };
-function microCacheGet<T>(cache: Map<string, MicroCacheEntry<T>>, key: string): T | null {
-  const hit = cache.get(key);
-  if (!hit) return null;
-  if (hit.expiresAtMs <= Date.now()) {
-    cache.delete(key);
-    return null;
-  }
-  return hit.value;
-}
-
-function microCacheSet<T>(
-  cache: Map<string, MicroCacheEntry<T>>,
-  key: string,
-  ttlMs: number,
-  value: T,
-  maxSize: number
-) {
-  if (!Number.isFinite(ttlMs) || ttlMs <= 0) return;
-  cache.set(key, { expiresAtMs: Date.now() + ttlMs, value });
-  if (cache.size > maxSize) {
-    const oldestKey = cache.keys().next().value;
-    if (oldestKey) cache.delete(oldestKey);
-  }
-}
+const { getIdempotencyKey, getIdempotencyEntry, setIdempotencyEntry, setIdempotencyIfPresent } =
+  createIdempotency(readIntEnv);
 
 const depthMicroCache = new Map<string, MicroCacheEntry<any>>();
 const statsMicroCache = new Map<string, MicroCacheEntry<any>>();
-const gaslessQuotaMicroCache = new Map<string, MicroCacheEntry<number>>();
-const intentStatusMicroCache = new Map<string, MicroCacheEntry<any>>();
-
-function sendNotLeader(
-  res: express.Response,
-  payload: { leaderId: string | null; nodeId?: string; path: string }
-) {
-  const proxyUrl = getLeaderProxyUrl();
-  res.status(503).json({
-    success: false,
-    message: "Not leader",
-    leaderId: payload.leaderId,
-    nodeId: payload.nodeId || null,
-    path: payload.path,
-    retryable: true,
-    suggestedWaitMs: 1000,
-    proxyUrlConfigured: !!proxyUrl,
-  });
-}
-
-function sendApiError(
-  req: express.Request,
-  res: express.Response,
-  status: number,
-  payload: { message: string; detail?: any; errorCode?: string | null }
-) {
-  const requestId = String(req.headers["x-request-id"] || (req as any).requestId || "").trim();
-  const body = {
-    success: false,
-    message: payload.message,
-    ...(typeof payload.detail !== "undefined" ? { detail: payload.detail } : {}),
-    ...(typeof payload.errorCode !== "undefined" ? { errorCode: payload.errorCode } : {}),
-    ...(requestId ? { requestId } : {}),
-  };
-  res.status(status).json(body);
-  return body;
-}
-
-function setIdempotencyIfPresent(idemKey: string | null, status: number, body: any): void {
-  if (!idemKey) return;
-  if (status >= 500) return;
-  void setIdempotencyEntry(idemKey, status, body);
-}
-
-function getGaslessQuotaKey(userAddress: string): string {
-  return `gasless:quota:day:${userAddress.toLowerCase()}`;
-}
-
-async function getGaslessQuotaUsage(
-  userAddress: string
-): Promise<{ used: number; remaining: number }> {
-  const limit =
-    Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0") > 0
-      ? Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0")
-      : 0;
-  if (limit <= 0) return { used: 0, remaining: Number.POSITIVE_INFINITY };
-
-  const cacheKey = userAddress.toLowerCase();
-  const cached = microCacheGet(gaslessQuotaMicroCache, cacheKey);
-  if (typeof cached === "number") {
-    return { used: cached, remaining: Math.max(0, limit - cached) };
-  }
-
-  const redis = getRedisClient();
-  if (!redis.isReady()) return { used: 0, remaining: limit };
-
-  const raw = await redis.get(getGaslessQuotaKey(userAddress));
-  const used = raw ? Number(raw) || 0 : 0;
-  microCacheSet(gaslessQuotaMicroCache, cacheKey, 5000, used, 5000);
-  return { used, remaining: Math.max(0, limit - used) };
-}
-
-async function addGaslessQuotaUsage(userAddress: string, costUsd: number): Promise<void> {
-  if (!(Number(process.env.RELAYER_GASLESS_DAILY_LIMIT_USD || "0") > 0)) return;
-  if (!(Number.isFinite(costUsd) && costUsd > 0)) return;
-  const redis = getRedisClient();
-  if (!redis.isReady()) return;
-  const key = getGaslessQuotaKey(userAddress);
-  const now = Date.now();
-  const endOfDay =
-    new Date(now).setUTCHours(23, 59, 59, 999) - new Date(now).getTimezoneOffset() * 60000;
-  const ttlSeconds = Math.max(60, Math.floor((endOfDay - now) / 1000));
-  try {
-    const raw = await redis.get(key);
-    const next = (raw ? Number(raw) || 0 : 0) + costUsd;
-    await redis.set(key, String(next), ttlSeconds);
-  } catch {}
-  const cacheKey = userAddress.toLowerCase();
-  const cached = microCacheGet(gaslessQuotaMicroCache, cacheKey);
-  if (typeof cached === "number") {
-    const next = cached + costUsd;
-    microCacheSet(gaslessQuotaMicroCache, cacheKey, 5000, next, 5000);
-  }
-}
-
-type IntentStatus = "pending" | "confirming" | "failed";
-
-type TradeIntentRecord = {
-  id: string;
-  type: "trade";
-  userAddress: string;
-  marketKey: string;
-  chainId: number;
-  createdAt: number;
-  updatedAt: number;
-  status: IntentStatus;
-  txHash: string | null;
-  error: string | null;
-};
-
-function getIntentRedisKey(id: string): string {
-  return `intent:${id}`;
-}
-
-async function saveTradeIntent(record: TradeIntentRecord): Promise<void> {
-  const redis = getRedisClient();
-  const ttlSeconds = Math.max(
-    60,
-    Math.floor((Number(process.env.RELAYER_INTENT_TTL_MS || "86400000") || 86400000) / 1000)
-  );
-  try {
-    await redis.set(getIntentRedisKey(record.id), JSON.stringify(record), ttlSeconds);
-  } catch {}
-  microCacheSet(intentStatusMicroCache, record.id, 5000, record, 5000);
-}
-
-async function loadIntent(id: string): Promise<TradeIntentRecord | null> {
-  const cached = microCacheGet(intentStatusMicroCache, id) as TradeIntentRecord | null;
-  if (cached) return cached;
-  const redis = getRedisClient();
-  if (!redis.isReady()) return null;
-  try {
-    const raw = await redis.get(getIntentRedisKey(id));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as TradeIntentRecord;
-    if (!parsed || typeof parsed !== "object") return null;
-    microCacheSet(intentStatusMicroCache, id, 5000, parsed, 5000);
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+const { getGaslessQuotaUsage, addGaslessQuotaUsage } = createGaslessQuotaStore();
+const { saveTradeIntent, loadIntent } = createIntentStore();
 
 const allowedOriginsRaw = process.env.RELAYER_CORS_ORIGINS || "";
 const allowedOrigins = allowedOriginsRaw
@@ -1308,67 +510,18 @@ async function initContractListener() {
 // 混沌工程实例
 let chaosInstance: any = null;
 
-app.get("/", (_req, res) => {
-  res.setHeader("Cache-Control", "no-cache");
-  res.send("Foresight Relayer is running!");
-});
-
-app.post("/", async (req, res) => {
-  try {
-    if (clusterIsActive) {
-      const cluster = getClusterManager();
-      if (!cluster.isLeader()) {
-        const leaderId = await getCachedLeaderId(cluster);
-        const proxyUrl = getLeaderProxyUrl();
-        if (proxyUrl) {
-          const ok = await proxyToLeader(proxyUrl, req, res, "/");
-          if (ok) return;
-        }
-        sendNotLeader(res, {
-          leaderId,
-          nodeId: cluster.getNodeId(),
-          path: "/",
-        });
-        return;
-      }
-    }
-    const idemKey = getIdempotencyKey(req, "/");
-    if (idemKey) {
-      const hit = await getIdempotencyEntry(idemKey);
-      if (hit) return res.status(hit.status).json(hit.body);
-    }
-    if (!bundlerWallet) {
-      return res.status(501).json({
-        jsonrpc: "2.0",
-        id: req.body?.id,
-        error: { code: -32601, message: "Bundler disabled" },
-      });
-    }
-    const { userOp, entryPointAddress } = req.body;
-    if (!userOp || !entryPointAddress) {
-      return res.status(400).json({
-        jsonrpc: "2.0",
-        id: req.body.id,
-        error: { code: -32602, message: "Invalid params" },
-      });
-    }
-    const entryPoint = new Contract(entryPointAddress, EntryPointAbi, bundlerWallet);
-    const tx = await entryPoint.handleOps([userOp], bundlerWallet.address);
-    const receipt = await tx.wait();
-    const responseBody = {
-      jsonrpc: "2.0",
-      id: req.body.id,
-      result: receipt.hash,
-    };
-    res.json(responseBody);
-    if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
-  } catch (error: any) {
-    res.status(500).json({
-      jsonrpc: "2.0",
-      id: req.body.id,
-      error: { code: -32602, message: "Internal error", data: error.message },
-    });
-  }
+registerRootRoutes(app, {
+  isClusterActive: () => clusterIsActive,
+  getClusterManager,
+  getCachedLeaderId,
+  getLeaderProxyUrl,
+  proxyToLeader,
+  sendNotLeader,
+  getIdempotencyKey,
+  getIdempotencyEntry,
+  setIdempotencyEntry,
+  getBundlerWallet: () => bundlerWallet,
+  entryPointAbi: EntryPointAbi,
 });
 
 const DEFAULT_ENTRYPOINT_ADDRESSES: Record<number, string> = {
@@ -1376,6 +529,14 @@ const DEFAULT_ENTRYPOINT_ADDRESSES: Record<number, string> = {
   137: "0x0000000071727de22e5e9d8baf0edac6f37da032",
   11155111: "0x0000000071727de22e5e9d8baf0edac6f37da032",
 };
+
+function maybeEthAddress(v: unknown): string | undefined {
+  const s = typeof v === "string" ? v.trim() : "";
+  if (!s) return undefined;
+  if (/^[0-9a-fA-F]{40}$/.test(s)) return "0x" + s;
+  if (/^0x[0-9a-fA-F]{40}$/.test(s)) return s;
+  return undefined;
+}
 
 function resolveEntryPointAddress(raw: unknown): string | null {
   const body = raw && typeof raw === "object" ? (raw as any) : {};
@@ -1387,97 +548,6 @@ function resolveEntryPointAddress(raw: unknown): string | null {
   const fallback = DEFAULT_ENTRYPOINT_ADDRESSES[CHAIN_ID];
   return fallback ? fallback.toLowerCase() : null;
 }
-
-const HexAddressSchema = z
-  .string()
-  .trim()
-  .regex(/^0x[0-9a-fA-F]{40}$/)
-  .transform((v) => v.toLowerCase());
-
-const HexDataSchema = z
-  .string()
-  .trim()
-  .regex(/^0x[0-9a-fA-F]+$/);
-
-const HexDataOrEmptySchema = z
-  .string()
-  .trim()
-  .regex(/^0x[0-9a-fA-F]*$/);
-
-const BigIntFromNumberishSchema = z.preprocess((v) => {
-  if (typeof v === "bigint") return v;
-  if (typeof v === "number") {
-    if (!Number.isFinite(v)) return v;
-    return BigInt(Math.trunc(v));
-  }
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (!s) return v;
-    try {
-      return BigInt(s);
-    } catch {
-      return v;
-    }
-  }
-  return v;
-}, z.bigint());
-
-const GaslessOrderSchema = z.object({
-  marketKey: z.string().min(1),
-  chainId: z.number().int().positive(),
-  marketAddress: HexAddressSchema,
-  usdcAddress: HexAddressSchema.optional(),
-  userAddress: HexAddressSchema,
-  fillAmount: BigIntFromNumberishSchema,
-  order: z.object({
-    maker: HexAddressSchema,
-    outcomeIndex: z.number().int().min(0),
-    isBuy: z.boolean(),
-    price: BigIntFromNumberishSchema,
-    amount: BigIntFromNumberishSchema,
-    salt: BigIntFromNumberishSchema,
-    expiry: BigIntFromNumberishSchema,
-  }),
-  orderSignature: HexDataSchema,
-  permit: z
-    .object({
-      owner: HexAddressSchema,
-      spender: HexAddressSchema,
-      value: BigIntFromNumberishSchema,
-      nonce: BigIntFromNumberishSchema,
-      deadline: BigIntFromNumberishSchema,
-      signature: HexDataSchema,
-    })
-    .optional(),
-  meta: z
-    .object({
-      clientOrderId: z.string().max(128).optional(),
-      deviceId: z.string().max(128).optional(),
-      intentType: z.enum(["order"]).optional(),
-      maxCostUsd: z.number().positive().optional(),
-    })
-    .optional(),
-});
-
-const UserOperationSchema = z.object({
-  sender: HexAddressSchema,
-  nonce: BigIntFromNumberishSchema,
-  initCode: HexDataOrEmptySchema,
-  callData: HexDataOrEmptySchema,
-  callGasLimit: BigIntFromNumberishSchema,
-  verificationGasLimit: BigIntFromNumberishSchema,
-  preVerificationGas: BigIntFromNumberishSchema,
-  maxFeePerGas: BigIntFromNumberishSchema,
-  maxPriorityFeePerGas: BigIntFromNumberishSchema,
-  paymasterAndData: HexDataOrEmptySchema,
-  signature: HexDataOrEmptySchema,
-});
-
-const AaUserOpDraftSchema = z.object({
-  owner: HexAddressSchema,
-  userOp: UserOperationSchema,
-  entryPointAddress: HexAddressSchema.optional(),
-});
 
 app.post("/aa/userop/draft", requireApiKey("aa", "aa_userop_draft"), async (req, res) => {
   try {
@@ -1556,12 +626,6 @@ app.post("/aa/userop/draft", requireApiKey("aa", "aa_userop_draft"), async (req,
     });
     return body;
   }
-});
-
-const AaUserOpSimulateSchema = z.object({
-  owner: HexAddressSchema,
-  userOp: UserOperationSchema,
-  entryPointAddress: HexAddressSchema.optional(),
 });
 
 app.post("/aa/userop/simulate", requireApiKey("aa", "aa_userop_simulate"), async (req, res) => {
@@ -1655,13 +719,6 @@ app.post("/aa/userop/simulate", requireApiKey("aa", "aa_userop_simulate"), async
   }
 });
 
-const AaUserOpSubmitSchema = z.object({
-  owner: HexAddressSchema,
-  userOp: z.any(),
-  signature: HexDataOrEmptySchema.optional(),
-  entryPointAddress: HexAddressSchema.optional(),
-});
-
 app.post("/aa/userop/submit", requireApiKey("aa", "aa_userop_submit"), async (req, res) => {
   try {
     if (clusterIsActive) {
@@ -1753,11 +810,6 @@ app.post("/aa/userop/submit", requireApiKey("aa", "aa_userop_submit"), async (re
     });
     return body;
   }
-});
-
-const CustodialSignSchema = z.object({
-  userOp: z.any(),
-  owner: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
 });
 
 app.post("/aa/custodial/sign", requireApiKey("admin", "custodial_sign"), async (req, res) => {
@@ -2168,129 +1220,6 @@ app.post(
   }
 );
 
-const OrderInputSchema = z.object({
-  marketKey: z.string().min(1),
-  maker: HexAddressSchema,
-  outcomeIndex: z.number().int().min(0),
-  isBuy: z.boolean(),
-  price: BigIntFromNumberishSchema,
-  amount: BigIntFromNumberishSchema,
-  salt: z.string().min(1),
-  expiry: z.number().int().min(0),
-  signature: HexDataSchema,
-  chainId: z.number().int().positive(),
-  verifyingContract: HexAddressSchema,
-  tif: z.enum(["GTC", "IOC", "FOK", "FAK", "GTD"]).optional(),
-  postOnly: z.boolean().optional(),
-  clientOrderId: z.string().min(1).max(128).optional(),
-});
-
-function pickString(...candidates: any[]): string {
-  for (const c of candidates) {
-    if (typeof c === "string") {
-      const v = c.trim();
-      if (v) return v;
-      continue;
-    }
-    if (typeof c === "number") {
-      if (Number.isFinite(c)) return String(c);
-      continue;
-    }
-    if (typeof c === "bigint") return c.toString();
-  }
-  return "";
-}
-
-function toBool(v: any): boolean {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v !== 0;
-  if (typeof v === "string") {
-    const s = v.trim().toLowerCase();
-    return s === "true" || s === "1" || s === "yes" || s === "y";
-  }
-  return false;
-}
-
-function parseV2OrderInput(body: any): OrderInput {
-  const root = body && typeof body === "object" ? body : {};
-  const orderBody =
-    (root.order || root.order_data) && typeof (root.order || root.order_data) === "object"
-      ? root.order || root.order_data
-      : {};
-
-  const chainIdRaw = pickString(
-    root.chainId,
-    root.chain_id,
-    orderBody.chainId,
-    orderBody.chain_id,
-    0
-  );
-  const chainId = Number(chainIdRaw);
-  const marketKey = pickString(
-    root.marketKey,
-    root.market_key,
-    `${pickString(
-      root.chainId,
-      root.chain_id,
-      orderBody.chainId,
-      orderBody.chain_id,
-      0
-    )}:${pickString(root.eventId, root.event_id, "unknown")}`
-  );
-
-  const verifyingContract = pickString(
-    root.verifyingContract,
-    orderBody.verifyingContract,
-    root.verifying_contract,
-    orderBody.verifying_contract,
-    root.verifying_contract_address,
-    orderBody.verifying_contract_address,
-    root.contract,
-    orderBody.contract,
-    root.contractAddress,
-    orderBody.contractAddress,
-    root.marketAddress,
-    orderBody.marketAddress
-  );
-
-  const tifRaw = pickString(orderBody.tif, root.tif);
-  const tif = tifRaw ? (tifRaw.trim().toUpperCase() as any) : undefined;
-
-  const normalized = {
-    marketKey,
-    maker: pickString(orderBody.maker, root.maker),
-    outcomeIndex: Number(
-      pickString(
-        orderBody.outcomeIndex,
-        orderBody.outcome_index,
-        root.outcomeIndex,
-        root.outcome_index,
-        0
-      )
-    ),
-    isBuy: toBool(orderBody.isBuy ?? orderBody.is_buy ?? root.isBuy ?? root.is_buy),
-    price: pickString(orderBody.price, root.price),
-    amount: pickString(orderBody.amount, root.amount),
-    salt: pickString(orderBody.salt, root.salt),
-    expiry: Number(pickString(orderBody.expiry, orderBody.expiresAt, root.expiry, 0)),
-    signature: pickString(root.signature, orderBody.signature),
-    chainId,
-    verifyingContract,
-    tif,
-    postOnly:
-      typeof (orderBody.postOnly ?? orderBody.post_only) !== "undefined"
-        ? toBool(orderBody.postOnly ?? orderBody.post_only)
-        : undefined,
-    clientOrderId:
-      typeof (orderBody.clientOrderId ?? orderBody.client_order_id ?? root.clientOrderId) ===
-      "string"
-        ? String(orderBody.clientOrderId ?? orderBody.client_order_id ?? root.clientOrderId)
-        : undefined,
-  };
-
-  return OrderInputSchema.parse(normalized) as OrderInput;
-}
-
 /**
  * POST /v2/orders - 提交订单并撮合
  * 新的撮合引擎入口，支持即时撮合
@@ -2469,61 +1398,6 @@ app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async 
   }
 });
 
-const CancelV2Schema = z
-  .object({
-    marketKey: z.string().min(1),
-    outcomeIndex: z
-      .preprocess(
-        (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-        z.number().int().min(0)
-      )
-      .optional(),
-    outcome_index: z
-      .preprocess(
-        (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-        z.number().int().min(0)
-      )
-      .optional(),
-    chainId: z.preprocess(
-      (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-      z.number().int().positive()
-    ),
-    verifyingContract: z.string().optional(),
-    verifying_contract: z.string().optional(),
-    verifying_contract_address: z.string().optional(),
-    contract: z.string().optional(),
-    contractAddress: z.string().optional(),
-    ownerEoa: z.string().optional(),
-    owner_eoa: z.string().optional(),
-    maker: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
-    salt: z.preprocess((v) => (typeof v === "string" ? v : String(v)), z.string().min(1)),
-    signature: HexDataSchema,
-  })
-  .refine((v) => typeof v.outcomeIndex === "number" || typeof v.outcome_index === "number", {
-    message: "outcomeIndex is required",
-    path: ["outcomeIndex"],
-  })
-  .transform((v) => ({
-    marketKey: v.marketKey,
-    outcomeIndex: (v.outcomeIndex ?? v.outcome_index) as number,
-    chainId: v.chainId,
-    verifyingContract:
-      v.verifyingContract ||
-      v.verifying_contract ||
-      v.verifying_contract_address ||
-      v.contract ||
-      v.contractAddress ||
-      "",
-    ownerEoa: v.ownerEoa || v.owner_eoa,
-    maker: v.maker,
-    salt: v.salt,
-    signature: v.signature,
-  }))
-  .refine((v) => /^0x[0-9a-fA-F]{40}$/.test(v.verifyingContract), {
-    message: "Invalid verifyingContract",
-    path: ["verifyingContract"],
-  });
-
 app.post(
   "/v2/cancel-salt",
   limitOrders,
@@ -2608,27 +1482,6 @@ app.post(
     }
   }
 );
-
-const V2DepthQuerySchema = z.object({
-  marketKey: z.string().min(1),
-  outcomeIndex: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-  levels: z.preprocess((v) => {
-    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
-    if (!Number.isFinite(n)) return 20;
-    return Math.max(1, Math.min(50, n));
-  }, z.number().int().min(1).max(50)),
-});
-
-const V2StatsQuerySchema = z.object({
-  marketKey: z.string().min(1),
-  outcomeIndex: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-});
 
 /**
  * GET /v2/depth - 获取订单簿深度 (从内存)
@@ -2988,20 +1841,6 @@ app.get("/v2/ws-info", (_req, res) => {
   });
 });
 
-const V2RegisterSettlerSchema = z.object({
-  marketKey: z.string().min(1),
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  marketAddress: HexAddressSchema,
-});
-
-const V2CloseMarketSchema = z.object({
-  marketKey: z.string().min(1),
-  reason: z.string().optional(),
-});
-
 /**
  * POST /v2/register-settler - 注册市场结算器
  * 由管理员调用,为市场配置 Operator
@@ -3269,97 +2108,6 @@ app.post(
   }
 );
 
-const DepthQuerySchema = z.object({
-  contract: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{40}$/)
-    .transform((v) => v.toLowerCase()),
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  outcome: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-  side: z
-    .string()
-    .transform((v) => v.toLowerCase())
-    .refine((v) => v === "buy" || v === "sell", {
-      message: "side must be buy or sell",
-    }),
-  levels: z.preprocess((v) => {
-    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
-    if (!Number.isFinite(n)) return 10;
-    return Math.max(1, Math.min(50, n));
-  }, z.number().int().min(1).max(50)),
-  marketKey: z.string().optional(),
-  market_key: z.string().optional(),
-});
-
-const QueueQuerySchema = z.object({
-  contract: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{40}$/)
-    .transform((v) => v.toLowerCase()),
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  outcome: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-  side: z
-    .string()
-    .transform((v) => v.toLowerCase())
-    .refine((v) => v === "buy" || v === "sell", {
-      message: "side must be buy or sell",
-    }),
-  price: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? BigInt(String(v)) : v),
-    z.bigint()
-  ),
-  limit: z.preprocess((v) => {
-    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
-    if (!Number.isFinite(n)) return 50;
-    return Math.max(1, Math.min(200, n));
-  }, z.number().int().min(1).max(200)),
-  offset: z.preprocess((v) => {
-    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, n);
-  }, z.number().int().min(0)),
-  marketKey: z.string().optional(),
-  market_key: z.string().optional(),
-});
-
-const CandlesQuerySchema = z.object({
-  market: z.string(),
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  outcome: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().min(0)
-  ),
-  resolution: z.string().default("15m"),
-  limit: z.preprocess((v) => {
-    const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
-    if (!Number.isFinite(n)) return 100;
-    return Math.max(1, Math.min(1000, n));
-  }, z.number().int().min(1).max(1000)),
-});
-
-const TradeReportSchema = z.object({
-  chainId: z.preprocess(
-    (v) => (typeof v === "string" || typeof v === "number" ? Number(v) : v),
-    z.number().int().positive()
-  ),
-  txHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
-});
-
 app.get("/orderbook/depth", async (req, res) => {
   try {
     if (!supabaseAdmin) {
@@ -3566,19 +2314,6 @@ app.get("/orderbook/types", (_req, res) => {
   res.json({ success: true, types: getOrderTypes() });
 });
 
-/**
- * Optional: background indexer to ingest trades automatically (no need to call
- * /report-trade manually).
- * Enabled via RELAYER_AUTO_INGEST=1 and requires RPC_URL + SUPABASE service role key.
- *
- * Implementation strategy:
- * - This minimal version watches recent blocks and ingests any tx that contains OrderFilledSigned.
- * - It is conservative and idempotent because SQL function `ingest_trade_event` is idempotent.
- *
- * NOTE: For production, persist lastProcessedBlock (e.g. in Supabase) and use getLogs by topic.
- */
-let autoIngestTimer: NodeJS.Timeout | null = null;
-let marketExpiryTimer: NodeJS.Timeout | null = null;
 let marketSettlementTimer: NodeJS.Timeout | null = null;
 const marketSettlementAttempts = new Map<
   string,
@@ -3589,104 +2324,6 @@ const marketSettlementAttempts = new Map<
     lastOutcomeSetAt?: number;
   }
 >();
-
-async function startMarketExpiryLoop() {
-  if (String(process.env.RELAYER_MARKET_EXPIRY_ENABLED || "").toLowerCase() === "false") return;
-  if (!supabaseAdmin) {
-    logger.warn("Market expiry loop disabled: Supabase not configured");
-    return;
-  }
-  const supabase = supabaseAdmin;
-
-  const pollMs = Math.max(5000, readIntEnv("RELAYER_MARKET_EXPIRY_POLL_MS", 30000));
-  let running = false;
-
-  if (marketExpiryTimer) {
-    clearInterval(marketExpiryTimer);
-    marketExpiryTimer = null;
-  }
-
-  const loop = async () => {
-    if (running) return;
-    running = true;
-    try {
-      if (clusterIsActive) {
-        const cluster = getClusterManager();
-        if (!cluster.isLeader()) return;
-      }
-
-      const nowIso = new Date().toISOString();
-      const { data, error } = await supabase
-        .from("markets_map")
-        .select("event_id,chain_id,resolution_time,status")
-        .eq("status", "open")
-        .not("resolution_time", "is", null)
-        .lte("resolution_time", nowIso)
-        .limit(200);
-
-      if (error) {
-        logger.warn("Market expiry loop query failed", {
-          error: error.message,
-        });
-        return;
-      }
-      if (!data || data.length === 0) return;
-
-      for (const row of data as any[]) {
-        const eventId = Number(row.event_id);
-        const chainId = Number(row.chain_id);
-        if (!Number.isFinite(eventId) || !Number.isFinite(chainId)) continue;
-        const marketKey = `${chainId}:${eventId}`;
-
-        const updateRes = await supabase
-          .from("markets_map")
-          .update({ status: "closed" })
-          .eq("event_id", eventId)
-          .eq("chain_id", chainId)
-          .eq("status", "open");
-        if (updateRes.error) {
-          logger.warn("Failed to update market status to closed", {
-            marketKey,
-            error: updateRes.error.message,
-          });
-          continue;
-        }
-
-        const predictionUpdate = await supabase
-          .from("predictions")
-          .update({
-            status: "completed",
-            settled_at: new Date().toISOString(),
-          })
-          .eq("id", eventId)
-          .eq("status", "active");
-        if (predictionUpdate.error) {
-          logger.warn("Failed to update prediction status for expired market", {
-            marketKey,
-            error: predictionUpdate.error.message,
-          });
-        }
-
-        try {
-          await matchingEngine.closeMarket(marketKey, { reason: "expired" });
-        } catch (error: any) {
-          logger.warn("Failed to close expired market orderbook", {
-            marketKey,
-            error: String(error?.message || error),
-          });
-        }
-      }
-    } catch (e: any) {
-      logger.warn("Market expiry loop failed", { error: String(e?.message || e) });
-    } finally {
-      running = false;
-    }
-  };
-
-  await loop();
-  marketExpiryTimer = setInterval(loop, pollMs);
-  logger.info("Market expiry loop enabled", { pollMs });
-}
 
 async function startMarketSettlementLoop() {
   if (String(process.env.RELAYER_MARKET_SETTLEMENT_ENABLED || "").toLowerCase() === "false") return;
@@ -3932,554 +2569,79 @@ async function startMarketSettlementLoop() {
   logger.info("Market settlement loop enabled", { pollMs });
 }
 
-async function startAutoIngestLoop() {
-  if (process.env.RELAYER_AUTO_INGEST !== "1") return;
-  if (!supabaseAdmin) {
-    console.warn("[auto-ingest] Supabase not configured, disabled");
-    return;
-  }
-  if (!provider) {
-    console.warn("[auto-ingest] Provider not configured (RPC_URL), disabled");
-    return;
-  }
+const backgroundLoops = createBackgroundLoops({
+  logger,
+  matchingEngine,
+  provider,
+  isClusterActive: () => clusterIsActive,
+});
 
-  let chainId: number;
-  try {
-    const net = await provider.getNetwork();
-    chainId = Number(net.chainId);
-  } catch (e: any) {
-    console.warn("[auto-ingest] failed to get network:", String(e?.message || e));
-    return;
-  }
+startRelayerServer({
+  app,
+  port: PORT,
+  logger,
+  matchingEngine,
+  provider,
+  initContractListener,
+  startMarketExpiryLoop: backgroundLoops.startMarketExpiryLoop,
+  startAutoIngestLoop: backgroundLoops.startAutoIngestLoop,
+  setChaosInstance: (instance) => {
+    chaosInstance = instance;
+  },
+  setWsServer: (server) => {
+    wsServer = server;
+  },
+  setClusterIsActive: (active) => {
+    clusterIsActive = active;
+  },
+  getClusterIsActive: () => clusterIsActive,
+});
 
-  const cursorKey = "order_filled_signed";
-  const configuredFrom = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_FROM_BLOCK", 0));
-  const lookback = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_REORG_LOOKBACK", 20));
-  let last = 0;
-  const confirmations = Math.max(0, readIntEnv("RELAYER_AUTO_INGEST_CONFIRMATIONS", 1));
-  const pollMs = Math.max(2000, readIntEnv("RELAYER_AUTO_INGEST_POLL_MS", 5000));
-  const maxConcurrent = Math.max(1, readIntEnv("RELAYER_AUTO_INGEST_CONCURRENCY", 3));
-  let ingestRunning = false;
-
-  if (autoIngestTimer) {
-    clearInterval(autoIngestTimer);
-    autoIngestTimer = null;
-  }
-
-  const loadCursor = async (): Promise<number> => {
-    try {
-      const { data, error } = await supabaseAdmin!
-        .from("relayer_ingest_cursors")
-        .select("last_processed_block")
-        .eq("chain_id", chainId)
-        .eq("cursor_key", cursorKey)
-        .maybeSingle();
-      if (error) {
-        const code = (error as any).code;
-        if (code === "42P01" || code === "42703") return 0;
-        console.warn("[auto-ingest] cursor load error:", String(error.message || error));
-        return 0;
-      }
-      const raw = (data as any)?.last_processed_block;
-      const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
-      return Number.isFinite(n) ? n : 0;
-    } catch (e: any) {
-      console.warn("[auto-ingest] cursor load exception:", String(e?.message || e));
-      return 0;
+registerGracefulShutdown({
+  logger,
+  stopChainReconciler: async () => {
+    await closeChainReconciler();
+  },
+  stopBalanceChecker: async () => {
+    await closeBalanceChecker();
+  },
+  stopContractEventListener: async () => {
+    await closeContractEventListener();
+  },
+  stopChaosEngineering: async () => {
+    if (!chaosInstance) return;
+    const { closeChaosEngineering } = await import("./chaos/chaosInit.js");
+    await closeChaosEngineering(chaosInstance);
+    chaosInstance = null;
+  },
+  stopClusterManager: async () => {
+    await closeClusterManager();
+  },
+  stopSnapshotService: async () => {
+    const snapshotService = getOrderbookSnapshotService();
+    await snapshotService.shutdown();
+  },
+  stopMatchingEngine: async () => {
+    await matchingEngine.shutdown();
+  },
+  stopWebSocket: async () => {
+    if (wsServer) {
+      await Promise.resolve(wsServer.stop());
     }
-  };
-
-  const saveCursor = async (blockNumber: number): Promise<void> => {
-    try {
-      const { error } = await supabaseAdmin!.from("relayer_ingest_cursors").upsert(
-        {
-          chain_id: chainId,
-          cursor_key: cursorKey,
-          last_processed_block: blockNumber,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "chain_id,cursor_key" }
-      );
-      if (error) {
-        const code = (error as any).code;
-        if (code === "42P01" || code === "42703") return;
-        console.warn("[auto-ingest] cursor save error:", String(error.message || error));
-      }
-    } catch (e: any) {
-      console.warn("[auto-ingest] cursor save exception:", String(e?.message || e));
-    }
-  };
-
-  const persistedLast = await loadCursor();
-  if (configuredFrom > 0) {
-    last = configuredFrom;
-  } else {
-    last = persistedLast > 0 ? Math.max(0, persistedLast - lookback) : 0;
-  }
-
-  const loop = async () => {
-    if (ingestRunning) return;
-    ingestRunning = true;
-    try {
-      if (clusterIsActive) {
-        const cluster = getClusterManager();
-        if (!cluster.isLeader()) return;
-      }
-
-      const head = await provider!.getBlockNumber();
-      const target = Math.max(0, head - confirmations);
-      if (last === 0) last = target;
-      if (target <= last) return;
-
-      const maxStep = Math.max(1, readIntEnv("RELAYER_AUTO_INGEST_MAX_STEP", 20));
-      const to = Math.min(target, last + maxStep);
-
-      const fromBlock = last + 1;
-      if (fromBlock > to) return;
-
-      const startTime = Date.now();
-      let totalIngested = 0;
-      let processedTo = last;
-      try {
-        const r = await ingestTradesByLogs(chainId, fromBlock, to, maxConcurrent);
-        totalIngested += r.ingestedCount || 0;
-        processedTo = to;
-        last = processedTo;
-        await saveCursor(processedTo);
-      } catch (e: any) {
-        console.warn(
-          "[auto-ingest] ingestTradesByLogs range error:",
-          String(e?.message || e),
-          chainId,
-          fromBlock,
-          to
-        );
-        for (let b = fromBlock; b <= to; b++) {
-          try {
-            const r = await ingestTradesByLogs(chainId, b, b, maxConcurrent);
-            totalIngested += r.ingestedCount || 0;
-            processedTo = b;
-            last = processedTo;
-            await saveCursor(processedTo);
-          } catch (e: any) {
-            console.warn(
-              "[auto-ingest] ingestTradesByLogs error:",
-              String(e?.message || e),
-              chainId,
-              b
-            );
-            break;
-          }
-        }
-      }
-      const duration = Date.now() - startTime;
-      console.log(
-        "[auto-ingest] window",
-        fromBlock,
-        "to",
-        to,
-        "events",
-        totalIngested,
-        "durationMs",
-        duration
-      );
-    } catch (e: any) {
-      console.warn("[auto-ingest] loop error:", String(e?.message || e));
-    } finally {
-      ingestRunning = false;
-    }
-  };
-
-  // initial tick + interval
-  await loop();
-  autoIngestTimer = setInterval(loop, pollMs);
-  console.log("[auto-ingest] enabled");
-}
-
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, async () => {
-    logger.info("Relayer server starting", { port: PORT });
-
-    try {
-      const { initChaosEngineering } = await import("./chaos/chaosInit.js");
-      chaosInstance = await initChaosEngineering();
-    } catch (error) {
-      logger.error("混沌工程初始化失败", { error: String(error) });
-    }
-
-    await initContractListener();
-
-    // 🚀 Phase 1: 初始化 Redis
-    const redisEnabled = process.env.REDIS_ENABLED !== "false";
-    if (redisEnabled) {
-      try {
-        const connected = await initRedis();
-        if (connected) {
-          logger.info("Redis connected successfully");
-          // 启动订单簿快照同步
-          const snapshotService = getOrderbookSnapshotService();
-          snapshotService.startSync(5000);
-        } else {
-          logger.warn("Redis connection failed, running without Redis");
-        }
-      } catch (e: any) {
-        logger.warn("Redis initialization failed", {}, e);
-      }
-    }
-
-    // 🚀 Phase 2: 初始化数据库连接池
-    try {
-      await initDatabasePool();
-      logger.info("Database pool initialized");
-    } catch (e: any) {
-      logger.warn("Database pool initialization failed, using single connection", {}, e);
-    }
-
-    // 🚀 Phase 2: 初始化集群管理器 (需要 Redis)
-    const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
-    const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
-    const shouldInitReconciler = reconciliationEnabled && !!RPC_URL && !!process.env.MARKET_ADDRESS;
-    let reconcilerStarted = false;
-
-    const startReconciler = async () => {
-      if (!shouldInitReconciler) return;
-      if (reconcilerStarted) return;
-      try {
-        await initChainReconciler({
-          rpcUrl: RPC_URL,
-          marketAddress: process.env.MARKET_ADDRESS!,
-          chainId: CHAIN_ID,
-          intervalMs: Math.max(1000, readIntEnv("RECONCILIATION_INTERVAL_MS", 300000)),
-          autoFix: process.env.RECONCILIATION_AUTO_FIX === "true",
-        });
-        reconcilerStarted = true;
-        logger.info("Chain reconciler initialized");
-      } catch (e: any) {
-        logger.warn("Chain reconciler initialization failed", {}, e);
-      }
-    };
-
-    const stopReconciler = async () => {
-      if (!reconcilerStarted) return;
-      try {
-        await closeChainReconciler();
-      } catch {}
-      reconcilerStarted = false;
-    };
-
-    const balanceCheckerEnabled = process.env.BALANCE_CHECKER_ENABLED !== "false";
-    const configuredUsdcAddress = pickFirstNonEmptyString(
-      process.env.COLLATERAL_TOKEN_ADDRESS,
-      process.env.USDC_ADDRESS,
-      process.env.NEXT_PUBLIC_USDC_ADDRESS,
-      process.env.NEXT_PUBLIC_COLLATERAL_TOKEN_ADDRESS
-    );
-    const shouldInitBalanceChecker =
-      balanceCheckerEnabled &&
-      !!RPC_URL &&
-      !!configuredUsdcAddress &&
-      ethers.isAddress(configuredUsdcAddress);
-    let balanceCheckerStarted = false;
-
-    const resolveBalanceTolerance = (): bigint | undefined => {
-      const raw = maybeNonEmptyString(process.env.BALANCE_CHECK_TOLERANCE_USDC);
-      const n = raw ? Number(raw) : NaN;
-      if (!Number.isFinite(n) || n < 0) return undefined;
-      return BigInt(Math.floor(n * 1e6));
-    };
-
-    const startBalanceChecker = async () => {
-      if (!shouldInitBalanceChecker) return;
-      if (balanceCheckerStarted) return;
-      const marketAddress =
-        process.env.MARKET_ADDRESS && ethers.isAddress(process.env.MARKET_ADDRESS)
-          ? process.env.MARKET_ADDRESS.toLowerCase()
-          : ethers.ZeroAddress;
-      const tolerance = resolveBalanceTolerance();
-      try {
-        await initBalanceChecker({
-          rpcUrl: RPC_URL,
-          usdcAddress: configuredUsdcAddress!.toLowerCase(),
-          marketAddress,
-          chainId: CHAIN_ID,
-          intervalMs: clampNumber(readIntEnv("BALANCE_CHECK_INTERVAL_MS", 60000), 5000, 3600000),
-          batchSize: clampNumber(readIntEnv("BALANCE_CHECK_BATCH_SIZE", 200), 1, 1000),
-          maxUsers: clampNumber(readIntEnv("BALANCE_CHECK_MAX_USERS", 10000), 1, 1000000),
-          includeProxyWallets: process.env.BALANCE_CHECK_INCLUDE_PROXY_WALLETS !== "false",
-          autoFix: process.env.BALANCE_CHECK_AUTO_FIX !== "false",
-          ...(tolerance ? { tolerance } : {}),
-        });
-        balanceCheckerStarted = true;
-        logger.info("Balance checker initialized");
-      } catch (e: any) {
-        logger.warn("Balance checker initialization failed", {}, e);
-      }
-    };
-
-    const stopBalanceChecker = async () => {
-      if (!balanceCheckerStarted) return;
-      try {
-        await closeBalanceChecker();
-      } catch {}
-      balanceCheckerStarted = false;
-    };
-
-    if (clusterEnabled) {
-      try {
-        const cluster = await initClusterManager({
-          enableLeaderElection: true,
-          enablePubSub: true,
-        });
-        clusterIsActive = true;
-
-        // 监听 Leader 事件
-        cluster.on("became_leader", () => {
-          logger.info("This node became the leader, starting matching engine");
-          void startReconciler();
-          void startBalanceChecker();
-        });
-
-        cluster.on("lost_leadership", () => {
-          logger.warn("This node lost leadership");
-          void stopReconciler();
-          void stopBalanceChecker();
-        });
-
-        logger.info("Cluster manager initialized", {
-          nodeId: cluster.getNodeId(),
-          isLeader: cluster.isLeader(),
-        });
-
-        if (cluster.isLeader()) {
-          await startReconciler();
-          await startBalanceChecker();
-        }
-      } catch (e: any) {
-        logger.warn("Cluster manager initialization failed, running in standalone mode", {}, e);
-      }
-    }
-    if (!clusterEnabled) {
-      await startReconciler();
-      await startBalanceChecker();
-    }
-
-    // 🚀 Phase 1: 注册健康检查器
-    healthService.registerHealthCheck("supabase", createSupabaseHealthChecker(supabaseAdmin));
-    healthService.registerHealthCheck(
-      "matching_engine",
-      createMatchingEngineHealthChecker(matchingEngine)
-    );
-
-    if (redisEnabled) {
-      healthService.registerHealthCheck("redis", createRedisHealthChecker(getRedisClient()));
-    }
-
-    if (provider) {
-      healthService.registerHealthCheck("rpc", createRpcHealthChecker(provider));
-    }
-
-    healthService.registerReadinessCheck(
-      "orderbook",
-      createOrderbookReadinessChecker(matchingEngine)
-    );
-
-    healthService.registerHealthCheck("cluster", async () => {
-      if (!clusterIsActive) return { status: "pass", message: "Cluster disabled" };
-      const cluster = getClusterManager();
-      const role = cluster.isLeader() ? "leader" : "follower";
-      const leaderId = cluster.isLeader() ? cluster.getNodeId() : cluster.getKnownLeaderId();
-      const nodes = cluster.getNodeCount();
-      return {
-        status: "pass",
-        message: `role=${role} leader=${leaderId || "unknown"} nodes=${nodes}`,
-      };
-    });
-
-    healthService.registerReadinessCheck(
-      "write_proxy",
-      createWriteProxyReadinessChecker({
-        isClusterActive: () => clusterIsActive,
-        isLeader: () => getClusterManager().isLeader(),
-        getProxyUrl: () =>
-          String(process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""),
-      })
-    );
-
-    // 🚀 启动 WebSocket 服务器
-    try {
-      const useClusteredWs = clusterEnabled;
-      const wsPort = clampNumber(readIntEnv("WS_PORT", 3006), 1, 65535);
-      if (useClusteredWs) {
-        wsServer = new ClusteredWebSocketServer(wsPort);
-      } else {
-        wsServer = new MarketWebSocketServer(wsPort);
-      }
-      await Promise.resolve(wsServer.start());
-      logger.info("WebSocket server started", { port: wsPort });
-    } catch (e: any) {
-      logger.error("WebSocket server failed to start", {}, e);
-    }
-
-    // 🚀 从数据库恢复订单簿
-    try {
-      await matchingEngine.recoverFromDb();
-      logger.info("Order books recovered from database");
-    } catch (e: any) {
-      logger.error("Failed to recover order books", {}, e);
-    }
-
-    try {
-      const result = await matchingEngine.recoverFromEventLog();
-      if (result.replayed > 0 || result.skipped > 0) {
-        logger.info("Order books replayed from matching event log", result);
-      }
-    } catch (e: any) {
-      logger.warn("Failed to replay matching event log", {}, e);
-    }
-
-    // 启动市场过期下线
-    startMarketExpiryLoop().catch((e: any) =>
-      logger.warn("Market expiry loop failed to start", {}, e)
-    );
-
-    // 启动自动交易摄入
-    startAutoIngestLoop().catch((e: any) => logger.warn("Auto-ingest failed to start", {}, e));
-
-    logger.info("Relayer server started successfully", {
-      port: PORT,
-      wsPort: clampNumber(readIntEnv("WS_PORT", 3006), 1, 65535),
-      redisEnabled,
-      clusterEnabled,
-      reconciliationEnabled,
-    });
-  });
-}
-
-// 🚀 Phase 1 & 2: 优雅关闭 (增加 Redis、集群、对账服务关闭)
-async function gracefulShutdown(signal: string) {
-  logger.info("Graceful shutdown initiated", { signal });
-
-  try {
-    // 停止接收新请求的时间
-    const shutdownTimeout = setTimeout(() => {
-      logger.error("Shutdown timeout, forcing exit");
-      process.exit(1);
-    }, 30000);
-
-    // 🚀 Phase 2: 关闭链上对账服务
-    try {
-      await closeChainReconciler();
-      logger.info("Chain reconciler stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop chain reconciler", {}, e);
-    }
-
-    try {
-      await closeBalanceChecker();
-      logger.info("Balance checker stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop balance checker", {}, e);
-    }
-
-    try {
-      await closeContractEventListener();
-      logger.info("Contract event listener stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop contract event listener", {}, e);
-    }
-
-    if (chaosInstance) {
-      try {
-        const { closeChaosEngineering } = await import("./chaos/chaosInit.js");
-        await closeChaosEngineering(chaosInstance);
-        chaosInstance = null;
-        logger.info("Chaos engineering stopped");
-      } catch (e: any) {
-        logger.error("Failed to stop chaos engineering", {}, e);
-      }
-    }
-
-    // 🚀 Phase 2: 关闭集群管理器
-    try {
-      await closeClusterManager();
-      logger.info("Cluster manager stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop cluster manager", {}, e);
-    }
-
-    // 关闭订单簿快照服务
-    try {
-      const snapshotService = getOrderbookSnapshotService();
-      await snapshotService.shutdown();
-      logger.info("Orderbook snapshot service stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop snapshot service", {}, e);
-    }
-
-    // 关闭撮合引擎
-    try {
-      await matchingEngine.shutdown();
-      logger.info("Matching engine stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop matching engine", {}, e);
-    }
-
-    // 关闭 WebSocket
-    try {
-      if (wsServer) {
-        await Promise.resolve(wsServer.stop());
-      }
-      logger.info("WebSocket server stopped");
-    } catch (e: any) {
-      logger.error("Failed to stop WebSocket server", {}, e);
-    }
-
-    // 停止 auto-ingest 定时器
-    if (autoIngestTimer) {
-      clearInterval(autoIngestTimer);
-      autoIngestTimer = null;
-    }
-
-    // 停止 metrics 定时器
-    try {
-      stopMetricsTimers();
-    } catch (e: any) {
-      logger.warn("Failed to stop metrics timers", {}, e);
-    }
-
-    // 停止限流器定时器
-    try {
-      closeRateLimiter();
-    } catch (e: any) {
-      logger.warn("Failed to stop rate limiter", {}, e);
-    }
-
-    // 关闭 Redis
-    try {
-      await closeRedis();
-      logger.info("Redis connection closed");
-    } catch (e: any) {
-      logger.error("Failed to close Redis", {}, e);
-    }
-
-    // 🚀 Phase 2: 关闭数据库连接池
-    try {
-      await closeDatabasePool();
-      logger.info("Database pool closed");
-    } catch (e: any) {
-      logger.error("Failed to close database pool", {}, e);
-    }
-
-    clearTimeout(shutdownTimeout);
-    logger.info("Graceful shutdown completed");
-    process.exit(0);
-  } catch (error: any) {
-    logger.error("Error during shutdown", {}, error);
-    process.exit(1);
-  }
-}
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  },
+  stopAutoIngest: backgroundLoops.stopAutoIngestLoop,
+  stopMetrics: () => {
+    stopMetricsTimers();
+  },
+  stopRateLimiter: () => {
+    closeRateLimiter();
+  },
+  stopRedis: async () => {
+    await closeRedis();
+  },
+  stopDatabasePool: async () => {
+    await closeDatabasePool();
+  },
+});
 
 export default app;

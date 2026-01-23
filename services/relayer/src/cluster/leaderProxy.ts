@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import type { ClusterManager } from "./clusterManager.js";
+import { readIntEnv } from "../utils/envNumbers.js";
 import {
   clusterFollowerProxiedTotal,
   clusterFollowerProxyCircuitOpenTotal,
@@ -63,6 +65,62 @@ export function getLeaderProxyState(): Array<{
     openUntilMs: state.openUntilMs,
     open: state.openUntilMs > t,
   }));
+}
+
+export function getLeaderProxyUrl(): string {
+  return String(
+    process.env.RELAYER_LEADER_PROXY_URL || process.env.RELAYER_LEADER_URL || ""
+  ).trim();
+}
+
+type LeaderIdCache = {
+  leaderId: string | null;
+  expiresAtMs: number;
+  inFlight: Promise<string | null> | null;
+};
+
+const leaderIdCache: LeaderIdCache = {
+  leaderId: null,
+  expiresAtMs: 0,
+  inFlight: null,
+};
+
+export async function getCachedLeaderId(cluster: ClusterManager): Promise<string | null> {
+  const known = cluster.getKnownLeaderId();
+  if (known) return known;
+  const now = Date.now();
+  const ttlMs = Math.max(200, readIntEnv("RELAYER_LEADER_ID_CACHE_MS", 1000));
+  if (leaderIdCache.leaderId && now < leaderIdCache.expiresAtMs) {
+    return leaderIdCache.leaderId;
+  }
+  if (leaderIdCache.inFlight) return leaderIdCache.inFlight;
+  leaderIdCache.inFlight = cluster
+    .getLeaderId()
+    .catch(() => null)
+    .then((id) => {
+      leaderIdCache.leaderId = id;
+      leaderIdCache.expiresAtMs = Date.now() + ttlMs;
+      leaderIdCache.inFlight = null;
+      return id;
+    });
+  return leaderIdCache.inFlight;
+}
+
+export function sendNotLeader(
+  res: Response,
+  payload: { leaderId: string | null; nodeId?: string; path: string }
+) {
+  const proxyUrl = getLeaderProxyUrl();
+  res.status(503).json({
+    success: false,
+    message: "Not leader",
+    leaderId: payload.leaderId,
+    nodeId: payload.nodeId || null,
+    path: payload.path,
+    retryable: true,
+    suggestedWaitMs: 1000,
+    proxyUrlConfigured: !!proxyUrl,
+  });
 }
 
 export async function proxyToLeader(
