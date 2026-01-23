@@ -541,6 +541,13 @@ export async function submitLimitOrder({
         toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
         return;
       }
+      const errorCode = String(
+        (jsonV2 as any)?.errorCode || (jsonV2 as any)?.error?.code || ""
+      ).toUpperCase();
+      if (errorCode === "MARKET_CLOSED") {
+        setOrderMsg(tTrading("orderFlow.marketClosed"));
+        return;
+      }
     } catch (err) {
       console.error("[orderFlow] v2 order submit failed, falling back to v1:", err);
     }
@@ -559,6 +566,11 @@ export async function submitLimitOrder({
     await refreshUserOrders();
     toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
   } else {
+    const errorCode = String(json?.error?.code || json?.errorCode || "").toUpperCase();
+    if (errorCode === "MARKET_CLOSED") {
+      setOrderMsg(tTrading("orderFlow.marketClosed"));
+      return;
+    }
     throw new Error(json.message || tTrading("orderFlow.orderFailedFallback"));
   }
 }

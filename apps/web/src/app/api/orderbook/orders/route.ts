@@ -176,6 +176,53 @@ export async function POST(req: NextRequest) {
     const derivedMk = Number.isFinite(eid) && eid > 0 ? `${chainIdNum}:${eid}` : "";
     const mk = (mkRaw || derivedMk).trim() || undefined;
 
+    const marketKeyRaw = String(mk || "").trim();
+    const [mkChain, mkEvent] = marketKeyRaw.split(":");
+    const mkEventId = Number(mkEvent);
+    const mkChainId = Number(mkChain);
+    let marketStatus: string | null = null;
+    let marketResolutionTime: string | null = null;
+    let marketStatusError: string | null = null;
+
+    if (Number.isFinite(mkEventId) && Number.isFinite(mkChainId)) {
+      const { data, error } = await (client as any)
+        .from("markets_map")
+        .select("status,resolution_time")
+        .eq("event_id", mkEventId)
+        .eq("chain_id", mkChainId)
+        .limit(1)
+        .maybeSingle();
+      if (error) marketStatusError = error.message;
+      if (data?.status != null) marketStatus = String(data.status);
+      if (data?.resolution_time != null) marketResolutionTime = String(data.resolution_time);
+    } else {
+      const { data, error } = await (client as any)
+        .from("markets_map")
+        .select("status,resolution_time")
+        .eq("market", vc.toLowerCase())
+        .eq("chain_id", chainIdNum)
+        .limit(1)
+        .maybeSingle();
+      if (error) marketStatusError = error.message;
+      if (data?.status != null) marketStatus = String(data.status);
+      if (data?.resolution_time != null) marketResolutionTime = String(data.resolution_time);
+    }
+
+    if (marketStatusError) {
+      return ApiResponses.databaseError("Failed to fetch market status", marketStatusError);
+    }
+
+    if (marketStatus && marketStatus.toLowerCase() !== "open") {
+      return ApiResponses.marketClosed("Market closed");
+    }
+
+    if (marketResolutionTime) {
+      const resolutionAt = new Date(marketResolutionTime).getTime();
+      if (Number.isFinite(resolutionAt) && resolutionAt > 0 && resolutionAt <= Date.now()) {
+        return ApiResponses.marketClosed("Market closed");
+      }
+    }
+
     const paramsValidation = validateOrderParams(orderData);
     if (!paramsValidation.valid) {
       if (isOrderExpired(orderData.expiry)) {

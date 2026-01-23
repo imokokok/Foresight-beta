@@ -121,6 +121,7 @@ export function buildPortfolioResponse(args: {
         title: meta?.title || "Unknown Event",
         image_url: imageUrl,
         status: meta?.status || "active",
+        deadline: meta?.deadline || null,
         stake: invested,
         outcome: mainOutcome,
         pnl: resolved ? pnlLabel : "+0%",

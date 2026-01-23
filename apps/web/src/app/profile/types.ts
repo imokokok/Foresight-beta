@@ -23,6 +23,7 @@ export type ProfilePosition = {
   stake?: number | string;
   pnl?: string;
   status?: string;
+  deadline?: string | null;
   stats?: {
     yesProbability?: number;
     noProbability?: number;

@@ -317,6 +317,46 @@ describe("MatchingEngine", () => {
       }
     });
 
+    it("should release reservation on fill_failed event", async () => {
+      const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
+        if (fn === "release_user_balance") return { data: [{ success: true }], error: null };
+        return { data: null, error: null };
+      });
+      supabaseAdminMock = { rpc: rpcMock };
+
+      engine.emit("settlement_event", {
+        type: "fill_failed",
+        fillId: "fill-1",
+        error: "Max retries exceeded",
+        fill: {
+          id: "fill-1",
+          order: {
+            maker: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            outcomeIndex: 0,
+            isBuy: true,
+            price: 500000n,
+            amount: 1_000_000_000_000_000_000n,
+            salt: 1n,
+            expiry: 0n,
+          },
+          signature: "0x",
+          fillAmount: 1_000_000_000_000_000_000n,
+          taker: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          matchedPrice: 500000n,
+          makerFee: 0n,
+          takerFee: 0n,
+          timestamp: Date.now(),
+        },
+      });
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(rpcMock).toHaveBeenCalledWith("release_user_balance", {
+        p_user_address: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        p_amount: "0.5",
+      });
+    });
+
     it("should release reservation and include releasedUsdcMicro on cancelOrder", async () => {
       const rpcMock = vi.fn().mockImplementation(async (fn: string) => {
         if (fn === "reserve_user_balance") return { data: [{ success: true }], error: null };

@@ -19,6 +19,7 @@ type PredictionRow = {
   title: string | null;
   image_url: string | null;
   status: string | null;
+  deadline: string | null;
   min_stake: number | string | null;
   winning_outcome: string | null;
 };
@@ -29,7 +30,7 @@ export async function fetchPredictionsMeta(admin: DbClient, predictionIds: numbe
 
   const { data: predictionRows, error: predictionError } = await admin
     .from("predictions")
-    .select("id, title, image_url, status, min_stake, winning_outcome")
+    .select("id, title, image_url, status, deadline, min_stake, winning_outcome")
     .in("id", predictionIds);
 
   if (!predictionError && Array.isArray(predictionRows)) {
@@ -40,6 +41,7 @@ export async function fetchPredictionsMeta(admin: DbClient, predictionIds: numbe
         title: String(row.title || "Unknown Event"),
         image_url: row.image_url || null,
         status: String(row.status || "active"),
+        deadline: row.deadline || null,
         min_stake: Number(row.min_stake || 0),
         winning_outcome: typeof row.winning_outcome === "string" ? row.winning_outcome : null,
       };

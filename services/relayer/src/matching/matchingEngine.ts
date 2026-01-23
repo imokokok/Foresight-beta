@@ -154,7 +154,7 @@ export class MatchingEngine extends EventEmitter {
   }
 
   private async handleSettlementEvent(event: SettlementEvent): Promise<void> {
-    if (event.type !== "fill_settled") return;
+    if (event.type !== "fill_settled" && event.type !== "fill_failed") return;
     const fill = (event as any).fill as SettlementFill | undefined;
     if (!fill) return;
     const isBuy = Boolean(fill.order?.isBuy);

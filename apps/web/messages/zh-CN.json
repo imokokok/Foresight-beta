@@ -79,6 +79,14 @@
     "myFollows": "我的关注",
     "backToTop": "返回顶部"
   },
+  "card": {
+    "status": {
+      "active": "进行中",
+      "upcoming": "即将开始",
+      "resolved": "已结算",
+      "expired": "已到期"
+    }
+  },
   "seo": {
     "root": {
       "titleDefault": "Foresight - 去中心化预测市场平台",

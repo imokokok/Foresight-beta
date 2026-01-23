@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TrendingUp, Users, Wallet, Trophy, Activity } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { useTranslations, formatTranslation } from "@/lib/i18n";
+import { getEventStatus, getStatusBadgeColor, getStatusText } from "@/lib/date-utils";
 import { CenteredSpinner } from "./ProfileUI";
 import type { PortfolioStats, ProfilePosition } from "../types";
 
@@ -23,6 +24,7 @@ export function PredictionsTab({
   loading,
   error,
 }: PredictionsTabProps) {
+  const t = useTranslations();
   const tEvents = useTranslations();
   const tProfile = useTranslations("profile");
 
@@ -151,6 +153,13 @@ export function PredictionsTab({
                 0,
                 Math.min(100, Number((sideProb * 100).toFixed(1)) || 0)
               );
+              const isResolved =
+                pred.status === "completed" ||
+                pred.status === "cancelled" ||
+                pred.status === "resolved";
+              const eventStatus = getEventStatus(pred.deadline ?? Date.now(), isResolved);
+              const statusBadgeColor = getStatusBadgeColor(eventStatus);
+              const statusBadgeText = getStatusText(eventStatus, t);
 
               return (
                 <Link href={`/prediction/${pred.id}`} key={pred.id}>
@@ -207,7 +216,11 @@ export function PredictionsTab({
                       >
                         {pred.pnl}
                       </div>
-                      <div className="text-xs text-gray-400 uppercase">{pred.status}</div>
+                      <div
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${statusBadgeColor}`}
+                      >
+                        {statusBadgeText}
+                      </div>
                     </div>
                   </div>
                 </Link>

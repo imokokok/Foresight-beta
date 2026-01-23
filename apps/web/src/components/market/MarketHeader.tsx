@@ -18,6 +18,7 @@ import type { PredictionDetail } from "@/app/prediction/[id]/_lib/types";
 import Link from "next/link";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getEventStatus, getStatusBadgeColor, getStatusText } from "@/lib/date-utils";
 
 interface MarketHeaderProps {
   prediction: PredictionDetail;
@@ -41,15 +42,13 @@ export function MarketHeader({
   const tMarketBreadcrumbs = useTranslations("market.breadcrumbs");
   const { locale } = useLocale();
   const displayTitle = t(prediction.title);
-  const isExpired = prediction.timeInfo?.isExpired;
-  const statusColor =
-    prediction.status === "active" && !isExpired
-      ? "text-emerald-600 bg-emerald-50 border-emerald-200"
-      : "text-gray-500 bg-gray-100 border-gray-200";
-  const statusText =
-    prediction.status === "active" && !isExpired
-      ? tMarketHeader("statusActive")
-      : tMarketHeader("statusEnded");
+  const eventStatus = getEventStatus(
+    prediction.deadline,
+    prediction.status === "completed" || prediction.status === "cancelled"
+  );
+  const statusBadgeColor = getStatusBadgeColor(eventStatus);
+  const statusBadgeText = getStatusText(eventStatus, t);
+  const isLiveStatus = eventStatus === "active" || eventStatus === "upcoming";
 
   // 计算总交易量或金额 (示例)
   const volume = prediction.stats?.totalAmount || 0;
@@ -92,14 +91,14 @@ export function MarketHeader({
               </h1>
               <div className="flex flex-wrap gap-3 mt-3">
                 <div
-                  className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}
+                  className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border border-white/40 ${statusBadgeColor}`}
                 >
-                  {prediction.status === "active" && !isExpired ? (
+                  {isLiveStatus ? (
                     <Clock className="w-3.5 h-3.5" />
                   ) : (
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   )}
-                  {statusText}
+                  {statusBadgeText}
                 </div>
                 <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium text-purple-600 bg-purple-50 border border-purple-100">
                   <Layers className="w-3.5 h-3.5" />

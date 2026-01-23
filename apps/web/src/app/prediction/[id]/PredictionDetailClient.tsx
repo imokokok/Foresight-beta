@@ -17,6 +17,7 @@ import { useTranslations } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { safeJsonLdStringify } from "@/lib/seo";
 import { useAuthOptional } from "@/contexts/AuthContext";
+import { getEventStatus, getStatusBadgeColor, getStatusText } from "@/lib/date-utils";
 
 type PredictionDetailClientProps = {
   relatedProposalId?: number | null;
@@ -102,6 +103,8 @@ function buildBreadcrumbJsonLd(
 export default function PredictionDetailClient({ relatedProposalId }: PredictionDetailClientProps) {
   const tMarket = useTranslations("market");
   const tCommon = useTranslations("common");
+  const tTrading = useTranslations("trading");
+  const t = useTranslations();
   const auth = useAuthOptional();
   const userId = auth?.user?.id ?? null;
   const {
@@ -190,6 +193,13 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   const noLabel = tMarket("detail.noLabel");
   const descriptionText =
     prediction.description || prediction.criteria || tMarket("detail.defaultDescription");
+  const eventStatus = getEventStatus(
+    prediction.deadline,
+    prediction.status === "completed" || prediction.status === "cancelled"
+  );
+  const statusBadgeColor = getStatusBadgeColor(eventStatus);
+  const statusBadgeText = getStatusText(eventStatus, t);
+  const isOffline = eventStatus === "resolved" || eventStatus === "expired";
 
   const predictionIdNum = Number(prediction.id);
   const currentPosition =
@@ -269,6 +279,16 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 {tMarket("detail.priceHint")}
               </p>
+              {isOffline && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-gray-100 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${statusBadgeColor}`}
+                  >
+                    {statusBadgeText}
+                  </span>
+                  <span>{tTrading("orderFlow.marketClosed")}</span>
+                </div>
+              )}
               {account && currentPosition && !portfolioLoading && (
                 <div className="mt-3 max-w-md">
                   <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--card-border)] px-3 py-2.5 text-[11px] text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-sm">

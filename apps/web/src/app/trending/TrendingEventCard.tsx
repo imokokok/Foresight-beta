@@ -4,7 +4,13 @@ import { FollowButton } from "@/components/ui/FollowButton";
 import LazyImage from "@/components/ui/LazyImage";
 import { getFallbackEventImage, isValidEventId } from "@/features/trending/trendingModel";
 import type { TrendingEvent } from "@/features/trending/trendingModel";
-import { formatRelativeTime } from "@/lib/date-utils";
+import {
+  formatRelativeTime,
+  getEventStatus,
+  getStatusBadgeColor,
+  getStatusText,
+} from "@/lib/date-utils";
+import { useTranslations } from "@/lib/i18n";
 
 type AdminActionsProps = {
   eventId: number | null;
@@ -76,6 +82,7 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
   tTrendingAdmin,
   tEvents,
 }: TrendingEventCardProps) {
+  const t = useTranslations();
   const stopClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -95,6 +102,12 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
     if (!isValidEventId(eventId)) return;
     onDelete(e, eventId);
   };
+  const eventStatus = getEventStatus(
+    product.deadline ?? Date.now(),
+    product.status === "completed" || product.status === "cancelled"
+  );
+  const statusBadgeColor = getStatusBadgeColor(eventStatus);
+  const statusBadgeText = getStatusText(eventStatus, t);
 
   const imageElement = (
     <div className="relative h-40 overflow-hidden bg-gray-100 group">
@@ -184,6 +197,9 @@ export const TrendingEventCard = React.memo(function TrendingEventCard({
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 hover:bg-purple-100 transition-colors duration-300">
                 {tTrending("card.volumePrefix")}
                 {Number(product?.stats?.totalAmount || 0).toFixed(2)}
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${statusBadgeColor}`}>
+                {statusBadgeText}
               </span>
             </div>
 

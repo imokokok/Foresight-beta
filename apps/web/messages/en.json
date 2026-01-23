@@ -79,6 +79,14 @@
     "myFollows": "My follows",
     "backToTop": "Back to top"
   },
+  "card": {
+    "status": {
+      "active": "Active",
+      "upcoming": "Upcoming",
+      "resolved": "Resolved",
+      "expired": "Expired"
+    }
+  },
   "seo": {
     "root": {
       "titleDefault": "Foresight - Decentralized Prediction Market",

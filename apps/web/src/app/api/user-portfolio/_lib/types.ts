@@ -10,6 +10,7 @@ export type PredictionMeta = {
   title: string;
   image_url: string | null;
   status: string;
+  deadline?: string | null;
   min_stake: number;
   winning_outcome: string | null;
 };
@@ -27,6 +28,7 @@ export type PositionView = {
   title: string;
   image_url: string;
   status: string;
+  deadline?: string | null;
   stake: number;
   outcome: string;
   pnl: string;

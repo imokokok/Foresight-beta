@@ -160,8 +160,12 @@ export function TradeTabContent({
   const currentOutcomeLabel =
     outcomes[tradeOutcome]?.label || (tradeOutcome === 0 ? tCommon("yes") : tCommon("no"));
   const isMultiOutcome = outcomes.length > 2;
+  const marketStatus =
+    market && typeof market.status === "string" ? market.status.trim().toLowerCase() : "";
+  const isMarketClosed = marketStatus.length > 0 && marketStatus !== "open";
 
   const canSubmit = (() => {
+    if (isMarketClosed) return false;
     const amountText = (amountInput || "").trim();
     const priceText = (priceInput || "").trim();
     const amountVal = parseFloat(amountText);
@@ -179,6 +183,7 @@ export function TradeTabContent({
   })();
 
   const disabledReason = (() => {
+    if (isMarketClosed) return tTrading("orderFlow.marketClosed");
     const amountText = (amountInput || "").trim();
     const priceText = (priceInput || "").trim();
     if (amountText.length > 0) {
@@ -1456,6 +1461,7 @@ function TradeSubmitSection({
   const rpcTimeoutMsg = tTrading("orderFlow.rpcTimeout");
   const tradeFailedMsg = tTrading("orderFlow.tradeFailed");
   const insufficientFundsMsg = tTrading("orderFlow.insufficientFunds");
+  const marketClosedMsg = tTrading("orderFlow.marketClosed");
   const invalidAmountMsg = tTrading("orderFlow.invalidAmount");
   const invalidAmountPrecisionMsg = tTrading("orderFlow.invalidAmountPrecision");
   const invalidPriceMsg = tTrading("orderFlow.invalidPrice");
@@ -1487,6 +1493,7 @@ function TradeSubmitSection({
     switchNetworkMsg,
     sellNoBalanceMsg,
     insufficientFundsMsg,
+    marketClosedMsg,
     invalidAmountMsg,
     invalidAmountPrecisionMsg,
     invalidPriceMsg,

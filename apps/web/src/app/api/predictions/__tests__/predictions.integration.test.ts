@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { POST as createPrediction } from "../route";
+import { handleGetPredictionDetail, handlePatchPrediction } from "../[id]/_lib/handlers";
 import { createMockNextRequest } from "@/test/apiTestHelpers";
 import { ApiErrorCode } from "@/types/api";
 import { resetRateLimitStore } from "@/lib/rateLimit";
@@ -7,6 +8,7 @@ import { resetRateLimitStore } from "@/lib/rateLimit";
 let predictionOutcomesInsertError: unknown = null;
 let sessionAddressValue: string = "0x1234567890abcdef1234567890abcdef12345678";
 let lastPredictionInsertPayload: any = null;
+let predictionRecord: any = null;
 
 vi.mock("@/lib/supabase.server", () => {
   const client = {
@@ -26,9 +28,15 @@ vi.mock("@/lib/supabase.server", () => {
       if (table === "predictions") {
         return {
           select: () => ({
-            eq: () => ({
+            eq: (col: string, value: any) => ({
               data: [],
               error: null,
+              single: async () => {
+                if (col === "id" && predictionRecord && Number(value) === predictionRecord.id) {
+                  return { data: predictionRecord, error: null };
+                }
+                return { data: null, error: { code: "PGRST116", message: "Not found" } };
+              },
             }),
             order: () => ({
               limit: () => ({
@@ -39,28 +47,50 @@ vi.mock("@/lib/supabase.server", () => {
           }),
           insert: (payload: any) => {
             lastPredictionInsertPayload = payload;
+            const normalized = Array.isArray(payload) ? payload[0] : payload;
+            const nowIso = new Date().toISOString();
+            predictionRecord = {
+              id: 1,
+              title: normalized?.title ?? "Test prediction",
+              description: normalized?.description ?? "desc",
+              category: normalized?.category ?? "general",
+              deadline: normalized?.deadline ?? "2099-01-01T00:00:00.000Z",
+              min_stake: normalized?.min_stake ?? 1,
+              criteria: normalized?.criteria ?? "criteria",
+              reference_url: normalized?.reference_url ?? "",
+              image_url: normalized?.image_url ?? "https://example.com/image.png",
+              status: normalized?.status ?? "active",
+              type: normalized?.type ?? "binary",
+              outcome_count: normalized?.outcome_count ?? 2,
+              created_at: predictionRecord?.created_at ?? nowIso,
+              updated_at: nowIso,
+            };
             return {
               select: () => ({
                 single: async () => ({
-                  data: {
-                    id: 1,
-                    title: "Test prediction",
-                    description: "desc",
-                    category: "general",
-                    deadline: "2099-01-01T00:00:00.000Z",
-                    min_stake: 1,
-                    criteria: "criteria",
-                    reference_url: "",
-                    image_url: "https://example.com/image.png",
-                    status: "active",
-                    type: "binary",
-                    outcome_count: 2,
-                  },
+                  data: predictionRecord,
                   error: null,
                 }),
               }),
             };
           },
+          update: (upd: any) => ({
+            eq: (col: string, value: any) => ({
+              select: () => ({
+                maybeSingle: async () => {
+                  if (col === "id" && predictionRecord && Number(value) === predictionRecord.id) {
+                    predictionRecord = {
+                      ...predictionRecord,
+                      ...upd,
+                      updated_at: new Date().toISOString(),
+                    };
+                    return { data: predictionRecord, error: null };
+                  }
+                  return { data: null, error: { code: "PGRST116", message: "Not found" } };
+                },
+              }),
+            }),
+          }),
           delete: () => ({
             eq: async () => ({ error: null }),
           }),
@@ -71,6 +101,22 @@ vi.mock("@/lib/supabase.server", () => {
           insert: async () => ({ error: predictionOutcomesInsertError }),
           delete: () => ({
             eq: async () => ({ error: null }),
+          }),
+        };
+      }
+      if (table === "prediction_stats") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "bets") {
+        return {
+          select: () => ({
+            eq: async () => ({ data: [], error: null }),
           }),
         };
       }
@@ -96,6 +142,13 @@ vi.mock("@/lib/serverUtils", () => {
     getSessionAddress: vi.fn().mockImplementation(async () => sessionAddressValue),
     normalizeAddress: (addr: string) => addr.toLowerCase(),
     logApiError: vi.fn(),
+    isAdminAddress: () => false,
+    getErrorMessage: (error: unknown) => {
+      if (error && typeof error === "object" && "message" in error) {
+        return String((error as { message?: unknown }).message || "");
+      }
+      return String(error || "");
+    },
   };
 });
 
@@ -114,6 +167,7 @@ describe("POST /api/predictions", () => {
     predictionOutcomesInsertError = null;
     sessionAddressValue = "0x1234567890abcdef1234567890abcdef12345678";
     lastPredictionInsertPayload = null;
+    predictionRecord = null;
     process.env.MOCK_ONCHAIN_MARKET_ADDRESS = "0x1111111111111111111111111111111111111111";
     process.env.NEXT_PUBLIC_CHAIN_ID = "80002";
   });
@@ -276,5 +330,71 @@ describe("POST /api/predictions", () => {
     expect(response.status).toBe(401);
     expect(data.error).toBeDefined();
     expect(data.error.code).toBe(ApiErrorCode.UNAUTHORIZED);
+  });
+});
+
+describe("预测生命周期流程", () => {
+  const baseUrl = "http://localhost:3000/api/predictions";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetRateLimitStore();
+    predictionOutcomesInsertError = null;
+    sessionAddressValue = "0x1234567890abcdef1234567890abcdef12345678";
+    lastPredictionInsertPayload = null;
+    predictionRecord = null;
+    process.env.MOCK_ONCHAIN_MARKET_ADDRESS = "0x1111111111111111111111111111111111111111";
+    process.env.NEXT_PUBLIC_CHAIN_ID = "80002";
+  });
+
+  it("应该覆盖创建到下线的完整流程", async () => {
+    const createRequest = createMockNextRequest({
+      method: "POST",
+      url: baseUrl,
+      body: {
+        title: "E2E Test Prediction",
+        description: "Test market lifecycle",
+        category: "general",
+        deadline: new Date(Date.now() + 3600000).toISOString(),
+        minStake: 1,
+        criteria: "Test criteria",
+      },
+    });
+
+    const createResponse = await createPrediction(createRequest);
+    const createData = await createResponse.json();
+    expect(createResponse.status).toBe(201);
+    expect(createData.success).toBe(true);
+    expect(createData.data.id).toBeDefined();
+
+    const predictionId = String(createData.data.id);
+
+    const getRequest = createMockNextRequest({
+      method: "GET",
+      url: `${baseUrl}/${predictionId}`,
+    });
+    const getResponse = await handleGetPredictionDetail(getRequest, predictionId);
+    const getDetailData = await getResponse.json();
+    expect(getResponse.status).toBe(200);
+    expect(getDetailData.success).toBe(true);
+    expect(getDetailData.data.status).toBe("active");
+
+    const patchRequest = createMockNextRequest({
+      method: "PATCH",
+      url: `${baseUrl}/${predictionId}`,
+      body: {
+        status: "completed",
+      },
+    });
+    const patchResponse = await handlePatchPrediction(patchRequest, predictionId);
+    const patchData = await patchResponse.json();
+    expect(patchResponse.status).toBe(200);
+    expect(patchData.success).toBe(true);
+    expect(patchData.data.status).toBe("completed");
+
+    const verifyResponse = await handleGetPredictionDetail(getRequest, predictionId);
+    const verifyData = await verifyResponse.json();
+    expect(verifyResponse.status).toBe(200);
+    expect(verifyData.data.status).toBe("completed");
   });
 });

@@ -33,6 +33,11 @@ import {
   initContractEventListener,
   closeContractEventListener,
 } from "./monitoring/contractEvents.js";
+import {
+  marketsResolvedTotal,
+  marketsInvalidatedTotal,
+  marketsActive,
+} from "./monitoring/contractEvents.js";
 import { initRedis, closeRedis, getRedisClient } from "./redis/client.js";
 import { getOrderbookSnapshotService } from "./redis/orderbookSnapshot.js";
 import { closeRateLimiter, createRateLimitMiddleware } from "./ratelimit/index.js";
@@ -333,6 +338,7 @@ import {
 import MarketFactoryABI from "./abi/MarketFactory.json" with { type: "json" };
 import OffchainMarketBaseABI from "./abi/OffchainMarketBase.json" with { type: "json" };
 import OutcomeToken1155ABI from "./abi/OutcomeToken1155.json" with { type: "json" };
+import UMAOracleAdapterV2ABI from "./abi/UMAOracleAdapterV2.json" with { type: "json" };
 
 export const app = express();
 const trustProxyHops = Math.max(0, readIntEnv("RELAYER_TRUST_PROXY_HOPS", 0));
@@ -377,12 +383,18 @@ matchingEngine.on(
     });
 
     // 记录指标
-    matchesTotal.inc({ market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) });
+    matchesTotal.inc({
+      market_key: trade.marketKey,
+      outcome_index: String(trade.outcomeIndex),
+    });
     const volumeBigInt = (trade.amount * trade.price) / 1_000_000_000_000_000_000n;
     const volume = Number(volumeBigInt) / 1000000;
     if (Number.isFinite(volume) && volume >= 0) {
       matchedVolumeTotal.inc(
-        { market_key: trade.marketKey, outcome_index: String(trade.outcomeIndex) },
+        {
+          market_key: trade.marketKey,
+          outcome_index: String(trade.outcomeIndex),
+        },
         volume
       );
     }
@@ -639,7 +651,12 @@ function requireApiKey(scope: string, action: string) {
     const raw = getApiKeyFromRequest(req);
     if (!raw) {
       apiAuthFailuresTotal.inc({ path: req.path, reason: "missing" });
-      apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: "missing" });
+      apiKeyRequestsTotal.inc({
+        action,
+        path: req.path,
+        result: "denied",
+        key_id: "missing",
+      });
       adminActionsTotal.inc({ action, result: "denied" });
       return sendApiError(req, res, 401, {
         message: "API key required",
@@ -663,7 +680,12 @@ function requireApiKey(scope: string, action: string) {
     }
     if (!hasScope(entry.scopes, scope)) {
       apiAuthFailuresTotal.inc({ path: req.path, reason: "forbidden" });
-      apiKeyRequestsTotal.inc({ action, path: req.path, result: "denied", key_id: entry.keyId });
+      apiKeyRequestsTotal.inc({
+        action,
+        path: req.path,
+        result: "denied",
+        key_id: entry.keyId,
+      });
       adminActionsTotal.inc({ action, result: "denied" });
       return sendApiError(req, res, 403, {
         message: "API key forbidden",
@@ -672,7 +694,12 @@ function requireApiKey(scope: string, action: string) {
     }
     (req as any).apiKeyId = entry.keyId;
     (req as any).apiKeyScopes = Array.from(entry.scopes);
-    apiKeyRequestsTotal.inc({ action, path: req.path, result: "allowed", key_id: entry.keyId });
+    apiKeyRequestsTotal.inc({
+      action,
+      path: req.path,
+      result: "allowed",
+      key_id: entry.keyId,
+    });
     adminActionsTotal.inc({ action, result: "allowed" });
     return next();
   };
@@ -739,7 +766,11 @@ function createRoleBasedLimiter(
     const identity = getRateLimitIdentityFromResolvedKey(resolved, req);
     const tier = getRateTierFromScopes(resolved?.scopes || null);
 
-    const rateReq: RateLimitRequest = { ip: identity, path: req.path, method: req.method };
+    const rateReq: RateLimitRequest = {
+      ip: identity,
+      path: req.path,
+      method: req.method,
+    };
     const limiter =
       tier === "admin" ? adminLimiter : tier === "trader" ? traderLimiter : anonLimiter;
     const result = await limiter.check(rateReq);
@@ -752,9 +783,11 @@ function createRoleBasedLimiter(
     if (!result.allowed) {
       if (result.retryAfter) res.setHeader("Retry-After", result.retryAfter);
       apiRateLimitHits.inc({ path: req.path });
-      return res
-        .status(429)
-        .json({ success: false, message: "Too many requests", retryAfter: result.retryAfter });
+      return res.status(429).json({
+        success: false,
+        message: "Too many requests",
+        retryAfter: result.retryAfter,
+      });
     }
     return next();
   };
@@ -790,7 +823,9 @@ let idempotencyCleanupIter: IterableIterator<[string, IdempotencyEntry]> | null 
 let idempotencyLastCleanupAtMs = 0;
 
 function cleanupIdempotencyStore(nowMs: number, maxScan: number) {
-  if (!idempotencyCleanupIter) idempotencyCleanupIter = idempotencyStore.entries();
+  if (!idempotencyCleanupIter) {
+    idempotencyCleanupIter = idempotencyStore.entries();
+  }
   let scanned = 0;
   while (scanned < maxScan) {
     const n = idempotencyCleanupIter.next();
@@ -853,7 +888,11 @@ async function getIdempotencyEntry(key: string): Promise<IdempotencyEntry | null
 
 async function setIdempotencyEntry(key: string, status: number, body: any): Promise<void> {
   const ttlMs = Math.max(1000, readIntEnv("RELAYER_IDEMPOTENCY_TTL_MS", 60000));
-  const entry: IdempotencyEntry = { expiresAtMs: Date.now() + ttlMs, status, body };
+  const entry: IdempotencyEntry = {
+    expiresAtMs: Date.now() + ttlMs,
+    status,
+    body,
+  };
   idempotencyStore.set(key, entry);
   const now = Date.now();
   if (
@@ -895,7 +934,11 @@ type LeaderIdCache = {
   inFlight: Promise<string | null> | null;
 };
 
-const leaderIdCache: LeaderIdCache = { leaderId: null, expiresAtMs: 0, inFlight: null };
+const leaderIdCache: LeaderIdCache = {
+  leaderId: null,
+  expiresAtMs: 0,
+  inFlight: null,
+};
 
 async function getCachedLeaderId(
   cluster: ReturnType<typeof getClusterManager>
@@ -904,7 +947,9 @@ async function getCachedLeaderId(
   if (known) return known;
   const now = Date.now();
   const ttlMs = Math.max(200, readIntEnv("RELAYER_LEADER_ID_CACHE_MS", 1000));
-  if (leaderIdCache.leaderId && now < leaderIdCache.expiresAtMs) return leaderIdCache.leaderId;
+  if (leaderIdCache.leaderId && now < leaderIdCache.expiresAtMs) {
+    return leaderIdCache.leaderId;
+  }
   if (leaderIdCache.inFlight) return leaderIdCache.inFlight;
   leaderIdCache.inFlight = cluster
     .getLeaderId()
@@ -1128,6 +1173,94 @@ try {
   bundlerWallet = null;
 }
 
+const parseOutcomeIndex = (value: unknown): number | null => {
+  if (typeof value === "bigint") return Number(value);
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (value && typeof (value as any).toString === "function") {
+    const n = Number((value as any).toString());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const syncMarketResolution = async (
+  marketAddressRaw: string,
+  status: "resolved" | "invalidated",
+  outcomeIndex: number | null
+) => {
+  if (!supabaseAdmin) return;
+  const marketAddress = String(marketAddressRaw || "").toLowerCase();
+  if (!marketAddress) return;
+  const { data, error } = await supabaseAdmin
+    .from("markets_map")
+    .select("event_id,chain_id")
+    .eq("market", marketAddress)
+    .eq("chain_id", CHAIN_ID)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    logger.error("Failed to load market map for resolution sync", {
+      marketAddress,
+      chainId: CHAIN_ID,
+      error: error.message,
+    });
+    return;
+  }
+  if (!data) return;
+
+  const nowIso = new Date().toISOString();
+  const marketUpdate = await supabaseAdmin
+    .from("markets_map")
+    .update({ status })
+    .eq("event_id", data.event_id)
+    .eq("chain_id", data.chain_id);
+  if (marketUpdate.error) {
+    logger.error("Failed to update markets_map status", {
+      marketAddress,
+      eventId: data.event_id,
+      chainId: data.chain_id,
+      error: marketUpdate.error.message,
+    });
+  }
+
+  const predictionUpdate: Record<string, any> = {
+    status: status === "resolved" ? "completed" : "cancelled",
+    settled_at: nowIso,
+  };
+  if (status === "resolved" && outcomeIndex !== null) {
+    predictionUpdate.winning_outcome = String(outcomeIndex);
+  }
+  if (status === "invalidated") {
+    predictionUpdate.winning_outcome = null;
+  }
+  const predictionRes = await supabaseAdmin
+    .from("predictions")
+    .update(predictionUpdate)
+    .eq("id", data.event_id);
+  if (predictionRes.error) {
+    logger.error("Failed to update prediction status", {
+      eventId: data.event_id,
+      status: predictionUpdate.status,
+      error: predictionRes.error.message,
+    });
+  }
+
+  const marketKey = `${data.chain_id}:${data.event_id}`;
+  try {
+    await matchingEngine.closeMarket(marketKey, { reason: status });
+  } catch (error: any) {
+    logger.error("Failed to close market orderbook", {
+      marketKey,
+      reason: status,
+      error: String(error?.message || error),
+    });
+  }
+};
+
 // 初始化合约事件监听器
 async function initContractListener() {
   try {
@@ -1142,6 +1275,26 @@ async function initContractListener() {
       marketFactoryAbi: MarketFactoryABI,
       offchainMarketAbi: OffchainMarketBaseABI,
       outcomeTokenAbi: OutcomeToken1155ABI,
+      eventHandlers: {
+        Resolved: async (event: any) => {
+          marketsResolvedTotal.inc();
+          marketsActive.dec();
+          const outcomeIndex = parseOutcomeIndex(event?.args?.outcomeIndex);
+          logger.info("Market resolved", {
+            marketAddress: event.address,
+            outcomeIndex: outcomeIndex === null ? null : String(outcomeIndex),
+          });
+          await syncMarketResolution(event.address, "resolved", outcomeIndex);
+        },
+        Invalidated: async (event: any) => {
+          marketsInvalidatedTotal.inc();
+          marketsActive.dec();
+          logger.warn("Market invalidated", {
+            marketAddress: event.address,
+          });
+          await syncMarketResolution(event.address, "invalidated", null);
+        },
+      },
     });
 
     logger.info("合约事件监听器初始化成功");
@@ -1171,7 +1324,11 @@ app.post("/", async (req, res) => {
           const ok = await proxyToLeader(proxyUrl, req, res, "/");
           if (ok) return;
         }
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/",
+        });
         return;
       }
     }
@@ -1198,7 +1355,11 @@ app.post("/", async (req, res) => {
     const entryPoint = new Contract(entryPointAddress, EntryPointAbi, bundlerWallet);
     const tx = await entryPoint.handleOps([userOp], bundlerWallet.address);
     const receipt = await tx.wait();
-    const responseBody = { jsonrpc: "2.0", id: req.body.id, result: receipt.hash };
+    const responseBody = {
+      jsonrpc: "2.0",
+      id: req.body.id,
+      result: receipt.hash,
+    };
     res.json(responseBody);
     if (idemKey) void setIdempotencyEntry(idemKey, 200, responseBody);
   } catch (error: any) {
@@ -1330,7 +1491,11 @@ app.post("/aa/userop/draft", requireApiKey("aa", "aa_userop_draft"), async (req,
           if (ok) return;
         }
         clusterFollowerRejectedTotal.inc({ path: "/aa/userop/draft" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/draft" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/aa/userop/draft",
+        });
         return;
       }
     }
@@ -1411,7 +1576,11 @@ app.post("/aa/userop/simulate", requireApiKey("aa", "aa_userop_simulate"), async
           if (ok) return;
         }
         clusterFollowerRejectedTotal.inc({ path: "/aa/userop/simulate" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/simulate" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/aa/userop/simulate",
+        });
         return;
       }
     }
@@ -1505,7 +1674,11 @@ app.post("/aa/userop/submit", requireApiKey("aa", "aa_userop_submit"), async (re
           if (ok) return;
         }
         clusterFollowerRejectedTotal.inc({ path: "/aa/userop/submit" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/userop/submit" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/aa/userop/submit",
+        });
         return;
       }
     }
@@ -1605,7 +1778,11 @@ app.post("/aa/custodial/sign", requireApiKey("admin", "custodial_sign"), async (
           const ok = await proxyToLeader(proxyUrl, req, res, "/aa/custodial/sign");
           if (ok) return;
         }
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/aa/custodial/sign" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/aa/custodial/sign",
+        });
         return;
       }
     }
@@ -1649,7 +1826,10 @@ app.post("/aa/custodial/sign", requireApiKey("admin", "custodial_sign"), async (
     res.json({ success: true, signature });
   } catch (error: any) {
     logger.error("Custodial sign error", { error: String(error) });
-    sendApiError(req, res, 500, { message: "Internal error", detail: error.message });
+    sendApiError(req, res, 500, {
+      message: "Internal error",
+      detail: error.message,
+    });
   }
 });
 
@@ -1676,7 +1856,11 @@ app.post(
             if (ok) return;
           }
           clusterFollowerRejectedTotal.inc({ path: "/v2/gasless/order" });
-          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/gasless/order" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/v2/gasless/order",
+          });
           return;
         }
       }
@@ -1953,7 +2137,11 @@ app.post(
             if (ok) return;
           }
           clusterFollowerRejectedTotal.inc({ path: "/orderbook/orders" });
-          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/orderbook/orders" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/orderbook/orders",
+          });
           return;
         }
       }
@@ -2041,11 +2229,13 @@ function parseV2OrderInput(body: any): OrderInput {
   const marketKey = pickString(
     root.marketKey,
     root.market_key,
-    `${pickString(root.chainId, root.chain_id, orderBody.chainId, orderBody.chain_id, 0)}:${pickString(
-      root.eventId,
-      root.event_id,
-      "unknown"
-    )}`
+    `${pickString(
+      root.chainId,
+      root.chain_id,
+      orderBody.chainId,
+      orderBody.chain_id,
+      0
+    )}:${pickString(root.eventId, root.event_id, "unknown")}`
   );
 
   const verifyingContract = pickString(
@@ -2117,7 +2307,11 @@ app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async 
           if (ok) return;
         }
         clusterFollowerRejectedTotal.inc({ path: "/v2/orders" });
-        sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/orders" });
+        sendNotLeader(res, {
+          leaderId,
+          nodeId: cluster.getNodeId(),
+          path: "/v2/orders",
+        });
         return;
       }
     }
@@ -2148,6 +2342,53 @@ app.post("/v2/orders", limitOrders, requireApiKey("orders", "v2_orders"), async 
       });
       setIdempotencyIfPresent(idemKey, 400, responseBody);
       return;
+    }
+
+    if (supabaseAdmin) {
+      const marketKeyRaw = String(orderInput.marketKey || "").trim();
+      const [mkChain, mkEvent] = marketKeyRaw.split(":");
+      const eventId = Number(mkEvent);
+      const chainId = Number(mkChain);
+      let marketStatus: string | null = null;
+      let statusError: string | null = null;
+
+      if (Number.isFinite(eventId) && Number.isFinite(chainId)) {
+        const { data, error } = await supabaseAdmin
+          .from("markets_map")
+          .select("status")
+          .eq("event_id", eventId)
+          .eq("chain_id", chainId)
+          .limit(1)
+          .maybeSingle();
+        if (error) statusError = error.message;
+        if (data?.status != null) marketStatus = String(data.status);
+      } else if (orderInput.verifyingContract) {
+        const { data, error } = await supabaseAdmin
+          .from("markets_map")
+          .select("status")
+          .eq("market", orderInput.verifyingContract.toLowerCase())
+          .eq("chain_id", orderInput.chainId)
+          .limit(1)
+          .maybeSingle();
+        if (error) statusError = error.message;
+        if (data?.status != null) marketStatus = String(data.status);
+      }
+
+      if (statusError) {
+        logger.error("Failed to load market status", {
+          marketKey: orderInput.marketKey,
+          chainId: orderInput.chainId,
+          verifyingContract: orderInput.verifyingContract,
+          error: statusError,
+        });
+      } else if (marketStatus && marketStatus.toLowerCase() !== "open") {
+        const responseBody = sendApiError(req, res, 400, {
+          message: "Market closed",
+          errorCode: "MARKET_CLOSED",
+        });
+        setIdempotencyIfPresent(idemKey, 400, responseBody);
+        return;
+      }
     }
 
     // 提交到撮合引擎
@@ -2299,7 +2540,11 @@ app.post(
             if (ok) return;
           }
           clusterFollowerRejectedTotal.inc({ path: "/v2/cancel-salt" });
-          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/cancel-salt" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/v2/cancel-salt",
+          });
           return;
         }
       }
@@ -2451,7 +2696,11 @@ app.get("/v2/depth", async (req, res) => {
                 existing.qty += o.remainingAmount;
                 existing.count += 1;
               } else {
-                map.set(key, { price: o.price, qty: o.remainingAmount, count: 1 });
+                map.set(key, {
+                  price: o.price,
+                  qty: o.remainingAmount,
+                  count: 1,
+                });
               }
             }
 
@@ -2871,7 +3120,11 @@ app.post(
             if (ok) return;
           }
           clusterFollowerRejectedTotal.inc({ path: "/v2/market/close" });
-          sendNotLeader(res, { leaderId, nodeId: cluster.getNodeId(), path: "/v2/market/close" });
+          sendNotLeader(res, {
+            leaderId,
+            nodeId: cluster.getNodeId(),
+            path: "/v2/market/close",
+          });
           return;
         }
       }
@@ -2883,7 +3136,9 @@ app.post(
       }
 
       const parsed = V2CloseMarketSchema.parse(req.body || {});
-      const result = await matchingEngine.closeMarket(parsed.marketKey, { reason: parsed.reason });
+      const result = await matchingEngine.closeMarket(parsed.marketKey, {
+        reason: parsed.reason,
+      });
 
       const responseBody = { success: true, data: result };
       logger.info("market closed", {
@@ -3312,7 +3567,8 @@ app.get("/orderbook/types", (_req, res) => {
 });
 
 /**
- * Optional: background indexer to ingest trades automatically (no need to call /report-trade manually).
+ * Optional: background indexer to ingest trades automatically (no need to call
+ * /report-trade manually).
  * Enabled via RELAYER_AUTO_INGEST=1 and requires RPC_URL + SUPABASE service role key.
  *
  * Implementation strategy:
@@ -3322,6 +3578,359 @@ app.get("/orderbook/types", (_req, res) => {
  * NOTE: For production, persist lastProcessedBlock (e.g. in Supabase) and use getLogs by topic.
  */
 let autoIngestTimer: NodeJS.Timeout | null = null;
+let marketExpiryTimer: NodeJS.Timeout | null = null;
+let marketSettlementTimer: NodeJS.Timeout | null = null;
+const marketSettlementAttempts = new Map<
+  string,
+  {
+    lastAssertAt?: number;
+    lastSettleAt?: number;
+    lastResolveAt?: number;
+    lastOutcomeSetAt?: number;
+  }
+>();
+
+async function startMarketExpiryLoop() {
+  if (String(process.env.RELAYER_MARKET_EXPIRY_ENABLED || "").toLowerCase() === "false") return;
+  if (!supabaseAdmin) {
+    logger.warn("Market expiry loop disabled: Supabase not configured");
+    return;
+  }
+  const supabase = supabaseAdmin;
+
+  const pollMs = Math.max(5000, readIntEnv("RELAYER_MARKET_EXPIRY_POLL_MS", 30000));
+  let running = false;
+
+  if (marketExpiryTimer) {
+    clearInterval(marketExpiryTimer);
+    marketExpiryTimer = null;
+  }
+
+  const loop = async () => {
+    if (running) return;
+    running = true;
+    try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) return;
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("markets_map")
+        .select("event_id,chain_id,resolution_time,status")
+        .eq("status", "open")
+        .not("resolution_time", "is", null)
+        .lte("resolution_time", nowIso)
+        .limit(200);
+
+      if (error) {
+        logger.warn("Market expiry loop query failed", {
+          error: error.message,
+        });
+        return;
+      }
+      if (!data || data.length === 0) return;
+
+      for (const row of data as any[]) {
+        const eventId = Number(row.event_id);
+        const chainId = Number(row.chain_id);
+        if (!Number.isFinite(eventId) || !Number.isFinite(chainId)) continue;
+        const marketKey = `${chainId}:${eventId}`;
+
+        const updateRes = await supabase
+          .from("markets_map")
+          .update({ status: "closed" })
+          .eq("event_id", eventId)
+          .eq("chain_id", chainId)
+          .eq("status", "open");
+        if (updateRes.error) {
+          logger.warn("Failed to update market status to closed", {
+            marketKey,
+            error: updateRes.error.message,
+          });
+          continue;
+        }
+
+        const predictionUpdate = await supabase
+          .from("predictions")
+          .update({
+            status: "completed",
+            settled_at: new Date().toISOString(),
+          })
+          .eq("id", eventId)
+          .eq("status", "active");
+        if (predictionUpdate.error) {
+          logger.warn("Failed to update prediction status for expired market", {
+            marketKey,
+            error: predictionUpdate.error.message,
+          });
+        }
+
+        try {
+          await matchingEngine.closeMarket(marketKey, { reason: "expired" });
+        } catch (error: any) {
+          logger.warn("Failed to close expired market orderbook", {
+            marketKey,
+            error: String(error?.message || error),
+          });
+        }
+      }
+    } catch (e: any) {
+      logger.warn("Market expiry loop failed", { error: String(e?.message || e) });
+    } finally {
+      running = false;
+    }
+  };
+
+  await loop();
+  marketExpiryTimer = setInterval(loop, pollMs);
+  logger.info("Market expiry loop enabled", { pollMs });
+}
+
+async function startMarketSettlementLoop() {
+  if (String(process.env.RELAYER_MARKET_SETTLEMENT_ENABLED || "").toLowerCase() === "false") return;
+  if (!supabaseAdmin) {
+    logger.warn("Market settlement loop disabled: Supabase not configured");
+    return;
+  }
+  if (!provider) {
+    logger.warn("Market settlement loop disabled: Provider not configured");
+    return;
+  }
+  if (!OPERATOR_PRIVATE_KEY) {
+    logger.warn("Market settlement loop disabled: OPERATOR_PRIVATE_KEY not configured");
+    return;
+  }
+
+  const supabase = supabaseAdmin;
+  const wallet = new ethers.Wallet(OPERATOR_PRIVATE_KEY, provider);
+  const pollMs = Math.max(10000, readIntEnv("RELAYER_MARKET_SETTLEMENT_POLL_MS", 60000));
+  const cooldownMs = Math.max(10000, readIntEnv("RELAYER_MARKET_SETTLEMENT_COOLDOWN_MS", 60000));
+  let running = false;
+
+  if (marketSettlementTimer) {
+    clearInterval(marketSettlementTimer);
+    marketSettlementTimer = null;
+  }
+
+  const canAttempt = (
+    key: string,
+    field: "lastAssertAt" | "lastSettleAt" | "lastResolveAt" | "lastOutcomeSetAt"
+  ) => {
+    const now = Date.now();
+    const record = marketSettlementAttempts.get(key) || {};
+    const last = record[field] || 0;
+    if (now - last < cooldownMs) return false;
+    record[field] = now;
+    marketSettlementAttempts.set(key, record);
+    return true;
+  };
+
+  const loop = async () => {
+    if (running) return;
+    running = true;
+    try {
+      if (clusterIsActive) {
+        const cluster = getClusterManager();
+        if (!cluster.isLeader()) return;
+      }
+
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("markets_map")
+        .select("event_id,chain_id,market,resolution_time,status")
+        .in("status", ["open", "closed"])
+        .not("resolution_time", "is", null)
+        .lte("resolution_time", nowIso)
+        .limit(200);
+
+      if (error) {
+        logger.warn("Market settlement loop query failed", { error: error.message });
+        return;
+      }
+      if (!data || data.length === 0) return;
+
+      for (const row of data as any[]) {
+        const eventId = Number(row.event_id);
+        const chainId = Number(row.chain_id);
+        const marketAddress = String(row.market || "").toLowerCase();
+        if (!Number.isFinite(eventId) || !Number.isFinite(chainId)) continue;
+        if (!ethers.isAddress(marketAddress)) continue;
+        if (chainId !== CHAIN_ID) continue;
+
+        const marketKey = `${chainId}:${eventId}`;
+        const marketContract = new Contract(marketAddress, OffchainMarketBaseABI, wallet);
+
+        let marketStateNum = 0;
+        try {
+          const marketState = await marketContract.state();
+          marketStateNum = Number(marketState);
+        } catch (e: any) {
+          logger.warn("Failed to read market state", {
+            marketKey,
+            error: String(e?.message || e),
+          });
+          continue;
+        }
+        if (marketStateNum === 1 || marketStateNum === 2) {
+          const status = marketStateNum === 1 ? "resolved" : "invalidated";
+          let resolvedOutcomeIndex: number | null = null;
+          if (marketStateNum === 1) {
+            try {
+              const resolvedOutcome = await marketContract.resolvedOutcome();
+              resolvedOutcomeIndex = parseOutcomeIndex(resolvedOutcome);
+            } catch {}
+          }
+          await syncMarketResolution(marketAddress, status, resolvedOutcomeIndex);
+          continue;
+        }
+        if (marketStateNum !== 0) continue;
+
+        const { data: prediction, error: predictionError } = await supabase
+          .from("predictions")
+          .select("id,title,criteria,winning_outcome,status,outcome_count")
+          .eq("id", eventId)
+          .limit(1)
+          .maybeSingle();
+
+        if (predictionError || !prediction) continue;
+        const winningRaw = prediction.winning_outcome;
+        if (winningRaw === null || winningRaw === undefined) continue;
+        const outcomeIndex = Number(winningRaw);
+        if (!Number.isFinite(outcomeIndex) || outcomeIndex < 0) continue;
+        const outcomeCount = Number(prediction.outcome_count || 0);
+        if (Number.isFinite(outcomeCount) && outcomeCount > 0 && outcomeIndex >= outcomeCount)
+          continue;
+
+        let marketId: string;
+        let oracleAddress: string;
+        try {
+          marketId = await marketContract.marketId();
+          oracleAddress = await marketContract.oracle();
+        } catch (e: any) {
+          logger.warn("Failed to read market oracle info", {
+            marketKey,
+            error: String(e?.message || e),
+          });
+          continue;
+        }
+        if (!ethers.isAddress(oracleAddress)) continue;
+
+        const { data: outcomeRow } = await supabase
+          .from("prediction_outcomes")
+          .select("label")
+          .eq("prediction_id", eventId)
+          .eq("outcome_index", outcomeIndex)
+          .limit(1)
+          .maybeSingle();
+
+        const outcomeLabel = String(
+          outcomeRow?.label || `Outcome ${Number.isFinite(outcomeIndex) ? outcomeIndex : "?"}`
+        );
+        const title = String(prediction.title || "");
+        const criteria = String(prediction.criteria || "");
+        const claim = `I assert outcome "${outcomeLabel}" for prediction ${eventId}${
+          title ? ` (${title})` : ""
+        }.${criteria ? ` Criteria: ${criteria}` : ""}`;
+        const claimBytes = ethers.toUtf8Bytes(claim);
+
+        const oracleContract = new Contract(oracleAddress, UMAOracleAdapterV2ABI, wallet);
+        let oracleStatus: number | null = null;
+
+        try {
+          const status = await oracleContract.getMarketStatus(marketId);
+          oracleStatus = Number(status?.[0]);
+        } catch {}
+
+        if (oracleStatus === null) {
+          const manualOracle = new Contract(
+            oracleAddress,
+            [
+              "function getOutcome(bytes32 marketId) view returns (uint256)",
+              "function setOutcome(uint256 outcome) external",
+            ],
+            wallet
+          );
+          let hasOutcome = false;
+          try {
+            const currentOutcome = await manualOracle.getOutcome(marketId);
+            hasOutcome = Number(currentOutcome) === outcomeIndex;
+          } catch {}
+          if (!hasOutcome && canAttempt(marketKey, "lastOutcomeSetAt")) {
+            try {
+              const tx = await manualOracle.setOutcome(outcomeIndex);
+              await tx.wait();
+            } catch (e: any) {
+              logger.warn("Manual oracle setOutcome failed", {
+                marketKey,
+                error: String(e?.message || e),
+              });
+              continue;
+            }
+          }
+          if (canAttempt(marketKey, "lastResolveAt")) {
+            try {
+              const tx = await marketContract.resolve();
+              await tx.wait();
+            } catch (e: any) {
+              logger.warn("Market resolve failed", {
+                marketKey,
+                error: String(e?.message || e),
+              });
+            }
+          }
+          continue;
+        }
+
+        if (oracleStatus === 0 && canAttempt(marketKey, "lastAssertAt")) {
+          try {
+            const tx = await oracleContract.requestOutcome(marketId, outcomeIndex, claimBytes);
+            await tx.wait();
+            continue;
+          } catch (e: any) {
+            logger.warn("Oracle requestOutcome failed", {
+              marketKey,
+              error: String(e?.message || e),
+            });
+          }
+        }
+
+        if (oracleStatus === 1 && canAttempt(marketKey, "lastSettleAt")) {
+          try {
+            const tx = await oracleContract.settleOutcome(marketId);
+            await tx.wait();
+          } catch (e: any) {
+            logger.warn("Oracle settleOutcome failed", {
+              marketKey,
+              error: String(e?.message || e),
+            });
+          }
+        }
+
+        if ((oracleStatus === 2 || oracleStatus === 3) && canAttempt(marketKey, "lastResolveAt")) {
+          try {
+            const tx = await marketContract.resolve();
+            await tx.wait();
+          } catch (e: any) {
+            logger.warn("Market resolve failed", {
+              marketKey,
+              error: String(e?.message || e),
+            });
+          }
+        }
+      }
+    } catch (e: any) {
+      logger.warn("Market settlement loop failed", { error: String(e?.message || e) });
+    } finally {
+      running = false;
+    }
+  };
+
+  await loop();
+  marketSettlementTimer = setInterval(loop, pollMs);
+  logger.info("Market settlement loop enabled", { pollMs });
+}
 
 async function startAutoIngestLoop() {
   if (process.env.RELAYER_AUTO_INGEST !== "1") return;
@@ -3727,6 +4336,11 @@ if (process.env.NODE_ENV !== "test") {
     } catch (e: any) {
       logger.warn("Failed to replay matching event log", {}, e);
     }
+
+    // 启动市场过期下线
+    startMarketExpiryLoop().catch((e: any) =>
+      logger.warn("Market expiry loop failed to start", {}, e)
+    );
 
     // 启动自动交易摄入
     startAutoIngestLoop().catch((e: any) => logger.warn("Auto-ingest failed to start", {}, e));

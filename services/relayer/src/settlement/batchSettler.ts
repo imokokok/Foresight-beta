@@ -633,6 +633,15 @@ export class BatchSettler extends EventEmitter {
             })
             .eq("id", rowAny.id)
             .is("resolved_at", null);
+          const fillId = String(rowAny.fill_id || fill?.id || "");
+          if (fillId) {
+            this.emitEvent({
+              type: "fill_failed",
+              fillId,
+              error: "Max retries exceeded",
+              fill: fill || undefined,
+            });
+          }
           continue;
         }
 
@@ -659,6 +668,14 @@ export class BatchSettler extends EventEmitter {
             })
             .eq("id", rowAny.id)
             .is("resolved_at", null);
+          const fillId = String(rowAny.fill_id || "");
+          if (fillId) {
+            this.emitEvent({
+              type: "fill_failed",
+              fillId,
+              error: "Missing or invalid payload",
+            });
+          }
           continue;
         }
 
