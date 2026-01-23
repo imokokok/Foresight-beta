@@ -108,9 +108,10 @@ export async function verifySignature(input: OrderInput): Promise<boolean> {
       return false;
     }
 
-    if (recovered.toLowerCase() === input.maker.toLowerCase()) {
-      return true;
-    }
+    const expected = [input.ownerEoa, input.maker]
+      .filter((v): v is string => !!v)
+      .map((v) => v.toLowerCase());
+    if (expected.includes(recovered.toLowerCase())) return true;
 
     // 尝试验证ERC-1271签名
     const digest = ethers.TypedDataEncoder.hash(domain, ORDER_TYPES, value);

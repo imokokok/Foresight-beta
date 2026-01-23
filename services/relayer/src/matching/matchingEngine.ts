@@ -40,7 +40,7 @@ import {
   releaseUsdcReservation,
   finalizeUsdcReservationAfterSubmit,
 } from "./riskManagement.js";
-import { validateOrder } from "./orderValidation.js";
+import { validateOrder, verifySignature, checkOrderExists } from "./orderValidation.js";
 import {
   addToOrderBook,
   expireOrdersInBook,
@@ -847,63 +847,6 @@ export class MatchingEngine extends EventEmitter {
     } catch (error: any) {
       return { success: false, error: error?.message };
     }
-  }
-
-  private async verifySignature(input: OrderInput): Promise<boolean> {
-    try {
-      const domain = {
-        name: "Foresight Market",
-        version: "1",
-        chainId: input.chainId,
-        verifyingContract: input.verifyingContract.toLowerCase(),
-      };
-
-      const orderData = {
-        maker: input.maker.toLowerCase(),
-        outcomeIndex: input.outcomeIndex,
-        isBuy: input.isBuy,
-        price: input.price,
-        amount: input.amount,
-        salt: BigInt(input.salt),
-        expiry: BigInt(input.expiry),
-      };
-
-      const recovered = ethers.verifyTypedData(domain, ORDER_TYPES, orderData, input.signature);
-      const expected = [input.ownerEoa, input.maker]
-        .filter((v): v is string => !!v)
-        .map((v) => v.toLowerCase());
-      if (expected.includes(recovered.toLowerCase())) return true;
-
-      const digest = ethers.TypedDataEncoder.hash(domain, ORDER_TYPES, orderData);
-      return await isValidErc1271Signature({
-        maker: input.maker,
-        digest,
-        signature: input.signature,
-        chainId: input.chainId,
-      });
-    } catch {
-      return false;
-    }
-  }
-
-  private async checkOrderExists(
-    chainId: number,
-    verifyingContract: string,
-    maker: string,
-    salt: string
-  ): Promise<boolean> {
-    if (!supabaseAdmin) return false;
-
-    const { data } = await supabaseAdmin
-      .from("orders")
-      .select("id")
-      .eq("chain_id", chainId)
-      .eq("verifying_contract", verifyingContract)
-      .eq("maker_address", maker.toLowerCase())
-      .eq("maker_salt", salt)
-      .maybeSingle();
-
-    return !!data;
   }
 
   /**
