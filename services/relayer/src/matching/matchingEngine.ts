@@ -468,7 +468,7 @@ export class MatchingEngine extends EventEmitter {
 
           try {
             // 1. 验证订单基本参数
-            const basicValidation = await validateOrder(orderInput, this.config);
+            const basicValidation = await this.validateOrder(orderInput, this.config);
             if (!basicValidation.valid) {
               result = {
                 success: false,
@@ -904,6 +904,44 @@ export class MatchingEngine extends EventEmitter {
       .maybeSingle();
 
     return !!data;
+  }
+
+  /**
+   * 验证订单
+   */
+  private async validateOrder(
+    input: OrderInput,
+    config: MatchingEngineConfig
+  ): Promise<{ valid: boolean; error?: string; errorCode?: string }> {
+    return validateOrder(input, config);
+  }
+
+  /**
+   * 验证 EIP-712 签名
+   */
+  private async verifySignature(input: OrderInput): Promise<boolean> {
+    return verifySignature(input);
+  }
+
+  /**
+   * 检查订单是否已存在
+   */
+  private async checkOrderExists(
+    chainId: number,
+    verifyingContract: string,
+    maker: string,
+    salt: string
+  ): Promise<boolean> {
+    return checkOrderExists(chainId, verifyingContract, maker, salt);
+  }
+
+  /**
+   * 检查余额和风险
+   */
+  private async checkBalanceAndRisk(
+    input: OrderInput
+  ): Promise<{ valid: boolean; error?: string; errorCode?: string }> {
+    return checkBalanceAndRisk(input, this.config);
   }
 
   /**

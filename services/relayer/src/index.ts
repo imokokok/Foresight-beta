@@ -108,9 +108,11 @@ app.use(requestLoggerMiddleware);
 app.use(metricsMiddleware);
 app.use(createRateLimitMiddleware());
 
-// 路由设置
-app.use(healthRoutes);
-app.use(clusterRoutes);
+// 根路径健康检查
+app.get("/", (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.send("Foresight Relayer is running!");
+});
 
 // 🚀 初始化撮合引擎
 const matchingEngine = new MatchingEngine({
@@ -169,6 +171,9 @@ matchingEngine.on(
 matchingEngine.on("settlement_event", (event) => {
   logger.info("Settlement event", { type: event.type, ...event });
 });
+
+// 注册V2路由
+app.use(createV2Routes({ matchingEngine, clusterIsActive }));
 
 // 错误处理函数
 export function sendApiError(
@@ -256,24 +261,22 @@ async function initEventListeners() {
 // 启动服务器
 async function startServer() {
   try {
-    // 初始化事件监听器
-    await initEventListeners();
-
-    // 直接启动HTTP服务器，避免使用复杂的startRelayerServer函数
-    app.listen(RELAYER_PORT, () => {
-      logger.info("Relayer server started successfully", {
-        port: RELAYER_PORT,
-        chainId: CHAIN_ID,
-        aaEnabled: AA_ENABLED,
-        gaslessEnabled: GASLESS_ENABLED,
-      });
-    });
-
-    logger.info("Relayer server started successfully", {
+    // 使用startRelayerServer函数启动服务器
+    startRelayerServer({
+      app,
       port: RELAYER_PORT,
-      chainId: CHAIN_ID,
-      aaEnabled: AA_ENABLED,
-      gaslessEnabled: GASLESS_ENABLED,
+      logger,
+      matchingEngine,
+      provider,
+      initContractListener: initEventListeners,
+      startMarketExpiryLoop: () => Promise.resolve(),
+      startAutoIngestLoop: () => Promise.resolve(),
+      setChaosInstance: () => {},
+      setWsServer: () => {},
+      setClusterIsActive: (active) => {
+        clusterIsActive = active;
+      },
+      getClusterIsActive: () => clusterIsActive,
     });
   } catch (error) {
     logger.error("Failed to start relayer server", { error: String(error) });
