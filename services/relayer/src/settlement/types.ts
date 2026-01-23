@@ -78,6 +78,17 @@ export interface SettlementQueueConfig {
   failedFillRetryBatchSize: number;
 }
 
+const MAX_GAS_PRICE_GWEI = (() => {
+  const envValue = process.env.RELAYER_MAX_GAS_PRICE_GWEI;
+  if (envValue !== undefined) {
+    const parsed = parseFloat(envValue);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return BigInt(Math.floor(parsed * 1e9));
+    }
+  }
+  return BigInt(500 * 1e9); // 默认 500 Gwei
+})();
+
 export const DEFAULT_SETTLEMENT_CONFIG: SettlementQueueConfig = {
   maxBatchSize: 50,
   minBatchSize: 5,
@@ -85,7 +96,7 @@ export const DEFAULT_SETTLEMENT_CONFIG: SettlementQueueConfig = {
   maxRetries: 3,
   retryDelayMs: 2000,
   retryBackoffMultiplier: 2,
-  maxGasPrice: BigInt(500 * 1e9), // 500 Gwei
+  maxGasPrice: MAX_GAS_PRICE_GWEI,
   gasPriceMultiplier: 1.1,
   confirmations: 2,
   confirmationTimeoutMs: 60000,

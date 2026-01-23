@@ -117,7 +117,7 @@ export async function checkBalanceAndRisk(
   try {
     const makerAddress = input.maker.toLowerCase();
 
-    const orderCostUsdc = (input.amount * input.price) / BigInt(1e18);
+    const orderCostUsdc = (input.amount * input.price) / 1_000_000_000_000_000_000n;
 
     // 检查市场暴露限制
     if (config.maxMarketLongExposureUsdc && config.maxMarketLongExposureUsdc > 0) {
@@ -206,7 +206,7 @@ export async function checkBalanceAndRisk(
         if (totalRequiredOutcome > balance) {
           return {
             valid: false,
-            error: "Insufficient balance",
+            error: "Insufficient outcome token balance",
             errorCode: "INSUFFICIENT_BALANCE",
           };
         }

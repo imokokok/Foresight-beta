@@ -3,7 +3,7 @@ import type { Order, Match, MatchResult, Trade } from "./types.js";
 import type { OrderBook } from "./orderBook.js";
 import type { BatchSettler } from "../settlement/index.js";
 import type { SettlementFill } from "../settlement/index.js";
-import { updateOrderInDb, updateOrderStatus } from "./orderManagement.js";
+import { updateOrderInDb, updateOrderStatus, orderNotionalUsdc } from "./orderManagement.js";
 import { releaseUsdcReservation } from "./riskManagement.js";
 
 /**
@@ -27,7 +27,7 @@ export function pricesMatch(takerOrder: Order, makerOrder: Order): boolean {
 }
 
 /**
- * 计算手续费
+ * 计算手续费 (四舍五入)
  */
 export function calculateFees(
   amount: bigint,
@@ -35,13 +35,10 @@ export function calculateFees(
   makerFeeBps: number,
   takerFeeBps: number
 ): { makerFee: bigint; takerFee: bigint } {
-  // 计算成交金额 (USDC, 6 decimals)
-  // cost = amount * price / 1e18
-  const cost = (amount * price) / BigInt(1e18);
+  const cost = (amount * price) / 1_000_000_000_000_000_000n;
 
-  // 手续费 = cost * feeBps / 10000
-  const makerFee = (cost * BigInt(makerFeeBps)) / 10000n;
-  const takerFee = (cost * BigInt(takerFeeBps)) / 10000n;
+  const makerFee = (cost * BigInt(makerFeeBps) + 5000n) / 10000n;
+  const takerFee = (cost * BigInt(takerFeeBps) + 5000n) / 10000n;
 
   return { makerFee, takerFee };
 }
@@ -280,12 +277,4 @@ export async function matchOrder(
 function isExpired(order: Order): boolean {
   if (order.expiry === 0) return false;
   return Math.floor(Date.now() / 1000) >= order.expiry;
-}
-
-/**
- * 计算订单的USDC价值
- */
-function orderNotionalUsdc(amount: bigint, price: bigint): bigint {
-  if (amount <= 0n || price <= 0n) return 0n;
-  return (amount * price) / 1_000_000_000_000_000_000n;
 }

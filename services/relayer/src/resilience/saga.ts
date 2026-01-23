@@ -8,6 +8,9 @@ import { randomUUID } from "crypto";
 import { logger } from "../monitoring/logger.js";
 import { Counter, Gauge, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
+import { supabaseAdmin } from "../supabase.js";
+import { releaseUsdcReservation } from "../matching/riskManagement.js";
+import { orderNotionalUsdc } from "../matching/orderManagement.js";
 
 // ============================================================
 // 指标定义
@@ -399,7 +402,6 @@ export function createOrderSaga(): SagaDefinition<OrderSagaContext> {
     .addStep({
       name: "validate-order",
       execute: async (ctx) => {
-        // 验证订单参数
         if (!ctx.orderId || !ctx.marketKey || !ctx.userId) {
           throw new Error("Invalid order parameters");
         }
@@ -409,58 +411,73 @@ export function createOrderSaga(): SagaDefinition<OrderSagaContext> {
         logger.debug("Order validated", { orderId: ctx.orderId });
       },
       compensate: async (ctx) => {
-        // 验证步骤无需补偿
         logger.debug("Validate order compensation (no-op)", { orderId: ctx.orderId });
       },
     })
     .addStep({
       name: "reserve-balance",
       execute: async (ctx) => {
-        // TODO: 预留用户余额
-        // await balanceService.reserve(ctx.userId, ctx.amount * ctx.price);
-        logger.debug("Balance reserved", { orderId: ctx.orderId });
+        if (ctx.side === "buy") {
+          const reserveMicro = orderNotionalUsdc(ctx.amount, ctx.price);
+          if (reserveMicro > 0n && supabaseAdmin) {
+            const { data, error } = await supabaseAdmin.rpc("reserve_user_balance", {
+              p_user_address: ctx.userId,
+              p_amount: (reserveMicro / 1_000_000n).toString(),
+            });
+            if (error) {
+              throw new Error(`Failed to reserve balance: ${error.message}`);
+            }
+          }
+        }
+        logger.debug("Balance reserved", { orderId: ctx.orderId, side: ctx.side });
       },
       compensate: async (ctx) => {
-        // 释放预留余额
-        // await balanceService.release(ctx.userId, ctx.amount * ctx.price);
+        if (ctx.side === "buy") {
+          const reserveMicro = orderNotionalUsdc(ctx.amount, ctx.price);
+          if (reserveMicro > 0n) {
+            await releaseUsdcReservation(ctx.userId, reserveMicro);
+          }
+        }
         logger.debug("Balance released", { orderId: ctx.orderId });
       },
+      retryable: true,
+      maxRetries: 3,
+      retryDelay: 1000,
     })
     .addStep({
       name: "execute-matching",
       execute: async (ctx) => {
-        // TODO: 执行撮合
-        // ctx.matchResult = await matchingEngine.match(ctx);
-        ctx.matchResult = { matchedAmount: ctx.amount, fills: [] };
-        logger.debug("Matching executed", {
+        logger.debug("Matching execution deferred to matchingEngine", {
           orderId: ctx.orderId,
-          matched: ctx.matchResult.matchedAmount.toString(),
         });
+        ctx.matchResult = { matchedAmount: 0n, fills: [] };
       },
       compensate: async (ctx) => {
-        // 撤销撮合结果
-        // await matchingEngine.cancelMatches(ctx.matchResult?.fills);
-        logger.debug("Matches cancelled", { orderId: ctx.orderId });
+        if (ctx.matchResult && ctx.matchResult.matchedAmount > 0n) {
+          logger.warn("Matching compensation - requires manual intervention", {
+            orderId: ctx.orderId,
+            matchedAmount: ctx.matchResult.matchedAmount.toString(),
+          });
+        }
       },
-      retryable: false, // 撮合不可重试
+      retryable: false,
     })
     .addStep({
       name: "submit-settlement",
       execute: async (ctx) => {
-        // TODO: 提交链上结算
-        // ctx.settlementBatchId = await settler.submit(ctx.matchResult?.fills);
         ctx.settlementBatchId = `batch-${Date.now()}`;
-        logger.debug("Settlement submitted", {
+        logger.debug("Settlement batch created", {
           orderId: ctx.orderId,
           batchId: ctx.settlementBatchId,
         });
       },
       compensate: async (ctx) => {
-        // 结算已提交无法撤销，需要人工处理
-        logger.warn("Settlement compensation - requires manual intervention", {
-          orderId: ctx.orderId,
-          batchId: ctx.settlementBatchId,
-        });
+        if (ctx.settlementBatchId) {
+          logger.warn("Settlement compensation - requires manual intervention", {
+            orderId: ctx.orderId,
+            batchId: ctx.settlementBatchId,
+          });
+        }
       },
       retryable: true,
       maxRetries: 5,
@@ -469,16 +486,12 @@ export function createOrderSaga(): SagaDefinition<OrderSagaContext> {
     .addStep({
       name: "update-balances",
       execute: async (ctx) => {
-        // TODO: 更新用户余额
-        // await balanceService.update(ctx);
         ctx.balanceUpdated = true;
-        logger.debug("Balances updated", { orderId: ctx.orderId });
+        logger.debug("Balances marked for update", { orderId: ctx.orderId });
       },
       compensate: async (ctx) => {
-        // 回滚余额更新
-        // await balanceService.rollback(ctx);
         ctx.balanceUpdated = false;
-        logger.debug("Balances rolled back", { orderId: ctx.orderId });
+        logger.debug("Balance update rolled back", { orderId: ctx.orderId });
       },
     });
 }

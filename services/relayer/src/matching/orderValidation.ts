@@ -144,7 +144,7 @@ export async function checkOrderExists(
     .eq("verifying_contract", verifyingContract)
     .eq("maker_address", maker)
     .eq("maker_salt", salt)
-    .in("status", ["open", "partially_filled", "pending"]);
+    .in("status", ["open", "partially_filled", "pending", "filled"]);
 
   return (count || 0) > 0;
 }
