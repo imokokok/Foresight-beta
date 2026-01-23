@@ -771,10 +771,30 @@
       "prepare": "Preparing to redeem…",
       "approveOutcomeToken": "Please approve the outcome tokens…",
       "redeeming": "Redeeming…",
-      "marketNotResolved": "The market hasn’t been resolved yet, so it can’t be redeemed.",
+      "marketNotResolved": "Le marché n’a pas encore été résolu. Résolvez-le d’abord dans le panneau de Règlement, puis procédez au rachat.",
       "success": "Redeem successful! USDC has been returned.",
       "failed": "Redeem failed: {reason}",
       "unknownError": "Unknown error"
+    }
+  },
+  "settlement": {
+    "assertFlow": {
+      "prepare": "Préparation de l’affirmation du résultat…",
+      "asserting": "Envoi de l’affirmation du résultat…",
+      "success": "Résultat affirmé avec succès.",
+      "failed": "Échec de l’affirmation du résultat : {reason}"
+    },
+    "settleFlow": {
+      "prepare": "Préparation du règlement de l’oracle…",
+      "settling": "Règlement de l’oracle…",
+      "success": "Oracle réglé avec succès.",
+      "failed": "Échec du règlement de l’oracle : {reason}"
+    },
+    "resolveFlow": {
+      "prepare": "Préparation de la résolution du marché…",
+      "resolving": "Résolution du marché…",
+      "success": "Marché résolu avec succès. Les rachats sont maintenant possibles.",
+      "failed": "Échec de la résolution du marché : {reason}"
     }
   },
   "market": {

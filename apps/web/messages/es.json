@@ -792,10 +792,30 @@
       "prepare": "Preparando canje…",
       "approveOutcomeToken": "Por favor, aprueba el uso de los tokens de resultado…",
       "redeeming": "Canjeando…",
-      "marketNotResolved": "El mercado aún no se ha resuelto, por lo que no se puede canjear.",
+      "marketNotResolved": "El mercado aún no se ha resuelto. Primero resuélvelo en el panel de Liquidación y luego canjea.",
       "success": "¡Canje completado! Se han devuelto tus USDC.",
       "failed": "El canje ha fallado: {reason}",
       "unknownError": "Error desconocido"
+    }
+  },
+  "settlement": {
+    "assertFlow": {
+      "prepare": "Preparando la afirmación del resultado…",
+      "asserting": "Enviando la afirmación del resultado…",
+      "success": "Resultado afirmado correctamente.",
+      "failed": "No se pudo afirmar el resultado: {reason}"
+    },
+    "settleFlow": {
+      "prepare": "Preparando la liquidación del oráculo…",
+      "settling": "Liquidando el oráculo…",
+      "success": "Oráculo liquidado correctamente.",
+      "failed": "No se pudo liquidar el oráculo: {reason}"
+    },
+    "resolveFlow": {
+      "prepare": "Preparando la resolución del mercado…",
+      "resolving": "Resolviendo el mercado…",
+      "success": "Mercado resuelto correctamente. Ya puedes canjear.",
+      "failed": "No se pudo resolver el mercado: {reason}"
     }
   },
   "market": {

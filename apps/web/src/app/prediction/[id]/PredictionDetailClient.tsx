@@ -431,6 +431,8 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
 
             {/* Info Tabs & Content */}
             <MarketInfo prediction={prediction} />
+
+            {market && isOffline && <SettlementPanel market={market} outcomes={outcomes} />}
           </div>
 
           {/* 3. Trading Panel (Right, 4 cols) */}

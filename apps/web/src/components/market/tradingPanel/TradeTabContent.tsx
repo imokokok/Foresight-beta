@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Info, Loader2, Wallet } from "lucide-react";
 import { formatCurrency, formatNumber, formatPercent, formatInteger } from "@/lib/format";
+import { formatTranslation } from "@/lib/i18n";
 
 type MarketPlanPreview = {
   slippagePercent: number;
@@ -164,6 +165,13 @@ export function TradeTabContent({
     market && typeof market.status === "string" ? market.status.trim().toLowerCase() : "";
   const isMarketClosed = marketStatus.length > 0 && marketStatus !== "open";
 
+  let feeRate = 0;
+  if (market && typeof market.fee_bps === "number" && market.fee_bps >= 0) {
+    feeRate = market.fee_bps / 10000;
+  } else {
+    feeRate = 0.004;
+  }
+
   const canSubmit = (() => {
     if (isMarketClosed) return false;
     const amountText = (amountInput || "").trim();
@@ -203,20 +211,18 @@ export function TradeTabContent({
     if (tradeSide === "buy") {
       // For market orders, total is estimated cost. For limit, it's price * amount.
       // total is already calculated in component scope
-      if (total > effectiveUsdcAvailable) {
-        return tTrading("orderFlow.insufficientFunds");
+      const requiredUsdc = orderMode === "limit" ? total * (1 + feeRate) : total;
+      if (requiredUsdc > effectiveUsdcAvailable) {
+        return formatTranslation(tTrading("orderFlow.insufficientFundsDetail"), {
+          available: effectiveUsdcAvailable.toFixed(2),
+          required: requiredUsdc.toFixed(2),
+          shortfall: Math.max(0, requiredUsdc - effectiveUsdcAvailable).toFixed(2),
+        });
       }
     }
 
     return null;
   })();
-
-  let feeRate = 0;
-  if (market && typeof market.fee_bps === "number" && market.fee_bps >= 0) {
-    feeRate = market.fee_bps / 10000;
-  } else {
-    feeRate = 0.004;
-  }
 
   const [sellToolsOpen, setSellToolsOpen] = useState(false);
   const sellNoBalanceMsg = tTrading("orderFlow.sellNoBalance");
@@ -299,6 +305,7 @@ export function TradeTabContent({
           usdcReserved={effectiveUsdcReserved}
           setUseProxy={setUseProxy}
           onDeposit={handleDeposit}
+          feeRate={feeRate}
         />
       </div>
       <TradeSummary
@@ -913,6 +920,7 @@ type AmountInputSectionProps = {
   usdcReserved?: number;
   onDeposit?: () => void;
   setUseProxy?: (v: boolean) => void;
+  feeRate: number;
 };
 
 function AmountInputSection({
@@ -930,6 +938,7 @@ function AmountInputSection({
   usdcReserved,
   setUseProxy,
   onDeposit,
+  feeRate,
 }: AmountInputSectionProps) {
   const normalizeTo6Decimals = (raw: string) => {
     const trimmed = raw.trim();
@@ -1062,7 +1071,9 @@ function AmountInputSection({
           {showBuyMax && (
             <button
               onClick={() => {
-                const maxShares = effectiveUsdcAvailable / priceValue;
+                const denom = priceValue * (1 + (Number.isFinite(feeRate) ? feeRate : 0));
+                const rawMaxShares = denom > 0 ? effectiveUsdcAvailable / denom : 0;
+                const maxShares = Math.max(0, Math.floor(rawMaxShares * 1_000_000) / 1_000_000);
                 if (maxShares > 0) {
                   setAmountInput(normalizeTo6Decimals(String(maxShares)));
                 }
@@ -1123,6 +1134,8 @@ function TradeSummary({
 }: TradeSummaryProps) {
   const hasInput = price > 0 && amount > 0;
   const estimatedFee = hasInput ? total * feeRate : 0;
+  const totalForDisplay =
+    tradeSide === "buy" && orderMode === "limit" ? total + estimatedFee : total;
   const sideLabel = tradeSide === "buy" ? tTrading("buy") : tTrading("sell");
   const sideColor =
     tradeSide === "buy"
@@ -1171,10 +1184,16 @@ function TradeSummary({
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{tTrading("totalInvestment")}</span>
-          <span className="text-gray-900 font-bold text-base">{formatCurrency(total)}</span>
+          <span className="text-gray-900 font-bold text-base">
+            {formatCurrency(totalForDisplay)}
+          </span>
         </div>
         <div className="flex justify-between items-center text-xs">
-          <span className="text-gray-500">{tTrading("preview.feeEstimated")}</span>
+          <span className="text-gray-500">
+            {formatTranslation(tTrading("preview.feeEstimated"), {
+              fee: formatPercent(feeRate * 100),
+            })}
+          </span>
           <span className="text-gray-700 font-medium">
             {formatCurrency(estimatedFee)}{" "}
             <span className="ml-1 text-[11px] text-gray-400">({formatPercent(feeRate * 100)})</span>
@@ -1218,7 +1237,7 @@ function TradeSummary({
                   ? tTrading("preview.thisTradePay")
                   : tTrading("preview.thisTradeReceive")}
               </span>
-              <span className="font-medium text-gray-900">{formatCurrency(total)}</span>
+              <span className="font-medium text-gray-900">{formatCurrency(totalForDisplay)}</span>
             </div>
             <div className="flex justify-between text-[11px]">
               <span className="text-gray-400">{tTrading("preview.ifOutcomeHappens")}</span>
@@ -1470,8 +1489,9 @@ function TradeSubmitSection({
   const noFillableOrdersMsg = tTrading("orderFlow.noFillableOrders");
   const canOfferDeposit = !!onDeposit;
   const showDepositForDisabled =
-    canOfferDeposit && !!disabledReason && disabledReason === insufficientFundsMsg;
-  const showDepositForOrderMsg = canOfferDeposit && !!orderMsg && orderMsg === insufficientFundsMsg;
+    canOfferDeposit && !!disabledReason && disabledReason.startsWith(insufficientFundsMsg);
+  const showDepositForOrderMsg =
+    canOfferDeposit && !!orderMsg && orderMsg.startsWith(insufficientFundsMsg);
 
   const switchNetworkMsg = String(tTrading("orderFlow.switchNetwork") || "").replace(
     "{chainId}",

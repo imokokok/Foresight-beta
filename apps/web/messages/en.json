@@ -891,7 +891,7 @@
       "priceTimesAmount": "Price × Quantity",
       "thisTradePay": "This trade will pay",
       "thisTradeReceive": "This trade will receive",
-      "feeEstimated": "Est. matching fee (Taker 0.4%)",
+      "feeEstimated": "Est. matching fee (Taker {fee})",
       "ifOutcomeHappens": "If this outcome happens",
       "positionValuePrefix": "Position value about ",
       "positionValueMiddle": ", return ",
@@ -954,6 +954,7 @@
       "tradeFailed": "This trade ran into an issue. We can adjust a bit and try again.",
       "userRejected": "Canceled in wallet.",
       "insufficientFunds": "Not enough balance to complete this transaction.",
+      "insufficientFundsDetail": "Not enough balance to complete this transaction. (Available {available} USDC, need {required} USDC, short {shortfall} USDC)",
       "rpcTimeout": "Network is a bit unstable right now. Try again in a moment.",
       "sellNoBalance": "Sell failed: not enough outcome tokens right now. You can mint some below first, then try again.",
       "sellMaybeNoMint": "If you haven’t minted yet, you may not have tokens to sell. Mint a bit below and try once more.",
@@ -975,10 +976,30 @@
       "prepare": "Preparing to redeem…",
       "approveOutcomeToken": "Please approve the outcome tokens…",
       "redeeming": "Redeeming…",
-      "marketNotResolved": "The market hasn’t been resolved yet, so it can’t be redeemed.",
+      "marketNotResolved": "The market hasn’t been resolved yet. Resolve it in the Settlement panel first, then redeem.",
       "success": "Redeem successful! USDC has been returned.",
       "failed": "Redeem failed: {reason}",
       "unknownError": "Unknown error"
+    }
+  },
+  "settlement": {
+    "assertFlow": {
+      "prepare": "Preparing to assert an outcome…",
+      "asserting": "Submitting the outcome assertion…",
+      "success": "Outcome asserted successfully.",
+      "failed": "Outcome assertion failed: {reason}"
+    },
+    "settleFlow": {
+      "prepare": "Preparing to settle the oracle…",
+      "settling": "Settling the oracle…",
+      "success": "Oracle settled successfully.",
+      "failed": "Oracle settlement failed: {reason}"
+    },
+    "resolveFlow": {
+      "prepare": "Preparing to resolve the market…",
+      "resolving": "Resolving the market…",
+      "success": "Market resolved successfully. Redemptions are now enabled.",
+      "failed": "Market resolve failed: {reason}"
     }
   },
   "market": {

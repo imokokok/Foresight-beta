@@ -895,7 +895,7 @@
       "priceTimesAmount": "价格 × 数量",
       "thisTradePay": "本次预计支付",
       "thisTradeReceive": "本次预计收到",
-      "feeEstimated": "预计撮合手续费（按 Taker 0.4% 计算）",
+      "feeEstimated": "预计撮合手续费（按 Taker {fee} 计算）",
       "ifOutcomeHappens": "若该结局发生",
       "positionValuePrefix": "头寸价值约 ",
       "positionValueMiddle": "，收益率 ",
@@ -958,6 +958,7 @@
       "tradeFailed": "这次交易遇到了一点阻碍，我们可以换个方式再试一次。",
       "userRejected": "已在钱包里取消。",
       "insufficientFunds": "余额不足，暂时无法完成这笔交易。",
+      "insufficientFundsDetail": "余额不足，暂时无法完成这笔交易。（可用 {available} USDC，需要 {required} USDC，差 {shortfall} USDC）",
       "rpcTimeout": "网络有点不稳定，稍等一下再试试。",
       "sellNoBalance": "卖单失败：当前可卖的预测代币数量不足，可以先在下方完成铸币，再来挂卖单。",
       "sellMaybeNoMint": "如果还没有在下方完成铸币，现在可能还没有可卖的预测代币，可以先铸一点再试。",
@@ -979,10 +980,30 @@
       "prepare": "准备赎回...",
       "approveOutcomeToken": "请授权预测代币...",
       "redeeming": "正在赎回...",
-      "marketNotResolved": "市场尚未结算，无法赎回",
+      "marketNotResolved": "市场尚未结算，暂时无法赎回。请先在「结算」面板完成结算后再赎回。",
       "success": "赎回成功！USDC 已退回。",
       "failed": "赎回失败: {reason}",
       "unknownError": "未知错误"
+    }
+  },
+  "settlement": {
+    "assertFlow": {
+      "prepare": "准备提交裁决...",
+      "asserting": "正在提交裁决...",
+      "success": "裁决提交成功。",
+      "failed": "裁决提交失败：{reason}"
+    },
+    "settleFlow": {
+      "prepare": "准备结算预言机...",
+      "settling": "正在结算预言机...",
+      "success": "预言机结算成功。",
+      "failed": "预言机结算失败：{reason}"
+    },
+    "resolveFlow": {
+      "prepare": "准备执行市场结算...",
+      "resolving": "正在执行市场结算...",
+      "success": "市场结算成功，已可赎回。",
+      "failed": "市场结算失败：{reason}"
     }
   },
   "market": {
