@@ -98,9 +98,6 @@ export function initWebVitals() {
 
   // 仅在生产环境收集数据（可选）
   if (process.env.NODE_ENV !== "production") {
-    reportWebVitals((metric) => {
-      console.log("📊 Web Vitals:", metric);
-    });
     return;
   }
 

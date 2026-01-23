@@ -32,8 +32,6 @@ export async function POST(req: NextRequest) {
           })
           .catch(() => {});
       }
-    } else {
-      console.log("[WebviewClick]", body);
     }
 
     return NextResponse.json({ success: true });

@@ -121,9 +121,6 @@ export async function POST(req: NextRequest) {
       }
 
       // 同时发送到 Vercel Analytics（如果配置了）
-      if (process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_ID) {
-        console.log("Web Vital:", { name, value, rating });
-      }
     } else {
       // 开发环境输出到控制台
       console.log(`[Web Vital] ${name}:`, {

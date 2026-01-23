@@ -88,8 +88,6 @@ export async function POST(req: NextRequest) {
             // 表不存在时静默失败
           });
       }
-    } else {
-      console.log(`[Event] ${event}:`, props);
     }
 
     return NextResponse.json({ success: true });
