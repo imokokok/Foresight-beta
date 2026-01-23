@@ -3,9 +3,7 @@ import React, { Suspense } from "react";
 import "./globals.css";
 import "./nprogress.css";
 import { defaultLocale, type Locale } from "../i18n-config";
-import { WalletProvider } from "@/contexts/WalletContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { UserProfileProvider } from "@/contexts/UserProfileContext";
+import { AuthProvider, WalletProvider, UserProvider, useAppStores } from "@/contexts";
 import Sidebar from "@/components/Sidebar";
 import TopNavBar from "@/components/TopNavBar";
 import ReactQueryProvider from "@/components/ReactQueryProvider";
@@ -176,7 +174,7 @@ export default async function RootLayout({
             <ReactQueryProvider>
               <AuthProvider>
                 <WalletProvider>
-                  <UserProfileProvider>
+                  <UserProvider>
                     <ToastProvider />
                     <ErrorBoundary level="section">
                       <OnboardingLayout locale={locale}>
@@ -202,7 +200,7 @@ export default async function RootLayout({
                         </div>
                       </OnboardingLayout>
                     </ErrorBoundary>
-                  </UserProfileProvider>
+                  </UserProvider>
                 </WalletProvider>
               </AuthProvider>
             </ReactQueryProvider>

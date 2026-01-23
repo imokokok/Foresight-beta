@@ -1,49 +1,74 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode } from "react";
 import { useTranslations } from "@/lib/i18n";
 import { getFeatureFlags } from "@/lib/runtimeConfig";
+import {
+  isApiErrorResponse,
+  type ApiResponse,
+} from "@foresight/shared/api";
+import {
+  createUnauthorizedError,
+} from "@/lib/errorHandling";
+
+interface EmailOtpRequestResponse {
+  expiresInSec: number;
+  resendAfterSec?: number;
+  codePreview?: string;
+}
+
+interface EmailMagicLinkRequestResponse {
+  expiresInSec: number;
+  resendAfterSec?: number;
+  codePreview?: string;
+  magicLinkPreview?: string;
+}
 
 interface AuthContextValue {
-  user: { id: string; email: string | null; user_metadata?: any } | null;
+  isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  // 发送邮箱 OTP / 魔法链接
   requestEmailOtp: (email: string) => Promise<void>;
-  // 验证邮箱 OTP（6 位验证码）
   verifyEmailOtp: (email: string, token: string) => Promise<{ isNewUser?: boolean } | void>;
-  // 可选：直接发送魔法链接（不输入验证码）
   sendMagicLink: (
     email: string,
     redirect?: string
-  ) => Promise<{
-    expiresInSec: number;
-    resendAfterSec?: number;
-    codePreview?: string;
-    magicLinkPreview?: string;
-  }>;
+  ) => Promise<EmailMagicLinkRequestResponse>;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-export type AuthUser = AuthContextValue["user"];
 
-type ApiOk<T> = { success: true; data: T; message?: string };
-type ApiFail = { success: false; error?: { message?: string } };
-
-async function fetchApiJson<T>(url: string, init?: RequestInit): Promise<T> {
+async function fetchApiJson<T>(
+  url: string,
+  init?: RequestInit
+): Promise<T> {
   const res = await fetch(url, init);
-  const json = (await res.json().catch(() => null)) as ApiOk<T> | ApiFail | null;
-  if (!res.ok || !json || (json as any).success !== true) {
-    const msg =
-      (json as any)?.error?.message || (json as any)?.message || `Request failed: ${res.status}`;
-    throw new Error(String(msg));
+  const json = (await res.json().catch(() => null)) as ApiResponse<T> | null;
+
+  if (!res.ok || !json || isApiErrorResponse(json)) {
+    const errorResponse = json as ApiResponse<T>;
+    let errorMessage: string;
+
+    if (isApiErrorResponse(errorResponse)) {
+      errorMessage = errorResponse.error.message;
+    } else {
+      errorMessage = json
+        ? (json as { message?: string })?.message || `Request failed: ${res.status}`
+        : `Request failed: ${res.status}`;
+    }
+
+    throw createUnauthorizedError(errorMessage);
   }
-  return (json as ApiOk<T>).data;
+
+  if ("data" in json) {
+    return json.data;
+  }
+
+  return json as T;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthContextValue["user"]>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const tWalletModal = useTranslations("walletModal");
@@ -59,76 +84,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return translated === key ? message : translated;
   };
 
-  const refreshSession = async () => {
-    try {
-      const me = await fetch("/api/auth/me", { method: "GET" });
-      if (!me.ok) {
-        setUser(null);
-        return;
-      }
-      const meJson = (await me.json().catch(() => null)) as any;
-      const address = typeof meJson?.address === "string" ? String(meJson.address) : "";
-      if (!address) {
-        setUser(null);
-        return;
-      }
-      const profile = await fetchApiJson<{
-        profile?: { email?: string; username?: string } | null;
-      }>(`/api/user-profiles?address=${encodeURIComponent(address)}`, { method: "GET" }).catch(
-        () => null
-      );
-      const email =
-        profile && profile.profile && typeof profile.profile.email === "string"
-          ? String(profile.profile.email)
-          : null;
-      const username =
-        profile && profile.profile && typeof profile.profile.username === "string"
-          ? String(profile.profile.username)
-          : "";
-      setUser({
-        id: address,
-        email,
-        user_metadata: username ? { username } : undefined,
-      });
-    } catch {
-      setUser(null);
-    }
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        await refreshSession();
-      } catch (e: any) {
-        if (mounted) setError(e?.message || String(e));
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const requestEmailOtp = async (email: string) => {
     setError(null);
     try {
       if (!embeddedAuthEnabled) {
         const msg = tGlobal("errors.api.503.description");
         setError(msg);
-        throw new Error(msg);
+        throw createUnauthorizedError(msg);
       }
-      await fetchApiJson<{ expiresInSec: number; codePreview?: string }>("/api/email-otp/request", {
+      await fetchApiJson<EmailOtpRequestResponse>("/api/email-otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, mode: "login" }),
       });
-    } catch (e: any) {
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
       const raw =
-        typeof e?.message === "string" && e.message
-          ? e.message
+        errorMessage
+          ? errorMessage
           : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
@@ -142,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!embeddedAuthEnabled) {
         const msg = tGlobal("errors.api.503.description");
         setError(msg);
-        throw new Error(msg);
+        throw createUnauthorizedError(msg);
       }
       const data = await fetchApiJson<{ ok: boolean; address?: string; isNewUser?: boolean }>(
         "/api/email-otp/verify",
@@ -152,14 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ email, code: token, mode: "login" }),
         }
       );
-      const address = typeof data?.address === "string" ? String(data.address) : "";
-      setUser(address ? { id: address, email: email.trim().toLowerCase() } : null);
-      await refreshSession();
       return data;
-    } catch (e: any) {
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
       const raw =
-        typeof e?.message === "string" && e.message
-          ? e.message
+        errorMessage
+          ? errorMessage
           : tWalletModal("errors.otpVerifyFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
@@ -173,22 +144,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!embeddedAuthEnabled) {
         const msg = tGlobal("errors.api.503.description");
         setError(msg);
-        throw new Error(msg);
+        throw createUnauthorizedError(msg);
       }
-      return await fetchApiJson<{
-        expiresInSec: number;
-        resendAfterSec?: number;
-        codePreview?: string;
-        magicLinkPreview?: string;
-      }>("/api/email-magic-link/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, redirect }),
-      });
-    } catch (e: any) {
+      return await fetchApiJson<EmailMagicLinkRequestResponse>(
+        "/api/email-magic-link/request",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, redirect }),
+        }
+      );
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
       const raw =
-        typeof e?.message === "string" && e.message
-          ? e.message
+        errorMessage
+          ? errorMessage
           : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
@@ -204,18 +174,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("/api/siwe/logout", { method: "POST" });
     } catch {}
-    setUser(null);
+  };
+
+  const clearError = () => {
+    setError(null);
   };
 
   const value: AuthContextValue = {
-    user,
+    isAuthenticated: false,
     loading,
     error,
     requestEmailOtp,
     verifyEmailOtp,
     sendMagicLink,
     signOut,
-    refreshSession,
+    clearError,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -227,7 +200,6 @@ export function useAuth() {
   return ctx;
 }
 
-// 可选版本：在缺少 Provider 时返回 undefined，避免组件直接崩溃
 export function useAuthOptional() {
   return useContext(AuthContext);
 }

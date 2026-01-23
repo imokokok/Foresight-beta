@@ -49,6 +49,8 @@
     "check:contracts": "npm run hardhat:test",
     "seed:proposals:api": "node scripts/seed-proposals-via-api.js",
     "check:all": "npm run check:web && npm run check:relayer && npm run check:contracts",
+    "test:e2e": "npm run test:e2e -w apps/web",
+    "test:e2e:install": "npm run test:e2e:install -w apps/web",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
   },

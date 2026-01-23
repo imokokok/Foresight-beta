@@ -1,0 +1,90 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    reviewers:
+      - "team:frontend"
+      - "team:backend"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    ignore:
+      - dependency-type: "direct"
+        update-types: ["version-update:semver-major"]
+    groups:
+      frontend-dependencies:
+        patterns:
+          - "@*"
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@tanstack/*"
+          - "wagmi"
+          - "viem"
+        update-types:
+          - "minor"
+          - "patch"
+      backend-dependencies:
+        patterns:
+          - "ethers"
+          - "viem"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "typescript"
+          - "prettier"
+          - "eslint*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      prefix-development: "ci"
+
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  - package-ecosystem: "npm"
+    directory: "/services/relayer"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "backend"
+
+  - package-ecosystem: "npm"
+    directory: "/packages/contracts"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "contracts"
