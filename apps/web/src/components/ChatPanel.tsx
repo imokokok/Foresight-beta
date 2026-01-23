@@ -1,19 +1,19 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { getDisplayName } from "@/lib/userProfiles";
 import { useTranslations } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
-import { toast } from "@/lib/toast";
-import type { ChatPanelProps, ChatMessageView } from "./chatPanel/types";
+import type { ChatPanelProps } from "./chatPanel/types";
 import { useDiscussionMessages } from "./chatPanel/hooks/useDiscussionMessages";
 import { useForumThreads } from "./chatPanel/hooks/useForumThreads";
 import { useNameMap } from "./chatPanel/hooks/useNameMap";
 import { getAccentClass } from "./chatPanel/utils/colors";
 import { mergeMessages } from "./chatPanel/utils/mergeMessages";
-import { buildDebatePrefix } from "./chatPanel/utils/debateUtils";
 import { useDebatePreferences } from "./chatPanel/hooks/useDebatePreferences";
+import { useChatActions } from "./chatPanel/hooks/useChatActions";
+import { useMutedUsers } from "./chatPanel/hooks/useMutedUsers";
 import { ChatHeader } from "./chatPanel/ui/ChatHeader";
 import { MessagesList } from "./chatPanel/ui/MessagesList";
 import { ChatInputArea } from "./chatPanel/ui/ChatInputArea";
@@ -57,11 +57,9 @@ export default function ChatPanel({
   const { nameMap } = useNameMap({ messages, forumMessages, account });
 
   const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [showEmojis, setShowEmojis] = useState(false);
-  const [replyTo, setReplyTo] = useState<ChatMessageView | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; user_id?: string; content?: string } | null>(null);
   const {
     debateMode,
     setDebateMode,
@@ -79,54 +77,18 @@ export default function ChatPanel({
 
   const displayName = (addr: string) => getDisplayName(addr, nameMap, formatAddress);
 
-  const [mutedUsers, setMutedUsers] = useState<Record<string, true>>({});
-
-  useEffect(() => {
-    const key = "chat:mutedUsers";
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(key);
-      const arr = raw ? (JSON.parse(raw) as unknown) : [];
-      if (!Array.isArray(arr)) return;
-      const next: Record<string, true> = {};
-      arr.forEach((x) => {
-        const a = typeof x === "string" ? x : "";
-        const k = a.trim().toLowerCase();
-        if (k) next[k] = true;
-      });
-      setMutedUsers(next);
-    } catch {}
-  }, []);
-
-  const isMuted = useCallback(
-    (addr?: string | null) => {
-      const k = String(addr || "")
-        .trim()
-        .toLowerCase();
-      if (!k) return false;
-      return !!mutedUsers[k];
-    },
-    [mutedUsers]
-  );
-
-  const setMute = useCallback((addr: string, muted: boolean) => {
-    const key = "chat:mutedUsers";
-    const k = String(addr || "")
-      .trim()
-      .toLowerCase();
-    if (!k) return;
-    setMutedUsers((prev) => {
-      const next = { ...prev };
-      if (muted) next[k] = true;
-      else delete next[k];
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(Object.keys(next)));
-        }
-      } catch {}
-      return next;
-    });
-  }, []);
+  // 使用自定义 hooks
+  const { isMuted, setMute } = useMutedUsers();
+  const { sending, sendError, sendMessage, deleteMessage, reportMessage } = useChatActions({
+    eventId,
+    account,
+    partition,
+    debateMode,
+    debateStance,
+    debateKind,
+    setMessages,
+    setPartition,
+  });
 
   const quickPrompts = [
     tChat("quickPrompt.reason"),
@@ -188,126 +150,18 @@ export default function ChatPanel({
 
   const loadFailed = discussionError || forumError;
   const loadLoading = discussionLoading || forumLoading;
-  const retryLoad = useCallback(() => {
+  const retryLoad = () => {
     refreshDiscussion();
     refreshForum();
-  }, [refreshDiscussion, refreshForum]);
-
-  const sendMessage = async (imageUrl?: string) => {
-    if (!input.trim() && !imageUrl) return;
-    if (!account) {
-      const msg = tChat("errors.walletRequired");
-      setSendError(msg);
-      toast.error(tCommon("error"), msg);
-      return;
-    }
-    if (partition === "forum") {
-      const msg = tChat("forum.readOnlyHint");
-      setSendError(msg);
-      toast.error(tCommon("error"), msg);
-      return;
-    }
-    const effectiveDebateMode = partition === "debate" || debateMode;
-    const contentToSend = effectiveDebateMode
-      ? `${buildDebatePrefix(debateStance, debateKind)} ${input}`
-      : input;
-    setSending(true);
-    setSendError(null);
-    try {
-      const replyToId =
-        replyTo?.id && /^\d+$/.test(replyTo.id) ? Number(replyTo.id) : (null as any);
-      const res = await fetch("/api/discussions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          proposalId: eventId,
-          content: contentToSend,
-          userId: account,
-          image_url: imageUrl,
-          replyToId,
-          replyToUser: replyTo?.user_id || null,
-          replyToContent: replyTo?.content ? replyTo.content.slice(0, 100) : null,
-          topic: null,
-        }),
-      });
-      if (!res.ok) {
-        throw new Error("send_failed");
-      }
-      setInput("");
-      setReplyTo(null);
-      setPartition(effectiveDebateMode ? "debate" : "chat");
-    } catch (e: any) {
-      const msg = tChat("errors.sendFailed");
-      setSendError(msg);
-      toast.error(tCommon("error"), msg);
-    } finally {
-      setSending(false);
-    }
   };
 
-  const deleteMessage = useCallback(
-    async (msg: ChatMessageView) => {
-      if (!account) return;
-      if (!/^\d+$/.test(String(msg.id || ""))) return;
-      try {
-        const res = await fetch(`/api/discussions/${msg.id}`, { method: "DELETE" });
-        if (!res.ok) {
-          const contentType = String(res.headers.get("content-type") || "");
-          const json = contentType.includes("application/json")
-            ? await res.json().catch(() => null)
-            : null;
-          const serverMsg = String(
-            (json as any)?.error?.message || (json as any)?.message || ""
-          ).trim();
-          throw new Error(serverMsg || "delete_failed");
-        }
-        setMessages((prev) => prev.filter((m) => String(m.id) !== String(msg.id)));
-        toast.success(tCommon("success"), tChat("message.deleted"));
-      } catch (e: any) {
-        const msg = String(e?.message || "").trim();
-        toast.error(
-          tCommon("error"),
-          msg && msg !== "delete_failed" ? msg : tChat("message.deleteFailed")
-        );
-      }
-    },
-    [account, setMessages, tCommon, tChat]
-  );
-
-  const reportMessage = useCallback(
-    async (msg: ChatMessageView, reason: string) => {
-      if (!account) return;
-      if (!/^\d+$/.test(String(msg.id || ""))) return;
-      try {
-        const res = await fetch("/api/discussions/report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            discussionId: Number(msg.id),
-            reason,
-          }),
-        });
-        if (!res.ok) {
-          const contentType = String(res.headers.get("content-type") || "");
-          const json = contentType.includes("application/json")
-            ? await res.json().catch(() => null)
-            : null;
-          const serverMsg = String(
-            (json as any)?.error?.message || (json as any)?.message || ""
-          ).trim();
-          throw new Error(serverMsg || "report_failed");
-        }
-        toast.success(tCommon("success"), tChat("message.reported"));
-      } catch (e: any) {
-        const msg = String(e?.message || "").trim();
-        toast.error(
-          tCommon("error"),
-          msg && msg !== "report_failed" ? msg : tChat("message.reportFailed")
-        );
-      }
-    },
-    [account, tCommon, tChat]
-  );
+  const handleSendMessage = async (imageUrl?: string) => {
+    const success = await sendMessage(input, replyTo, imageUrl);
+    if (success) {
+      setInput("");
+      setReplyTo(null);
+    }
+  };
 
   return (
     <div
@@ -402,7 +256,7 @@ export default function ChatPanel({
           quickPrompts={quickPrompts}
           input={input}
           setInput={setInput}
-          sendMessage={sendMessage}
+          sendMessage={handleSendMessage}
           sending={sending}
           showEmojis={showEmojis}
           setShowEmojis={setShowEmojis}

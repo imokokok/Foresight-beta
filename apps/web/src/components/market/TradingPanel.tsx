@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { formatUnits } from "ethers";
+import React, { useState } from "react";
 import { useTranslations } from "@/lib/i18n";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import { TradeTabContent } from "./tradingPanel/TradeTabContent";
 import { DepthTabContent } from "./tradingPanel/DepthTabContent";
 import { HistoryTabContent, OrdersTabContent } from "./tradingPanel/OrdersHistoryTabs";
-import { PositionCard } from "./ui/PositionCard";
-import { decodePrice, formatPrice, formatAmount, BIGINT_THRESHOLD } from "./utils/priceUtils";
+import { formatPrice, formatAmount, decodePrice } from "./utils/priceUtils";
+import { useReservedBalance } from "./hooks/useReservedBalance";
+import { useTradingCalculations } from "./hooks/useTradingCalculations";
 
 type MarketPlanPreview = {
   slippagePercent: number;
@@ -145,126 +145,27 @@ export function TradingPanel(props: TradingPanelProps) {
   const isTradeTab = activeTab === "trade";
   const isManageTab = activeTab === "orders" || activeTab === "history";
 
-  const normalizeAddress = (a: string | null | undefined) => {
-    const s = String(a || "").trim();
-    if (!s) return null;
-    return s.toLowerCase();
-  };
+  // 使用自定义 hooks 处理计算逻辑
+  const { reservedAccountUsdc, reservedProxyUsdc } = useReservedBalance(
+    account,
+    proxyAddress,
+    userOrders
+  );
 
-  const computeReservedUsdcFallback = (makerLower: string | null) => {
-    if (!makerLower) return 0;
-    let totalCost6 = 0n;
-    for (const o of userOrders || []) {
-      const maker = normalizeAddress((o as any)?.maker_address);
-      if (!maker || maker !== makerLower) continue;
-      if (!(o as any)?.is_buy) continue;
-      try {
-        const remaining = BigInt(String((o as any)?.remaining ?? (o as any)?.amount ?? "0"));
-        const price = BigInt(String((o as any)?.price ?? "0"));
-        if (remaining <= 0n || price <= 0n) continue;
-        const cost = (remaining * price) / 1_000_000_000_000_000_000n;
-        const priceDecimals = price > BIGINT_THRESHOLD ? 18 : 6;
-        const cost6 = priceDecimals === 18 ? cost / 1_000_000_000_000n : cost;
-        totalCost6 += cost6;
-      } catch {
-        continue;
-      }
-    }
-    try {
-      const human = Number(formatUnits(totalCost6, 6));
-      return Number.isFinite(human) && human > 0 ? human : 0;
-    } catch {
-      return 0;
-    }
-  };
-
-  const [reservedAccountUsdcBackend, setReservedAccountUsdcBackend] = useState<number | null>(null);
-  const [reservedProxyUsdcBackend, setReservedProxyUsdcBackend] = useState<number | null>(null);
-
-  useEffect(() => {
-    const addr = normalizeAddress(account || null);
-    const controller = new AbortController();
-    if (!addr) {
-      setReservedAccountUsdcBackend(null);
-      return () => controller.abort();
-    }
-    (async () => {
-      try {
-        const res = await fetch(`/api/user-balance?address=${encodeURIComponent(addr)}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const json = (await res.json().catch(() => null)) as any;
-        const reservedRaw = json?.data?.reserved;
-        const n =
-          typeof reservedRaw === "number" ? reservedRaw : parseFloat(String(reservedRaw || "0"));
-        if (Number.isFinite(n) && n >= 0) setReservedAccountUsdcBackend(n);
-      } catch {}
-    })();
-    return () => controller.abort();
-  }, [account]);
-
-  useEffect(() => {
-    const addr = normalizeAddress(proxyAddress || null);
-    const controller = new AbortController();
-    if (!addr) {
-      setReservedProxyUsdcBackend(null);
-      return () => controller.abort();
-    }
-    (async () => {
-      try {
-        const res = await fetch(`/api/user-balance?address=${encodeURIComponent(addr)}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const json = (await res.json().catch(() => null)) as any;
-        const reservedRaw = json?.data?.reserved;
-        const n =
-          typeof reservedRaw === "number" ? reservedRaw : parseFloat(String(reservedRaw || "0"));
-        if (Number.isFinite(n) && n >= 0) setReservedProxyUsdcBackend(n);
-      } catch {}
-    })();
-    return () => controller.abort();
-  }, [proxyAddress]);
-
-  const reservedAccountUsdc =
-    reservedAccountUsdcBackend ?? computeReservedUsdcFallback(normalizeAddress(account || null));
-  const reservedProxyUsdc =
-    reservedProxyUsdcBackend ?? computeReservedUsdcFallback(normalizeAddress(proxyAddress || null));
-
-  let currentShares = 0;
-  let stakeBefore = typeof positionStake === "number" && positionStake > 0 ? positionStake : 0;
-  if (shareBalance) {
-    try {
-      const raw = BigInt(shareBalance);
-      if (raw > 0n) {
-        currentShares = Number(raw) / 1e18;
-      }
-    } catch {
-      currentShares = 0;
-    }
-  }
-
-  let markPrice = 0;
-  const bidDec = decodePrice(bestBid);
-  const askDec = decodePrice(bestAsk);
-  if (bidDec > 0 && askDec > 0) {
-    markPrice = (bidDec + askDec) / 2;
-  } else if (bidDec > 0) {
-    markPrice = bidDec;
-  } else if (askDec > 0) {
-    markPrice = askDec;
-  }
-
-  let markValue = 0;
-  let unrealizedPnl = 0;
-  let unrealizedPct = 0;
-  if (currentShares > 0 && markPrice > 0 && stakeBefore > 0) {
-    markValue = currentShares * markPrice;
-    unrealizedPnl = markValue - stakeBefore;
-    unrealizedPct = (unrealizedPnl / stakeBefore) * 100;
-  }
-  const hasPositionCard = currentShares > 0 && markPrice > 0 && stakeBefore > 0;
+  const {
+    currentShares,
+    markPrice,
+    stakeBefore,
+    markValue,
+    unrealizedPnl,
+    unrealizedPct,
+    hasPositionCard,
+  } = useTradingCalculations({
+    shareBalance,
+    positionStake,
+    bestBid,
+    bestAsk,
+  });
 
   const handleEditOrder = (o: any) => {
     try {
