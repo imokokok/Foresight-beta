@@ -63,7 +63,8 @@
       "header": "{month} {year}",
       "displayDate": "{year}-{month}-{day}",
       "displayWithTime": "{year}-{month}-{day} {hour}:{minute}"
-    }
+    },
+    "loginRequiredForDeposit": "Veuillez vous connecter pour déposer."
   },
   "nav": {
     "home": "Accueil",
@@ -90,12 +91,20 @@
         "DeFi",
         "Polygon",
         "smart contract",
-        "oracle"
+        "oracle",
+        "marché de prédiction"
       ],
       "openGraphTitle": "Foresight - Marché de prédiction décentralisé",
       "openGraphDescription": "Tradez des événements du monde réel de manière sûre, transparente et équitable.",
       "twitterTitle": "Foresight - Marché de prédiction décentralisé",
-      "twitterDescription": "Tradez des événements du monde réel et gagnez des récompenses."
+      "twitterDescription": "Tradez des événements du monde réel et gagnez des récompenses.",
+      "keywords[1]": "marché",
+      "keywords[2]": "blockchain",
+      "keywords[3]": "crypto",
+      "keywords[4]": "trading",
+      "keywords[5]": "événements",
+      "keywords[6]": "fore",
+      "keywords[7]": "prédire"
     },
     "terms": {
       "title": "Conditions d’utilisation de Foresight - Accord et informations sur les risques",
@@ -116,7 +125,10 @@
       "fallbackDescription": "Événement de marché de prédiction on-chain. Tradez des événements du monde réel avec une plateforme décentralisée sûre et transparente.",
       "breadcrumbHome": "Accueil",
       "breadcrumbTrending": "Tendances",
-      "keywordsBase": ["marché de prédiction", "blockchain", "crypto", "Foresight"]
+      "keywordsBase": ["marché de prédiction", "blockchain", "crypto", "Foresight"],
+      "keywordsBase[1]": "blockchain",
+      "keywordsBase[2]": "crypto",
+      "keywordsBase[3]": "Foresight"
     }
   },
   "forum": {
@@ -332,7 +344,7 @@
       "resubmitFailed": "La resoumission a échoué. Veuillez réessayer plus tard."
     },
     "comment": {
-      "authorBadge": "OP",
+      "authorBadge": "Auteur",
       "replyButton": "Répondre",
       "replyPlaceholder": "Écrivez votre réponse..."
     },
@@ -495,7 +507,7 @@
       "opinion": "Je pense que la probabilite est plus elevee parce que..."
     },
     "message": {
-      "opBadge": "OP",
+      "opBadge": "Auteur",
       "reply": "Repondre",
       "more": "Plus",
       "muted": "Muet",
@@ -518,7 +530,7 @@
       "forum": "Forum",
       "all": "Tous",
       "market": "Marche",
-      "meta": "Meta",
+      "meta": "Méta",
       "offtopic": "Hors sujet"
     },
     "debate": {
@@ -607,6 +619,11 @@
       },
       "footer": "C'est OK de prendre votre temps. Le monde est bruyant ; ici, nous sommes la pour ecouter en premier.",
       "cta": "C'est compris, commencons a discuter"
+    },
+    "forum": {
+      "switchToDebate": "Basculer vers le débat",
+      "switchToChat": "Basculer vers le chat",
+      "readOnlyHint": "Le forum est en lecture seule ici. Basculez vers le chat pour publier."
     }
   },
   "auth": {
@@ -643,7 +660,8 @@
     "safeInstallHint": "Pour la securite, installez uniquement depuis des sources officielles.",
     "refreshAfterInstall": "Actualisez la page apres l'installation pour continuer la connexion.",
     "goInstall": "Installer",
-    "later": "Plus tard"
+    "later": "Plus tard",
+    "deposit": "Déposer"
   },
   "mobileNav": {
     "menuOpen": "Ouvrir le menu",
@@ -664,34 +682,34 @@
     }
   },
   "prediction": {
-    "title": "Prediction",
-    "createPrediction": "Create Prediction",
-    "predictions": "Predictions",
-    "category": "Category",
-    "deadline": "Deadline",
-    "minStake": "Min Stake",
-    "status": "Status",
-    "active": "Active",
-    "completed": "Completed",
-    "cancelled": "Cancelled",
+    "title": "Prédiction",
+    "createPrediction": "Créer une prédiction",
+    "predictions": "Prédictions",
+    "category": "Catégorie",
+    "deadline": "Date limite",
+    "minStake": "Mise minimum",
+    "status": "Statut",
+    "active": "Actif",
+    "completed": "Terminé",
+    "cancelled": "Annulé",
     "description": "Description",
-    "criteria": "Criteria"
+    "criteria": "Critères"
   },
   "trading": {
-    "buy": "Buy",
-    "sell": "Sell",
-    "price": "Price",
-    "amount": "Amount",
+    "buy": "Acheter",
+    "sell": "Vendre",
+    "price": "Prix",
+    "amount": "Montant",
     "total": "Total",
-    "limitOrder": "Limit Order",
-    "marketOrder": "Market Order",
-    "maxSlippage": "Max slippage",
-    "worstExecutionPrice": "Worst execution price",
-    "placeOrder": "Place Order",
-    "cancelOrder": "Cancel Order",
-    "myOrders": "My Orders",
-    "orderBook": "Order Book",
-    "depth": "Depth",
+    "limitOrder": "Ordre limite",
+    "marketOrder": "Ordre au marché",
+    "maxSlippage": "Glissement maximum",
+    "worstExecutionPrice": "Pire prix d'exécution",
+    "placeOrder": "Passer l'ordre",
+    "cancelOrder": "Annuler l'ordre",
+    "myOrders": "Mes ordres",
+    "orderBook": "Carnet d'ordres",
+    "depth": "Profondeur",
     "bids": "Offres d'achat",
     "asks": "Offres de vente",
     "filled": "Rempli",
@@ -726,7 +744,7 @@
       "marketOrderOnchain": "Les ordres au marché envoient une transaction on-chain et peuvent nécessiter du gas.",
       "limitOrderSigned": "Les ordres limités sont signés off-chain et ne nécessitent généralement pas de gas.",
       "chance": "Probabilité",
-      "postOnly": "Post only",
+      "postOnly": "Post uniquement",
       "showAdvanced": "Avancé",
       "hideAdvanced": "Masquer l’avancé",
       "impliedProbability": "Probabilité implicite",
@@ -807,7 +825,8 @@
       "canceled": "Commande annulee.",
       "cancelFailed": "La commande n'a pas ete annulee cette fois. Vous pouvez reessayer dans un instant.",
       "slippageTooHigh": "Le glissement estime pour cette commande au marche est au-dessus de votre limite. Essayez de reduire la taille ou d'autoriser un seuil de glissement plus eleve et repassez la commande.",
-      "marketConfirm": "Vous etes sur le point de passer une commande au marche {side}.\n\nResume :\n- Montant estime remplit : {filled} / {total} parts\n- Prix d'execution moyen est. : {avgPrice} USDC\n- Pire prix d'execution est. : {worstPrice} USDC\n- Cout total est. : {totalCost} USDC\n- Glissement est. : {slippage}%\n\nContinuer ?"
+      "marketConfirm": "Vous etes sur le point de passer une commande au marche {side}.\n\nResume :\n- Montant estime remplit : {filled} / {total} parts\n- Prix d'execution moyen est. : {avgPrice} USDC\n- Pire prix d'execution est. : {worstPrice} USDC\n- Cout total est. : {totalCost} USDC\n- Glissement est. : {slippage}%\n\nContinuer ?",
+      "insufficientFundsDetail": "Fonds insuffisants pour placer cette mise. Solde: {balance}, requis: {required}"
     },
     "mintFlow": {
       "prepare": "Preparation de l'emission...",
@@ -899,7 +918,8 @@
     },
     "chart": {
       "loading": "Chargement des donnees du marche...",
-      "outcomeFallback": "Resultat {index}"
+      "outcomeFallback": "Resultat {index}",
+      "live": "Live"
     },
     "outcomes": {
       "multiDistribution": "Distribution de probabilite multi-resultats",
@@ -2099,6 +2119,1475 @@
       "saving": "Saving...",
       "grantReviewer": "Grant reviewer",
       "revokeReviewer": "Revoke reviewer"
+    },
+    "discipline": {
+      "cta": "Signaler un problème",
+      "defaultTitle": "Flag: {title}",
+      "hint": "Les Flags passent par le processus de révision du forum et peuvent être escaladés à l'arbitre.",
+      "title": "Vous voyez un problème? Signaler",
+      "kicker": "Intégrité du marché",
+      "defaultDesc": "Je pense que ce marché peut avoir les problèmes suivants:",
+      "body": "Si vous pensez que ce marché contient des informations incorrectes, signalez-le avec des liens justificatifs."
     }
+  },
+  "errors": {
+    "unknownError": "Erreur inconnue",
+    "goHome": "Retour à l'accueil",
+    "serverError": "Erreur serveur.",
+    "tryAgain": "Réessayer",
+    "contactSupport": "Contacter le support",
+    "400title": "Requête invalide",
+    "400desc": "La requête que vous avez envoyée n'est pas valide.",
+    "403title": "Accès refusé",
+    "403desc": "Vous n'avez pas la permission d'accéder à cette ressource.",
+    "404title": "Page non trouvée",
+    "404desc": "La page que vous recherchez n'existe pas.",
+    "408title": "Délai d'attente dépassé",
+    "408desc": "Le serveur a mis trop de temps à répondre.",
+    "429title": "Trop de demandes",
+    "429desc": "Vous avez effectué trop de demandes. Veuillez réessayer plus tard.",
+    "500title": "Erreur serveur",
+    "500desc": "Une erreur s'est produite sur le serveur.",
+    "503title": "Service indisponible",
+    "503desc": "Le service est temporairement indisponible.",
+    "504title": "Délai de passerelle dépassé",
+    "504desc": "Le serveur a mis trop de temps à répondre.",
+    "defaultTitle": "Une erreur s'est produite",
+    "defaultDesc": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "networkErrorTitle": "Erreur réseau",
+    "networkErrorDesc": "Veuillez vérifier votre connexion réseau et réessayer.",
+    "retry": "Réessayer",
+    "loginExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+    "unauthenticated": "Veuillez vous connecter pour continuer.",
+    "unauthorized": "Vous n'avez pas l'autorisation d'effectuer cette action.",
+    "forbidden": "L'accès à cette ressource est interdit.",
+    "notFound": "La ressource demandée n'a pas été trouvée.",
+    "badRequest": "Requête invalide.",
+    "rateLimited": "Trop de demandes. Veuillez ralentir.",
+    "invalidNonce": "Nonce invalide.",
+    "invalidSignature": "Signature invalide.",
+    "walletConnectionFailed": "Échec de la connexion au portefeuille.",
+    "userDenied": "Action annulée par l'utilisateur.",
+    "agreementRequired": "Vous devez accepter les conditions d'utilisation.",
+    "insufficientBalance": "Solde insuffisant.",
+    "exceedsBalance": "Le montant dépasse votre solde disponible.",
+    "zeroAmount": "Le montant doit être supérieur à zéro.",
+    "negativeAmount": "Le montant ne peut pas être négatif.",
+    "invalidAmount": "Montant invalide.",
+    "stakeTooLow": "La mise est trop faible.",
+    "stakeTooHigh": "La mise est trop élevée.",
+    "invalidOutcome": "Résultat invalide.",
+    "marketNotFound": "Marché non trouvé.",
+    "marketClosed": "Ce marché est fermé.",
+    "marketResolved": "Ce marché a déjà été résolu.",
+    "noLiquidity": "Pas de liquidité disponible.",
+    "slippageExceeded": "Le glissement a dépassé la limite.",
+    "predictionNotFound": "Prédiction non trouvée.",
+    "predictionExpired": "La prédiction a expiré.",
+    "predictionCancelled": "La prédiction a été annulée.",
+    "claimNotAvailable": "Réclamation non disponible.",
+    "claimAlreadyMade": "Vous avez déjà réclamé ces gains.",
+    "claimFailed": "Échec de la réclạmation.",
+    "transferFailed": "Échec du transfert.",
+    "withdrawFailed": "Échec du retrait.",
+    "depositFailed": "Échec du dépôt.",
+    "swapFailed": "Échec de l'échange.",
+    "approveFailed": "Échec de l'approbation.",
+    "approveTokenFailed": "Échec de l'approbation du token.",
+    "contractCallFailed": "L'appel au contrat a échoué.",
+    "outOfGas": "Plus de gas.",
+    "notSupportChain": "Ce réseau n'est pas supporté.",
+    "switchChainFailed": "Échec du changement de réseau.",
+    "chainNotSupported": "Ce réseau n'est pas supporté.",
+    "walletNotConnected": "Portefeuille non connecté.",
+    "walletAlreadyConnected": "Portefeuille déjà connecté.",
+    "noWallet": "Aucun portefeuille détecté.",
+    "multipleWallets": "Plusieurs portefeuilles détectés.",
+    "browserNotSupported": "Navigateur non supporté.",
+    "walletLocked": "Portefeuille verrouillé.",
+    "walletRejected": "Action rejetée par le portefeuille.",
+    "walletTimeout": "Délai du portefeuille dépassé.",
+    "disconnected": "Déconnecté.",
+    "connectWallet": "Connecter le portefeuille",
+    "reconnectWallet": "Reconnecter le portefeuille",
+    "installWallet": "Installer le portefeuille",
+    "openWallet": "Ouvrir le portefeuille",
+    "cancel": "Annuler",
+    "retryRequest": "Réessayer la demande",
+    "switchNetwork": "Changer de réseau",
+    "switchNetworkAndRetry": "Changer de réseau et réessayer",
+    "back": "Retour",
+    "close": "Fermer",
+    "dismiss": "Rejeter",
+    "loading": "Chargement...",
+    "readMore": "En savoir plus",
+    "learnMore": "En savoir plus",
+    "showLess": "Afficher moins",
+    "showMore": "Afficher plus",
+    "submit": "Soumettre",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "cancelAction": "Annuler l'action",
+    "accept": "Accepter",
+    "decline": "Refuser",
+    "skip": "Passer",
+    "done": "Terminé",
+    "copy": "Copier",
+    "copied": "Copié!",
+    "reset": "Réinitialiser",
+    "remove": "Supprimer",
+    "delete": "Supprimer",
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "update": "Mettre à jour",
+    "create": "Créer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "refresh": "Actualiser",
+    "download": "Télécharger",
+    "upload": "Téléverser",
+    "share": "Partager",
+    "view": "Voir",
+    "viewAll": "Voir tout",
+    "expand": "Développer",
+    "collapse": "Réduire",
+    "expandAll": "Tout développer",
+    "collapseAll": "Tout réduire",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "select": "Sélectionner",
+    "selected": "Sélectionné",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "first": "Premier",
+    "last": "Dernier",
+    "previousPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "noResults": "Aucun résultat",
+    "all": "Tout",
+    "none": "Aucun",
+    "settings": "Paramètres",
+    "help": "Aide",
+    "about": "À propos",
+    "privacy": "Confidentialité",
+    "terms": "Conditions d'utilisation",
+    "wallet": {
+      "verifyFailed": "Échec de la vérification, veuillez réessayer",
+      "installExtension": "Veuillez installer une extension de navigateur de portefeuille",
+      "connectFailed": "Échec de la connexion du portefeuille",
+      "networkNotConfigured": "Veuillez ajouter ce réseau dans votre portefeuille",
+      "loginError": "Échec de la connexion, veuillez réessayer",
+      "walletNotInitialized": "Le portefeuille n'est pas correctement initialisé. Veuillez actualiser la page et réessayer.",
+      "connectFirst": "Veuillez d'abord connecter votre portefeuille",
+      "addNetworkFailed": "Échec de l'ajout du réseau, veuillez réessayer plus tard",
+      "permissionsFailed": "Échec de la demande des permissions du portefeuille",
+      "notDetected": "Aucun portefeuille détecté. Veuillez installer une extension de portefeuille.",
+      "loggingIn": "Connexion en cours, veuillez patienter",
+      "useInBrowser": "Veuillez utiliser votre portefeuille dans un environnement de navigateur",
+      "nonceInvalid": "Impossible d'obtenir le nonce. Veuillez actualiser la page et réessayer.",
+      "providerUnavailable": "Le fournisseur de portefeuille est indisponible",
+      "okxNotInstalled": "OKX Wallet n'est pas installé ou n'est pas injecté correctement. Veuillez installer l'extension et actualiser la page.",
+      "multisigFailed": "Échec de la signature multisig",
+      "switchRejected": "Vous avez annulé le changement de réseau",
+      "signatureRejected": "Vous avez annulé la demande de signature",
+      "signatureFailed": "Échec de la signature, veuillez réessayer",
+      "okxNotInitialized": "OKX Wallet n'est pas correctement initialisé. Veuillez actualiser la page et réessayer.",
+      "nonceFetchFailed": "Échec de la récupération du nonce (statut {status})"
+    },
+    "api": {
+      "404": {
+        "title": "Non trouvé",
+        "description": "Le contenu demandé n'a pas pu être trouvé"
+      },
+      "429": {
+        "description": "Veuillez réessayer plus tard",
+        "title": "Trop de requêtes"
+      },
+      "409": {
+        "title": "Conflit",
+        "description": "L'opération est en conflit avec des données existantes"
+      },
+      "403": {
+        "title": "Interdit",
+        "description": "Vous n'avez pas la permission d'effectuer cette action"
+      },
+      "500": {
+        "title": "Erreur serveur",
+        "description": "Le serveur a rencontré un problème, veuillez réessayer plus tard"
+      },
+      "503": {
+        "title": "Service indisponible",
+        "description": "Le service est en maintenance, veuillez réessayer plus tard"
+      },
+      "400": {
+        "title": "Mauvaise requête",
+        "description": "Le format des données soumises est invalide"
+      },
+      "401": {
+        "description": "Veuillez d'abord connecter votre portefeuille et vous connecter",
+        "title": "Non autorisé"
+      }
+    },
+    "loadFailed": "Échec du chargement",
+    "digestLabel": "Synthèse",
+    "network": {
+      "title": "Erreur réseau",
+      "description": "Veuillez vérifier votre connexion et réessayer"
+    },
+    "contentUnavailable": "Ce contenu est temporairement indisponible",
+    "componentLoadFailed": "Le composant n'a pas pu se charger",
+    "business": {
+      "ORDER_EXPIRED": {
+        "title": "Commande expirée",
+        "description": "Cette commande n'est plus valide. Veuillez actualiser le carnet d'ordres et réessayer"
+      },
+      "MARKET_CLOSED": {
+        "title": "Marché fermé",
+        "description": "Ce marché est fermé et n'accepte plus de nouvelles commandes"
+      },
+      "INSUFFICIENT_BALANCE": {
+        "title": "Solde insuffisant",
+        "description": "Votre solde disponible n'est pas suffisant pour effectuer cette action"
+      }
+    },
+    "viewDetails": "Voir les détails de l'erreur",
+    "autoReported": "L'erreur a été automatiquement signalée. Nous la corrigerons sous peu.",
+    "networkError": "Erreur réseau",
+    "debugInfo": "Informations de débogage",
+    "errorMessage": "Message d'erreur",
+    "somethingWrong": "Oups ! Une erreur s'est produite !",
+    "followActionFailed": "L'action de suivi a échoué, veuillez réessayer plus tard",
+    "refreshPage": "Actualiser la page",
+    "noErrorMessage": "Aucun message d'erreur",
+    "stackTrace": "Trace de la pile",
+    "imageLoadFailed": "L'image n'a pas pu se charger",
+    "errorOccurred": "Une erreur s'est produite",
+    "componentStack": "Pile de composants",
+    "pageNotFound": "Page non trouvée"
+  },
+  "filters": {
+    "actions": {
+      "statusFilter": "Status filter",
+      "filter": "Filter",
+      "currentFilter": "Current filter:",
+      "clear": "Clear"
+    },
+    "categoryLabel": "Filtre de catégorie",
+    "status": {
+      "ended": "Ended",
+      "pending": "Pending",
+      "active": "Actif",
+      "all": "Tous"
+    },
+    "categories": {
+      "other": "Autre",
+      "more": "Plus",
+      "business": "Business",
+      "entertainment": "Divertissement",
+      "politics": "Politique",
+      "all": "Toutes",
+      "tech": "Technologie",
+      "crypto": "Crypto",
+      "sports": "Sports",
+      "weather": "Météo"
+    },
+    "sort": {
+      "popular": {
+        "description": "Sort by number of followers",
+        "label": "Most followed"
+      },
+      "trending": {
+        "label": "Tendance d'abord",
+        "description": "Sort by attention and activity"
+      },
+      "newest": {
+        "label": "Newest",
+        "description": "Sort by creation time (newest first)"
+      },
+      "ending": {
+        "label": "Ending soon",
+        "description": "Sort by deadline (earliest first)"
+      }
+    }
+  },
+  "loginCallback": {
+    "errors": {
+      "saveFailedWithStatus": "Save failed: {status}",
+      "sendFailedWithStatus": "Send failed: {status}",
+      "loginFailed": "Login failed",
+      "loginFailedWithStatus": "Login failed: {status}",
+      "saveFailed": "Save failed",
+      "verifyFailedWithStatus": "Verification failed: {status}",
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "sendFailed": "Failed to send email",
+      "verifyFailed": "Verification failed"
+    },
+    "username": {
+      "taken": "Ce nom d'utilisateur est déjà pris",
+      "invalid": "Nom d'utilisateur invalide",
+      "saveAndContinue": "Enregistrer et continuer",
+      "placeholder": "Entrez votre nom d'utilisateur",
+      "title": "Définir le nom d'utilisateur",
+      "label": "Nom d'utilisateur",
+      "hint": "3-20 caractères, lettres/chiffres/underscore uniquement",
+      "saving": "Enregistrement...",
+      "subtitle": "La première connexion par email nécessite de définir un nom d'utilisateur"
+    },
+    "code": {
+      "devPreview": "Code de vérification dev: {code}",
+      "remainingAttempts": "{count} tentatives restantes",
+      "digitAriaLabel": "Chiffre {index} du code de vérification"
+    },
+    "login": {
+      "codeLabel": "Code à 6 chiffres",
+      "subtitle": "Entrez le code de vérification email pour terminer la connexion",
+      "emailLabel": "Email",
+      "title": "Connexion"
+    },
+    "actions": {
+      "verifying": "Verifying…",
+      "sending": "Sending…",
+      "resendCountdown": "Resend ({seconds}s)",
+      "back": "Back",
+      "resend": "Resend email",
+      "verifyAndLogin": "Verify and login"
+    },
+    "status": {
+      "pleaseWait": "Veuillez patienter",
+      "loggingIn": "Connexion en cours..."
+    }
+  },
+  "flags": {
+    "history": {
+      "labels": {
+        "initiator": "Creator",
+        "challengeTopic": "Challenge topic",
+        "challengeDuration": "Challenge period",
+        "currentWitnessTask": "Current review task",
+        "successCondition": "Success condition"
+      },
+      "witnessLabel": "Witness",
+      "successCondition": {
+        "dynamic": "Succeed with at least {minDays} approved days and ≥{threshold}% completion.",
+        "default": "The system adjusts success conditions based on how long the challenge runs: shorter Flags generally require a solid majority of approved days, while longer ones expect more approved days and a higher completion ratio."
+      },
+      "actions": {
+        "reject": "Reject",
+        "approve": "Approve"
+      },
+      "intro": {
+        "witness": "Carefully review each check-in. Your judgment directly decides whether this challenge is regarded as completed.",
+        "default": "Look back on every step and see how your persistence adds up."
+      },
+      "empty": "Aucune récompense",
+      "reviewReason": {
+        "rejected": "Witness rejected",
+        "approved": "Looks good"
+      },
+      "status": {
+        "approved": "Verified",
+        "rejected": "Rejected",
+        "waitingReview": "Waiting for review"
+      },
+      "title": "Historique des Récompenses"
+    },
+    "settleModal": {
+      "cancel": "Cancel",
+      "warning": "You cannot check in after settlement. Rewards will be calculated based on your progress.",
+      "confirm": "Confirm Settle",
+      "subtitle": "Review your journey and claim rewards",
+      "title": "Settle Challenge"
+    },
+    "official": {
+      "templates": {
+        "call_parents": {
+          "title": "Call Your Parents",
+          "description": "Give your parents a call and share your recent life"
+        },
+        "declutter": {
+          "description": "Let go of one unneeded item and travel lighter",
+          "title": "Declutter Day"
+        },
+        "early_bird": {
+          "description": "Wake up and check in before 8 AM for 7 days",
+          "title": "Early Bird Challenge"
+        },
+        "walk_10k": {
+          "description": "Explore the city on foot and stay active",
+          "title": "Walk 10,000 Steps"
+        },
+        "weather_prophet": {
+          "title": "Weather Prophet",
+          "description": "Predict tomorrow's weather and observe daily changes"
+        },
+        "fitness_pro": {
+          "description": "Work out 3 times a week and keep it up for 4 weeks",
+          "title": "Fitness Pro"
+        },
+        "digital_detox": {
+          "description": "Stay off your phone and enjoy 1 hour of quiet focus",
+          "title": "Be Here Now"
+        },
+        "reading_marathon": {
+          "description": "Read at least 30 minutes every day for 30 days",
+          "title": "Reading Marathon"
+        },
+        "no_takeout": {
+          "description": "Cook for yourself or eat healthy, skip all takeout orders",
+          "title": "No Takeout Today"
+        },
+        "sleep_early": {
+          "title": "Night Owl Buster",
+          "description": "Put your phone down and fall asleep before 11 PM tonight"
+        }
+      },
+      "title": "Official Featured Challenges",
+      "cta": "Start now",
+      "subtitle": "Over 10 curated challenge templates"
+    },
+    "toast": {
+      "settleConfirmMessage": "Êtes-vous sûr de vouloir résoudre cette prédiction avec le résultat '{outcome}'?",
+      "createSuccessDesc": "Votre prédiction a été créée avec succès.",
+      "checkinFailedDesc": "Looks like a network wobble—wait a bit and tap again.",
+      "reviewFailedDesc": "La révision a échoué.",
+      "walletRequiredDesc": "Veuillez connecter votre portefeuille pour continuer.",
+      "approvedDaysLabel": "Approved days",
+      "settleSuccessTitle": "Résolution réussie!",
+      "statusLabel": "Statut: {status}",
+      "siweFailedDesc": "Veuillez signer le message pour vous connecter.",
+      "noDataTitle": "Aucune donnée",
+      "createFailedDesc": "La prédiction n'a pas pu être créée.",
+      "checkinSuccessTitle": "Check-in réussi!",
+      "checkinFailedTitle": "Check-in ran into a hiccup",
+      "titleRequiredTitle": "Titre requis",
+      "witnessRequiredTitle": "Témoins requis",
+      "loadFailedTitle": "Échec du chargement",
+      "reviewFailedTitle": "Échec de la révision",
+      "ratioLabel": "Ratio: {ratio}",
+      "createSuccessTitle": "Création réussie!",
+      "noDataDesc": "Aucune donnée disponible pour le moment.",
+      "walletRequiredTitle": "Portefeuille requis",
+      "ruleLabel": "Règle: {rule}",
+      "noStickerSuffix": "déverrouillé!",
+      "checkinExpiredDesc": "This challenge has wrapped up—pat yourself on the back and start a new one ✨",
+      "siweFailedTitle": "Échec de la signature",
+      "witnessRequiredDesc": "Au moins {count} témoins sont requis.",
+      "checkinSuccessDesc": "Your effort is safely logged, and you even unlocked a new sticker!",
+      "retryLater": "Réessayer plus tard",
+      "checkinExpiredTitle": "Time's up for this Flag",
+      "titleRequiredDesc": "Veuillez entrer un titre pour votre prédiction.",
+      "settleFailedTitle": "Échec de la résolution",
+      "createFailedTitle": "Échec de la création",
+      "checkinSuccessNoStickerDesc": "Your effort is saved—no sticker this time, but many more rolls ahead."
+    },
+    "modal": {
+      "header": {
+        "joinChallengeTitle": "Join Challenge",
+        "newFlagSubtitle": "Start your journey today",
+        "joinChallengeSubtitle": "Let's do this together!",
+        "newFlagTitle": "New Flag"
+      },
+      "form": {
+        "targetDateLabel": "Target Date (Optional)",
+        "friendCheck": "Friend Check",
+        "descLabel": "Details & Rules",
+        "verificationLabel": "Verification",
+        "witnessLabel": "Witness ID / Address",
+        "titlePlaceholder": "e.g. Read 10 pages daily",
+        "descPlaceholder": "Describe your plan...",
+        "targetDatePlaceholder": "Select Date",
+        "selfCheck": "Self Check",
+        "titleLabel": "Flag Title",
+        "witnessPlaceholder": "Enter friend's ID or Address"
+      },
+      "footer": {
+        "joinNow": "Join Now",
+        "createFlag": "Create Flag",
+        "cancel": "Cancel"
+      },
+      "flow": {
+        "nextButton": "Next step",
+        "backButton": "Back",
+        "step2Subtitle": "Choose the kind of accountability that motivates you most",
+        "readyTitle": "Ready to go?",
+        "friendCheckDescription": "Find a trusted friend so you can keep each other on track.",
+        "stepIndicator": {
+          "step1": "Step 1: Seed",
+          "step2": "Step 2: Nurture",
+          "step3": "Step 3: Launch"
+        },
+        "roleOfficial": "Companion",
+        "step3Title": "Finally, pick a deadline 📅",
+        "roleUser": "Dreamer",
+        "readySubtitle": "Once you set this goal, we'll stay with you all the way.",
+        "step3Subtitle": "Give your future self a small ritual to look forward to",
+        "selfCheckDescription": "Being honest with yourself is the coolest thing.",
+        "step2Title": "How do we witness this together? 🤝"
+      },
+      "templates": {
+        "tidy_room_10m": {
+          "desc": "Goal: Tidy up for at least {minutes} minutes\\nProof: Before-and-after photos",
+          "title": "Tidy your room for {minutes} minutes"
+        },
+        "meditate_10m": {
+          "title": "Meditate for {minutes} minutes",
+          "desc": "Goal: Meditate for {minutes} minutes\\nProof: Timer log or screenshot"
+        },
+        "drink_water_8": {
+          "desc": "Goal: Drink {cups} cups of water today\\nProof: Simple log or photo",
+          "title": "Drink {cups} cups of water"
+        },
+        "read_20_pages": {
+          "desc": "Goal: Read {pages} pages today\\nProof: Book title and page numbers",
+          "title": "Read {pages} pages"
+        },
+        "steps_10k": {
+          "desc": "Goal: Reach at least {steps} steps today\\nProof: Screenshot from your device",
+          "title": "Steps ≥ {steps}"
+        },
+        "sunlight_20m": {
+          "desc": "Goal: Get {minutes} minutes of sunlight\\nProof: Place and time record",
+          "title": "Sunlight for {minutes} minutes"
+        },
+        "early_morning": {
+          "title": "Early wake-up {hour}:00 check-in",
+          "desc": "Goal: Wake up and check in before {hour}:00\\nProof: Morning note or photo"
+        },
+        "sleep_before_11": {
+          "title": "Sleep before {hour}:00",
+          "desc": "Goal: Go to bed before {hour}:00 today\\nProof: Personal note or app screenshot"
+        }
+      }
+    },
+    "rules": {
+      "rewardHint": "Both check-ins and final settlement can drop stickers; longer and better-completed challenges enjoy noticeably higher drop rates and rarities.",
+      "light": "Light (1-7 days): needs roughly 70% of days approved to succeed, with a solid chance to drop a sticker at settlement.",
+      "dropRates": "Drop Rates",
+      "hardcore": "Hardcore (>30 days): tuned for higher completion ratios (around 85%) and more days, with better odds of high-rarity stickers.",
+      "settleRuleHint": "The system automatically adjusts the required days and completion ratio based on how long your Flag runs, so longer challenges have stricter but clearer success criteria.",
+      "intense": "Intense (15-30 days): expects at least 10 approved days and a strong overall completion ratio, with higher drop chances when you succeed.",
+      "title": "Rules & Rewards",
+      "tiers": "Tiers",
+      "standard": "Standard (8-14 days): usually requires at least 5 approved days and around a 75% completion ratio."
+    },
+    "card": {
+      "time": {
+        "hoursLeftSuffix": " hours left",
+        "daysLabel": "Days",
+        "daysLeftSuffix": " days left",
+        "finished": "Finished"
+      },
+      "verification": {
+        "friend": "Friend check",
+        "self": "Self check"
+      },
+      "actions": {
+        "checkin": "Check in",
+        "settle": "Settle",
+        "history": "History"
+      },
+      "status": {
+        "success": "Challenge succeeded",
+        "failed": "Challenge failed",
+        "pending_review": "Pending review",
+        "active": "Active"
+      },
+      "tier": {
+        "intense": "Intense",
+        "standard": "Standard",
+        "hardcore": "Hardcore",
+        "light": "Light"
+      },
+      "proofImageAlt": "Check-in image"
+    },
+    "header": {
+      "tipProposalsAction": ", consultez les défis actifs sur",
+      "tipTrending": "Tendances",
+      "tipLeaderboardAction": ", et trouvez l'inspiration dans",
+      "title": "Mon Tableau de Bord",
+      "tipSearch": "Global Search",
+      "activeLabel": "Actif",
+      "tipForum": "Forum",
+      "tipOr": "or",
+      "tipTrendingAction": ", démarrer des défis à long terme dans",
+      "tipSuffix": ".",
+      "achievedLabel": "Atteint",
+      "tipLeaderboard": "Classement",
+      "badge": "Rêvez en grand!",
+      "tipProposals": "Propositions",
+      "tipPrefix": "Vous voulez combiner des objectifs réels avec les marchés de prédiction? Vous pouvez créer un Flag à partir d'événements dans"
+    },
+    "page": {
+      "jsonLdName": "Foresight Achievement Flags",
+      "jsonLdDescription": "Create and complete challenge tasks on the Foresight Achievement Flags page, unlock achievement badges, record your prediction growth path, and connect with prediction markets, proposals and community discussions.",
+      "breadcrumbFlags": "Achievement Flags",
+      "breadcrumbHome": "Home"
+    },
+    "checkin": {
+      "notePlaceholder": "Jot down a thought, even a single word matters...",
+      "sideTitle": "Check-in moment",
+      "subtitle": "Faites un check-in quotidien pour gagner des récompenses",
+      "cancel": "Maybe later",
+      "imagePlaceholder": "Paste an image link to freeze this precious moment",
+      "imageLabel": "Snap a little joy",
+      "noteLabel": "How's your heart feeling?",
+      "sideSuffix": "for quite a while now!",
+      "sidePrefix": "You’ve already stayed on the path of",
+      "submit": "Log my progress ✨",
+      "title": "Check-in Quotidien",
+      "submitLoading": "Tucking your effort into the time machine..."
+    },
+    "filters": {
+      "witnessRequests": "Witness requests",
+      "active": "Active",
+      "success": "Done",
+      "all": "All"
+    },
+    "state": {
+      "loading": "Loading your vision board..."
+    },
+    "meta": {
+      "title": "Badges de Réalisation Foresight - Défis et objectifs de progression",
+      "ogTitle": "Badges de Réalisation Foresight - Défis et objectifs de progression",
+      "twitterTitle": "Badges de Réalisation Foresight - Défis et objectifs de progression",
+      "twitterDescription": "Collectionnez des badges, relevez des défis, et connectez vos objectifs avec les marchés de prédiction sur Foresight.",
+      "description": "Sur la page des Badges de Réalisation Foresight, vous pouvez créer et réaliser des défis, débloquer des badges, et connecter vos objectifs personnels avec les marchés de prédiction.",
+      "ogDescription": "Définissez des défis à long terme, suivez votre progression, et utilisez les Badges comme un pont entre vos objectifs réels et les marchés de prédiction."
+    },
+    "stats": {
+      "goalsLabel": "Goals",
+      "activeDescription": "Challenges currently in progress",
+      "successDescription": "Goals you have already achieved",
+      "focusLabel": "Focus Score",
+      "scoreBadge": "Score",
+      "ongoingBadge": "Ongoing",
+      "flagsLabel": "Flags",
+      "achievedBadge": "Achieved"
+    },
+    "sidebar": {
+      "trendingTitle": "Trending",
+      "quote": {
+        "label": "Daily Motivation",
+        "text": "\"The only bad workout is the one that didn't happen.\""
+      },
+      "viewAll": "View All"
+    },
+    "invites": {
+      "button": "Review now",
+      "textPrefix": "You have ",
+      "textSuffix": " check-ins waiting for review"
+    },
+    "createCard": {
+      "subtitle": "Start a new journey",
+      "title": "Pin a new goal"
+    },
+    "gallery": {
+      "button": "Sticker Gallery"
+    }
+  },
+  "userCard": {
+    "followSuccess": "Suivi avec succès",
+    "viewProfile": "Voir le profil",
+    "followers": "Abonnés",
+    "winRate": "Taux de victoire",
+    "volume": "Volume",
+    "unfollow": "Ne plus suivre",
+    "loading": "Chargement...",
+    "unfollowSuccess": "Non suivi",
+    "followFailed": "Échec de l'action",
+    "follow": "Suivre",
+    "pleaseConnectWallet": "Veuillez connecter votre portefeuille",
+    "trades": "Trades"
+  },
+  "search": {
+    "hot": {
+      "usElection": "Élection US",
+      "climate": "Climat",
+      "worldCup": "Coupe du Monde",
+      "ai": "Intelligence Artificielle",
+      "btcPrice": "Prix BTC"
+    },
+    "hintClose": "Fermer la recherche",
+    "clear": "Effacer",
+    "hintConfirm": "Rechercher",
+    "recentTitle": "Récents",
+    "hotTitle": "Tendances",
+    "emptyDescription": "Aucune correspondance trouvée pour \"{query}\"",
+    "resultsTitle": "Résultats",
+    "hintOpen": "Ouvrir la recherche",
+    "emptyTitle": "Aucun résultat",
+    "clearSearchAria": "Effacer la recherche",
+    "placeholder": "Rechercher..."
+  },
+  "leaderboard": {
+    "sidebar": {
+      "mySpot": "Ma Place ✨",
+      "inTop100": "Dans le Top 100",
+      "topRank": "Top {rank}",
+      "currentRank": "Rang Actuel",
+      "searchResults": "Résultats de recherche",
+      "noResults": "Aucun résultat trouvé",
+      "notRanked": "Non classé",
+      "startTrading": "Commencer à trader",
+      "connectToView": "Connectez-vous pour voir",
+      "searchPlaceholder": "Rechercher un trader...",
+      "followers": "{count} abonnés",
+      "nextRank": "Prochain Rang",
+      "activeUsers": "{count} traders actifs",
+      "top100": "Top 100",
+      "connectWallet": "Connecter le portefeuille",
+      "viewFullProfile": "Voir le profil complet",
+      "weekly": "Hebdomadaire",
+      "explorePredictions": "Explorer les prédictions",
+      "noTrending": "Aucune tendance",
+      "comingSoon": "Bientôt disponible",
+      "trendingNow": "Tendances",
+      "currentProfit": "Volume"
+    },
+    "viewAll": "Voir tout",
+    "week": "Semaine {week}",
+    "heroDescription": "Suivez les meilleures stratégies et grimpez dans le classement!",
+    "card": {
+      "performanceTrend": "Tendance de Performance",
+      "tradesCount": "Trades",
+      "winRate": "Taux de Victoire",
+      "winningsStatus": "Gains & Statut",
+      "rankTrader": "Rang & Trader",
+      "totalProfit": "Volume Total"
+    },
+    "month": "Mois {month}",
+    "category": {
+      "profit": "Gains",
+      "winrate": "Précision",
+      "streak": "Série"
+    },
+    "allLoaded": "Tous les traders sont chargés",
+    "title": "Classement",
+    "loading": "Chargement du classement...",
+    "introText": "Le classement Foresight classe les traders en fonction des gains de prédiction et du taux de victoire, vous aidant à découvrir les portefeuilles avec des profits constants et des styles de trading.",
+    "timeRange": {
+      "weekly": "Hebdomadaire",
+      "all": "Tout",
+      "monthly": "Mensuel"
+    },
+    "meta": {
+      "title": "Classement des Traders - Foresight",
+      "twitterDescription": "Suivez les meilleurs traders et leurs prédictions sur Foresight.",
+      "twitterTitle": "Classement des Traders | Foresight",
+      "ogTitle": "Classement des Traders | Foresight",
+      "description": "Découvrez les meilleurs traders de prédiction sur Foresight. Suivez les stratégies les plus rentables et améliorez votre classement.",
+      "ogDescription": "Découvrez les traders les plus performants et leurs stratégies de prédiction."
+    },
+    "loadMore": "Charger plus",
+    "linkSuffix": ".",
+    "avatarAlt": "Avatar de {name}",
+    "linkHint": "Vous voulez voir sur quoi ces meilleurs traders parient? Visitez",
+    "linkForum": "Forum",
+    "noData": "Aucune donnée disponible",
+    "heroSubtitle": "Les traders les plus performants de {week}",
+    "subtitle": "Les meilleurs traders de la semaine",
+    "pageTitle": "Classement",
+    "linkTrending": "Prédictions Tendances",
+    "linkMiddle": "pour parcourir les marchés en direct, ou suivez leurs analyses dans le",
+    "loadingData": "Chargement des données...",
+    "seasonBadge": "Saison {season}"
+  },
+  "stickerGallery": {
+    "stickers": {
+      "s2": {
+        "name": "Diamond Hands",
+        "desc": "Ce utilisateur HODL meme coins à travers le crash."
+      },
+      "s4": {
+        "desc": "Ce utilisateur a perdu gros sur un trade.",
+        "name": "Rekt"
+      },
+      "s8": {
+        "desc": "Ce utilisateur a peur de manquer quelque chose.",
+        "name": "FOMO"
+      },
+      "s5": {
+        "name": "Lambo",
+        "desc": "Ce utilisateur va acheter une Lambo avec ses gains."
+      },
+      "s7": {
+        "desc": "Ce utilisateur doute de la crypto.",
+        "name": "FUD"
+      },
+      "s1": {
+        "name": "Slack-off Kitty",
+        "desc": "Une autre journée de travail acharné de procrastination stratégique."
+      },
+      "s3": {
+        "desc": "Ce utilisateur vend à la première baisse.",
+        "name": "Paper Hands"
+      },
+      "s6": {
+        "name": "To The Moon",
+        "desc": "Ce utilisateur est optimiste sur le prix."
+      }
+    },
+    "rarity": {
+      "legendary": "Légendaire",
+      "common": "Commun",
+      "epic": "Épique",
+      "rare": "Rare"
+    },
+    "title": "Collection d'Autocollants",
+    "filters": {
+      "all": "Tous",
+      "locked": "Verrouillés",
+      "unlocked": "Débloqués",
+      "rarityAll": "Toutes les raretés"
+    },
+    "reveal": {
+      "collectButton": "Collecter",
+      "openRewardCta": "Ouvrir la récompense"
+    },
+    "sidebar": {
+      "placeholder": "Sélectionnez un autocollant pour voir les détails"
+    },
+    "stats": {
+      "visible": "{count} visibles"
+    },
+    "search": {
+      "placeholder": "Rechercher des autocollants..."
+    }
+  },
+  "trending": {
+    "admin": {
+      "retryLater": "Réessayer plus tard",
+      "fieldCriteria": "Critères de résolution",
+      "updateSuccessTitle": "Mise à jour réussie",
+      "saving": "Enregistrement...",
+      "page": {
+        "immutableWarning": "Une fois créé, cet événement ne peut pas être modifié ou supprimé.",
+        "badge": "ADMIN",
+        "description": "Créez un nouvel événement de prédiction",
+        "backToList": "Retour à la liste",
+        "submit": "Créer"
+      },
+      "multi": {
+        "addOption": "Ajouter une option",
+        "optionDescriptionPlaceholder": "Description (optionnel)",
+        "optionImagePlaceholder": "Image (optionnel)",
+        "optionColorPlaceholder": "Couleur",
+        "optionsTitle": "Options",
+        "optionLabelPlaceholder": "Libellé de l'option"
+      },
+      "fieldReferenceUrlPlaceholder": "https://",
+      "fieldReferenceUrl": "URL de référence",
+      "deleteAria": "Supprimer la prédiction",
+      "fieldStatus": "Statut",
+      "fieldMinStakeLabel": "Mise minimum (FORE)",
+      "fieldTitlePlaceholder": "Entrez le titre de la prédiction",
+      "section": {
+        "detailsTitle": "Détails",
+        "typeTitle": "Type",
+        "basicTitle": "Informations de base",
+        "detailsSubtitle": "Ajoutez des informations supplémentaires",
+        "typeSubtitle": "Choisissez le type de votre prédiction",
+        "basicSubtitle": "Définissez les détails principaux de votre prédiction"
+      },
+      "draft": {
+        "autoSavedPrefix": "Sauvegarde automatique",
+        "clearedMsg": "Brouillon effacé",
+        "menuLabel": "Brouillons",
+        "reset": "Effacer",
+        "restoredToastDesc": "Votre brouillon a été restauré avec succès.",
+        "savedMsg": "Brouillon enregistré",
+        "savedToastDesc": "Votre brouillon a été sauvegardé.",
+        "restoreConfirm": "Restaurer ce brouillon?",
+        "menuTitle": "Brouillons",
+        "restoredToastTitle": "Brouillon restauré",
+        "saveCurrent": "Enregistrer le brouillon",
+        "clearConfirm": "Effacer ce brouillon?",
+        "savedToastTitle": "Brouillon enregistré"
+      },
+      "updateSuccessDesc": "La prédiction a été mise à jour avec succès.",
+      "deleteSuccessTitle": "Suppression réussie",
+      "fieldCriteriaPlaceholder": "Comment cette prédiction sera-t-elle résolue?",
+      "deleteFailed": "Échec de la suppression",
+      "deadlinePlaceholder": "Sélectionner la date limite",
+      "deleteSuccessDesc": "La prédiction a été supprimée avec succès.",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette prédiction?",
+      "cancel": "Annuler",
+      "createSuccess": "Création réussie",
+      "updateFailed": "Échec de la mise à jour",
+      "fieldTitle": "Titre",
+      "fieldMinStake": "Mise minimum",
+      "createFailed": "Échec de la création",
+      "editAria": "Modifier la prédiction",
+      "fieldDescriptionPlaceholder": "Décrivez l'événement en détail",
+      "fieldDescription": "Description",
+      "type": {
+        "binary": "Binaire",
+        "multi": "Choix multiple"
+      },
+      "editDialogTitle": "Modifier la prédiction",
+      "fieldCategory": "Catégorie",
+      "save": "Enregistrer",
+      "fieldDeadline": "Date limite"
+    },
+    "empty": {
+      "title": "Aucune prédiction",
+      "filteredDescription": "Aucune prédiction ne correspond à vos filtres.",
+      "searchDescription": "Aucune prédiction ne correspond à votre recherche.",
+      "description": "Aucune prédiction n'est disponible pour le moment.",
+      "searchTitle": "Aucun résultat",
+      "filteredTitle": "Aucun résultat"
+    },
+    "metrics": {
+      "marketVol": "Vol. Marché",
+      "successRate": "Taux de succès",
+      "events": "Événements",
+      "poolSize": "Taille du pool",
+      "participants": "Participants",
+      "greed": "Cupidité"
+    },
+    "login": {
+      "benefitRewards": "Gagner des récompenses de prédiction",
+      "benefitFollow": "Suivre les événements de prédiction qui vous intéressent",
+      "now": "Se connecter maintenant",
+      "benefitParticipate": "Participer aux prédictions et aux mises",
+      "description": "Pour suivre les événements de prédiction, vous devez connecter votre portefeuille.",
+      "title": "Veuillez vous connecter",
+      "benefitsTitle": "Après vous être connecté, vous pouvez:",
+      "later": "Peut-être plus tard"
+    },
+    "hero": {
+      "globalFinanceForum": {
+        "title": "Forum International de Finance",
+        "description": "Explorer les monnaies numériques et l'avenir de l'économie"
+      },
+      "extremeWeatherAlert": {
+        "title": "Alerte Météo Extrême",
+        "description": "Plusieurs régions émettent des alertes météorologiques extrêmes"
+      },
+      "globalClimateSummit": {
+        "title": "Sommet Mondial sur le Climat",
+        "description": "Discussion sur les stratégies mondiales pour lutter contre le changement climatique"
+      },
+      "techProductLaunch": {
+        "description": "Les derniers produits technologiques font une entrée impressionnante",
+        "title": "Lancement de Nouveau Produit Tech"
+      },
+      "charitySportsMatch": {
+        "title": "Match de Charité",
+        "description": "Un match de charité pour une bonne cause"
+      },
+      "aiSafetySummit": {
+        "title": "Sommet sur la Sécurité IA",
+        "description": "Les leaders mondiaux discutent de la sécurité de l'intelligence artificielle"
+      },
+      "worldChampionshipFinal": {
+        "description": "Les meilleures équipes s'affrontent dans l'affrontement ultime",
+        "title": "Finale du Championnat du Monde"
+      }
+    },
+    "category": {
+      "entertainment": "Divertissement",
+      "business": "Business",
+      "politics": "Politique",
+      "weather": "Météo",
+      "more": "Plus",
+      "sports": "Sports",
+      "crypto": "Crypto",
+      "tech": "Technologie"
+    },
+    "sections": {
+      "descPart1": "Vous voulez participer dès la phase d'idée? Commencez par",
+      "searchLink": "Recherche",
+      "descPart5": "; vous pouvez également utiliser",
+      "descPart4": "pour définir des objectifs et vérifier votre performance sur le",
+      "descPart6": "pour trouver rapidement des événements liés à vos intérêts.",
+      "descPart3": "pour parcourir les discussions liées à ces marchés; pour transformer le trading en défis à long terme, allez à",
+      "popularCategories": "Catégories Populaires",
+      "descPart2": "pour proposer ou voter, les marchés approuvés apparaîtront ici; pour la recherche et les analyses, consultez",
+      "hotEvents": "Événements Tendances"
+    },
+    "state": {
+      "reload": "Recharger",
+      "loadMore": "Chargement en cours...",
+      "loading": "Chargement des données...",
+      "allLoadedPrefix": "Affichage de ",
+      "errorTitle": "Échec du chargement",
+      "scrollHint": "Défilez pour charger plus",
+      "allLoadedSuffix": " prédictions"
+    },
+    "search": {
+      "resultSuffix": " événements",
+      "resultPrefix": "",
+      "clear": "Effacer la recherche",
+      "activeLabel": "Recherche:",
+      "placeholder": "Rechercher des événements..."
+    },
+    "actions": {
+      "viewDetails": "Voir les détails",
+      "placePrediction": "Parier",
+      "createPrediction": "Créer une prédiction",
+      "viewAll": "Voir tout"
+    },
+    "badges": {
+      "dailyPick": "Choix du Jour",
+      "trending": "Tendance"
+    },
+    "card": {
+      "optionFallbackPrefix": "Option",
+      "volumePrefix": "Volume:"
+    },
+    "footer": {
+      "copyright": "Tous droits réservés."
+    },
+    "platformDescription": "Foresight est un marché de prédiction qui vous aide à transformer \"J'ai le sentiment que...\" en positions tarifées."
+  },
+  "profile": {
+    "disconnected": {
+      "description": "Connectez votre portefeuille pour voir votre profil.",
+      "actionConnect": "Connecter le portefeuille",
+      "title": "Portefeuille non connecté"
+    },
+    "wallet": {
+      "addressCopied": "Adresse copiée!",
+      "copyAddress": "Copier l'adresse",
+      "connectFirst": "Connectez votre portefeuille"
+    },
+    "security": {
+      "emailChangeConfirmOld": "Code envoyé à {oldEmail}",
+      "deleteAccountAction": "Supprimer mes données",
+      "noSessions": "Aucune session active.",
+      "newEmail": "Nouvel email",
+      "lastSeenAt": "Dernière activité",
+      "emailChangeConfirmNew": "Code envoyé à {newEmail}",
+      "newEmailPlaceholder": "Entrez votre nouvel email",
+      "auditTitle": "Historique de sécurité",
+      "emailChangeVerifyOld": "Entrez le code envoyé à {email}",
+      "sessionsTitle": "Sessions",
+      "emailChangeTitle": "Changer l'email",
+      "revoke": "Révoquer",
+      "ip": "Adresse IP",
+      "deleteAccountConfirmHint": "Tapez SUPPRIMER pour confirmer.",
+      "revokeAll": "Tout révoquer",
+      "deleteAccountDescription": "Supprime vos données personnelles sur le site et vous déconnecte.",
+      "noAudit": "Aucune action de sécurité.",
+      "otpPlaceholder": "Entrez le code OTP",
+      "emailChangeSendNew": "Envoyer le code à {email}",
+      "deleteAccountTitle": "Supprimer le compte",
+      "currentEmail": "Email actuel",
+      "device": "Appareil",
+      "createdAt": "Compte créé le {date}",
+      "unknownMethod": "Méthode inconnue",
+      "emailChangeNeedVerified": "Vous devez d'abord vérifier votre email actuel.",
+      "currentSession": "Session actuelle"
+    },
+    "predictions": {
+      "errors": {
+        "loadFailed": "Échec du chargement des prédictions"
+      },
+      "empty": {
+        "title": "Aucune prédiction",
+        "description": "Vous n'avez pas encore créé de prédiction."
+      },
+      "header": "Mes Prédictions",
+      "labels": {
+        "participants": "{count} participants",
+        "yourSideProbability": "Votre côté: {prob}%",
+        "stake": "Mise: {amount}",
+        "volumePrefix": "Volume:"
+      },
+      "alt": {
+        "cover": "Couverture des prédictions"
+      }
+    },
+    "overview": {
+      "activity": {
+        "title": "Activité Récente",
+        "type": {
+          "view": "Vue",
+          "buy": "Achat",
+          "settle": "Résolution"
+        },
+        "item": {
+          "buy": "A achetée sur {market}",
+          "view": "A consultée {market}",
+          "settle": "Résolution de {market}"
+        },
+        "timeExample": "il y a {time}"
+      },
+      "cards": {
+        "totalPnl": "PnL Total",
+        "eventsCount": "Événements",
+        "winRate": "Taux de Victoire",
+        "totalInvested": "Total Investi",
+        "eventsSummary": "{won}G/{lost}P"
+      }
+    },
+    "follow": {
+      "followSuccess": "Vous suivez maintenant ce trader.",
+      "failed": "L'action a échoué. Veuillez réessayer.",
+      "unfollowSuccess": "Vous ne suivez plus ce trader.",
+      "unfollowButton": "Ne plus suivre",
+      "loading": "Chargement...",
+      "followTraderButton": "Suivre"
+    },
+    "makerEarnings": {
+      "errors": {
+        "claimFailed": "Échec de la réclạmation",
+        "notConfigured": "Non configuré",
+        "loadFailed": "Échec du chargement des gains",
+        "notYourWallet": "Ce n'est pas votre portefeuille"
+      },
+      "cards": {
+        "pendingReward": "Récompense en attente",
+        "stakedForesight": "FORE Staké",
+        "walletForesight": "FORE Portefeuille"
+      },
+      "title": "Gains Maker",
+      "empty": {
+        "connectWallet": "Connecter le portefeuille",
+        "noAddress": "Aucune adresse de portefeuille configurée."
+      },
+      "subtitle": "Gagnez des récompenses en créant des marchés",
+      "actions": {
+        "claim": "Réclamer",
+        "claimed": "Réclamé",
+        "viewOnExplorer": "Voir sur l'explorateur",
+        "refresh": "Actualiser"
+      },
+      "hints": {
+        "notConfigured": "Configurez votre adresse de portefeuille pour réclamer les récompenses.",
+        "viewOnly": "Vous ne pouvez que consulter les récompenses."
+      }
+    },
+    "username": {
+      "anonymous": "Anonyme",
+      "walletDisconnected": "Portefeuille déconnecté"
+    },
+    "followers": {
+      "empty": {
+        "title": "Aucun abonné",
+        "description": "Cet utilisateur n'a pas encore d'abonnés."
+      }
+    },
+    "following": {
+      "tabEvents": "Événements",
+      "title": "Suivis",
+      "labels": {
+        "followers": "{count} abonnés",
+        "deadline": "Échéance: {date}"
+      },
+      "empty": {
+        "description": "Vous ne suivez encore aucun utilisateur ou événement.",
+        "title": "Aucun suivi"
+      },
+      "alt": {
+        "cover": "Couverture des suivis"
+      },
+      "tabUsers": "Utilisateurs"
+    },
+    "history": {
+      "empty": {
+        "title": "Aucun historique",
+        "description": "Vous n'avez pas encore de positions fermées."
+      },
+      "alt": {
+        "cover": "Couverture de l'historique"
+      },
+      "title": "Historique des Positions"
+    },
+    "sidebar": {
+      "tabs": {
+        "overview": "Aperçu",
+        "predictions": "Prédictions",
+        "makerEarnings": "Gains Maker",
+        "following": "Suivis",
+        "security": "Sécurité",
+        "history": "Historique"
+      },
+      "stats": {
+        "following": "Suivis",
+        "predictions": "Prédictions",
+        "followers": "Abonnés",
+        "history": "Historique"
+      },
+      "disconnect": "Déconnexion",
+      "settings": "Paramètres"
+    },
+    "avatarAlt": "Avatar de {username}"
+  },
+  "adminPerformance": {
+    "rating": {
+      "poor": "Faible",
+      "needsImprovement": "À améliorer",
+      "good": "Bon"
+    },
+    "percentGood": "{percent}% bon",
+    "metrics": {
+      "FCP": "First Contentful Paint",
+      "CLS": "Cumulative Layout Shift",
+      "INP": "Interaction to Next Paint",
+      "LCP": "Largest Contentful Paint",
+      "TTFB": "Time to First Byte"
+    },
+    "noDataHint": "Veuillez réessayer plus tard",
+    "subtitle": "Web Vitals et métriques de performance en temps réel",
+    "noData": "Aucune donnée",
+    "sampleCount": "Based on {count} samples",
+    "period": {
+      "day30": "Derniers 30 jours",
+      "day1": "Dernier jour",
+      "day7": "Derniers 7 jours"
+    },
+    "title": "Performance des Traders",
+    "refresh": "Actualiser"
+  },
+  "login": {
+    "resend": "Renvoyer",
+    "notInstalled": "Non installé",
+    "agreeSuffix": "",
+    "and": "et",
+    "walletContinueDescription": "Connectez votre portefeuille Web3 pour vous connecter.",
+    "detectingWallets": "Détection des portefeuilles...",
+    "walletContinueTitle": "Continuer avec le portefeuille",
+    "otpTitle": "Vérification",
+    "otpDescriptionSuffix": "pour vous connecter.",
+    "tabEmail": "Connexion par email",
+    "emailPlaceholder": "nom@exemple.com",
+    "emailLabel": "Email",
+    "agreePrefix": "J'accepte les",
+    "verifyAndLogin": "Vérifier et se connecter",
+    "switchToWallet": "Utiliser le portefeuille",
+    "otpHint": "Entrez le code à 6 chiffres envoyé à {email}",
+    "privacy": "Politique de confidentialité",
+    "sendMagicLink": "Envoyer le lien magique",
+    "emailContinueTitle": "Continuer avec l'email",
+    "emailContinueDescription": "Entrez votre email pour recevoir un code de connexion.",
+    "terms": "Conditions d'utilisation",
+    "close": "Fermer",
+    "sendOtp": "Envoyer le code",
+    "clickToConnect": "Connecter",
+    "tabWallet": "Connexion par portefeuille",
+    "otpDescriptionPrefix": "Entrez le code envoyé à",
+    "switchToEmail": "Utiliser l'email"
+  },
+  "depositModal": {
+    "bridge": {
+      "title": "Bridging (optional)",
+      "risk": "Bridging involves slippage, fees and delays. Make sure the destination chain and asset are {asset}."
+    },
+    "smartAccount": {
+      "description": "Ce compte de contrat intelligent est créé automatiquement pour vous. Déposez {asset} pour commencer à trader.",
+      "title": "Compte Intelligent Foresight"
+    },
+    "onramp": {
+      "title": "Acheter des crypto (On-ramp)",
+      "cta": "Buy now",
+      "description": "Acheter {asset} par carte/virement bancaire et envoyer directement à votre adresse de dépôt"
+    },
+    "methods": {
+      "onchain": {
+        "step2": "Envoyez {amount} {symbol} à l'adresse ci-dessous.",
+        "step3": "Attendez la confirmation du réseau.",
+        "tip": "Astuce: Si votre portefeuille indique 'token inconnu', vérifiez sur l'explorateur.",
+        "title": "Transfert sur chaîne",
+        "step1": "Sélectionnez le réseau {network} dans votre portefeuille.",
+        "step4": "Testez avec un petit montant avant d'envoyer un plus grand."
+      },
+      "exchange": {
+        "step2": "Sélectionnez le réseau {network} (doit correspondre).",
+        "step1": "Sur la page 'Retrait' de la plateforme, sélectionnez {asset}.",
+        "title": "Retirer d'une plateforme d'échange",
+        "risk": "Risque: L'envoi vers un réseau ou un actif incorrect peut entraîner une perte permanente.",
+        "step4": "Confirmez le retrait et attendez la confirmation.",
+        "step3": "Entrez le montant et l'adresse de destination."
+      }
+    },
+    "toast": {
+      "depositConfirmedDescription": "+{amount} {symbol} is ready to trade",
+      "depositConfirmedTitle": "Deposit confirmed",
+      "depositArrivedTitle": "Deposit received",
+      "depositArrivedDescription": "+{amount} {symbol}",
+      "depositPendingDescription": "Detected +{amount} {symbol}, waiting for confirmations",
+      "depositPendingTitle": "Deposit pending"
+    },
+    "errors": {
+      "loginRequiredForHistory": "Please log in to view deposit history",
+      "addressUnavailable": "Deposit address is unavailable",
+      "usdcNotConfigured": "USDC address is not configured. Unable to read balance and deposit history. Set NEXT_PUBLIC_USDC_ADDRESS_* or COLLATERAL_TOKEN_ADDRESS.",
+      "loginRequiredForAddress": "Please log in to fetch your deposit address",
+      "copyFailedDescription": "Please copy the address manually",
+      "copyFailedTitle": "Copy failed",
+      "loadHistoryFailed": "Failed to load deposit history",
+      "fetchAddressFailed": "Failed to fetch deposit address"
+    },
+    "history": {
+      "details": "Details",
+      "title": "Deposit history",
+      "confirmations": "({confirmations}/{required})",
+      "empty": "No deposit history yet (scanning recent blocks window).",
+      "itemMeta": "From {from} · Block {block}",
+      "statusPending": "Pending",
+      "statusConfirmed": "Confirmed"
+    },
+    "subtitle": "Déposez des fonds dans votre portefeuille proxy",
+    "address": {
+      "warning": "Envoyez uniquement {asset} sur {network} à cette adresse.",
+      "loading": "Récupération...",
+      "title": "Adresse du compte Foresight"
+    },
+    "actions": {
+      "goLogin": "Se connecter"
+    },
+    "title": "Déposer"
+  },
+  "adminRoles": {
+    "refreshList": "Actualiser la liste",
+    "email": "Email",
+    "title": "Gestion des rôles",
+    "totalUsers": "{count} utilisateurs, affichage jusqu'à 200",
+    "empty": "Aucun utilisateur à afficher.",
+    "saving": "Sauvegarde...",
+    "description": "Admin uniquement. Accorder ou révoquer les permissions de reviewer.",
+    "walletAddress": "Adresse du portefeuille",
+    "loading": "Chargement de la liste...",
+    "updateFailed": "La mise à jour a échoué",
+    "grantReviewer": "Accorder reviewer",
+    "username": "Nom d'utilisateur",
+    "isAdmin": "Admin",
+    "revokeReviewer": "Révoquer reviewer",
+    "isReviewer": "Reviewer",
+    "loadFailed": "Échec du chargement",
+    "actions": "Actions",
+    "userList": "Liste des utilisateurs"
+  },
+  "notifications": {
+    "markAllReadLoading": "Marquage en cours...",
+    "fallbackCheckinReviewTitle": "Check-in demandé",
+    "filterChallenge": "Défi",
+    "loading": "Chargement des notifications...",
+    "loadFailed": "Échec du chargement des notifications",
+    "centerTitle": "Notifications",
+    "emptyFiltered": "Aucune notification pour ce filtre",
+    "markAllRead": "Tout marquer comme lu",
+    "retry": "Réessayer",
+    "summary": "{unreadCount} non lues",
+    "pendingReviewMessage": "Vous avez une prédiction en attente de révision.",
+    "empty": "Aucune notification",
+    "pendingReviewTitle": "Révision en attente",
+    "filterAll": "Tout",
+    "archiveAllLoading": "Effacement en cours...",
+    "filterReview": "Révision",
+    "fallbackGenericTitle": "Nouvelle notification",
+    "fallbackWitnessInviteTitle": "Invitation de témoin",
+    "filterSystem": "Système",
+    "loadMore": "Charger plus",
+    "archiveAll": "Tout effacer",
+    "confirmArchiveOne": "Effacer cette notification? Elle n'apparaîtra plus dans la liste.",
+    "confirmArchiveAll": "Effacer toutes les notifications? Elles n'apparaîtront plus dans la liste.",
+    "ariaLabel": "Ouvrir les notifications",
+    "flagCheckinReminderTitle": "Rappel de check-in",
+    "flagCheckinReminderMessage": "N'oubliez pas de faire check-in pour {event}.",
+    "archive": "Effacer"
+  },
+  "walletModal": {
+    "hints": {
+      "walletBoundComplete": "Portefeuille lié avec succès",
+      "selectLoginMethod": "Choisissez la connexion par email ou portefeuille",
+      "emailVerifiedSaveProfile": "Email vérifié",
+      "signToLogin": "Veuillez signer le message",
+      "connectingWallet": "Connexion du portefeuille...",
+      "completingMultisig": "Complétion multisig...",
+      "requestingPermissions": "Demande des permissions...",
+      "completeProfileAndVerifyEmail": "Complétez votre profil et vérifiez votre email"
+    },
+    "title": "Connexion à Foresight",
+    "profile": {
+      "completeSignupAndLogin": "Finaliser l'inscription",
+      "verifySuccessSubtitle": "Définissez un nom d'utilisateur",
+      "usernameLabel": "Nom d'utilisateur",
+      "resendHintPrefix": "Renvoyer dans ",
+      "otpTip": "Le code est valide 15 minutes.",
+      "submit": "Enregistrer et continuer",
+      "resendHintSuffix": "s",
+      "sendOtpWithValidity": "Envoyer le code (15 min)",
+      "verifySuccessTitle": "Vérification réussie",
+      "verifiedTag": "Vérifié",
+      "verifyEmail": "Vérifier l'email",
+      "or": "ou",
+      "rememberMe": "Se souvenir de moi",
+      "title": "Compléter les informations",
+      "usernamePlaceholder": "ex. alice_01",
+      "emailInvalid": "Format d'email invalide.",
+      "later": "Peut-être plus tard"
+    },
+    "errors": {
+      "usernameInvalid": "Nom d'utilisateur invalide (3-20 caractères)",
+      "invalidWalletAddress": "Adresse de portefeuille invalide",
+      "emailFormatInvalid": "Format d'email invalide",
+      "emailNotVerified": "Veuillez vérifier votre code",
+      "submitFailed": "Soumission échouée",
+      "otpSendFailed": "Échec de l'envoi du code",
+      "otpVerifyFailed": "Vérification échouée",
+      "usernameEmailRequired": "Nom d'utilisateur et email requis"
+    },
+    "steps": {
+      "completeProfile": "Compléter le profil",
+      "signIn": "Se connecter",
+      "connectWallet": "Connecter le portefeuille"
+    },
+    "subtitle": "Continuez avec email ou portefeuille",
+    "devCodePreviewPrefix": "Code de vérification dev: "
+  },
+  "withdrawModal": {
+    "errors": {
+      "withdrawFailedTitle": "Échec du retrait",
+      "insufficientBalance": "Solde insuffisant",
+      "invalidAmount": "Montant invalide"
+    },
+    "tips": {
+      "line2": "• Le retrait nécessite une signature Safe.",
+      "line3": "• Une petite quantité de Matic/ETH est requise pour le gas.",
+      "line1": "• Les fonds seront retirés vers le portefeuille connecté."
+    },
+    "toast": {
+      "sentDescription": "Les fonds arriveront sous peu",
+      "sentTitle": "Retrait envoyé",
+      "confirmInWallet": "Veuillez confirmer dans votre portefeuille..."
+    },
+    "title": "Retirer",
+    "availableBalance": "Solde disponible",
+    "withdrawing": "Retrait en cours..."
+  },
+  "accessibility": {
+    "number": {
+      "million": "{value} million",
+      "thousand": "{value} millier"
+    },
+    "date": {
+      "yesterday": "Hier",
+      "daysAgo": "Il y a {count} jours",
+      "today": "Aujourd'hui"
+    }
+  },
+  "card": {
+    "status": {
+      "active": "Actif",
+      "expired": "Expiré",
+      "upcoming": "À venir",
+      "resolved": "Résolu"
+    }
+  },
+  "onboarding": {
+    "forumLink": "Forum",
+    "closeGuide": "Fermer le guide",
+    "tradingTip": "Le panneau de trading est à droite (bureau) ou accessible via le bouton en bas (mobile).",
+    "trendingLink": "Tendances",
+    "browseMore": "Vous voulez parcourir plus d'événements?",
+    "intro": "Dans ce marché de prédiction {category}, vous pouvez trader vos opinions sur les résultats des événements."
+  },
+  "loading": {
+    "predictionDetail": "Chargement des détails de l'événement de prédiction...",
+    "trendingEvents": "Chargement des événements tendances..."
   }
 }
