@@ -98,6 +98,35 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (now < end) return ApiResponses.badRequest("Flag deadline has not passed, cannot settle");
 
     if (String(flag.verification_type || "") === "witness") {
+      const { data: rejectedCheckins, error: rejectedErr } = await client
+        .from("flag_checkins")
+        .select("id,created_at,review_reason")
+        .eq("flag_id", flagId)
+        .eq("review_status", "rejected");
+
+      if (rejectedErr) {
+        return ApiResponses.databaseError(
+          "Failed to query rejected check-ins",
+          rejectedErr.message
+        );
+      }
+
+      if (rejectedCheckins && rejectedCheckins.length > 0) {
+        const rejectedDates = rejectedCheckins.map((c: any) => {
+          const d = new Date(String(c.created_at));
+          return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        });
+        const uniqueRejectedDates = [...new Set(rejectedDates)];
+        return ApiResponses.conflict(
+          "Flag has rejected check-ins that require make-up. Please complete the required check-ins before settling.",
+          JSON.stringify({
+            rejected_dates: uniqueRejectedDates,
+            rejected_count: rejectedCheckins.length,
+            message: "Please make up the rejected check-ins before settling",
+          })
+        );
+      }
+
       const pending = await client
         .from("flag_checkins")
         .select("id", { count: "exact", head: true })

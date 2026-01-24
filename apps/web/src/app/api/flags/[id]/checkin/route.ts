@@ -119,8 +119,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       (!flag.witness_id && String(flag.user_id || "").toLowerCase() === userId.toLowerCase());
 
     const canAutoApprove =
-      (flag?.verification_type === "witness" && String(flag?.witness_id || "") === "official") ||
-      isSelfSupervised;
+      flag.verification_type === "self" ||
+      (flag.verification_type === "witness" && isSelfSupervised);
 
     const { data: insertedCheckin, error: insertErr } = await client
       .from("flag_checkins")
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         note,
         image_url: imageUrl || null,
         review_status: canAutoApprove ? "approved" : "pending",
-        reviewer_id: canAutoApprove ? (isSelfSupervised ? "self" : "official") : null,
+        reviewer_id: canAutoApprove ? userId : null,
         reviewed_at: canAutoApprove ? new Date().toISOString() : null,
       } as Database["public"]["Tables"]["flag_checkins"]["Insert"])
       .select("*")
