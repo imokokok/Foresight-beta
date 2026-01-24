@@ -207,4 +207,143 @@ describe("Internationalization (i18n)", () => {
       });
     });
   });
+
+  describe("getPluralForm", () => {
+    it("should return 'one' for singular in English", () => {
+      expect(i18n.getPluralForm(1, "en")).toBe("one");
+      expect(i18n.getPluralForm(1, "es")).toBe("one");
+    });
+
+    it("should return 'other' for plural in English", () => {
+      expect(i18n.getPluralForm(0, "en")).toBe("other");
+      expect(i18n.getPluralForm(2, "en")).toBe("other");
+      expect(i18n.getPluralForm(100, "en")).toBe("other");
+    });
+
+    it("should return 'one' for 0 and 1 in French", () => {
+      expect(i18n.getPluralForm(0, "fr")).toBe("one");
+      expect(i18n.getPluralForm(1, "fr")).toBe("one");
+      expect(i18n.getPluralForm(2, "fr")).toBe("other");
+    });
+
+    it("should always return 'other' for Chinese", () => {
+      expect(i18n.getPluralForm(0, "zh-CN")).toBe("other");
+      expect(i18n.getPluralForm(1, "zh-CN")).toBe("other");
+      expect(i18n.getPluralForm(100, "zh-CN")).toBe("other");
+    });
+
+    it("should always return 'other' for Korean", () => {
+      expect(i18n.getPluralForm(0, "ko")).toBe("other");
+      expect(i18n.getPluralForm(1, "ko")).toBe("other");
+      expect(i18n.getPluralForm(100, "ko")).toBe("other");
+    });
+  });
+
+  describe("plural", () => {
+    it("should format count in the translation", () => {
+      expect(i18n.plural("common.batch.success", 5, "zh-CN")).toBe("成功处理 5 项");
+      expect(i18n.plural("common.batch.success", 5, "en")).toBe("Successfully processed 5 items");
+    });
+
+    it("should handle keys with count placeholder", () => {
+      expect(i18n.plural("forum.topicCount", 0, "en")).toBe("0 topics");
+      expect(i18n.plural("forum.topicCount", 1, "en")).toBe("1 topics");
+      expect(i18n.plural("forum.topicCount", 2, "en")).toBe("2 topics");
+    });
+
+    it("should use fallback key when specific form not found", () => {
+      const result = i18n.plural("common.batch.error", 5, "en");
+      expect(result).toBe("5 items failed");
+    });
+  });
+
+  describe("formatNumber", () => {
+    it("should format numbers according to locale", () => {
+      expect(i18n.formatNumber(1234.56, undefined, "en")).toBe("1,234.56");
+      expect(i18n.formatNumber(1234.56, undefined, "zh-CN")).toBe("1,234.56");
+      expect(i18n.formatNumber(1234.56, undefined, "fr")).toBe("1 234,56");
+    });
+
+    it("should support currency style", () => {
+      expect(i18n.formatNumber(1234.56, { style: "currency", currency: "USD" }, "en")).toBe(
+        "$1,234.56"
+      );
+      expect(i18n.formatNumber(1234.56, { style: "currency", currency: "USD" }, "zh-CN")).toBe(
+        "US$1,234.56"
+      );
+    });
+
+    it("should support percent style", () => {
+      expect(i18n.formatNumber(0.5, { style: "percent" }, "en")).toBe("50%");
+    });
+  });
+
+  describe("formatDate", () => {
+    it("should format dates according to locale", () => {
+      const date = new Date(2024, 11, 25);
+      expect(i18n.formatDate(date, { year: "numeric", month: "long", day: "numeric" }, "en")).toBe(
+        "December 25, 2024"
+      );
+      expect(
+        i18n.formatDate(date, { year: "numeric", month: "long", day: "numeric" }, "zh-CN")
+      ).toBe("2024年12月25日");
+    });
+
+    it("should accept string dates", () => {
+      expect(
+        i18n.formatDate("2024-12-25", { year: "numeric", month: "short", day: "numeric" }, "en")
+      ).toBe("Dec 25, 2024");
+    });
+
+    it("should accept timestamp", () => {
+      const timestamp = new Date("2024-12-25").getTime();
+      expect(
+        i18n.formatDate(timestamp, { year: "numeric", month: "short", day: "numeric" }, "en")
+      ).toBe("Dec 25, 2024");
+    });
+  });
+
+  describe("formatDateTime", () => {
+    it("should format date and time according to locale", () => {
+      const date = new Date(2024, 11, 25, 14, 30);
+      const result = i18n.formatDateTime(date, undefined, "en");
+      expect(result).toContain("Dec");
+      expect(result).toContain("2024");
+      expect(result).toContain("2:30");
+    });
+
+    it("should support custom options", () => {
+      const date = new Date(2024, 11, 25, 14, 30);
+      const result = i18n.formatDateTime(date, { dateStyle: "full", timeStyle: "full" }, "en");
+      expect(result).toContain("Wednesday");
+      expect(result).toContain("December 25, 2024");
+    });
+  });
+
+  describe("formatRelativeTime", () => {
+    it("should format relative time according to locale", () => {
+      expect(i18n.formatRelativeTime(-5, "day", "en")).toBe("5 days ago");
+      expect(i18n.formatRelativeTime(-5, "day", "zh-CN")).toBe("5天前");
+    });
+
+    it("should support different units", () => {
+      expect(i18n.formatRelativeTime(1, "hour", "en")).toBe("in 1 hour");
+      expect(i18n.formatRelativeTime(2, "minute", "en")).toBe("in 2 minutes");
+    });
+  });
+
+  describe("formatCurrency", () => {
+    it("should format currency according to locale", () => {
+      expect(i18n.formatCurrency(1234.56, "USD", "en")).toBe("$1,234.56");
+      expect(i18n.formatCurrency(1234.56, "USD", "zh-CN")).toBe("US$1,234.56");
+      expect(i18n.formatCurrency(1234.56, "EUR", "fr")).toBe("1 234,56 €");
+    });
+  });
+
+  describe("formatPercent", () => {
+    it("should format percent according to locale", () => {
+      expect(i18n.formatPercent(0.5, "en")).toBe("50%");
+      expect(i18n.formatPercent(0.5, "fr")).toBe("50 %");
+    });
+  });
 });

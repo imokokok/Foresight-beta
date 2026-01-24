@@ -16,8 +16,105 @@ import fr from "../../messages/fr.json";
 import ko from "../../messages/ko.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
 import type { ReactNode } from "react";
+import type { Messages as MessagesType, MessageKey, Namespace } from "./i18n-types";
 
 type Messages = typeof zhCN;
+
+type PluralForm = "zero" | "one" | "two" | "few" | "many" | "other";
+
+type PluralRule = (n: number) => PluralForm;
+
+const pluralRules: Record<Locale, PluralRule> = {
+  "zh-CN": () => "other",
+  en: (n: number) => (n === 1 ? "one" : "other"),
+  es: (n: number) => (n === 1 ? "one" : "other"),
+  fr: (n: number) => {
+    if (n === 0 || n === 1) return "one";
+    return "other";
+  },
+  ko: () => "other",
+};
+
+export function getPluralForm(n: number, locale: Locale = defaultLocale): PluralForm {
+  return pluralRules[locale](n);
+}
+
+export function plural(key: string, count: number, locale?: Locale): string {
+  const actualLocale = locale || getCurrentLocale();
+  const form = getPluralForm(count, actualLocale);
+  const fullKey = `${key}.${form}`;
+  const result = t(fullKey, actualLocale);
+
+  if (result !== fullKey) {
+    return formatTranslation(result, { count });
+  }
+
+  const fallbackKey = `${key}.other`;
+  const fallback = t(fallbackKey, actualLocale);
+
+  if (fallback !== fallbackKey) {
+    return formatTranslation(fallback, { count });
+  }
+
+  const directResult = t(key, actualLocale);
+  if (directResult !== key) {
+    return formatTranslation(directResult, { count });
+  }
+
+  return key;
+}
+
+export function formatNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions,
+  locale?: Locale
+): string {
+  const actualLocale = locale || getCurrentLocale();
+  return new Intl.NumberFormat(actualLocale, options).format(value);
+}
+
+export function formatDate(
+  value: Date | string | number,
+  options?: Intl.DateTimeFormatOptions,
+  locale?: Locale
+): string {
+  const actualLocale = locale || getCurrentLocale();
+  const date = typeof value === "string" || typeof value === "number" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(actualLocale, options).format(date);
+}
+
+export function formatDateTime(
+  value: Date | string | number,
+  options?: Intl.DateTimeFormatOptions,
+  locale?: Locale
+): string {
+  const actualLocale = locale || getCurrentLocale();
+  const date = typeof value === "string" || typeof value === "number" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(actualLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    ...options,
+  }).format(date);
+}
+
+export function formatRelativeTime(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit,
+  locale?: Locale
+): string {
+  const actualLocale = locale || getCurrentLocale();
+  return new Intl.RelativeTimeFormat(actualLocale, { numeric: "auto" }).format(value, unit);
+}
+
+export function formatCurrency(value: number, currency: string, locale?: Locale): string {
+  const actualLocale = locale || getCurrentLocale();
+  return formatNumber(value, { style: "currency", currency }, actualLocale);
+}
+
+export function formatPercent(value: number, locale?: Locale): string {
+  const actualLocale = locale || getCurrentLocale();
+  return formatNumber(value, { style: "percent" }, actualLocale);
+}
 
 function mergeMessages(base: unknown, overrides: unknown): unknown {
   if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) return base;
@@ -295,4 +392,21 @@ export function useTranslations(namespace?: string) {
   return translate;
 }
 
-export type { Locale };
+export function useTypedTranslations<N extends Namespace>(namespace: N) {
+  const { locale } = useLocale();
+
+  const translate = useCallback(
+    (key: keyof Messages[N] & string, params?: Record<string, string | number>) => {
+      const fullKey = `${namespace}.${String(key)}` as MessageKey;
+      if (params) {
+        return formatTranslation(t(fullKey, locale), params);
+      }
+      return t(fullKey, locale);
+    },
+    [locale, namespace]
+  );
+
+  return translate;
+}
+
+export type { MessagesType as Messages, MessageKey, Namespace };
