@@ -65,6 +65,22 @@ function normalizeUrlList(value: unknown, max = 16): string[] {
   return normalizeStringArray(value, max).filter((v) => /^https?:\/\//i.test(v));
 }
 
+async function isUnderResubmitRateLimit(client: any, walletAddress: string): Promise<boolean> {
+  const now = new Date();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await client
+    .from("forum_threads")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", walletAddress)
+    .eq("review_status", "pending_review")
+    .gte("created_at", dayAgo);
+  if (error) {
+    logApiError("POST /api/review/proposals/[id] resubmit_rate_limit_check_failed", error);
+    return true;
+  }
+  return typeof count !== "number" || count < 3;
+}
+
 function pickFirstUrl(values: string[]): string {
   for (const v of values) {
     const s = String(v || "").trim();
@@ -129,6 +145,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const status = String(existingRow.review_status || "");
       if (status !== "needs_changes") {
         return ApiResponses.invalidParameters("invalid_status");
+      }
+      const ok = await isUnderResubmitRateLimit(client, walletAddress);
+      if (!ok) {
+        return ApiResponses.rateLimit("重新提交过于频繁，请24小时后再试");
       }
       const { data, error } = await client
         .from("forum_threads")
@@ -324,6 +344,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           await client
             .from("forum_threads")
             .update({
+              review_status: "pending_review",
               reviewed_by: null,
               reviewed_at: null,
             } as any)
@@ -463,11 +484,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         .from("forum_threads")
         .update(updatePayload as any)
         .eq("id", threadId)
+        .eq("review_status", currentStatus)
         .select("*")
         .maybeSingle();
       if (error) {
         logApiError("POST /api/review/proposals/[id] update_failed", error);
         return ApiResponses.databaseError("update_failed", error.message);
+      }
+      if (!data) {
+        return ApiResponses.conflict("status_changed");
       }
       logApiEvent("proposals.metadata_edited", {
         thread_id: threadId,

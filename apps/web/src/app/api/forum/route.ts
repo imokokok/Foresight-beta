@@ -242,6 +242,9 @@ export async function POST(req: NextRequest) {
             .filter(Boolean)
             .slice(0, 16)
         : [];
+    if (outcomes.length < 2) {
+      return ApiResponses.invalidParameters("至少需要提供 2 个结果选项");
+    }
     const extraLinks =
       Array.isArray(extraLinksRaw) && extraLinksRaw.length > 0
         ? extraLinksRaw
@@ -291,7 +294,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (textLengthWithoutSpaces(content) < 40) {
-      return ApiResponses.invalidParameters("内容信息量不足，请至少补充 40 个字符");
+      return ApiResponses.invalidParameters("内容信息量不足，请至少补充 40 个有效字符（不含空格）");
     }
     const { data, error } = await client
       .from("forum_threads")
