@@ -1975,8 +1975,7 @@
       "tradesCount": "Número de operaciones",
       "rankTrader": "Rango / Trader",
       "performanceTrend": "Rendimiento",
-      "winningsStatus": "Ganancias",
-      "trades": "trades"
+      "winningsStatus": "Ganancias"
     },
     "sidebar": {
       "mySpot": "Mi Posición ✨",
