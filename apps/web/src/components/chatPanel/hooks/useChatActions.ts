@@ -14,7 +14,7 @@ type ReplyToMessage = {
 
 export function useChatActions({
   eventId,
-  account,
+  address,
   partition,
   debateMode,
   debateStance,
@@ -23,7 +23,7 @@ export function useChatActions({
   setPartition,
 }: {
   eventId: number | string;
-  account: string | null | undefined;
+  address: string | null | undefined;
   partition: "chat" | "debate" | "forum";
   debateMode: boolean;
   debateStance: NonNullable<ChatMessageView["debate_stance"]>;
@@ -39,7 +39,7 @@ export function useChatActions({
   const sendMessage = useCallback(
     async (input: string, replyTo: ReplyToMessage | null, imageUrl?: string) => {
       if (!input.trim() && !imageUrl) return;
-      if (!account) {
+      if (!address) {
         const msg = tChat("errors.walletRequired");
         setSendError(msg);
         toast.error(tCommon("error"), msg);
@@ -65,7 +65,7 @@ export function useChatActions({
           body: JSON.stringify({
             proposalId: eventId,
             content: contentToSend,
-            userId: account,
+            userId: address,
             image_url: imageUrl,
             replyToId,
             replyToUser: replyTo?.user_id || null,
@@ -88,7 +88,7 @@ export function useChatActions({
       }
     },
     [
-      account,
+      address,
       eventId,
       partition,
       debateMode,
@@ -102,7 +102,7 @@ export function useChatActions({
 
   const deleteMessage = useCallback(
     async (msg: ChatMessageView) => {
-      if (!account) return;
+      if (!address) return;
       if (!/^\d+$/.test(String(msg.id || ""))) return;
       try {
         const res = await fetch(`/api/discussions/${msg.id}`, { method: "DELETE" });
@@ -126,12 +126,12 @@ export function useChatActions({
         );
       }
     },
-    [account, setMessages, tCommon, tChat]
+    [address, setMessages, tCommon, tChat]
   );
 
   const reportMessage = useCallback(
     async (msg: ChatMessageView, reason: string) => {
-      if (!account) return;
+      if (!address) return;
       if (!/^\d+$/.test(String(msg.id || ""))) return;
       try {
         const res = await fetch("/api/discussions/report", {
@@ -161,7 +161,7 @@ export function useChatActions({
         );
       }
     },
-    [account, tCommon, tChat]
+    [address, tCommon, tChat]
   );
 
   return {

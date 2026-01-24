@@ -18,7 +18,7 @@ export default function CreateProposalModal({
   onClose,
   onSuccess,
 }: CreateProposalModalProps) {
-  const { account, connectWallet, siweLogin, isAuthenticated } = useWallet();
+  const { address, connect } = useWallet();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const tProposals = useTranslations("proposals");
@@ -166,7 +166,7 @@ export default function CreateProposalModal({
   };
 
   const onUploadImage = async (file: File) => {
-    if (!account) {
+    if (!address) {
       toast.warning(t("forum.errors.walletRequired"));
       return;
     }
@@ -174,7 +174,7 @@ export default function CreateProposalModal({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("walletAddress", account);
+      fd.append("walletAddress", address);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -200,9 +200,9 @@ export default function CreateProposalModal({
   };
 
   const handleSubmit = async () => {
-    if (!account) {
+    if (!address) {
       toast.warning(t("forum.errors.walletRequired"));
-      await connectWallet();
+      await connect();
       return;
     }
     const err = validate();
@@ -213,13 +213,6 @@ export default function CreateProposalModal({
 
     try {
       setLoading(true);
-      if (!isAuthenticated) {
-        const r = await siweLogin();
-        if (!r.success) {
-          toast.error(t("errors.wallet.verifyFailed"), r.error);
-          return;
-        }
-      }
       const deadlineIso = new Date(form.resolutionTime).toISOString();
       const content = buildContent();
       const res = await fetch("/api/forum", {
@@ -240,7 +233,7 @@ export default function CreateProposalModal({
           outcomes: normalizedOutcomes,
           extraLinks: (form.extraLinks || []).map((x) => String(x || "").trim()).filter(Boolean),
           imageUrls: (form.imageUrls || []).map((x) => String(x || "").trim()).filter(Boolean),
-          walletAddress: account,
+          walletAddress: address,
         }),
       });
 

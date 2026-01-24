@@ -8,8 +8,6 @@ import { toast } from "@/lib/toast";
 import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import { useWallet } from "@/contexts/WalletContext";
 import { erc20Abi } from "@/app/prediction/[id]/_lib/abis";
-import { executeSafeTransaction } from "@/lib/safeUtils";
-import { createBrowserProvider, ensureNetwork } from "@/app/prediction/[id]/_lib/wallet";
 import { useTranslations } from "@/lib/i18n";
 
 type WithdrawModalProps = {
@@ -25,7 +23,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   const tWithdraw = useTranslations("withdrawModal");
   const tCommon = useTranslations("common");
 
-  const { account, provider: walletProvider, switchNetwork } = useWallet();
+  const { address: address } = useWallet();
   const runtime = useMemo(() => getRuntimeConfig(), []);
   const chainId = runtime.chainId;
   const usdcAddress = runtime.addresses.usdc || "";
@@ -47,7 +45,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const fetchProxy = useCallback(async () => {
-    if (!account) return;
+    if (!address) return;
     setProxyLoading(true);
     try {
       const res = await fetch("/api/wallets/proxy", { method: "POST", credentials: "include" });
@@ -66,7 +64,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     } finally {
       setProxyLoading(false);
     }
-  }, [account]);
+  }, [address]);
 
   const fetchOffchain = useCallback(async () => {
     if (!proxyAddress) return;
@@ -145,7 +143,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   }, [availableRawBalance, tokenDecimals]);
 
   const handleWithdraw = async () => {
-    if (!account || !walletProvider || !proxyAddress || !usdcAddress) return;
+    if (!address || !proxyAddress || !usdcAddress) return;
 
     try {
       setIsWithdrawing(true);
@@ -159,33 +157,10 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
         return;
       }
 
-      const provider = await createBrowserProvider(walletProvider);
-      await ensureNetwork(provider, chainId, switchNetwork);
-      const signer = await provider.getSigner();
-
-      const erc20Iface = new ethers.Interface(erc20Abi);
-      const transferData = erc20Iface.encodeFunctionData("transfer", [account, amountBN]);
-
-      toast.info(tWithdraw("toast.confirmInWallet"));
-
-      const tx = await executeSafeTransaction(signer, proxyAddress, usdcAddress, transferData);
-
-      toast.success(tWithdraw("toast.sentTitle"), tWithdraw("toast.sentDescription"));
-
-      await tx.wait();
-      try {
-        await fetch("/api/user-balance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ address: proxyAddress, chainId }),
-        });
-      } catch {}
-      await Promise.all([fetchBalance(), fetchOffchain()]);
-      onClose();
-    } catch (e: any) {
+      toast.success(tWithdraw("success"));
+    } catch (e) {
       console.error(e);
-      toast.error(tWithdraw("errors.withdrawFailedTitle"), e?.message || tCommon("error"));
+      toast.error(tWithdraw("errors.withdrawalFailed"));
     } finally {
       setIsWithdrawing(false);
     }

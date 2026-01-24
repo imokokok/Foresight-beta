@@ -10,13 +10,12 @@ type TrendingLoginModalProps = {
 };
 
 export function TrendingLoginModal({ open, onClose, tTrending }: TrendingLoginModalProps) {
-  const { connectWallet, siweLogin } = useWallet();
+  const { connect } = useWallet();
   const primaryButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   const handleLoginNow = async () => {
     try {
-      await connectWallet();
-      await siweLogin();
+      await connect();
     } finally {
       onClose();
     }

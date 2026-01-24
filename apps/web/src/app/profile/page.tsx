@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Coins, Heart, History, TrendingUp, Users, Shield } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { useTranslations } from "@/lib/i18n";
 import type { TabConfig, TabType } from "./types";
@@ -11,8 +11,8 @@ import { useProfileAggregates } from "./hooks/useProfileAggregates";
 import { ProfilePageView } from "./components/ProfilePageView";
 
 export default function ProfilePage() {
-  const { account, disconnectWallet: disconnect } = useWallet();
-  const { user } = useAuth();
+  const { address, disconnect } = useWallet();
+  const { user } = useUser();
   const profileCtx = useUserProfileOptional();
   const tProfile = useTranslations("profile");
 
@@ -29,7 +29,7 @@ export default function ProfilePage() {
     portfolioLoading,
     portfolioError,
   } = useProfileAggregates({
-    account,
+    address,
     user,
     profile: profileCtx?.profile,
     tProfile,
@@ -46,7 +46,7 @@ export default function ProfilePage() {
 
   return (
     <ProfilePageView
-      account={account}
+      address={address}
       username={username}
       profileInfo={profileInfo}
       tProfile={tProfile}

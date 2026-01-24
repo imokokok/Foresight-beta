@@ -46,7 +46,7 @@ export function LeaderboardMainSections({
   onSearchChange,
 }: LeaderboardMainSectionsProps) {
   const t = useTranslations("leaderboard");
-  const { account, connectWallet } = useWallet();
+  const { address, connect } = useWallet();
   const isSearching = searchQuery.trim().length > 0;
 
   // 获取热门预测数据
@@ -62,11 +62,11 @@ export function LeaderboardMainSections({
 
   // 查找当前用户在排行榜中的数据
   const myRankData = useMemo(() => {
-    if (!account || !allUsers || allUsers.length === 0) return null;
+    if (!address || !allUsers || allUsers.length === 0) return null;
 
-    const normalizedAccount = account.toLowerCase();
+    const normalizedAddress = address.toLowerCase();
     const userIndex = allUsers.findIndex(
-      (u) => u.wallet_address?.toLowerCase() === normalizedAccount
+      (u) => u.wallet_address?.toLowerCase() === normalizedAddress
     );
 
     if (userIndex === -1) return null;
@@ -95,7 +95,7 @@ export function LeaderboardMainSections({
       gapToTop100,
       isInTop100: rank <= 100,
     };
-  }, [account, allUsers]);
+  }, [address, allUsers]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -203,7 +203,7 @@ export function LeaderboardMainSections({
               </span>
             </div>
 
-            {account ? (
+            {address ? (
               myRankData ? (
                 <>
                   <div className="flex items-center gap-5 mb-8">
@@ -250,7 +250,7 @@ export function LeaderboardMainSections({
                     </div>
                   </div>
 
-                  <Link href={`/profile/${account}`}>
+                  <Link href={`/profile/${address}`}>
                     <button className="w-full mt-8 py-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all">
                       {t("sidebar.viewFullProfile")}
                     </button>
@@ -278,7 +278,7 @@ export function LeaderboardMainSections({
                 </div>
                 <p className="text-gray-500 text-sm mb-6">{t("sidebar.connectToView")}</p>
                 <button
-                  onClick={() => connectWallet()}
+                  onClick={() => connect()}
                   className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-purple-500/20 active:scale-[0.98] transition-all"
                 >
                   {t("sidebar.connectWallet")}

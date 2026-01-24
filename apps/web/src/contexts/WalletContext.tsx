@@ -5,7 +5,7 @@ export interface WalletState {
   address: string | null;
   chainId: number | null;
   isConnected: boolean;
-  provider: unknown | null;
+  provider: { request: (args: { method: string }) => Promise<unknown> } | null;
 }
 
 export interface WalletContextValue extends WalletState {
@@ -30,15 +30,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const checkConnection = async () => {
     try {
-      if (typeof window !== "undefined" && (window as unknown as { ethereum?: { selectedAddress?: string } }).ethereum) {
-        const ethereum = (window as unknown as { ethereum: { selectedAddress?: string; chainId?: string } }).ethereum;
+      if (
+        typeof window !== "undefined" &&
+        (window as unknown as { ethereum?: { selectedAddress?: string } }).ethereum
+      ) {
+        const ethereum = (
+          window as unknown as {
+            ethereum: {
+              selectedAddress?: string;
+              chainId?: string;
+              request?: (args: { method: string }) => Promise<unknown>;
+            };
+          }
+        ).ethereum;
         const address = ethereum.selectedAddress;
         if (address) {
           setState({
             address: `0x${address}`,
             chainId: null,
             isConnected: true,
-            provider: ethereum,
+            provider: ethereum as { request: (args: { method: string }) => Promise<unknown> },
           });
         }
       }
@@ -57,15 +68,26 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      if (typeof window !== "undefined" && (window as unknown as { ethereum?: { request: (args: { method: string }) => Promise<unknown> } }).ethereum) {
-        const ethereum = (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<unknown> } }).ethereum;
-        const accounts = await ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      if (
+        typeof window !== "undefined" &&
+        (
+          window as unknown as {
+            ethereum?: { request: (args: { method: string }) => Promise<unknown> };
+          }
+        ).ethereum
+      ) {
+        const ethereum = (
+          window as unknown as {
+            ethereum: { request: (args: { method: string }) => Promise<unknown> };
+          }
+        ).ethereum;
+        const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
         if (accounts.length > 0) {
           setState({
             address: accounts[0],
             chainId: null,
             isConnected: true,
-            provider: ethereum,
+            provider: ethereum as { request: (args: { method: string }) => Promise<unknown> },
           });
         }
       } else {
@@ -90,13 +112,28 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   const switchChain = async (chainId: number) => {
     try {
-      if (typeof window !== "undefined" && (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum) {
-        const ethereum = (window as unknown as { ethereum: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
+      if (
+        typeof window !== "undefined" &&
+        (
+          window as unknown as {
+            ethereum?: {
+              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+            };
+          }
+        ).ethereum
+      ) {
+        const ethereum = (
+          window as unknown as {
+            ethereum: {
+              request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+            };
+          }
+        ).ethereum;
         await ethereum.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: `0x${chainId.toString(16)}` }],
         });
-        setState(prev => ({ ...prev, chainId }));
+        setState((prev) => ({ ...prev, chainId }));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to switch chain");

@@ -20,7 +20,7 @@ type MarketPlanPreview = {
 interface TradingPanelData {
   market: any;
   prediction: any;
-  account?: string | null;
+  address?: string | null;
   bestBid: string;
   bestAsk: string;
   balance: string;
@@ -81,7 +81,7 @@ export function TradingPanel(props: TradingPanelProps) {
   const {
     market,
     prediction,
-    account,
+    address,
     bestBid,
     bestAsk,
     balance,
@@ -141,13 +141,13 @@ export function TradingPanel(props: TradingPanelProps) {
     setPriceInput(p);
   };
 
-  const isWalletConnected = !!account;
+  const isWalletConnected = !!address;
   const isTradeTab = activeTab === "trade";
   const isManageTab = activeTab === "orders" || activeTab === "history";
 
   // 使用自定义 hooks 处理计算逻辑
   const { reservedAccountUsdc, reservedProxyUsdc } = useReservedBalance(
-    account,
+    address,
     proxyAddress,
     userOrders
   );

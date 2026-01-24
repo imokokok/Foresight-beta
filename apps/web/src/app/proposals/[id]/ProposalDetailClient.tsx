@@ -13,7 +13,7 @@ export default function ProposalDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const tProposals = useTranslations("proposals");
   const detail = useProposalDetail(id);
-  const { account, connectWallet } = useWallet();
+  const { address, connect } = useWallet();
   const [replyText, setReplyText] = useState("");
 
   const handleCopyLink = () => {
@@ -47,8 +47,8 @@ export default function ProposalDetailClient({ id }: { id: string }) {
       stats={detail.stats}
       userVoteTypes={detail.userVoteTypes}
       displayName={detail.displayName}
-      account={account}
-      connectWallet={connectWallet}
+      address={address}
+      connect={connect}
       replyText={replyText}
       onReplyTextChange={setReplyText}
       onSubmitReply={handleSubmitReply}

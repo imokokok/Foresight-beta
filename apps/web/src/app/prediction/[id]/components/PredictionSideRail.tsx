@@ -14,7 +14,7 @@ type TabKey = "trade" | "chart" | "info" | "outcomes";
 interface PredictionSideRailProps {
   prediction: PredictionDetail;
   market: any;
-  account: string | null | undefined;
+  address: string | null | undefined;
 
   // Trading Data
   bestBid: string;
@@ -67,7 +67,7 @@ interface PredictionSideRailProps {
 export function PredictionSideRail({
   prediction,
   market,
-  account,
+  address,
   bestBid,
   bestAsk,
   balance,
@@ -145,7 +145,7 @@ export function PredictionSideRail({
               data={{
                 market,
                 prediction,
-                account,
+                address,
                 bestBid,
                 bestAsk,
                 balance,

@@ -15,6 +15,7 @@ import es from "../../messages/es.json";
 import fr from "../../messages/fr.json";
 import ko from "../../messages/ko.json";
 import { locales, defaultLocale, type Locale } from "../i18n-config";
+export type { Locale };
 import type { ReactNode } from "react";
 import type { Messages as MessagesType, MessageKey, Namespace } from "./i18n-types";
 

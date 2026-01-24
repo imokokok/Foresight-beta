@@ -51,7 +51,7 @@ export default function PerformanceDashboard() {
 function PerformanceDashboardContent() {
   const tPerf = useTranslations("adminPerformance");
   const router = useRouter();
-  const { account } = useWallet();
+  const { address: account } = useWallet();
   const profileCtx = useUserProfileOptional();
   const [stats, setStats] = useState<PerformanceStats>({});
   const [loading, setLoading] = useState(true);

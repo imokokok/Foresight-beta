@@ -14,7 +14,6 @@ import {
 interface UseTrendingAdminEventsParams {
   accountNorm: string | undefined;
   profileIsAdmin: boolean | undefined;
-  siweLogin: () => Promise<unknown>;
   queryClient: QueryClient;
   tTrendingAdmin: (key: string) => string;
   tTrending: (key: string) => string;
@@ -31,7 +30,6 @@ export type TrendingEditForm = {
 export function useTrendingAdminEvents({
   accountNorm,
   profileIsAdmin,
-  siweLogin,
   queryClient,
   tTrendingAdmin,
   tTrending,
@@ -88,9 +86,6 @@ export function useTrendingAdminEvents({
     try {
       setSavingEdit(true);
       if (!accountNorm) return;
-      try {
-        await siweLogin();
-      } catch {}
       const id = Number(editTargetId);
       const categoryId = String(editForm.category || "");
       const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
@@ -136,9 +131,6 @@ export function useTrendingAdminEvents({
       if (!confirm(tTrendingAdmin("confirmDelete"))) return;
       setDeleteBusyId(id);
       if (!accountNorm) return;
-      try {
-        await siweLogin();
-      } catch {}
       await deletePrediction(id, accountNorm);
       queryClient.setQueryData(
         ["predictions"],

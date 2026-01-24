@@ -6,7 +6,7 @@ import { MessageSquare, Sparkles } from "lucide-react";
 export type ChatHeaderProps = {
   roomLabel: string;
   roomCategory?: string;
-  account: string | null | undefined;
+  address: string | null | undefined;
   displayName: (addr: string) => string;
   tChat: (key: string) => string;
   accentClass: string;
@@ -15,7 +15,7 @@ export type ChatHeaderProps = {
 export const ChatHeader = memo(function ChatHeader({
   roomLabel,
   roomCategory,
-  account,
+  address,
   displayName,
   tChat,
   accentClass,
@@ -43,8 +43,8 @@ export const ChatHeader = memo(function ChatHeader({
             </span>
             <span className="text-slate-400">·</span>
             <span className="truncate">
-              {account
-                ? tChat("header.youLabel").replace("{name}", displayName(account))
+              {address
+                ? tChat("header.youLabel").replace("{name}", displayName(address))
                 : tChat("header.walletDisconnected")}
             </span>
           </div>

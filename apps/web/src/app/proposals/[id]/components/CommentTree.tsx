@@ -7,15 +7,14 @@ import type { CommentView } from "../useProposalDetail";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { useWallet } from "@/contexts/WalletContext";
 
 export function CommentTree({
   comments,
   userVoteTypes,
   onVote,
   onReply,
-  account,
-  connectWallet,
+  address,
+  connect,
   displayName,
   threadAuthorId,
 }: {
@@ -23,8 +22,8 @@ export function CommentTree({
   userVoteTypes: Record<string, "up" | "down">;
   onVote: (id: number, dir: "up" | "down") => void;
   onReply: (parentId: number, text: string) => void;
-  account: string | null | undefined;
-  connectWallet: () => void | Promise<void>;
+  address: string | null | undefined;
+  connect: () => void | Promise<void>;
   displayName: (addr: string) => string;
   threadAuthorId?: string;
 }) {
@@ -43,8 +42,8 @@ export function CommentTree({
           userVoteTypes={userVoteTypes}
           onVote={onVote}
           onReply={onReply}
-          account={account}
-          connectWallet={connectWallet}
+          address={address}
+          connect={connect}
           displayName={displayName}
           floor={index + 1}
           depth={0}
@@ -63,8 +62,8 @@ function CommentNode({
   userVoteTypes,
   onVote,
   onReply,
-  account,
-  connectWallet,
+  address,
+  connect,
   displayName,
   floor,
   depth = 0,
@@ -77,8 +76,8 @@ function CommentNode({
   userVoteTypes: Record<string, "up" | "down">;
   onVote: (id: number, dir: "up" | "down") => void;
   onReply: (parentId: number, text: string) => void;
-  account: string | null | undefined;
-  connectWallet: () => void | Promise<void>;
+  address: string | null | undefined;
+  connect: () => void | Promise<void>;
   displayName: (addr: string) => string;
   floor?: number;
   depth?: number;
@@ -86,7 +85,6 @@ function CommentNode({
   tProposals: (key: string) => string;
   locale: string;
 }) {
-  const { siweLogin } = useWallet();
   const tChat = useTranslations("chat");
   const tCommon = useTranslations("common");
   const replies = getReplies(comment.id);
@@ -123,12 +121,9 @@ function CommentNode({
 
   const reportComment = async (reason: "spam" | "abuse" | "misinfo") => {
     try {
-      if (!account) {
-        await Promise.resolve(connectWallet());
+      if (!address) {
+        await Promise.resolve(connect());
       }
-      try {
-        await siweLogin();
-      } catch {}
 
       const res = await fetch("/api/forum/report", {
         method: "POST",
@@ -184,7 +179,7 @@ function CommentNode({
                 <span className="text-[11px] text-slate-400">#{floor}</span>
               )}
               {String(comment.user_id || "").toLowerCase() !==
-                String(account || "").toLowerCase() && (
+                String(address || "").toLowerCase() && (
                 <div className="relative">
                   <button
                     type="button"
@@ -263,8 +258,8 @@ function CommentNode({
 
             <button
               onClick={() => {
-                if (!account) {
-                  connectWallet();
+                if (!address) {
+                  connect();
                   return;
                 }
                 setIsReplying(!isReplying);
@@ -333,8 +328,8 @@ function CommentNode({
                 userVoteTypes={userVoteTypes}
                 onVote={onVote}
                 onReply={onReply}
-                account={account}
-                connectWallet={connectWallet}
+                address={address}
+                connect={connect}
                 displayName={displayName}
                 floor={floor}
                 depth={(depth || 0) + 1}

@@ -14,7 +14,7 @@ import { Modal } from "@/components/ui/Modal";
 
 export default function TopNavBar() {
   const nav = useTopNavBarLogic();
-  const { mounted, modal, walletModalOpen, setWalletModalOpen } = nav;
+  const { mounted, walletModalOpen, setWalletModalOpen } = nav;
   const tNotifications = useTranslations("notifications");
   const tCommon = useTranslations("common");
   const { locale } = useLocale();
@@ -172,8 +172,6 @@ export default function TopNavBar() {
           </div>
         </div>
       </Modal>
-
-      {mounted && modal && createPortal(modal, document.body)}
 
       {mounted && (
         <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />

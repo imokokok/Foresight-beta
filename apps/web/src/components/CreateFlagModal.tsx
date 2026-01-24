@@ -43,7 +43,7 @@ export default function CreateFlagModal({
   isOfficial = false,
   predictionId = null,
 }: CreateFlagModalProps) {
-  const { account, siweLogin, isAuthenticated, checkAuth } = useWallet();
+  const { address, connect } = useWallet();
   const tFlags = useTranslations("flags");
 
   const [loading, setLoading] = useState(false);
@@ -64,10 +64,8 @@ export default function CreateFlagModal({
       setDeadline("");
       setWitnessId("");
       setStep(1);
-      // 打开时检查认证状态
-      checkAuth();
     }
-  }, [isOpen, defaultTitle, defaultDesc, isOfficial, checkAuth]);
+  }, [isOpen, defaultTitle, defaultDesc, isOfficial]);
 
   useEffect(() => {
     if (!isOfficial || !defaultTemplateId) return;
@@ -117,7 +115,7 @@ export default function CreateFlagModal({
   }, [defaultTemplateId, defaultConfig, isOfficial, defaultTitle, defaultDesc, tFlags]);
 
   const handleSubmit = async () => {
-    if (!account) {
+    if (!address) {
       toast.warning(tFlags("toast.walletRequiredTitle"), tFlags("toast.walletRequiredDesc"));
       return;
     }
@@ -132,19 +130,6 @@ export default function CreateFlagModal({
 
     try {
       setLoading(true);
-
-      if (account && !isAuthenticated) {
-        const siweResult = await siweLogin();
-        if (!siweResult.success) {
-          toast.error(
-            tFlags("toast.siweFailedTitle"),
-            siweResult.error || tFlags("toast.siweFailedDesc")
-          );
-          setLoading(false);
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
 
       const payload: any = {
         title: title,

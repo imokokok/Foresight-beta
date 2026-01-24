@@ -91,10 +91,8 @@ export function FlagsModals({
   uiState,
   uiActions,
 }: FlagsModalsProps) {
-  const auth = useAuthOptional();
-  const userId = auth?.user?.id ?? null;
-  const prevUserIdRef = useRef<string | null>(userId);
   const { collectedStickers, dbStickers, loadFlags, viewerId } = data;
+  const prevUserIdRef = useRef<string | null>(viewerId);
 
   const {
     createOpen,
@@ -148,12 +146,12 @@ export function FlagsModals({
 
   useEffect(() => {
     const prev = prevUserIdRef.current;
-    const curr = userId;
+    const curr = viewerId;
     if (walletModalOpen && !prev && curr) {
       setWalletModalOpen(false);
     }
     prevUserIdRef.current = curr;
-  }, [userId, walletModalOpen, setWalletModalOpen]);
+  }, [viewerId, walletModalOpen, setWalletModalOpen]);
 
   return (
     <>

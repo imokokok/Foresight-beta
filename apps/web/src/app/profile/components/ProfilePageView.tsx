@@ -17,11 +17,12 @@ import {
   ArrowUp,
 } from "lucide-react";
 import GradientPage from "@/components/ui/GradientPage";
+import { useUser } from "@/contexts/UserContext";
+import { useAuthOptional } from "@/contexts/AuthContext";
 import { buildDiceBearUrl } from "@/lib/dicebear";
 import { toast, handleApiError } from "@/lib/toast";
 import { formatAddress, normalizeAddress } from "@/lib/address";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuthOptional } from "@/contexts/AuthContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "@/lib/i18n";
@@ -54,7 +55,7 @@ import {
 type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
 export type ProfilePageViewProps = {
-  account: string | null;
+  address: string | null;
   username: string;
   profileInfo?: UserProfile | null;
   tProfile: (key: string) => string;
@@ -74,7 +75,7 @@ export type ProfilePageViewProps = {
 };
 
 export function ProfilePageView({
-  account,
+  address,
   username,
   profileInfo,
   tProfile,
@@ -92,9 +93,9 @@ export function ProfilePageView({
   history,
   isOwnProfile = true,
 }: ProfilePageViewProps) {
-  const { account: myAccount } = useWallet();
+  const { address: myAccount } = useWallet();
+  const { user } = useUser();
   const auth = useAuthOptional();
-  const userId = auth?.user?.id ?? null;
   const tCommon = useTranslations("common");
   const tWalletModal = useTranslations("walletModal");
   const tWallet = useTranslations("wallet");
@@ -102,9 +103,9 @@ export function ProfilePageView({
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const prevUserIdRef = useRef<string | null>(userId);
+  const prevUserIdRef = useRef<string | null>(user?.id);
 
-  const accountNorm = useMemo(() => (account ? normalizeAddress(account) : ""), [account]);
+  const accountNorm = useMemo(() => (address ? normalizeAddress(address) : ""), [address]);
   const myAccountNorm = useMemo(() => (myAccount ? normalizeAddress(myAccount) : ""), [myAccount]);
 
   const [emailChangeStep, setEmailChangeStep] = useState<
@@ -151,18 +152,18 @@ export function ProfilePageView({
     };
   }, []);
 
-  const countsQuery = useUserFollowCounts(account || null);
-  const followStatusQuery = useUserFollowStatus(account || null, myAccount || null);
+  const countsQuery = useUserFollowCounts(address || null);
+  const followStatusQuery = useUserFollowStatus(address || null, myAccount || null);
 
   const followMutation = useMutation({
     mutationFn: async () => {
       return fetcher<UserFollowToggleResult>("/api/user-follows/user", {
         method: "POST",
-        body: JSON.stringify({ targetAddress: accountNorm || account }),
+        body: JSON.stringify({ targetAddress: accountNorm || address }),
       });
     },
     onMutate: async () => {
-      if (!account || !myAccount || isOwnProfile) return;
+      if (!address || !myAccount || isOwnProfile) return;
 
       await Promise.all([
         queryClient.cancelQueries({
@@ -195,7 +196,7 @@ export function ProfilePageView({
       return { prevFollowed, prevCounts };
     },
     onError: (_err, _vars, ctx) => {
-      if (!account || !myAccount || !ctx) return;
+      if (!address || !myAccount || !ctx) return;
       queryClient.setQueryData(
         QueryKeys.userFollowStatus(accountNorm, myAccountNorm),
         ctx.prevFollowed
@@ -210,7 +211,7 @@ export function ProfilePageView({
       );
     },
     onSettled: async () => {
-      if (!account) return;
+      if (!address) return;
       await queryClient.invalidateQueries({
         queryKey: QueryKeys.userFollowCounts(accountNorm),
       });
@@ -234,12 +235,12 @@ export function ProfilePageView({
 
   useEffect(() => {
     const prev = prevUserIdRef.current;
-    const curr = userId;
+    const curr = user?.id;
     if (walletModalOpen && !prev && curr) {
       setWalletModalOpen(false);
     }
     prevUserIdRef.current = curr;
-  }, [userId, walletModalOpen]);
+  }, [user?.id, walletModalOpen]);
 
   const followersCount = countsQuery.data?.followersCount ?? 0;
   const followingCount = countsQuery.data?.followingCount ?? 0;
@@ -361,7 +362,7 @@ export function ProfilePageView({
   const canRequestEmailChangeOld =
     isOwnProfile &&
     !!accountNorm &&
-    !!userId &&
+    !!user?.id &&
     emailVerified &&
     emailChangeResendLeft === 0 &&
     emailChangeStep === "idle" &&
@@ -373,7 +374,7 @@ export function ProfilePageView({
   const canVerifyEmailChangeOld =
     isOwnProfile &&
     !!accountNorm &&
-    !!userId &&
+    !!user?.id &&
     emailVerified &&
     emailChangeStep === "old_sent" &&
     /^\d{6}$/.test(String(emailChangeOldCode || "").trim()) &&
@@ -385,7 +386,7 @@ export function ProfilePageView({
   const canRequestEmailChangeNew =
     isOwnProfile &&
     !!accountNorm &&
-    !!userId &&
+    !!user?.id &&
     emailVerified &&
     emailChangeResendLeft === 0 &&
     emailChangeStep === "old_verified" &&
@@ -398,7 +399,7 @@ export function ProfilePageView({
   const canVerifyEmailChangeNew =
     isOwnProfile &&
     !!accountNorm &&
-    !!userId &&
+    !!user?.id &&
     emailVerified &&
     emailChangeStep === "new_sent" &&
     /^\d{6}$/.test(String(emailChangeNewCode || "").trim()) &&
@@ -408,7 +409,7 @@ export function ProfilePageView({
     !verifyEmailChangeNewOtpMutation.isPending;
 
   const handleFollowToggle = async () => {
-    if (!account) return;
+    if (!address) return;
     if (!myAccount) {
       toast.error(tProfile("wallet.connectFirst"));
       return;
@@ -417,22 +418,22 @@ export function ProfilePageView({
   };
 
   const sessionsQuery = useQuery({
-    queryKey: ["auth", "sessions", userId || "anon"],
+    queryKey: ["auth", "sessions", user?.id || "anon"],
     queryFn: async () =>
       fetcher<{ sessions: any[]; currentSessionId?: string }>("/api/auth/sessions", {
         method: "GET",
       }),
-    enabled: isOwnProfile && !!userId && activeTab === "security",
+    enabled: isOwnProfile && !!user?.id && activeTab === "security",
     staleTime: 10_000,
   });
 
   const auditQuery = useQuery({
-    queryKey: ["auth", "audit", userId || "anon"],
+    queryKey: ["auth", "audit", user?.id || "anon"],
     queryFn: async () =>
       fetcher<{ events: any[] }>("/api/auth/audit", {
         method: "GET",
       }),
-    enabled: isOwnProfile && !!userId && activeTab === "security",
+    enabled: isOwnProfile && !!user?.id && activeTab === "security",
     staleTime: 10_000,
   });
 
@@ -445,9 +446,6 @@ export function ProfilePageView({
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] });
       toast.success(tCommon("success"));
-      try {
-        await auth?.refreshSession?.();
-      } catch {}
     },
     onError: (error: unknown) => {
       handleApiError(error, "walletModal.errors.unknown");
@@ -461,9 +459,6 @@ export function ProfilePageView({
       }),
     onSuccess: async () => {
       toast.success(tCommon("success"));
-      try {
-        await auth?.refreshSession?.();
-      } catch {}
       if (typeof window !== "undefined") {
         window.location.reload();
       }
@@ -501,7 +496,7 @@ export function ProfilePageView({
 
   const canDeleteAccount =
     isOwnProfile &&
-    !!userId &&
+    !!user?.id &&
     String(deleteAccountConfirm || "").trim() === "DELETE" &&
     !deleteAccountMutation.isPending;
 
@@ -530,7 +525,7 @@ export function ProfilePageView({
                 <div className="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-rose-500 p-[3px] mb-4 shadow-lg shadow-fuchsia-500/30 hover:scale-105 transition-transform duration-300">
                   <div className="w-full h-full rounded-full bg-white p-1 flex items-center justify-center overflow-hidden">
                     <img
-                      src={buildDiceBearUrl(account || "User")}
+                      src={buildDiceBearUrl(address || "User")}
                       alt={tProfile("avatarAlt")}
                       className="w-full h-full object-cover rounded-full bg-gray-50"
                     />
@@ -542,15 +537,15 @@ export function ProfilePageView({
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <button
                     type="button"
-                    disabled={!account}
+                    disabled={!address}
                     onClick={async () => {
-                      if (!account) return;
+                      if (!address) return;
                       try {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
-                          await navigator.clipboard.writeText(account);
+                          await navigator.clipboard.writeText(address);
                         } else {
                           const textarea = document.createElement("textarea");
-                          textarea.value = account;
+                          textarea.value = address;
                           textarea.style.position = "fixed";
                           textarea.style.opacity = "0";
                           document.body.appendChild(textarea);
@@ -570,17 +565,17 @@ export function ProfilePageView({
                     className="flex items-center gap-2 bg-white/80 border border-purple-100 px-4 py-1.5 rounded-full text-xs font-bold font-mono shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:border-purple-200 hover:shadow-md"
                   >
                     <Wallet className="w-3.5 h-3.5 text-purple-600" />
-                    <span className={account ? "text-purple-600" : "text-gray-400"}>
-                      {account ? formatAddress(account) : tProfile("username.walletDisconnected")}
+                    <span className={address ? "text-purple-600" : "text-gray-400"}>
+                      {address ? formatAddress(address) : tProfile("username.walletDisconnected")}
                     </span>
                   </button>
 
-                  {isOwnProfile && account && (
+                  {isOwnProfile && address && (
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => {
-                          if (!userId) {
+                          if (!user?.id) {
                             setWalletModalOpen(true);
                             return;
                           }
@@ -605,7 +600,7 @@ export function ProfilePageView({
 
                 {/* Email verification section removed as per request */}
 
-                {isOwnProfile && !account && (
+                {isOwnProfile && !address && (
                   <button
                     type="button"
                     onClick={() => setWalletModalOpen(true)}
@@ -670,7 +665,7 @@ export function ProfilePageView({
                 ))}
                 {isOwnProfile && (
                   <>
-                    {account && (
+                    {address && (
                       <button
                         onClick={disconnect}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all font-bold text-sm"
@@ -695,7 +690,7 @@ export function ProfilePageView({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {isOwnProfile && !account ? (
+                {isOwnProfile && !address ? (
                   <div className="lg:h-full flex items-center justify-center">
                     <EmptyState
                       icon={Wallet}
@@ -712,7 +707,7 @@ export function ProfilePageView({
                   <>
                     {activeTab === "predictions" && (
                       <PredictionsTab
-                        address={account}
+                        address={address}
                         positions={positions}
                         portfolioStats={portfolioStats}
                         loading={portfolioLoading}
@@ -722,10 +717,10 @@ export function ProfilePageView({
                     {activeTab === "history" && (
                       <HistoryTab history={history} loading={historyLoading} />
                     )}
-                    {activeTab === "following" && <FollowingTab address={account} />}
-                    {activeTab === "followers" && account && <FollowersTab address={account} />}
+                    {activeTab === "following" && <FollowingTab address={address} />}
+                    {activeTab === "followers" && address && <FollowersTab address={address} />}
                     {activeTab === "makerEarnings" && (
-                      <MakerEarningsTab address={account} isOwnProfile={isOwnProfile} />
+                      <MakerEarningsTab address={address} isOwnProfile={isOwnProfile} />
                     )}
                     {activeTab === "security" && isOwnProfile && (
                       <div className="space-y-6 lg:h-full lg:overflow-auto pb-10">

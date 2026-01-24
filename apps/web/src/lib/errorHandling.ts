@@ -1,4 +1,9 @@
-import { createAppError, AppError, AppErrorCode, type ErrorSeverity } from "@foresight/shared/error";
+import {
+  createAppError,
+  type AppError,
+  AppErrorCode,
+  type ErrorSeverity,
+} from "@foresight/shared/error";
 
 let globalErrorHandler: ((error: AppError) => void) | null = null;
 let globalRequestIdCounter = 0;
@@ -25,34 +30,27 @@ export function handleError(
 ): AppError {
   let appError: AppError;
 
-  if (error instanceof AppError) {
+  const errorWithCode = error as AppError;
+  if (errorWithCode && "code" in errorWithCode) {
     appError = options?.context
       ? {
-          ...error,
-          details: { ...error.details, ...options.context },
+          ...errorWithCode,
+          details: { ...errorWithCode.details, ...options.context },
         }
-      : error;
+      : errorWithCode;
   } else if (error instanceof Error) {
-    appError = createAppError(
-      options?.code || AppErrorCode.UNKNOWN,
-      error.message,
-      {
-        details: options?.context,
-        severity: options?.severity,
-        cause: error,
-        requestId: options?.requestId,
-      }
-    );
+    appError = createAppError(options?.code || AppErrorCode.UNKNOWN, error.message, {
+      details: options?.context,
+      severity: options?.severity,
+      cause: error,
+      requestId: options?.requestId,
+    });
   } else {
-    appError = createAppError(
-      options?.code || AppErrorCode.UNKNOWN,
-      String(error),
-      {
-        details: options?.context,
-        severity: options?.severity,
-        requestId: options?.requestId,
-      }
-    );
+    appError = createAppError(options?.code || AppErrorCode.UNKNOWN, String(error), {
+      details: options?.context,
+      severity: options?.severity,
+      requestId: options?.requestId,
+    });
   }
 
   if (globalErrorHandler) {
@@ -76,11 +74,7 @@ export function createValidationError(
   });
 }
 
-export function createNotFoundError(
-  resource: string,
-  id: string,
-  requestId?: string
-): AppError {
+export function createNotFoundError(resource: string, id: string, requestId?: string): AppError {
   return createAppError(AppErrorCode.RESOURCE_NOT_FOUND, `${resource} not found: ${id}`, {
     requestId,
   });
@@ -119,12 +113,13 @@ export function isRecoverable(error: AppError): boolean {
 }
 
 export function getErrorMessage(error: unknown): string {
-  if (error instanceof AppError) return error.message;
+  if (error && typeof error === "object" && "message" in error) return (error as AppError).message;
   if (error instanceof Error) return error.message;
   return String(error);
 }
 
 export function getErrorCode(error: unknown): string {
-  if (error instanceof AppError) return error.code;
+  if (error && typeof error === "object" && "code" in error)
+    return String((error as AppError).code);
   return AppErrorCode.UNKNOWN;
 }

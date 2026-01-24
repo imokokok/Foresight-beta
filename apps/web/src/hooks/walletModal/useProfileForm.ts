@@ -8,24 +8,22 @@ import { handleApiError } from "@/lib/toast";
 import { useTranslations } from "@/lib/i18n";
 
 export function useProfileForm({
-  account,
+  address,
   normalizedAccount,
   email,
   setEmail,
   emailVerified,
   verifiedEmailRef,
   isOpen,
-  user,
   isNewUserFlow,
 }: {
-  account: string | null | undefined;
+  address: string | null | undefined;
   normalizedAccount: string | null | undefined;
   email: string;
   setEmail: (email: string) => void;
   emailVerified: boolean;
   verifiedEmailRef: React.MutableRefObject<string | null>;
   isOpen: boolean;
-  user: any;
   isNewUserFlow: boolean;
 }) {
   const auth = useAuthOptional();
@@ -51,7 +49,7 @@ export function useProfileForm({
       setSignupToken(null);
       return;
     }
-    if (user) {
+    if (address) {
       const addr = normalizedAccount || "";
       if (!addr) return;
       if (showProfileForm) return;
@@ -74,7 +72,7 @@ export function useProfileForm({
         }
       })();
     }
-  }, [user, isOpen, normalizedAccount, showProfileForm, setEmail]);
+  }, [address, isOpen, normalizedAccount, showProfileForm, setEmail]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -114,7 +112,7 @@ export function useProfileForm({
     setProfileError(null);
     setProfileLoading(true);
     try {
-      const addr = String(account || user?.id || "").toLowerCase();
+      const addr = String(address || "").toLowerCase();
 
       const errors: string[] = [];
       if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
@@ -141,9 +139,6 @@ export function useProfileForm({
         method: "POST",
         body: JSON.stringify({ walletAddress: addr, username, email, rememberMe }),
       });
-      if (auth?.refreshSession) {
-        await auth.refreshSession();
-      }
       if (userProfile?.refreshProfile) {
         await userProfile.refreshProfile();
       }
@@ -153,7 +148,7 @@ export function useProfileForm({
     } finally {
       setProfileLoading(false);
     }
-  }, [account, user, username, email, emailVerified, rememberMe, auth, userProfile, tWalletModal]);
+  }, [address, username, email, emailVerified, rememberMe, userProfile, tWalletModal]);
 
   const completeSignup = useCallback(async () => {
     if (!username || !signupToken) return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthOptional } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useWallet } from "@/contexts/WalletContext";
 import { formatTranslation, useTranslations } from "@/lib/i18n";
 
@@ -37,7 +38,8 @@ export default function LoginCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const auth = useAuthOptional();
-  const { checkAuth, account, disconnectWallet } = useWallet();
+  const { refreshUser } = useUser();
+  const { address, disconnect } = useWallet();
   const tLogin = useTranslations("loginCallback");
   const token = useMemo(() => String(searchParams.get("token") || "").trim(), [searchParams]);
   const initialCodePreview = useMemo(
@@ -79,12 +81,9 @@ export default function LoginCallbackPage() {
 
   const refreshAfterLogin = useCallback(async () => {
     try {
-      await auth?.refreshSession();
+      await refreshUser();
     } catch {}
-    try {
-      await checkAuth();
-    } catch {}
-  }, [auth, checkAuth]);
+  }, [refreshUser]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,9 +127,9 @@ export default function LoginCallbackPage() {
                 .trim()
                 .toLowerCase()
             : "";
-        if (account && addr && account.toLowerCase() !== addr.toLowerCase()) {
+        if (address && addr && address.toLowerCase() !== addr.toLowerCase()) {
           try {
-            await disconnectWallet();
+            await disconnect();
           } catch {}
         }
         await refreshAfterLogin();
@@ -152,7 +151,7 @@ export default function LoginCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [account, disconnectWallet, fallbackRedirect, refreshAfterLogin, router, tLogin, token]);
+  }, [address, disconnect, fallbackRedirect, refreshAfterLogin, router, tLogin, token]);
 
   useEffect(() => {
     if (resendLeft <= 0) return;
@@ -309,8 +308,8 @@ export default function LoginCallbackPage() {
                 .toLowerCase()
             : email;
 
-        if (account && addr && account.toLowerCase() !== addr.toLowerCase()) {
-          await disconnectWallet();
+        if (address && addr && address.toLowerCase() !== addr.toLowerCase()) {
+          await disconnect();
         }
 
         await refreshAfterLogin();
@@ -332,8 +331,8 @@ export default function LoginCallbackPage() {
       }
     },
     [
-      account,
-      disconnectWallet,
+      address,
+      disconnect,
       email,
       emailOk,
       fallbackRedirect,

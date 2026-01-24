@@ -1,10 +1,15 @@
 import { useMemo } from "react";
 import { useUserPortfolio, useUserProfileInfo, useUserHistory } from "@/hooks/useQueries";
-import type { AuthUser } from "@/contexts/AuthContext";
 import type { Database } from "@/lib/database.types";
 import type { PortfolioStats, ProfileHistoryItem, ProfilePosition } from "../types";
 
-type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
+type DbUserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
+
+interface AuthUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: { username?: string };
+}
 
 /**
  * 🚀 优化后的 Profile 数据聚合 Hook
@@ -16,16 +21,16 @@ type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
  * - 更好的错误处理
  */
 export function useProfileAggregates(args: {
-  account: string | null;
+  address: string | null;
   user: AuthUser | null;
-  profile: UserProfile | null | undefined;
+  profile: DbUserProfile | null | undefined;
   tProfile: (key: string) => string;
 }) {
-  const { account, user, profile, tProfile } = args;
+  const { address, user, profile, tProfile } = args;
 
-  const infoQuery = useUserProfileInfo(account);
-  const historyQuery = useUserHistory(account);
-  const portfolioQuery = useUserPortfolio(account);
+  const infoQuery = useUserProfileInfo(address);
+  const historyQuery = useUserHistory(address);
+  const portfolioQuery = useUserPortfolio(address);
 
   const info = infoQuery.data?.profile || null;
   const history = historyQuery.data || [];
@@ -47,7 +52,7 @@ export function useProfileAggregates(args: {
   const positionsCount = positions.length;
 
   const username = useMemo(() => {
-    if (!account) {
+    if (!address) {
       return tProfile("username.anonymous");
     }
     // 优先使用从 API 获取的 profile 信息
@@ -63,8 +68,8 @@ export function useProfileAggregates(args: {
     if (user?.email) {
       return String(user.email).split("@")[0];
     }
-    return `User ${account.slice(0, 4)}`;
-  }, [account, user, profile, info, tProfile]);
+    return `User ${address.slice(0, 4)}`;
+  }, [address, user, profile, info, tProfile]);
 
   const setHistory = (_newHistory: any[] | ((prev: any[]) => any[])) => {
     console.warn("setHistory is deprecated, use mutation instead");

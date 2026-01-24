@@ -119,11 +119,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         const uniqueRejectedDates = [...new Set(rejectedDates)];
         return ApiResponses.conflict(
           "Flag has rejected check-ins that require make-up. Please complete the required check-ins before settling.",
-          JSON.stringify({
+          {
             rejected_dates: uniqueRejectedDates,
             rejected_count: rejectedCheckins.length,
             message: "Please make up the rejected check-ins before settling",
-          })
+          }
         );
       }
 

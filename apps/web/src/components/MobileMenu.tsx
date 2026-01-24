@@ -6,7 +6,8 @@ import { X, Menu, Home, Search, TrendingUp, MessageSquare, User, LogOut } from "
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
-import { useTranslations } from "@/lib/i18n";
+import { useTranslations, useLocale } from "@/lib/i18n";
+import { formatAddress } from "@/lib/address";
 
 interface MobileMenuProps {
   className?: string;
@@ -26,7 +27,7 @@ interface MobileMenuProps {
 export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { account, disconnectWallet, formatAddress, connectWallet } = useWallet();
+  const { address, connect, disconnect } = useWallet();
   const tNav = useTranslations("nav");
   const tMobileNav = useTranslations("mobileNav");
   const firstItemRef = React.useRef<HTMLAnchorElement | null>(null);
@@ -134,19 +135,19 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
               </div>
 
               {/* 用户信息（如果已登录） */}
-              {account && (
+              {address && (
                 <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-b border-gray-100">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full bg-white shadow-sm overflow-hidden">
                       <img
-                        src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
+                        src={`https://api.dicebear.com/7.x/identicon/svg?seed=${address}`}
                         alt="Avatar"
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {formatAddress(account)}
+                        {formatAddress(address)}
                       </p>
                       <p className="text-xs text-gray-500">{tMobileNav("wallet.connected")}</p>
                     </div>
@@ -188,10 +189,10 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
 
               {/* 菜单底部 */}
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
-                {account ? (
+                {address ? (
                   <button
                     onClick={() => {
-                      disconnectWallet();
+                      disconnect();
                       setIsOpen(false);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
@@ -203,7 +204,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
                   <button
                     type="button"
                     onClick={async () => {
-                      await connectWallet();
+                      await connect();
                       setIsOpen(false);
                     }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-200 to-pink-300 text-purple-800 border border-purple-200 shadow-md shadow-purple-200/50 hover:from-purple-400 hover:to-pink-400 hover:text-white transition-all font-medium"

@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ProposalsPageView from "./ProposalsPageView";
 import { useProposalsList } from "./useProposalsList";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useLocale, useTranslations } from "@/lib/i18n";
 
 const INSPIRATIONS_COUNT = 5;
@@ -82,9 +82,9 @@ function useRollingInspiration(inspirationsCount: number) {
 
 export default function ProposalsPage() {
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
-  const { account, connectWallet } = useWallet();
-  const { user } = useAuth();
-  const listState = useProposalsList(account ?? null, () => void connectWallet());
+  const { address, connect } = useWallet();
+  const { user } = useUser();
+  const listState = useProposalsList(address ?? null, () => void connect());
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
   const { inspirationIndex, isRolling, rollInspiration } =
@@ -95,9 +95,9 @@ export default function ProposalsPage() {
   return (
     <ProposalsPageView
       {...listState}
-      account={account}
+      account={address}
       user={user}
-      connectWallet={connectWallet}
+      connectWallet={connect}
       isCreateModalOpen={isCreateModalOpen}
       setCreateModalOpen={setCreateModalOpen}
       inspiration={inspirationIndex}

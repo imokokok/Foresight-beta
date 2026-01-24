@@ -9,7 +9,7 @@ import type { ChatMessageView } from "../types";
 
 export type MessagesListProps = {
   mergedMessages: ChatMessageView[];
-  account: string | null | undefined;
+  address: string | null | undefined;
   viewerIsAdmin?: boolean;
   displayName: (addr: string) => string;
   tChat: (key: string) => string;
@@ -25,7 +25,7 @@ export type MessagesListProps = {
 
 export const MessagesList = memo(function MessagesList({
   mergedMessages,
-  account,
+  address,
   viewerIsAdmin,
   displayName,
   tChat,
@@ -41,7 +41,7 @@ export const MessagesList = memo(function MessagesList({
   const { locale } = useLocale();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const me = useMemo(() => String(account || "").toLowerCase(), [account]);
+  const me = useMemo(() => String(address || "").toLowerCase(), [address]);
   const isAdmin = !!viewerIsAdmin;
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export const MessagesList = memo(function MessagesList({
           title={tChat("empty.title")}
           description={tChat("empty.description")}
           action={
-            account
+            address
               ? {
                   label: tChat("empty.actionLabel"),
                   onClick: () => {
@@ -83,9 +83,9 @@ export const MessagesList = memo(function MessagesList({
 
       {mergedMessages.map((m, i) => {
         const mine =
-          !!account &&
+          !!address &&
           !!m.user_id &&
-          String(account).toLowerCase() === String(m.user_id).toLowerCase();
+          String(address).toLowerCase() === String(m.user_id).toLowerCase();
         const isDiscussion = /^\d+$/.test(String(m.id || ""));
         const muted = !mine && !!isUserMuted?.(String(m.user_id || ""));
         const prev = i > 0 ? mergedMessages[i - 1] : null;

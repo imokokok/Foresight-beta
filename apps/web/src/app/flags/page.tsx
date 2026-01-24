@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { FlagItem } from "@/components/FlagCard";
 import { OFFICIAL_STICKERS, type StickerItem } from "@/components/StickerRevealModal";
 import { toast } from "@/lib/toast";
@@ -49,8 +49,8 @@ function buildFlagsJsonLd(tFlags: (key: string) => string, locale: string) {
 }
 
 export default function FlagsPage() {
-  const { account } = useWallet();
-  const { user } = useAuth();
+  const { address: account } = useWallet();
+  const { user } = useUser();
   const tFlags = useTranslations("flags");
   const { locale } = useLocale();
   const officialTemplates = buildOfficialTemplates(tFlags);

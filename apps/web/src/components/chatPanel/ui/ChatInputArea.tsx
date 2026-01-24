@@ -16,16 +16,9 @@ import type { ChatMessageView } from "../types";
 import { OFFICIAL_STICKERS, isImageUrl } from "@/components/StickerRevealModal";
 
 export type ChatInputAreaProps = {
-  account: string | null | undefined;
+  address: string | null | undefined;
   tChat: (key: string) => string;
-  connectWallet: () => Promise<void>;
-  requestWalletPermissions: () => Promise<{ success: boolean; error?: string }>;
-  siweLogin: () => Promise<{ success: boolean; address?: string; error?: string }>;
-  multisigSign: (data?: {
-    verifyingContract?: string;
-    action?: string;
-    nonce?: number;
-  }) => Promise<{ success: boolean; signature?: string; error?: string }>;
+  connect: () => Promise<void>;
   quickPrompts: string[];
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
@@ -49,12 +42,9 @@ export type ChatInputAreaProps = {
 };
 
 export const ChatInputArea = memo(function ChatInputArea({
-  account,
+  address,
   tChat,
-  connectWallet,
-  requestWalletPermissions,
-  siweLogin,
-  multisigSign,
+  connect,
   quickPrompts,
   input,
   setInput,
@@ -100,14 +90,14 @@ export const ChatInputArea = memo(function ChatInputArea({
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !account) return;
+    if (!file || !address) return;
 
     setUploading(true);
     setLocalError(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("walletAddress", account);
+      formData.append("walletAddress", address);
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -136,7 +126,7 @@ export const ChatInputArea = memo(function ChatInputArea({
     <div className="p-3 border-t border-[var(--card-border)] bg-[var(--card-bg)]/80 backdrop-blur-xl relative pb-[env(safe-area-inset-bottom)] text-[var(--foreground)]">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-accent/15 via-brand/8 to-transparent dark:from-brand-accent/12 dark:via-brand/10 dark:to-transparent opacity-60" />
       <div className="relative z-10">
-        {!account ? (
+        {!address ? (
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">
               {tChat("input.walletRequired")}
@@ -145,9 +135,7 @@ export const ChatInputArea = memo(function ChatInputArea({
               size="sm"
               variant="cta"
               onClick={async () => {
-                await connectWallet();
-                await requestWalletPermissions();
-                await siweLogin();
+                await connect();
               }}
             >
               {tChat("input.connectAndSign")}
@@ -217,7 +205,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                 />
                 <button
                   type="button"
-                  disabled={uploading || !account}
+                  disabled={uploading || !address}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-brand transition-colors disabled:opacity-50"
                   onClick={() => fileInputRef.current?.click()}
                   title={tChat("input.uploadImage")}
@@ -230,7 +218,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                 </button>
                 <button
                   type="button"
-                  disabled={!account}
+                  disabled={!address}
                   className={`inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-brand transition-colors disabled:opacity-50 ${showStickers ? "text-brand bg-brand/5" : ""}`}
                   onClick={() => {
                     setShowStickers(!showStickers);
@@ -243,7 +231,7 @@ export const ChatInputArea = memo(function ChatInputArea({
                 </button>
                 <button
                   type="button"
-                  disabled={!account}
+                  disabled={!address}
                   className={`inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-brand transition-colors disabled:opacity-50 ${
                     debateMode ? "text-brand bg-brand/5" : ""
                   }`}

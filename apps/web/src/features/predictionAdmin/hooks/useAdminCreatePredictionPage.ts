@@ -14,7 +14,7 @@ import { usePredictionDraft } from "./usePredictionDraft";
 
 export function useAdminCreatePredictionPage() {
   const router = useRouter();
-  const { account, siweLogin } = useWallet();
+  const { address } = useWallet();
   const profileCtx = useUserProfileOptional();
   const { data: categoriesData } = useCategories();
   const tTrending = useTranslations("trending");
@@ -72,14 +72,10 @@ export function useAdminCreatePredictionPage() {
       setSubmitting(true);
       setMsg(null);
 
-      if (!account) {
+      if (!address) {
         setMsg(tCommon("connectWallet"));
         return;
       }
-
-      try {
-        await siweLogin();
-      } catch {}
 
       const categoryId = String(form.category || "");
       const categoryName = ID_TO_CATEGORY_NAME[categoryId] || categoryId;
@@ -92,7 +88,7 @@ export function useAdminCreatePredictionPage() {
         minStake: Number(form.minStake),
         criteria: form.criteria,
         type: form.type,
-        walletAddress: String(account).toLowerCase(),
+        walletAddress: String(address).toLowerCase(),
       };
 
       const referenceUrl = String(form.referenceUrl || "").trim();
@@ -127,14 +123,14 @@ export function useAdminCreatePredictionPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [account, form, outcomes, router, siweLogin, tCommon, tTrendingAdmin, setMsg]);
+  }, [address, form, outcomes, router, tCommon, tTrendingAdmin, setMsg]);
 
   useEffect(() => {
-    if (!account) return;
+    if (!address) return;
     if (!profileCtx?.isAdmin) {
       router.replace("/trending");
     }
-  }, [account, profileCtx?.isAdmin, router]);
+  }, [address, profileCtx?.isAdmin, router]);
 
   return {
     router,

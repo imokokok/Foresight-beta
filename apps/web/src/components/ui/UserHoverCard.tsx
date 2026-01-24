@@ -74,7 +74,7 @@ export function UserHoverCard({
   disabled = false,
 }: UserHoverCardProps) {
   const t = useTranslations("userCard");
-  const { account: myAccount } = useWallet();
+  const { address: myAccount } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [cardPosition, setCardPosition] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);

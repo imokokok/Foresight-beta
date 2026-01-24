@@ -21,7 +21,7 @@ import { useTranslations } from "@/lib/i18n";
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { account, connectWallet } = useWallet();
+  const { address, connect } = useWallet();
   const profileCtx = useUserProfileOptional();
   const isAdmin = !!profileCtx?.isAdmin;
 
@@ -85,7 +85,7 @@ export default function MobileBottomNav() {
           if (item.special) {
             return (
               <div key={item.href} className="flex flex-col items-center justify-center relative">
-                {account || !isAdmin ? (
+                {address || !isAdmin ? (
                   <Link href={item.href} className="flex flex-col items-center justify-center">
                     <motion.div
                       whileTap={{ scale: 0.9 }}
@@ -99,7 +99,7 @@ export default function MobileBottomNav() {
                   <button
                     type="button"
                     onClick={async () => {
-                      await connectWallet();
+                      await connect();
                     }}
                     className="flex flex-col items-center justify-center"
                   >

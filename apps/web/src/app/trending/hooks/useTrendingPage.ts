@@ -66,9 +66,9 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   } = useTrendingList(initialPredictions);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const { account, siweLogin } = useWallet();
+  const { address } = useWallet();
   const profileCtx = useUserProfileOptional();
-  const accountNorm = account ? normalizeAddress(account) : undefined;
+  const accountNorm = address ? normalizeAddress(address) : undefined;
 
   const categoryCounts = useCategoryCounts();
 
@@ -94,7 +94,6 @@ export function useTrendingPage(initialPredictions?: Prediction[]) {
   } = useTrendingAdminEvents({
     accountNorm,
     profileIsAdmin: profileCtx?.isAdmin,
-    siweLogin,
     queryClient,
     tTrendingAdmin,
     tTrending,

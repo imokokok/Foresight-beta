@@ -4,6 +4,7 @@ import React, { useState, use } from "react";
 import { Coins, Heart, History, TrendingUp, Shield } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useTranslations } from "@/lib/i18n";
 import type { TabConfig, TabType } from "../types";
 import { useProfileAggregates } from "../hooks/useProfileAggregates";
@@ -16,8 +17,8 @@ type Props = {
 export default function UserProfilePage({ params }: Props) {
   const resolvedParams = use(params);
   const address = resolvedParams.id;
-  const { account: myAccount, disconnectWallet: disconnect } = useWallet();
-  const { user: authUser } = useAuth();
+  const { address: myAccount, disconnect } = useWallet();
+  const { user: authUser } = useUser();
   const tProfile = useTranslations("profile");
 
   const [activeTab, setActiveTab] = useState<TabType>("predictions");
@@ -35,7 +36,7 @@ export default function UserProfilePage({ params }: Props) {
     portfolioLoading,
     portfolioError,
   } = useProfileAggregates({
-    account: address,
+    address,
     user: isOwnProfile ? authUser : null,
     profile: null,
     tProfile,
@@ -53,7 +54,7 @@ export default function UserProfilePage({ params }: Props) {
 
   return (
     <ProfilePageView
-      account={address}
+      address={address}
       username={username}
       profileInfo={profileInfo}
       tProfile={tProfile}

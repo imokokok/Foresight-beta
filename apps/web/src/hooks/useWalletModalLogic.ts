@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useAuthOptional } from "@/contexts/AuthContext";
 import { useTranslations } from "@/lib/i18n";
+import { normalizeAddress } from "@/lib/address";
 import { useEmailVerification } from "./walletModal/useEmailVerification";
 import { useProfileForm } from "./walletModal/useProfileForm";
 import { useWalletConnectionFlow, type WalletStep } from "./walletModal/useWalletConnectionFlow";
@@ -15,32 +16,28 @@ export interface UseWalletModalOptions {
 }
 
 export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) {
-  const { account, normalizedAccount } = useWallet();
-  const auth = useAuthOptional();
+  const { address } = useWallet();
+  const normalizedAccount = address ? normalizeAddress(address) : undefined;
   const tWalletModal = useTranslations("walletModal");
   const tLogin = useTranslations("login");
-  const user = auth?.user ?? null;
-  const authError = auth?.error ?? null;
   const [mounted, setMounted] = useState(false);
   const [isNewUserFlow, setIsNewUserFlow] = useState(false);
 
   // 使用自定义 hooks
-  const emailVerification = useEmailVerification(account);
+  const emailVerification = useEmailVerification(address);
   const profileForm = useProfileForm({
-    account,
+    address,
     normalizedAccount,
     email: emailVerification.email,
     setEmail: emailVerification.setEmail,
     emailVerified: emailVerification.emailVerified,
     verifiedEmailRef: emailVerification.verifiedEmailRef,
     isOpen,
-    user,
     isNewUserFlow,
   });
 
   const walletFlow = useWalletConnectionFlow({
-    account,
-    normalizedAccount,
+    address,
     onClose,
     onShowProfileForm: useCallback(
       (email: string, verified: boolean) => {
@@ -72,11 +69,11 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     if (!isOpen) {
       return;
     }
-    if (!user) {
+    if (!address) {
       walletFlow.setWalletStep("select");
       setIsNewUserFlow(false);
     }
-  }, [isOpen, user, walletFlow]);
+  }, [isOpen, address, walletFlow]);
 
   // 处理邮箱验证结果
   const handleVerifyOtpResult = useCallback(
@@ -152,7 +149,7 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       return tWalletModal("hints.completeProfileAndVerifyEmail");
     } else if (profileForm.showProfileForm && emailVerification.emailVerified) {
       return tWalletModal("hints.emailVerifiedSaveProfile");
-    } else if (walletFlow.walletStep === "completed" || user) {
+    } else if (walletFlow.walletStep === "completed" || address) {
       return tWalletModal("hints.walletBoundComplete");
     }
     return tWalletModal("hints.selectLoginMethod");
@@ -169,17 +166,15 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
   const step2Done =
     walletFlow.walletStep === "profile" ||
     walletFlow.walletStep === "completed" ||
-    (!!user && !profileForm.showProfileForm);
+    (!!address && !profileForm.showProfileForm);
   const step3Done =
     emailVerification.emailVerified ||
     walletFlow.walletStep === "completed" ||
-    (!!user && !profileForm.showProfileForm);
+    (!!address && !profileForm.showProfileForm);
 
   return {
     tWalletModal,
     tLogin,
-    user,
-    authError,
     selectedWallet: walletFlow.selectedWallet,
     email: emailVerification.email,
     setEmail: emailVerification.setEmail,

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useUserProfileOptional } from "@/contexts/UserProfileContext";
 import { getDisplayName } from "@/lib/userProfiles";
+import { formatAddress } from "@/lib/address";
 import { useTranslations } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 import type { ChatMessageView, ChatPanelProps } from "./chatPanel/types";
@@ -28,14 +29,7 @@ export default function ChatPanel({
   hideHeader = false,
   className,
 }: ChatPanelProps) {
-  const {
-    account,
-    connectWallet,
-    formatAddress,
-    siweLogin,
-    requestWalletPermissions,
-    multisigSign,
-  } = useWallet();
+  const { address, connect } = useWallet();
   const profileCtx = useUserProfileOptional();
   const viewerIsAdmin = !!profileCtx?.isAdmin;
   const tChat = useTranslations("chat");
@@ -54,7 +48,7 @@ export default function ChatPanel({
     error: forumError,
     refresh: refreshForum,
   } = useForumThreads(eventId);
-  const { nameMap } = useNameMap({ messages, forumMessages, account });
+  const { nameMap } = useNameMap({ messages, forumMessages, address });
 
   const [input, setInput] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -81,7 +75,7 @@ export default function ChatPanel({
   const { isMuted, setMute } = useMutedUsers();
   const { sending, sendError, sendMessage, deleteMessage, reportMessage } = useChatActions({
     eventId,
-    account,
+    address,
     partition,
     debateMode,
     debateStance,
@@ -110,12 +104,12 @@ export default function ChatPanel({
   const filteredMessages = useMemo(
     () =>
       mergedMessages.filter((m) => {
-        if (account && String(m.user_id).toLowerCase() === String(account).toLowerCase()) {
+        if (address && String(m.user_id).toLowerCase() === String(address).toLowerCase()) {
           return true;
         }
         return !isMuted(m.user_id);
       }),
-    [mergedMessages, account, isMuted]
+    [mergedMessages, address, isMuted]
   );
 
   const discussionOnly = useMemo(() => mergeMessages(messages, []), [messages]);
@@ -124,7 +118,7 @@ export default function ChatPanel({
   const displayedMessages = useMemo(() => {
     const source = partition === "forum" ? forumOnly : discussionOnly;
     const base = source.filter((m) => {
-      if (account && String(m.user_id).toLowerCase() === String(account).toLowerCase()) {
+      if (address && String(m.user_id).toLowerCase() === String(address).toLowerCase()) {
         return true;
       }
       return !isMuted(m.user_id);
@@ -140,7 +134,7 @@ export default function ChatPanel({
       if (kindFilter !== "all" && m.debate_kind !== kindFilter) return false;
       return true;
     });
-  }, [partition, forumOnly, discussionOnly, account, isMuted, stanceFilter, kindFilter]);
+  }, [partition, forumOnly, discussionOnly, address, isMuted, stanceFilter, kindFilter]);
 
   const roomLabel = useMemo(() => {
     const t = String(roomTitle || "").trim();
@@ -177,7 +171,7 @@ export default function ChatPanel({
         <ChatHeader
           roomLabel={roomLabel}
           roomCategory={roomCategory}
-          account={account}
+          address={address}
           displayName={displayName}
           tChat={tChat}
           accentClass={getAccentClass(roomCategory)}
@@ -208,7 +202,7 @@ export default function ChatPanel({
       ) : (
         <MessagesList
           mergedMessages={displayedMessages}
-          account={account}
+          address={address}
           viewerIsAdmin={viewerIsAdmin}
           displayName={displayName}
           tChat={tChat}
@@ -247,12 +241,9 @@ export default function ChatPanel({
         </div>
       ) : (
         <ChatInputArea
-          account={account}
+          address={address}
           tChat={tChat}
-          connectWallet={connectWallet}
-          requestWalletPermissions={requestWalletPermissions}
-          siweLogin={siweLogin}
-          multisigSign={multisigSign}
+          connect={connect}
           quickPrompts={quickPrompts}
           input={input}
           setInput={setInput}

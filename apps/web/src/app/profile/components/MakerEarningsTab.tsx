@@ -41,7 +41,7 @@ function formatAmount(amount: bigint | null, decimals: number | null) {
 
 export function MakerEarningsTab({ address, isOwnProfile = false }: MakerEarningsTabProps) {
   const tProfile = useTranslations("profile");
-  const { provider: rawProvider, chainId: chainIdHex, account: connectedAccount } = useWallet();
+  const { provider: rawProvider, chainId: chainIdHex, address: connectedAccount } = useWallet();
 
   const [fallbackChainIdHex, setFallbackChainIdHex] = useState<string | null>(null);
 
@@ -68,7 +68,7 @@ export function MakerEarningsTab({ address, isOwnProfile = false }: MakerEarning
     const hex = chainIdHex ?? fallbackChainIdHex;
     if (!hex) return null;
     try {
-      return parseInt(hex, 16);
+      return parseInt(String(hex), 16);
     } catch {
       return null;
     }

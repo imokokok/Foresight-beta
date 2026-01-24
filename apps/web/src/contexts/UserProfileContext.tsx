@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { useWallet } from "@/contexts/WalletContext";
 import type { Database } from "@/lib/database.types";
 import { useUserProfileInfo } from "@/hooks/useQueries";
+import { normalizeAddress } from "@/lib/address";
 
 type UserProfile = Database["public"]["Tables"]["user_profiles"]["Row"];
 
@@ -19,13 +20,13 @@ interface UserProfileContextValue {
 export const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const { normalizedAccount } = useWallet();
+  const { address } = useWallet();
+  const normalizedAccount = address ? normalizeAddress(address) : undefined;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [proxyEnsured, setProxyEnsured] = useState(false);
 
-  const address = normalizedAccount || null;
-  const profileQuery = useUserProfileInfo(address);
+  const profileQuery = useUserProfileInfo(normalizedAccount);
 
   useEffect(() => {
     if (!address) {

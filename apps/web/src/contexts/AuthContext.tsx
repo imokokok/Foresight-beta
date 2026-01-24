@@ -2,13 +2,8 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { useTranslations } from "@/lib/i18n";
 import { getFeatureFlags } from "@/lib/runtimeConfig";
-import {
-  isApiErrorResponse,
-  type ApiResponse,
-} from "@foresight/shared/api";
-import {
-  createUnauthorizedError,
-} from "@/lib/errorHandling";
+import { isApiErrorResponse, type ApiResponse } from "@foresight/shared/api";
+import { createUnauthorizedError } from "@/lib/errorHandling";
 
 interface EmailOtpRequestResponse {
   expiresInSec: number;
@@ -23,26 +18,26 @@ interface EmailMagicLinkRequestResponse {
   magicLinkPreview?: string;
 }
 
+export interface AuthUser {
+  id: string;
+  email?: string | null;
+  user_metadata?: { username?: string };
+}
+
 interface AuthContextValue {
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
   requestEmailOtp: (email: string) => Promise<void>;
   verifyEmailOtp: (email: string, token: string) => Promise<{ isNewUser?: boolean } | void>;
-  sendMagicLink: (
-    email: string,
-    redirect?: string
-  ) => Promise<EmailMagicLinkRequestResponse>;
+  sendMagicLink: (email: string, redirect?: string) => Promise<EmailMagicLinkRequestResponse>;
   signOut: () => Promise<void>;
   clearError: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function fetchApiJson<T>(
-  url: string,
-  init?: RequestInit
-): Promise<T> {
+async function fetchApiJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const json = (await res.json().catch(() => null)) as ApiResponse<T> | null;
 
@@ -76,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const embeddedAuthEnabled = getFeatureFlags().embedded_auth_enabled;
 
   const normalizeHttpErrorMessage = (message: string) => {
-    const m = message.match(/Request failed:\s*(\d{3})/);
+    const m = message.match(new RegExp("Request failed:\\s*(\\d{3})"));
     const status = m ? Number(m[1]) : null;
     if (!status) return message;
     const key = `errors.api.${status}.description`;
@@ -99,10 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      const raw =
-        errorMessage
-          ? errorMessage
-          : tWalletModal("errors.otpSendFailed");
+      const raw = errorMessage ? errorMessage : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;
@@ -128,10 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data;
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      const raw =
-        errorMessage
-          ? errorMessage
-          : tWalletModal("errors.otpVerifyFailed");
+      const raw = errorMessage ? errorMessage : tWalletModal("errors.otpVerifyFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;
@@ -146,20 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(msg);
         throw createUnauthorizedError(msg);
       }
-      return await fetchApiJson<EmailMagicLinkRequestResponse>(
-        "/api/email-magic-link/request",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, redirect }),
-        }
-      );
+      return await fetchApiJson<EmailMagicLinkRequestResponse>("/api/email-magic-link/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, redirect }),
+      });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      const raw =
-        errorMessage
-          ? errorMessage
-          : tWalletModal("errors.otpSendFailed");
+      const raw = errorMessage ? errorMessage : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
       throw e;

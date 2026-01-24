@@ -4,12 +4,12 @@ import ProposalsLeftSidebar from "./ProposalsLeftSidebar";
 import ProposalsMainContent from "./ProposalsMainContent";
 import ProposalsRightSidebar from "./ProposalsRightSidebar";
 import type { UseProposalsListReturn } from "./useProposalsList";
-import type { AuthUser } from "@/contexts/AuthContext";
+import type { UserProfile } from "@/contexts/UserContext";
 import { safeJsonLdStringify } from "@/lib/seo";
 
 type ProposalsPageViewProps = UseProposalsListReturn & {
   account: string | null;
-  user: AuthUser;
+  user: UserProfile | null | undefined;
   connectWallet: () => void | Promise<void>;
   isCreateModalOpen: boolean;
   setCreateModalOpen: (open: boolean) => void;

@@ -1,27 +1,22 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { ArrowDown, Copy, ExternalLink, Eye, EyeOff, LogOut, Wallet } from "lucide-react";
+import { Copy, ExternalLink, LogOut, Wallet } from "lucide-react";
 import { useState } from "react";
 import WalletModal from "../WalletModal";
 import LazyImage from "@/components/ui/LazyImage";
 import type { TopNavBarState } from "./useTopNavBarLogic";
 import DepositModal from "@/components/DepositModal";
+import { formatAddress } from "@/lib/address";
 
 export function WalletSection({ nav }: { nav: TopNavBarState }) {
   const [depositOpen, setDepositOpen] = useState(false);
   const {
-    account,
-    user,
+    address,
     userProfile,
     tAuth,
     tWallet,
     tCommon,
-    formatAddress,
-    currentWalletType,
-    chainId,
-    balanceEth,
-    balanceLoading,
     menuRef,
     avatarRef,
     menuContentRef,
@@ -31,23 +26,16 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
     menuPos,
     showBalance,
     setShowBalance,
-    updateNetworkInfo,
     copyAddress,
     copied,
     openOnExplorer,
-    isSepolia,
-    switchToSepolia,
     handleDisconnectWallet,
     signOut,
-    disconnectWallet,
     walletModalOpen,
     setWalletModalOpen,
-    modal,
-    networkName,
-    walletTypeLabel,
   } = nav;
 
-  if (account) {
+  if (address) {
     return (
       <div className="relative group" ref={menuRef}>
         <div className="p-[2px] rounded-full bg-gradient-to-r from-[rgba(244,114,182,1)] to-[rgba(168,85,247,1)]">
@@ -64,7 +52,7 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
             }}
           >
             <LazyImage
-              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${account}`}
+              src={`https://api.dicebear.com/7.x/identicon/svg?seed=${address}`}
               alt={tCommon("userAvatar")}
               className="w-10 h-10 rounded-full object-cover"
               placeholderClassName="rounded-full bg-gradient-to-br from-purple-100 to-pink-100"
@@ -90,67 +78,16 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent truncate">
-                        {userProfile?.profile?.username || formatAddress(account)}
+                        {userProfile?.profile?.username || formatAddress(address)}
                       </div>
                       {userProfile?.profile?.username && (
                         <div className="mt-1 text-[11px] text-gray-600 truncate">
-                          {formatAddress(account)}
+                          {formatAddress(address)}
                         </div>
                       )}
-                      <div className="mt-1 text-[11px] text-gray-600 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-gray-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                          {networkName(chainId)}
-                        </span>
-                        {currentWalletType && walletTypeLabel && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-gray-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                            {walletTypeLabel}
-                          </span>
-                        )}
-                        {userProfile?.profile?.proxy_wallet_address && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-gray-800">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Proxy
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center justify-end gap-1 text-[10px] text-gray-500">
-                        <span>ETH</span>
-                        <button
-                          type="button"
-                          aria-label={showBalance ? tCommon("hideBalance") : tCommon("showBalance")}
-                          className="p-0.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                          onClick={() => setShowBalance((v) => !v)}
-                        >
-                          {showBalance ? (
-                            <EyeOff className="w-3 h-3" />
-                          ) : (
-                            <Eye className="w-3 h-3" />
-                          )}
-                        </button>
-                      </div>
-                      <div className="text-sm font-semibold text-black">
-                        {showBalance
-                          ? balanceLoading
-                            ? "..."
-                            : balanceEth
-                              ? balanceEth
-                              : "--"
-                          : "••••"}
-                      </div>
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={updateNetworkInfo}
-                  className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                >
-                  <Wallet className="w-4 h-4 text-purple-600" />
-                  <span>{tWallet("refreshBalance")}</span>
-                </button>
                 <button
                   onClick={copyAddress}
                   className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
@@ -167,29 +104,15 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
                 </button>
                 <button
                   onClick={() => {
-                    if (!user) {
-                      setWalletModalOpen(true);
-                      setMenuOpen(false);
-                      return;
-                    }
                     setDepositOpen(true);
                     setMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
                 >
-                  <ArrowDown className="w-4 h-4 text-purple-600" />
+                  <Wallet className="w-4 h-4 text-purple-600" />
                   <span>{tWallet("deposit")}</span>
                 </button>
                 <div className="my-1 border-t border-purple-100/60" />
-                {!isSepolia && (
-                  <button
-                    onClick={switchToSepolia}
-                    className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
-                  >
-                    <Wallet className="w-4 h-4 text-purple-600" />
-                    <span>{tWallet("switchNetwork")} - Sepolia</span>
-                  </button>
-                )}
                 <button
                   onClick={handleDisconnectWallet}
                   className="w-full flex items-center gap-2 text-left px-3 py-2 rounded-md hover:bg-purple-50 text-black"
@@ -212,38 +135,6 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
     );
   }
 
-  if (user) {
-    return (
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-700">
-          {tAuth("loggedIn")}：{user.email || tAuth("noEmail")}
-        </span>
-        <button
-          onClick={() => setDepositOpen(true)}
-          className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:opacity-95"
-        >
-          {tWallet("deposit")}
-        </button>
-        <button
-          onClick={async () => {
-            await signOut();
-            await disconnectWallet();
-          }}
-          className="px-3 py-1.5 bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200"
-        >
-          {tAuth("logout")}
-        </button>
-        {mounted && (
-          <DepositModal
-            open={depositOpen}
-            onClose={() => setDepositOpen(false)}
-            onRequireLogin={() => setWalletModalOpen(true)}
-          />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="relative">
       <button
@@ -253,7 +144,6 @@ export function WalletSection({ nav }: { nav: TopNavBarState }) {
       >
         {tAuth("login")}
       </button>
-      {mounted && modal && createPortal(modal, document.body)}
       {mounted && (
         <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       )}

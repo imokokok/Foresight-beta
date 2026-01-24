@@ -38,7 +38,7 @@ export default function ReviewPage() {
   const tAuth = useTranslations("auth");
   const tProposals = useTranslations("proposals");
   const { locale } = useLocale();
-  const { account, connectWallet, siweLogin } = useWallet();
+  const { address, connect } = useWallet();
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -147,17 +147,12 @@ export default function ReviewPage() {
   };
 
   const handleAuth = useCallback(async () => {
-    if (!account) {
-      await connectWallet();
-      return;
-    }
-    const result = await siweLogin();
-    if (!result.success) {
-      toast.error(result.error || tProposals("review.alertSubmitFailed"));
+    if (!address) {
+      await connect();
       return;
     }
     await loadItems();
-  }, [account, connectWallet, loadItems, siweLogin, tProposals]);
+  }, [address, connect, loadItems]);
 
   const submitAction = async (action: "approve" | "reject" | "needs_changes") => {
     if (!selected) return;
@@ -204,7 +199,7 @@ export default function ReviewPage() {
                 onClick={handleAuth}
                 className="px-3 py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700"
               >
-                {account ? tAuth("login") : tAuth("connectWallet")}
+                {address ? tAuth("login") : tAuth("connectWallet")}
               </button>
             )}
             <button

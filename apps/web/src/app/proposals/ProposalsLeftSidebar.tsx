@@ -3,12 +3,12 @@ import Link from "next/link";
 import { Plus, Flame, Clock, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "@/lib/i18n";
-import type { AuthUser } from "@/contexts/AuthContext";
+import type { UserProfile } from "@/contexts/UserContext";
 import type { ProposalFilter, ProposalItem } from "./proposalsListUtils";
 
 type ProposalsLeftSidebarProps = {
   account: string | null;
-  user: AuthUser;
+  user: UserProfile | null | undefined;
   connectWallet: () => void | Promise<void>;
   setCreateModalOpen: (open: boolean) => void;
   proposals: ProposalItem[];

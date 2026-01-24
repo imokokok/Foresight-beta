@@ -10,7 +10,7 @@ import { ReplyBox } from "./ReplyBox";
 
 export function ForumSectionView({
   hideCreate,
-  account,
+  address,
   threads,
   loading,
   error,
@@ -65,7 +65,7 @@ export function ForumSectionView({
             >
               ▲ {node.upvotes}
             </button>
-            {account && (
+            {address && (
               <ReplyBox onSubmit={(text) => onPostComment(node.thread_id, text, node.id)} />
             )}
           </div>
@@ -87,7 +87,7 @@ export function ForumSectionView({
       <div className="p-4 space-y-6">
         {!hideCreate && (
           <div className="bg-white/40 rounded-xl border border-white/60 p-4 shadow-sm">
-            {!account ? (
+            {!address ? (
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600 font-medium">{tForum("loginRequired")}</div>
                 <Button size="sm" variant="cta" onClick={onConnectAndSign}>
@@ -230,7 +230,7 @@ export function ForumSectionView({
                   {tForum("comments.title")}
                 </div>
                 <div className="mt-2">{buildTree(t.comments || [])}</div>
-                {account && (
+                {address && (
                   <div className="mt-2">
                     <ReplyBox onSubmit={(text) => onPostComment(t.id, text)} />
                   </div>

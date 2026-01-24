@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
+import { formatAddress } from "@/lib/address";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -20,14 +21,7 @@ import type {
 } from "./forumSection/types";
 
 export default function ForumSection({ eventId, threadId, hideCreate }: ForumSectionProps) {
-  const {
-    account,
-    connectWallet,
-    formatAddress,
-    siweLogin,
-    requestWalletPermissions,
-    multisigSign,
-  } = useWallet();
+  const { address, connect } = useWallet();
   const tForum = useTranslations("forum");
   const { locale } = useLocale();
 
@@ -114,7 +108,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   useEffect(() => {
     const fetchVotes = async () => {
       try {
-        if (!account) {
+        if (!address) {
           setUserVotes(new Set());
           return;
         }
@@ -124,7 +118,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       } catch {}
     };
     fetchVotes();
-  }, [eventId, account]);
+  }, [eventId, address]);
 
   useEffect(() => {
     const run = async () => {
@@ -135,7 +129,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
           if (c.user_id) addrs.add(String(c.user_id));
         });
       });
-      if (account) addrs.add(String(account));
+      if (address) addrs.add(String(address));
       const unknown = Array.from(addrs).filter((a) => !nameMap[String(a || "").toLowerCase()]);
       if (unknown.length === 0) return;
       const next = await fetchUsernamesByAddresses(unknown);
@@ -143,10 +137,10 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       setNameMap((prev) => ({ ...prev, ...next }));
     };
     run();
-  }, [threads, account, nameMap]);
+  }, [threads, address, nameMap]);
 
   const postThread = async () => {
-    if (!account) {
+    if (!address) {
       setError(tForum("errors.walletRequired"));
       return;
     }
@@ -158,7 +152,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
       await createThread({
         eventId,
         title: t,
-        walletAddress: account,
+        walletAddress: address,
         subjectName,
         actionVerb,
         targetValue,
@@ -176,7 +170,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   };
 
   const postComment = async (threadIdNum: number, text: string, parentId?: number | null) => {
-    if (!account) {
+    if (!address) {
       setError(tForum("errors.walletRequired"));
       return;
     }
@@ -186,7 +180,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
         eventId,
         threadId: threadIdNum,
         content: text,
-        walletAddress: account,
+        walletAddress: address,
         parentId,
       });
       await load();
@@ -197,7 +191,7 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
 
   const vote = async (type: "thread" | "comment", id: number, dir: "up" | "down") => {
     try {
-      if (!account) {
+      if (!address) {
         setError(tForum("errors.walletRequiredForVote"));
         return;
       }
@@ -216,15 +210,13 @@ export default function ForumSection({ eventId, threadId, hideCreate }: ForumSec
   };
 
   const handleConnectAndSign = async () => {
-    await connectWallet();
-    await requestWalletPermissions();
-    await siweLogin();
+    await connect();
   };
 
   return (
     <ForumSectionView
       hideCreate={hideCreate}
-      account={account}
+      address={address}
       threads={threads}
       loading={loading}
       error={error}

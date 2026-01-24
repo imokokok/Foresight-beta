@@ -21,7 +21,7 @@ export default function RolesPage() {
   const t = useTranslations("adminRoles");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const { account } = useWallet();
+  const { address: account } = useWallet();
   const profileCtx = useUserProfileOptional();
   const [users, setUsers] = useState<RoleUser[]>([]);
   const [loading, setLoading] = useState(false);

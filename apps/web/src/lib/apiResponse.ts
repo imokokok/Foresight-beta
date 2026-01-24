@@ -73,8 +73,8 @@ export const ApiResponses = {
     errorResponse(message, ApiErrorCode.NOT_FOUND, 404),
 
   // 409 错误
-  conflict: (message: string = "Resource already exists") =>
-    errorResponse(message, ApiErrorCode.ALREADY_EXISTS, 409),
+  conflict: (message: string = "Resource already exists", details?: any) =>
+    errorResponse(message, ApiErrorCode.ALREADY_EXISTS, 409, details),
 
   // 429 错误
   rateLimit: (message: string = "Too many requests, please try again later") =>

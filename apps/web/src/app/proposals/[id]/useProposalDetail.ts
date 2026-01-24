@@ -4,6 +4,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { normalizePositiveId, isValidPositiveId } from "@/lib/ids";
 import { toast, handleApiError } from "@/lib/toast";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
+import { formatAddress } from "@/lib/address";
 import { t } from "@/lib/i18n";
 import {
   PROPOSALS_EVENT_ID,
@@ -64,7 +65,7 @@ async function fetchProposalThreadById(idNum: number | null): Promise<ThreadView
 }
 
 export function useProposalDetail(id: string) {
-  const { account, formatAddress, isAuthenticated, siweLogin } = useWallet();
+  const { address } = useWallet();
   const idNum = normalizePositiveId(id);
   const isValidId = isValidPositiveId(idNum);
 
@@ -101,9 +102,9 @@ export function useProposalDetail(id: string) {
   }, [refetch]);
 
   const { data: userVotesData = [] } = useQuery<ProposalUserVoteRow[]>({
-    queryKey: proposalsQueryKeys.userVotes(account),
+    queryKey: proposalsQueryKeys.userVotes(address),
     queryFn: fetchProposalUserVotes,
-    enabled: !!account,
+    enabled: !!address,
     staleTime: PROPOSAL_USER_VOTES_STALE_MS,
   });
 
@@ -113,22 +114,22 @@ export function useProposalDetail(id: string) {
 
   useEffect(() => {
     if (!thread) return;
-    const addresses = new Set<string>();
-    if (thread.user_id) addresses.add(thread.user_id);
+    const accountes = new Set<string>();
+    if (thread.user_id) accountes.add(thread.user_id);
     if (Array.isArray(thread.comments)) {
       thread.comments.forEach((c: any) => {
-        if (c.user_id) addresses.add(c.user_id);
+        if (c.user_id) accountes.add(c.user_id);
       });
     }
-    if (addresses.size === 0) return;
-    fetchUsernamesByAddresses(Array.from(addresses)).then((map) => {
+    if (accountes.size === 0) return;
+    fetchUsernamesByAddresses(Array.from(accountes)).then((map) => {
       setNameMap((prev) => ({ ...prev, ...map }));
     });
   }, [thread]);
 
   const vote = useCallback(
     async (type: "thread" | "comment", contentId: number, dir: "up" | "down") => {
-      if (!account) {
+      if (!address) {
         toast.error(t("forum.errors.walletRequiredForVote"));
         return;
       }
@@ -139,7 +140,7 @@ export function useProposalDetail(id: string) {
       }
 
       queryClient.setQueryData<ProposalUserVoteRow[]>(
-        proposalsQueryKeys.userVotes(account),
+        proposalsQueryKeys.userVotes(address),
         (prev) => {
           const list = Array.isArray(prev) ? [...prev] : [];
           list.push({ content_type: type, content_id: contentId, vote_type: dir });
@@ -190,15 +191,15 @@ export function useProposalDetail(id: string) {
       } catch (e: any) {
         handleApiError(e, "forum.errors.voteFailed");
         refresh();
-        queryClient.invalidateQueries({ queryKey: proposalsQueryKeys.userVotes(account) });
+        queryClient.invalidateQueries({ queryKey: proposalsQueryKeys.userVotes(address) });
       }
     },
-    [account, userVotes, queryClient, thread, idNum, refresh]
+    [address, userVotes, queryClient, thread, idNum, refresh]
   );
 
   const postComment = useCallback(
     async (content: string, parentId?: number) => {
-      if (!account || !thread) return;
+      if (!address || !thread) return;
       try {
         const res = await fetch("/api/forum/comments", {
           method: "POST",
@@ -207,7 +208,7 @@ export function useProposalDetail(id: string) {
             eventId: PROPOSALS_EVENT_ID,
             threadId: thread.id,
             content,
-            walletAddress: account,
+            walletAddress: address,
             parentId,
           }),
         });
@@ -225,10 +226,10 @@ export function useProposalDetail(id: string) {
         handleApiError(e, "forum.errors.commentFailed");
       }
     },
-    [account, thread, refresh]
+    [address, thread, refresh]
   );
 
-  const isAuthor = !!account && !!thread && String(thread.user_id || "") === String(account || "");
+  const isAuthor = !!address && !!thread && String(thread.user_id || "") === String(address || "");
 
   const canResubmit =
     !!thread && isAuthor && String(thread.review_status || "") === "needs_changes";
@@ -236,13 +237,6 @@ export function useProposalDetail(id: string) {
   const resubmit = useCallback(async () => {
     if (!thread || !canResubmit) return;
     try {
-      if (!isAuthenticated) {
-        const authRes = await siweLogin();
-        if (!authRes.success) {
-          toast.error(authRes.error || t("errors.wallet.verifyFailed"));
-          return;
-        }
-      }
       const res = await fetch(`/api/review/proposals/${thread.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -261,7 +255,7 @@ export function useProposalDetail(id: string) {
     } catch (e: any) {
       handleApiError(e, "proposals.detail.resubmitFailed");
     }
-  }, [thread, canResubmit, isAuthenticated, siweLogin, refresh]);
+  }, [thread, canResubmit, refresh]);
 
   const stats = useMemo(() => computeThreadStats(thread), [thread]);
 

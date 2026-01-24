@@ -53,7 +53,7 @@ import { getFallbackRpcUrl } from "@/lib/walletProviderUtils";
 
 export function usePredictionDetail() {
   const params = useParams();
-  const { account, provider: walletProvider, switchNetwork } = useWallet();
+  const { address, provider: walletProvider, switchChain } = useWallet();
   const tTrading = useTranslations("trading");
 
   const predictionIdRaw = (params as any).id;
@@ -109,31 +109,31 @@ export function usePredictionDetail() {
 
   // Proxy Wallet State
   const [useProxy, setUseProxy] = useState(false);
-  const proxyAddress = useProxyAddress(account);
+  const proxyAddress = useProxyAddress(address);
   const usdcBalance = useTokenBalancePolling({
     market,
-    address: account || undefined,
+    address: address || undefined,
     walletProvider,
-    switchNetwork,
+    switchNetwork: switchChain,
   });
   const shareBalance = useOutcomeBalancePolling({
     market,
-    address: account || undefined,
+    address: address || undefined,
     walletProvider,
-    switchNetwork,
+    switchNetwork: switchChain,
     tradeOutcome,
   });
   const proxyBalance = useTokenBalancePolling({
     market,
     address: proxyAddress,
     walletProvider,
-    switchNetwork,
+    switchNetwork: switchChain,
   });
   const proxyShareBalance = useOutcomeBalancePolling({
     market,
     address: proxyAddress,
     walletProvider,
-    switchNetwork,
+    switchNetwork: switchChain,
     tradeOutcome,
   });
 
@@ -150,19 +150,19 @@ export function usePredictionDetail() {
 
   const { openOrders, setOpenOrders, refreshUserOrders } = useUserOpenOrders({
     market,
-    account,
+    account: address,
     predictionIdRaw,
     proxyAddress,
   });
 
   const { following, followersCount, followLoading, followError, toggleFollow } =
-    useFollowPrediction(predictionId, account || undefined);
+    useFollowPrediction(predictionId, address || undefined);
 
   // 记录浏览历史（当用户登录且访问详情页时）
   useEffect(() => {
-    if (!account || !predictionId) return;
+    if (!address || !predictionId) return;
 
-    const accountNorm = normalizeAddress(account);
+    const accountNorm = normalizeAddress(address);
 
     // 避免同一用户对同一事件重复记录（在当前 mount 周期内）
     const recordKey = `${accountNorm}:${predictionId}`;
@@ -181,7 +181,7 @@ export function usePredictionDetail() {
       // 静默失败，不影响用户体验
       console.error("Failed to record view history:", err);
     });
-  }, [account, predictionId]);
+  }, [address, predictionId]);
 
   // 根据买/卖切换展示的余额：买显示 USDC (or Proxy USDC)，卖显示可卖份额
   useEffect(() => {
@@ -197,14 +197,14 @@ export function usePredictionDetail() {
   }, [tradeSide, usdcBalance, shareBalance, useProxy, proxyBalance, proxyShareBalance]);
 
   const cancelOrder = async (salt: string) => {
-    if (!account || !market || !walletProvider || !predictionIdRaw) return;
+    if (!address || !market || !walletProvider || !predictionIdRaw) return;
 
     const order = openOrders.find((o: any) => String(o.salt) === String(salt));
-    const maker = order?.maker || account;
+    const maker = order?.maker || address;
 
     await cancelOrderAction({
       salt,
-      account,
+      account: address,
       maker,
       market: market as MarketInfo,
       walletProvider,
@@ -216,13 +216,13 @@ export function usePredictionDetail() {
   };
 
   const handleMint = async (amountStr: string) => {
-    if (!market || !account || !walletProvider) return;
+    if (!market || !address || !walletProvider) return;
     await mintAction({
       amountStr,
       market: market as MarketInfo,
-      account,
+      account: address,
       walletProvider,
-      switchNetwork,
+      switchNetwork: switchChain,
       erc20Abi,
       marketAbi,
       setOrderMsg,
@@ -232,13 +232,13 @@ export function usePredictionDetail() {
   };
 
   const handleRedeem = async (amountStr: string) => {
-    if (!market || !account || !walletProvider) return;
+    if (!market || !address || !walletProvider) return;
     await redeemAction({
       amountStr,
       market: market as MarketInfo,
-      account,
+      account: address,
       walletProvider,
-      switchNetwork,
+      switchNetwork: switchChain,
       erc20Abi,
       erc1155Abi,
       marketAbi,
@@ -258,7 +258,7 @@ export function usePredictionDetail() {
 
     try {
       if (!market) throw createUserError(tTrading("orderFlow.marketNotLoaded"));
-      if (!account) throw createUserError(tTrading("orderFlow.walletRequired"));
+      if (!address) throw createUserError(tTrading("orderFlow.walletRequired"));
 
       const amountVal = parseFloat(amountInput);
       if (isNaN(amountVal) || amountVal <= 0) {
@@ -379,7 +379,7 @@ export function usePredictionDetail() {
 
       const provider = await createBrowserProvider(walletProvider);
       try {
-        await ensureNetwork(provider, market.chain_id, switchNetwork);
+        await ensureNetwork(provider, market.chain_id, switchChain);
       } catch (e: any) {
         throw createUserError(
           formatTranslation(tTrading("orderFlow.switchNetwork"), {
@@ -494,7 +494,7 @@ export function usePredictionDetail() {
                 fillArr,
                 tokenContract,
                 signer,
-                account,
+                account: address,
                 matchingMessage,
                 tTrading,
                 setOrderMsg,
@@ -522,7 +522,7 @@ export function usePredictionDetail() {
 
       await submitLimitOrder({
         market,
-        account,
+        account: address,
         predictionIdRaw,
         tradeSide,
         tradeOutcome,
@@ -553,7 +553,7 @@ export function usePredictionDetail() {
     error,
     prediction,
     market,
-    account,
+    address,
     followersCount,
     following,
     toggleFollow,

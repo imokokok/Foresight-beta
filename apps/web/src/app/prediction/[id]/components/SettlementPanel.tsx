@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function SettlementPanel({ market, outcomes }: Props) {
-  const { account, provider, switchNetwork } = useWallet();
+  const { address, provider, switchChain } = useWallet();
   const { status, loading } = useSettlementStatus(market);
   const [msg, setMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,16 +155,16 @@ export function SettlementPanel({ market, outcomes }: Props) {
 
   // Actions
   const handleAssert = async () => {
-    if (!account || !provider) return;
+    if (!address || !provider) return;
     setIsSubmitting(true);
     try {
       await assertOutcomeAction({
         market,
         outcomeIndex: assertOutcomeIndex,
         claim: assertClaim || "Asserted via Foresight UI",
-        account,
+        account: address,
         walletProvider: provider,
-        switchNetwork,
+        switchNetwork: switchChain,
         setMsg,
       });
     } catch (e: any) {
@@ -176,14 +176,14 @@ export function SettlementPanel({ market, outcomes }: Props) {
   };
 
   const handleSettleOracle = async () => {
-    if (!account || !provider) return;
+    if (!address || !provider) return;
     setIsSubmitting(true);
     try {
       await settleAdapterAction({
         market,
-        account,
+        account: address,
         walletProvider: provider,
-        switchNetwork,
+        switchNetwork: switchChain,
         setMsg,
       });
     } catch (e: any) {
@@ -195,14 +195,14 @@ export function SettlementPanel({ market, outcomes }: Props) {
   };
 
   const handleResolveMarket = async () => {
-    if (!account || !provider) return;
+    if (!address || !provider) return;
     setIsSubmitting(true);
     try {
       await resolveMarketAction({
         market,
-        account,
+        account: address,
         walletProvider: provider,
-        switchNetwork,
+        switchNetwork: switchChain,
         setMsg,
       });
     } catch (e: any) {
@@ -390,7 +390,7 @@ export function SettlementPanel({ market, outcomes }: Props) {
             />
             <button
               onClick={handleAssert}
-              disabled={isSubmitting || !account || !provider || !assertClaim.trim()}
+              disabled={isSubmitting || !address || !provider || !assertClaim.trim()}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               Assert Outcome
@@ -504,7 +504,7 @@ export function SettlementPanel({ market, outcomes }: Props) {
 
             <button
               onClick={handleSettleOracle}
-              disabled={isSubmitting || !canSettle || !account || !provider}
+              disabled={isSubmitting || !canSettle || !address || !provider}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               {isDisputePending ? "Waiting for UMA resolution" : "Settle Oracle"}
@@ -564,7 +564,7 @@ export function SettlementPanel({ market, outcomes }: Props) {
             </p>
             <button
               onClick={handleResolveMarket}
-              disabled={isSubmitting || !account || !provider}
+              disabled={isSubmitting || !address || !provider}
               className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-colors"
             >
               Resolve Market

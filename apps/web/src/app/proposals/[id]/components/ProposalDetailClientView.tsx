@@ -23,8 +23,8 @@ export type ProposalDetailClientViewProps = {
   stats: any;
   userVoteTypes: any;
   displayName: any;
-  account: string | null | undefined;
-  connectWallet: () => void;
+  address: string | null | undefined;
+  connect: () => void;
   replyText: string;
   onReplyTextChange: (value: string) => void;
   onSubmitReply: () => void;
@@ -46,8 +46,8 @@ export function ProposalDetailClientView({
   stats,
   userVoteTypes,
   displayName,
-  account,
-  connectWallet,
+  address,
+  connect,
   replyText,
   onReplyTextChange,
   onSubmitReply,
@@ -120,8 +120,8 @@ export function ProposalDetailClientView({
                     displayName={displayName}
                     vote={vote}
                     postComment={postComment}
-                    account={account}
-                    connectWallet={connectWallet}
+                    address={address}
+                    connect={connect}
                     replyText={replyText}
                     onReplyTextChange={onReplyTextChange}
                     onSubmitReply={onSubmitReply}

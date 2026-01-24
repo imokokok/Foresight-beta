@@ -17,8 +17,8 @@ export type ProposalDiscussionSectionProps = {
   displayName: (addr: string) => string;
   vote: (target: "thread" | "comment", id: number, dir: "up" | "down") => void;
   postComment: (text: string, parentId?: number) => void;
-  account: string | null | undefined;
-  connectWallet: () => void | Promise<void>;
+  address: string | null | undefined;
+  connect: () => void | Promise<void>;
   replyText: string;
   onReplyTextChange: (value: string) => void;
   onSubmitReply: () => void;
@@ -33,15 +33,14 @@ export function ProposalDiscussionSection({
   displayName,
   vote,
   postComment,
-  account,
-  connectWallet,
+  address,
+  connect,
   replyText,
   onReplyTextChange,
   onSubmitReply,
   canResubmit,
   onResubmit,
 }: ProposalDiscussionSectionProps) {
-  const { siweLogin } = useWallet();
   const tProposals = useTranslations("proposals");
   const tChat = useTranslations("chat");
   const tCommon = useTranslations("common");
@@ -78,12 +77,9 @@ export function ProposalDiscussionSection({
 
   const reportThread = async (reason: "spam" | "abuse" | "misinfo") => {
     try {
-      if (!account) {
-        await Promise.resolve(connectWallet());
+      if (!address) {
+        await Promise.resolve(connect());
       }
-      try {
-        await siweLogin();
-      } catch {}
 
       const res = await fetch("/api/forum/report", {
         method: "POST",
@@ -196,13 +192,13 @@ export function ProposalDiscussionSection({
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-[11px] px-3 py-1.5 rounded-full bg-slate-100/80 border border-slate-200 text-slate-500 font-medium">
-            {account
+            {address
               ? formatTranslation(tProposals("discussion.currentUser"), {
-                  name: displayName(account),
+                  name: displayName(address),
                 })
               : tProposals("discussion.walletNotConnected")}
           </div>
-          {String(thread.user_id || "").toLowerCase() !== String(account || "").toLowerCase() && (
+          {String(thread.user_id || "").toLowerCase() !== String(address || "").toLowerCase() && (
             <div className="relative">
               <button
                 type="button"
@@ -306,8 +302,8 @@ export function ProposalDiscussionSection({
             userVoteTypes={userVoteTypes}
             onVote={(id, dir) => vote("comment", id, dir)}
             onReply={(id, text) => postComment(text, id)}
-            account={account}
-            connectWallet={connectWallet}
+            address={address}
+            connect={connect}
             displayName={displayName}
             threadAuthorId={thread.user_id}
           />
@@ -317,8 +313,8 @@ export function ProposalDiscussionSection({
           value={replyText}
           onChange={onReplyTextChange}
           onSubmit={onSubmitReply}
-          isConnected={!!account}
-          onConnect={connectWallet}
+          isConnected={!!address}
+          onConnect={connect}
           placeholder={tProposals("discussion.inputPlaceholder")}
         />
       </div>

@@ -44,7 +44,7 @@ export type ActionVerb = "priceReach" | "willWin" | "willHappen";
 
 export type ForumSectionViewProps = {
   hideCreate?: boolean;
-  account: string | null | undefined;
+  address: string | null | undefined;
   threads: ThreadView[];
   loading: boolean;
   error: string | null;

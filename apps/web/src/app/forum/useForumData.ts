@@ -1,25 +1,26 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { fetchUsernamesByAddresses, getDisplayName } from "@/lib/userProfiles";
+import { formatAddress } from "@/lib/address";
 import { useForumList } from "./useForumList";
 
 export function useForumData() {
-  const { account, formatAddress } = useWallet();
+  const { address } = useWallet();
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const fetchedRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!account || fetchedRef.current) return;
+    if (!address || fetchedRef.current) return;
     fetchedRef.current = true;
 
     const run = async () => {
-      const res = await fetchUsernamesByAddresses([account]);
+      const res = await fetchUsernamesByAddresses([address]);
       if (res && Object.keys(res).length > 0) {
         setNameMap((prev) => ({ ...prev, ...res }));
       }
     };
     run();
-  }, [account]);
+  }, [address]);
 
   const {
     categories,
@@ -56,7 +57,7 @@ export function useForumData() {
   );
 
   return {
-    account,
+    address,
     categories,
     activeCategory,
     setActiveCategory,

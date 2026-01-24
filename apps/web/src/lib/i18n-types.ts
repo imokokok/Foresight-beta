@@ -6,7 +6,7 @@ export type Messages = typeof en;
 
 export type MessageValue = string | number | boolean | null | undefined;
 
-type DeepKeys<T, Prefix = ""> = T extends MessageValue
+type DeepKeys<T, Prefix extends string = ""> = T extends MessageValue
   ? Prefix
   : {
       [K in keyof T & string]: T[K] extends MessageValue

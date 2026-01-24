@@ -17,6 +17,7 @@ import { useTranslations } from "@/lib/i18n";
 import { toast } from "@/lib/toast";
 import { safeJsonLdStringify } from "@/lib/seo";
 import { useAuthOptional } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { getEventStatus, getStatusBadgeColor, getStatusText } from "@/lib/date-utils";
 
 type PredictionDetailClientProps = {
@@ -106,13 +107,14 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
   const tTrading = useTranslations("trading");
   const t = useTranslations();
   const auth = useAuthOptional();
-  const userId = auth?.user?.id ?? null;
+  const { user } = useUser();
+  const userId = user?.id ?? null;
   const {
     loading,
     error,
     prediction,
     market,
-    account,
+    address,
     followersCount,
     following,
     toggleFollow,
@@ -165,7 +167,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
     proxyShareBalance,
   } = usePredictionDetail();
 
-  const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(account || undefined);
+  const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(address || undefined);
 
   const [depositOpen, setDepositOpen] = useState(false);
 
@@ -203,7 +205,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
 
   const predictionIdNum = Number(prediction.id);
   const currentPosition =
-    account && portfolio?.positions
+    address && portfolio?.positions
       ? (portfolio.positions as any[]).find((p: any) => Number(p.id) === predictionIdNum)
       : null;
   const positionStake = currentPosition ? Number((currentPosition as any).stake || 0) : 0;
@@ -289,7 +291,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                   <span>{tTrading("orderFlow.marketClosed")}</span>
                 </div>
               )}
-              {account && currentPosition && !portfolioLoading && (
+              {address && currentPosition && !portfolioLoading && (
                 <div className="mt-3 max-w-md">
                   <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--card-border)] px-3 py-2.5 text-[11px] text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-sm">
                     <div className="flex flex-col gap-1">
@@ -442,7 +444,7 @@ export default function PredictionDetailClient({ relatedProposalId }: Prediction
                 data={{
                   market,
                   prediction,
-                  account,
+                  address,
                   bestBid,
                   bestAsk,
                   balance,

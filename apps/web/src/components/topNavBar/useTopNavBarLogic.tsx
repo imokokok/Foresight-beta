@@ -16,32 +16,24 @@ export function useTopNavBarLogic() {
   const menuState = useMenuState();
 
   // 钱包导航逻辑
-  const walletNav = useWalletNavLogic(mounted, menuState.setMenuOpen, menuState.setWalletSelectorOpen);
+  const walletNav = useWalletNavLogic(
+    mounted,
+    menuState.setMenuOpen,
+    menuState.setWalletSelectorOpen
+  );
 
   // 计算 viewerId
-  const viewerId = useMemo(() => String(walletNav.account || "").toLowerCase(), [walletNav.account]);
+  const viewerId = useMemo(
+    () => String(walletNav.address || "").toLowerCase(),
+    [walletNav.address]
+  );
 
   // 通知逻辑
   const notifications = useNotificationsLogic(viewerId);
 
   return {
     // 钱包相关
-    account: walletNav.account,
-    isConnecting: walletNav.isConnecting,
-    connectError: walletNav.connectError,
-    hasProvider: walletNav.hasProvider,
-    chainId: walletNav.chainId,
-    balanceEth: walletNav.balanceEth,
-    balanceLoading: walletNav.balanceLoading,
-    refreshBalance: walletNav.refreshBalance,
-    connectWallet: walletNav.connectWallet,
-    disconnectWallet: walletNav.disconnectWallet,
-    formatAddress: walletNav.formatAddress,
-    availableWallets: walletNav.availableWallets,
-    currentWalletType: walletNav.currentWalletType,
-    switchNetwork: walletNav.switchNetwork,
-    user: walletNav.user,
-    authLoading: walletNav.authLoading,
+    address: walletNav.address,
     signOut: walletNav.signOut,
     userProfile: walletNav.userProfile,
     tWallet: walletNav.tWallet,
@@ -55,14 +47,7 @@ export function useTopNavBarLogic() {
     handleConnectWallet: walletNav.handleConnectWallet,
     handleDisconnectWallet: walletNav.handleDisconnectWallet,
     copyAddress: walletNav.copyAddress,
-    networkName: walletNav.networkName,
-    walletTypeLabel: walletNav.walletTypeLabel,
-    isSepolia: walletNav.isSepolia,
-    explorerBase: walletNav.explorerBase,
-    updateNetworkInfo: walletNav.updateNetworkInfo,
     openOnExplorer: walletNav.openOnExplorer,
-    switchToSepolia: walletNav.switchToSepolia,
-    modal: walletNav.modal,
 
     // 菜单状态
     mounted,

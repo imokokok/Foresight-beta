@@ -7,7 +7,7 @@ import { MessageCircle, ArrowLeft, ArrowUpRight } from "lucide-react";
 import { ProposalChatShell } from "@/app/proposals/[id]/components/chat/ProposalChatShell";
 import ChatPanel from "@/components/ChatPanel";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format";
 import type { Database } from "@/lib/database.types";
@@ -22,8 +22,8 @@ type ForumChatDetailClientProps = {
 
 export default function ForumChatDetailClient({ eventId, prediction }: ForumChatDetailClientProps) {
   const router = useRouter();
-  const { account } = useWallet();
-  const { user } = useAuth();
+  const { address } = useWallet();
+  const { user } = useUser();
   const tForum = useTranslations("forum");
   const tChat = useTranslations("chat");
   const { locale } = useLocale();
@@ -33,9 +33,9 @@ export default function ForumChatDetailClient({ eventId, prediction }: ForumChat
   const followers = prediction?.followers_count ?? 0;
 
   const displayName = useMemo(() => {
-    const base = account || user?.email || tForum("guestFallback");
+    const base = address || user?.email || tForum("guestFallback");
     return base.slice(0, 12);
-  }, [account, user, tForum]);
+  }, [address, user, tForum]);
 
   const createdAtLabel = useMemo(() => {
     if (!prediction?.created_at) return "";

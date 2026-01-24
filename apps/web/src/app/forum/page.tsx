@@ -20,14 +20,14 @@ import {
 import GradientPage from "@/components/ui/GradientPage";
 import { useForumList } from "./useForumList";
 import { useWallet } from "@/contexts/WalletContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/contexts/UserContext";
 import { useTranslations, useLocale, formatTranslation } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 
 export default function ForumPage() {
   const router = useRouter();
-  const { account } = useWallet();
-  const { user } = useAuth();
+  const { address } = useWallet();
+  const { user } = useUser();
   const tForum = useTranslations("forum");
   const { locale } = useLocale();
 
@@ -61,7 +61,7 @@ export default function ForumPage() {
     }
   }, [inView, hasNextPage, loadingMore, loadMore]);
 
-  const displayName = (account || user?.email || tForum("guestFallback")).slice(0, 12);
+  const displayName = (address || user?.email || tForum("guestFallback")).slice(0, 12);
   const loadedTopicsCount = filtered.length;
   const totalTopicsCount =
     typeof total === "number" ? Math.max(total, loadedTopicsCount) : loadedTopicsCount;
@@ -114,8 +114,8 @@ export default function ForumPage() {
             <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 overflow-hidden p-0.5">
               <img
                 src={
-                  account
-                    ? `https://api.dicebear.com/7.x/identicon/svg?seed=${account}`
+                  address
+                    ? `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`
                     : `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(
                         user?.email || tForum("guestFallback")
                       )}&backgroundColor=e9d5ff`
