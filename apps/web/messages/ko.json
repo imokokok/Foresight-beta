@@ -63,7 +63,8 @@
       "header": "{year}년 {month}",
       "displayDate": "{year}-{month}-{day}",
       "displayWithTime": "{year}-{month}-{day} {hour}:{minute}"
-    }
+    },
+    "loginRequiredForDeposit": "Please log in to deposit."
   },
   "nav": {
     "home": "홈",
@@ -420,7 +421,44 @@
       "categoryLabel": "카테고리 선택",
       "cancel": "취소",
       "submit": "제안 제출",
-      "submitting": "제출 중..."
+      "submitting": "제출 중...",
+      "actionVerbLabel": "Action type",
+      "actionVerbPriceReach": "Price reaches",
+      "actionVerbWillHappen": "Will happen",
+      "actionVerbWillWin": "Will win",
+      "addLink": "Add link",
+      "addOption": "Add option",
+      "criteriaLabel": "Resolution criteria (required)",
+      "criteriaPlaceholder": "Clearly define what counts as Yes/No and which sources are valid…",
+      "descriptionLabel": "Description (optional)",
+      "errors": {
+        "subjectNameRequired": "Please enter a subject name",
+        "actionVerbRequired": "Please select an action type",
+        "targetValueRequired": "Please enter a target value",
+        "resolutionTimeRequired": "Please enter an expiration/resolution time",
+        "resolutionTimeInFuture": "Expiration/resolution time must be in the future",
+        "outcomesMin2": "At least 2 outcomes are required",
+        "criteriaMinLength": "Please provide resolution criteria (at least 20 characters)",
+        "primarySourceInvalid": "Please enter a valid primary source URL (http/https)"
+      },
+      "extraLinksHint": "You can add multiple sources or reference links",
+      "extraLinksLabel": "Additional links (optional)",
+      "imageCount": "{count} images",
+      "marketTemplateCriteria": "Use objective, verifiable sources; conditions met before the expiration time count as achieved; if ambiguous, follow the primary source’s official announcement.",
+      "mediaLabel": "Images / Media (optional)",
+      "outcomePlaceholderIndex": "Outcome {index}",
+      "outcomePlaceholderNo": "No",
+      "outcomePlaceholderYes": "Yes",
+      "outcomesLabel": "Outcomes",
+      "primarySourceLabel": "Primary source URL (required)",
+      "resolutionTimeLabel": "Expiration / Resolution time",
+      "selectImage": "Select image",
+      "subjectNameLabel": "Subject name",
+      "subjectNamePlaceholder": "e.g. BTC, Trump, Apple",
+      "targetValueLabel": "Target",
+      "targetValuePlaceholder": "e.g. 100000, wins, passes",
+      "uploading": "Uploading…",
+      "useMarketTemplate": "Use Market Template"
     },
     "actions": {
       "newProposal": "새 제안"
@@ -913,7 +951,8 @@
       "canceled": "주문이 취소되었습니다.",
       "cancelFailed": "이번에는 주문이 취소되지 않았어요. 잠시 후에 다시 시도해 주세요.",
       "slippageTooHigh": "이번 시장가 주문의 예상 슬리피지가 설정한 한도를 넘어섰어요. 주문 수량을 줄이거나 허용 슬리피지 한도를 조금 넓힌 뒤 다시 시도해 주세요.",
-      "marketConfirm": "지금 {side} 방향의 시장가 주문을 제출하려고 합니다.\n\n이번 주문은 대략 다음과 같이 체결될 수 있어요:\n- 예상 체결 수량: {filled} / {total} 주\n- 예상 평균 체결가: {avgPrice} USDC\n- 예상 최악 체결가: {worstPrice} USDC\n- 예상 총 비용: {totalCost} USDC\n- 예상 슬리피지: {slippage}%\n\n이대로 진행할까요?"
+      "marketConfirm": "지금 {side} 방향의 시장가 주문을 제출하려고 합니다.\n\n이번 주문은 대략 다음과 같이 체결될 수 있어요:\n- 예상 체결 수량: {filled} / {total} 주\n- 예상 평균 체결가: {avgPrice} USDC\n- 예상 최악 체결가: {worstPrice} USDC\n- 예상 총 비용: {totalCost} USDC\n- 예상 슬리피지: {slippage}%\n\n이대로 진행할까요?",
+      "insufficientFundsDetail": "Not enough balance to complete this transaction. (Available {available} USDC, need {required} USDC, short {shortfall} USDC)"
     },
     "mintFlow": {
       "approveUsdc": "USDC 사용 권한을 승인해 주세요...",
@@ -1014,7 +1053,8 @@
     },
     "chart": {
       "loading": "시장 데이터 로딩 중...",
-      "outcomeFallback": "결과 {index}"
+      "outcomeFallback": "결과 {index}",
+      "live": "Live"
     },
     "outcomes": {
       "multiDistribution": "다중 결과 확률 분포",
@@ -1448,7 +1488,10 @@
       "submit": "저장 및 계속",
       "later": "나중에",
       "emailInvalid": "이메일 형식이 유효하지 않습니다. 확인 후 다시 시도하세요.",
-      "or": "또는"
+      "or": "또는",
+      "completeSignupAndLogin": "Complete signup and log in",
+      "verifySuccessSubtitle": "Set a username to complete signup",
+      "verifySuccessTitle": "Verification successful"
     },
     "devCodePreviewPrefix": "개발 인증 코드: ",
     "errors": {
@@ -2082,6 +2125,151 @@
         "title": "아직 팔로워 없음",
         "description": "인사이트를 공유하여 팔로워를 늘리세요!"
       }
+    }
+  },
+  "card": {
+    "status": {
+      "active": "Active",
+      "upcoming": "Upcoming",
+      "resolved": "Resolved",
+      "expired": "Expired"
+    }
+  },
+  "depositModal": {
+    "title": "Deposit",
+    "subtitle": "Network: {network} · Asset: {asset}",
+    "smartAccount": {
+      "title": "Foresight Smart Account",
+      "description": "This smart contract account is created for you automatically. Deposit {asset} to start trading. You fully control your funds — safer and more convenient."
+    },
+    "address": {
+      "title": "Foresight account address",
+      "loading": "Fetching…",
+      "warning": "Only send {asset} on {network} to this address. Other assets/networks may not be recoverable."
+    },
+    "actions": {
+      "goLogin": "Log in"
+    },
+    "methods": {
+      "onchain": {
+        "title": "On-chain transfer",
+        "step1": "Select the {network} network in your wallet.",
+        "step2": "Select {asset} as the asset to transfer.",
+        "step3": "Paste the address above as the recipient address.",
+        "step4": "Test with a small amount before sending a larger one.",
+        "tip": "Tip: If your wallet says “unknown token”, verify on the explorer."
+      },
+      "exchange": {
+        "title": "Withdraw from an exchange",
+        "step1": "On the exchange “Withdraw” page, select {asset}.",
+        "step2": "Select network {network} (must match).",
+        "step3": "Use the address above as the withdrawal address.",
+        "step4": "Complete any whitelist/2FA requirements as prompted.",
+        "risk": "Risk: Sending the wrong network or asset may result in permanent loss."
+      }
+    },
+    "onramp": {
+      "title": "Buy crypto (On-ramp)",
+      "description": "Buy {asset} via card/bank transfer and send directly to your deposit address",
+      "cta": "Buy now"
+    },
+    "history": {
+      "title": "Deposit history",
+      "empty": "No deposit history yet (scanning recent blocks window).",
+      "itemMeta": "From {from} · Block {block}",
+      "details": "Details",
+      "statusConfirmed": "Confirmed",
+      "statusPending": "Pending",
+      "confirmations": "({confirmations}/{required})"
+    },
+    "bridge": {
+      "title": "Bridging (optional)",
+      "risk": "Bridging involves slippage, fees and delays. Make sure the destination chain and asset are {asset}."
+    },
+    "toast": {
+      "depositArrivedTitle": "Deposit received",
+      "depositArrivedDescription": "+{amount} {symbol}",
+      "depositPendingTitle": "Deposit pending",
+      "depositPendingDescription": "Detected +{amount} {symbol}, waiting for confirmations",
+      "depositConfirmedTitle": "Deposit confirmed",
+      "depositConfirmedDescription": "+{amount} {symbol} is ready to trade"
+    },
+    "errors": {
+      "loginRequiredForAddress": "Please log in to fetch your deposit address",
+      "fetchAddressFailed": "Failed to fetch deposit address",
+      "addressUnavailable": "Deposit address is unavailable",
+      "loginRequiredForHistory": "Please log in to view deposit history",
+      "loadHistoryFailed": "Failed to load deposit history",
+      "copyFailedTitle": "Copy failed",
+      "copyFailedDescription": "Please copy the address manually",
+      "usdcNotConfigured": "USDC address is not configured. Unable to read balance and deposit history. Set NEXT_PUBLIC_USDC_ADDRESS_* or COLLATERAL_TOKEN_ADDRESS."
+    }
+  },
+  "loginCallback": {
+    "status": {
+      "loggingIn": "Logging in…",
+      "pleaseWait": "Please wait"
+    },
+    "username": {
+      "title": "Set username",
+      "subtitle": "First-time email login requires setting a username",
+      "label": "Username",
+      "placeholder": "e.g. alice_01",
+      "hint": "3–20 chars, letters/numbers/underscore only",
+      "saving": "Saving…",
+      "saveAndContinue": "Save and continue",
+      "invalid": "Invalid username: 3–20 chars, letters/numbers/underscore only",
+      "taken": "Username is already taken"
+    },
+    "login": {
+      "title": "Login",
+      "subtitle": "Enter the email verification code to finish logging in",
+      "emailLabel": "Email",
+      "codeLabel": "6-digit code"
+    },
+    "code": {
+      "digitAriaLabel": "Verification code digit {index}",
+      "remainingAttempts": "{count} attempts remaining",
+      "devPreview": "Dev verification code: {code}"
+    },
+    "actions": {
+      "verifying": "Verifying…",
+      "verifyAndLogin": "Verify and login",
+      "resend": "Resend email",
+      "sending": "Sending…",
+      "resendCountdown": "Resend ({seconds}s)",
+      "back": "Back"
+    },
+    "errors": {
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "loginFailed": "Login failed",
+      "loginFailedWithStatus": "Login failed: {status}",
+      "sendFailed": "Failed to send email",
+      "sendFailedWithStatus": "Send failed: {status}",
+      "verifyFailed": "Verification failed",
+      "verifyFailedWithStatus": "Verification failed: {status}",
+      "saveFailed": "Save failed",
+      "saveFailedWithStatus": "Save failed: {status}"
+    }
+  },
+  "withdrawModal": {
+    "title": "Withdraw",
+    "availableBalance": "Available balance",
+    "withdrawing": "Withdrawing...",
+    "tips": {
+      "line1": "• Funds will be withdrawn from your Proxy Wallet to the currently connected wallet.",
+      "line2": "• Withdrawal requires signing a Safe transaction.",
+      "line3": "• A small amount of Matic/ETH is required for network gas."
+    },
+    "toast": {
+      "confirmInWallet": "Please confirm the withdrawal in your wallet...",
+      "sentTitle": "Withdrawal sent",
+      "sentDescription": "Funds will arrive in your wallet shortly"
+    },
+    "errors": {
+      "invalidAmount": "Please enter a valid withdrawal amount",
+      "insufficientBalance": "Insufficient available balance",
+      "withdrawFailedTitle": "Withdrawal failed"
     }
   }
 }
