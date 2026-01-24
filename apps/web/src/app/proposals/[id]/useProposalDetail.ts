@@ -263,7 +263,7 @@ export function useProposalDetail(id: string) {
     (addr: string) => {
       return getDisplayName(addr, nameMap, formatAddress);
     },
-    [nameMap, formatAddress]
+    [nameMap]
   );
 
   return {

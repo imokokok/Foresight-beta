@@ -46,23 +46,26 @@ export function useWalletConnection(params: Params = {}) {
         }
       }
     },
-    [onAccountsChanged]
+    [onAccountsChanged, setWalletState]
   );
 
-  const handleChainChanged = useCallback((chainId: string | number) => {
-    const raw = String(chainId);
-    let hex = "";
-    if (raw.startsWith("0x")) {
-      if (/^0x[0-9a-fA-F]+$/.test(raw)) hex = raw.toLowerCase();
-    } else {
-      const n = Number(raw);
-      if (Number.isFinite(n) && n > 0) hex = `0x${Math.floor(n).toString(16)}`;
-    }
-    setWalletState((prev) => ({
-      ...prev,
-      chainId: hex || null,
-    }));
-  }, []);
+  const handleChainChanged = useCallback(
+    (chainId: string | number) => {
+      const raw = String(chainId);
+      let hex = "";
+      if (raw.startsWith("0x")) {
+        if (/^0x[0-9a-fA-F]+$/.test(raw)) hex = raw.toLowerCase();
+      } else {
+        const n = Number(raw);
+        if (Number.isFinite(n) && n > 0) hex = `0x${Math.floor(n).toString(16)}`;
+      }
+      setWalletState((prev) => ({
+        ...prev,
+        chainId: hex || null,
+      }));
+    },
+    [setWalletState]
+  );
 
   const { connectWalletWithResult } = useWalletConnect({
     findProviderByType,

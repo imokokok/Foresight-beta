@@ -53,7 +53,7 @@ export function useForumData() {
   // 使用 useCallback 避免每次渲染创建新函数
   const displayName = useCallback(
     (addr: string) => getDisplayName(addr, nameMap, formatAddress),
-    [nameMap, formatAddress]
+    [nameMap]
   );
 
   return {

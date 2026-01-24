@@ -140,7 +140,7 @@ export function usePredictionDetail() {
   const cancelMarketConfirm = useCallback(() => {
     marketConfirm.cancelMarketConfirm();
     setOrderMsg(tTrading("orderFlow.orderFailedFallback"));
-  }, [tTrading, marketConfirm]);
+  }, [tTrading, marketConfirm, setOrderMsg]);
 
   const { depthBuy, depthSell, bestBid, bestAsk } = useOrderbookDepthPolling({
     market,
