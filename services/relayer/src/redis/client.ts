@@ -1,6 +1,22 @@
 /**
- * Redis 客户端
+ * Redis 客户端类
  * 用于订单簿快照持久化和状态同步
+ *
+ * 主要功能:
+ * - 基础键值操作 (get, set, del)
+ * - Hash 操作 (用于订单簿数据存储)
+ * - List 操作 (用于事件队列)
+ * - 分布式锁支持 (acquireLock, releaseLock, refreshLock)
+ * - 自动重连和熔断机制
+ *
+ * @example
+ * ```typescript
+ * const client = new RedisClient({ host: 'localhost', port: 6379 });
+ * await client.connect();
+ * await client.set('key', 'value');
+ * const value = await client.get('key');
+ * await client.disconnect();
+ * ```
  */
 
 import { createClient, RedisClientType } from "redis";
@@ -24,15 +40,49 @@ export interface RedisConfig {
   commandTimeout?: number;
   retryAttempts?: number;
   retryDelay?: number;
-  // 熔断配置
   circuitBreaker?: {
-    failureThreshold?: number; // 失败阈值 (百分比 0-100)
-    successThreshold?: number; // 成功阈值 (半开状态需要连续成功次数)
-    resetTimeout?: number; // 重置超时时间 (毫秒)
-    halfOpenTimeout?: number; // 半开状态超时时间 (毫秒)
-    halfOpenSuccessThreshold?: number; // 半开状态成功阈值 (百分比 0-100)
-    errorRateThreshold?: number; // 错误率阈值 (0-1)
-    minRequests?: number; // 最小请求数
+    /**
+     * 失败阈值百分比 (0-100)
+     * 当失败率超过此值时，熔断器将从关闭状态转为打开状态
+     * 默认值: 50
+     */
+    failureThreshold?: number;
+    /**
+     * 成功阈值 (连续成功次数)
+     * 熔断器处于半开状态时，需要连续成功此次数才能恢复到关闭状态
+     * 默认值: 3
+     */
+    successThreshold?: number;
+    /**
+     * 熔断器打开状态的持续时间 (毫秒)
+     * 超过此时间后，熔断器会尝试转换为半开状态
+     * 默认值: 30000 (30秒)
+     */
+    resetTimeout?: number;
+    /**
+     * 半开状态的最大持续时间 (毫秒)
+     * 超过此时间后，无论成功与否都会转换状态
+     * 默认值: 10000 (10秒)
+     */
+    halfOpenTimeout?: number;
+    /**
+     * 半开状态转换为关闭状态所需的最小成功率 (0-100)
+     * 半开状态下请求的成功率需要达到此值才能恢复关闭状态
+     * 默认值: 70
+     */
+    halfOpenSuccessThreshold?: number;
+    /**
+     * 错误率阈值 (0-1)
+     * 当滑动窗口内的错误率超过此值时触发熔断
+     * 默认值: 0.5
+     */
+    errorRateThreshold?: number;
+    /**
+     * 最小请求数
+     * 滑动窗口内请求数少于此时不触发熔断
+     * 默认值: 10
+     */
+    minRequests?: number;
   };
 }
 
@@ -45,12 +95,12 @@ const DEFAULT_CONFIG: RedisConfig = {
   commandTimeout: 3000,
   retryAttempts: 3,
   retryDelay: 1000,
-  // 默认熔断配置
   circuitBreaker: {
-    failureThreshold: 50, // 50% 失败率触发熔断
-    resetTimeout: 30000, // 30秒后尝试恢复
-    halfOpenTimeout: 10000, // 10秒半开状态超时
-    halfOpenSuccessThreshold: 70, // 70% 成功率恢复闭合状态
+    failureThreshold: 50,
+    successThreshold: 3,
+    resetTimeout: 30000,
+    halfOpenTimeout: 10000,
+    halfOpenSuccessThreshold: 70,
   },
 };
 
@@ -258,11 +308,24 @@ class RedisClient {
   }
 
   /**
-   * 获取带前缀的 key
+   * 获取带前缀的键名
+   * @param key - 原始键名
+   * @returns 带配置前缀的完整键名
    */
   private prefixKey(key: string): string {
     return `${this.config.keyPrefix}${key}`;
   }
+
+  /**
+   * 获取带前缀的键名 (公开方法)
+   * @param key - 原始键名
+   * @returns 带配置前缀的完整键名
+   * @example
+   * ```typescript
+   * const fullKey = client.getPrefixedKey('order:123');
+   * // 返回: 'foresight:order:123'
+   * ```
+   */
 
   getPrefixedKey(key: string): string {
     return this.prefixKey(key);
@@ -389,6 +452,28 @@ class RedisClient {
     return this.client;
   }
 
+  /**
+   * 获取分布式锁
+   * 使用 Redis SET NX PX 命令实现原子性的锁获取
+   *
+   * @param key - 锁的键名
+   * @param ttlMs - 锁的存活时间 (毫秒)
+   * @param retries - 重试次数，默认 20
+   * @param delayMs - 重试间隔 (毫秒)，默认 50
+   * @returns 成功返回锁的唯一标识符 (用于释放锁)，失败返回 null
+   *
+   * @example
+   * ```typescript
+   * const lockToken = await client.acquireLock('my-lock', 5000);
+   * if (lockToken) {
+   *   try {
+   *     // 临界区代码
+   *   } finally {
+   *     await client.releaseLock('my-lock', lockToken);
+   *   }
+   * }
+   * ```
+   */
   async acquireLock(
     key: string,
     ttlMs: number,
@@ -425,6 +510,14 @@ class RedisClient {
     return null;
   }
 
+  /**
+   * 释放分布式锁
+   * 使用 Lua 脚本确保原子性：只有持有锁的客户端才能释放
+   *
+   * @param key - 锁的键名
+   * @param token - 获取锁时返回的唯一标识符
+   * @returns 成功返回 true，锁不存在或 token 不匹配返回 false
+   */
   async releaseLock(key: string, token: string): Promise<boolean> {
     const result = await this.executeWithRetry<number>("releaseLock", async () => {
       const raw = this.getRawClient();
@@ -440,6 +533,15 @@ class RedisClient {
     return result === 1;
   }
 
+  /**
+   * 延长分布式锁的存活时间
+   * 使用 Lua 脚本确保原子性：只有持有锁的客户端才能延长
+   *
+   * @param key - 锁的键名
+   * @param token - 获取锁时返回的唯一标识符
+   * @param ttlMs - 新的存活时间 (毫秒)
+   * @returns 成功返回 true，锁不存在或 token 不匹配返回 false
+   */
   async refreshLock(key: string, token: string, ttlMs: number): Promise<boolean> {
     const ttl = Number.isFinite(ttlMs) && ttlMs > 0 ? Math.trunc(ttlMs) : 0;
     if (!ttl) return false;
@@ -463,10 +565,25 @@ class RedisClient {
 }
 
 // ============================================================
-// 单例实例
+// 单例实例管理
 // ============================================================
 
 let redisInstance: RedisClient | null = null;
+
+/**
+ * 获取 Redis 客户端单例
+ * 如果实例不存在则创建新实例，支持从环境变量读取配置
+ *
+ * @returns RedisClient 单例
+ *
+ * @example
+ * ```typescript
+ * import { getRedisClient } from './redis/client.js';
+ *
+ * const client = getRedisClient();
+ * await client.connect();
+ * ```
+ */
 
 export function getRedisClient(): RedisClient {
   if (!redisInstance) {
@@ -483,11 +600,42 @@ export function getRedisClient(): RedisClient {
   return redisInstance;
 }
 
+/**
+ * 初始化 Redis 连接
+ * 连接到 Redis 服务器并初始化监控指标
+ *
+ * @returns 连接成功返回 true，失败返回 false
+ *
+ * @example
+ * ```typescript
+ * import { initRedis } from './redis/client.js';
+ *
+ * const connected = await initRedis();
+ * if (connected) {
+ *   console.log('Redis 连接成功');
+ * }
+ * ```
+ */
 export async function initRedis(): Promise<boolean> {
   const client = getRedisClient();
   return client.connect();
 }
 
+/**
+ * 关闭 Redis 连接
+ * 断开与 Redis 服务器的连接并清理资源
+ *
+ * @example
+ * ```typescript
+ * import { closeRedis } from './redis/client.js';
+ *
+ * // 程序退出前调用
+ * process.on('SIGINT', async () => {
+ *   await closeRedis();
+ *   process.exit(0);
+ * });
+ * ```
+ */
 export async function closeRedis(): Promise<void> {
   if (redisInstance) {
     await redisInstance.disconnect();
