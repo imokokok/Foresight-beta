@@ -27,9 +27,12 @@ export interface RedisConfig {
   // 熔断配置
   circuitBreaker?: {
     failureThreshold?: number; // 失败阈值 (百分比 0-100)
+    successThreshold?: number; // 成功阈值 (半开状态需要连续成功次数)
     resetTimeout?: number; // 重置超时时间 (毫秒)
     halfOpenTimeout?: number; // 半开状态超时时间 (毫秒)
     halfOpenSuccessThreshold?: number; // 半开状态成功阈值 (百分比 0-100)
+    errorRateThreshold?: number; // 错误率阈值 (0-1)
+    minRequests?: number; // 最小请求数
   };
 }
 
@@ -303,7 +306,9 @@ class RedisClient {
     return result !== null;
   }
 
-  // ============================================================// Hash 操作 (用于订单簿)// ============================================================
+  // ============================================================
+  // Hash 操作 (用于订单簿)
+  // ============================================================
 
   async hGet(key: string, field: string): Promise<string | null> {
     return this.executeWithRetry<string | undefined>("hget", async () => {
@@ -338,7 +343,9 @@ class RedisClient {
     return result !== null;
   }
 
-  // ============================================================// List 操作 (用于事件队列)// ============================================================
+  // ============================================================
+  // List 操作 (用于事件队列)
+  // ============================================================
 
   async lPush(key: string, ...values: string[]): Promise<number> {
     const result = await this.executeWithRetry<number>("lpush", async () => {
@@ -353,7 +360,9 @@ class RedisClient {
     });
   }
 
-  // ============================================================// 过期时间操作// ============================================================
+  // ============================================================
+  // 过期时间操作
+  // ============================================================
 
   async expire(key: string, seconds: number): Promise<boolean> {
     const result = await this.executeWithRetry<boolean>("expire", async () => {
@@ -362,7 +371,9 @@ class RedisClient {
     return result || false;
   }
 
-  // ============================================================// 原子操作// ============================================================
+  // ============================================================
+  // 原子操作
+  // ============================================================
 
   async incr(key: string): Promise<number> {
     const result = await this.executeWithRetry<number>("incr", async () => {
