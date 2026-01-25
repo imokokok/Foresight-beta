@@ -91,8 +91,12 @@ export function buildPortfolioResponse(args: {
         } else if (winner === "no" && noAmount > 0) {
           const payoutNo = (value.stakeNo / noAmount) * totalAmount;
           gross = payoutNo;
+        } else if (value.stakeOther > 0) {
+          gross = 0;
         }
         netPnl = gross - value.totalStake;
+      } else if (resolved && value.totalStake > 0) {
+        netPnl = -value.totalStake;
       }
 
       totalRealizedPnl += netPnl;

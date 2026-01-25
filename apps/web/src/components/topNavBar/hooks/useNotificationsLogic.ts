@@ -42,13 +42,17 @@ export function useNotificationsLogic(viewerId: string | null) {
       if (saved === "all" || saved === "system" || saved === "review" || saved === "challenge") {
         setNotificationsFilter(saved);
       }
-    } catch {}
+    } catch (error) {
+      console.error("[useNotificationsLogic] Failed to load notifications filter:", error);
+    }
   }, []);
 
   useEffect(() => {
     try {
       window.localStorage.setItem("fs_notifications_filter", notificationsFilter);
-    } catch {}
+    } catch (error) {
+      console.error("[useNotificationsLogic] Failed to save notifications filter:", error);
+    }
   }, [notificationsFilter]);
 
   useEffect(() => {
@@ -89,7 +93,9 @@ export function useNotificationsLogic(viewerId: string | null) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ids: numericIds }),
       });
-    } catch {}
+    } catch (error) {
+      console.error("[useNotificationsLogic] Failed to mark notifications as read:", error);
+    }
   }, []);
 
   const fetchNotifications = useCallback(
@@ -325,7 +331,9 @@ export function useNotificationsLogic(viewerId: string | null) {
         const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
         const count = Number(countJson?.count || 0);
         setNotificationsCount(Number.isFinite(count) ? count : 0);
-      } catch {}
+      } catch (error) {
+        console.error("[useNotificationsLogic] Failed to fetch unread count:", error);
+      }
     } finally {
       setMarkAllNotificationsLoading(false);
     }
@@ -357,7 +365,12 @@ export function useNotificationsLogic(viewerId: string | null) {
             const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
             const count = Number(countJson?.count || 0);
             setNotificationsCount(Number.isFinite(count) ? count : 0);
-          } catch {}
+          } catch (error) {
+            console.error(
+              "[useNotificationsLogic] Failed to update unread count after archive:",
+              error
+            );
+          }
         }
       } finally {
         setArchiveNotificationIdLoading(null);
@@ -384,7 +397,12 @@ export function useNotificationsLogic(viewerId: string | null) {
         const countJson = countRes.ok ? await countRes.json().catch(() => ({})) : {};
         const count = Number(countJson?.count || 0);
         setNotificationsCount(Number.isFinite(count) ? count : 0);
-      } catch {}
+      } catch (error) {
+        console.error(
+          "[useNotificationsLogic] Failed to update unread count after archive all:",
+          error
+        );
+      }
     } finally {
       setArchiveAllNotificationsLoading(false);
     }

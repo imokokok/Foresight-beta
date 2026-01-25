@@ -56,6 +56,7 @@ body {
 }
 
 .glass-card-hover {
+  will-change: transform, box-shadow;
   @apply transition-all duration-300 hover:shadow-brand hover:-translate-y-1;
 }
 
@@ -232,6 +233,7 @@ body {
   
   /* 改善卡片触摸反馈 */
   .glass-card-hover {
+    will-change: transform, box-shadow;
     @apply active:scale-[0.98] active:shadow-sm;
   }
   
@@ -360,6 +362,7 @@ body {
 /* 触摸反馈 */
 .touch-feedback {
   -webkit-tap-highlight-color: rgba(168, 85, 247, 0.1);
+  will-change: transform;
   @apply active:scale-95 transition-transform duration-150;
 }
 

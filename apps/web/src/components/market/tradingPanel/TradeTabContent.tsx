@@ -119,11 +119,13 @@ export function TradeTabContent({
   setUseProxy,
   onDeposit,
 }: TradeTabContentProps) {
-  const parseUsdcBalanceNumber = (v: string | undefined) => {
+  const parseUsdcBalanceNumber = (v: string | undefined): number => {
     if (!v) return 0;
     const digits = v.replace(/[^0-9.]/g, "");
+    if (!digits) return 0;
     const n = parseFloat(digits);
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    if (!Number.isFinite(n) || n <= 0 || Number.isNaN(n)) return 0;
+    return Math.min(n, 1e15); // 防止溢出
   };
 
   const effectiveUsdcBalance =

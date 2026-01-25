@@ -69,7 +69,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
   }, [isOpen]);
 
   const menuItems = [
-    { icon: Home, label: tNav("home"), href: "/trending" },
+    { icon: Home, label: tNav("home"), href: "/" },
     { icon: TrendingUp, label: tNav("trending"), href: "/trending" },
     { icon: Search, label: tMobileNav("items.search"), href: "/search" },
     { icon: MessageSquare, label: tMobileNav("items.forum"), href: "/forum" },

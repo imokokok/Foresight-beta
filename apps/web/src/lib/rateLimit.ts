@@ -8,13 +8,7 @@
 import type { NextRequest } from "next/server";
 
 interface RateLimitConfig {
-  /**
-   * 时间窗口（毫秒）
-   */
   interval: number;
-  /**
-   * 窗口内最大请求数
-   */
   limit: number;
 }
 
@@ -23,8 +17,47 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
-// 内存存储（开发环境）
+const MAX_STORE_SIZE = 10000;
+const CLEANUP_INTERVAL = 60 * 1000; // 每 60 秒清理一次
+
 const store = new Map<string, RateLimitEntry>();
+let lastCleanupTime = Date.now();
+
+function cleanupStore() {
+  const now = Date.now();
+  if (now - lastCleanupTime < CLEANUP_INTERVAL) return;
+  lastCleanupTime = now;
+
+  let removed = 0;
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt < now) {
+      store.delete(key);
+      removed++;
+    }
+    if (store.size <= MAX_STORE_SIZE / 2) break;
+  }
+
+  if (removed > 0 && process.env.NODE_ENV === "development") {
+    console.log(`[rateLimit] Cleaned up ${removed} expired entries`);
+  }
+}
+
+function maintainMaxSize() {
+  if (store.size < MAX_STORE_SIZE) return;
+  const now = Date.now();
+  const entriesToDelete: string[] = [];
+  let count = 0;
+  for (const [key, entry] of store.entries()) {
+    if (entry.resetAt < now) {
+      entriesToDelete.push(key);
+    }
+    count++;
+    if (count > MAX_STORE_SIZE / 2) break;
+  }
+  for (const key of entriesToDelete) {
+    store.delete(key);
+  }
+}
 
 const upstashUrl = (process.env.UPSTASH_REDIS_REST_URL || "").trim();
 const upstashToken = (process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
@@ -88,6 +121,9 @@ export async function checkRateLimit(
       return { success: count <= config.limit, remaining, resetAt };
     }
   }
+
+  cleanupStore();
+  maintainMaxSize();
 
   const entry = store.get(baseKey);
 

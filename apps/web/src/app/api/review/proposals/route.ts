@@ -28,7 +28,9 @@ export async function GET(req: NextRequest) {
     const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(200, parsedLimit)) : 50;
     const { data, error } = await client
       .from("forum_threads")
-      .select("*")
+      .select(
+        "id, event_id, title, content, category, upvotes, review_status, created_at, updated_at, wallet_address"
+      )
       .eq("event_id", 0)
       .eq("review_status", status)
       .order("upvotes", { ascending: false })

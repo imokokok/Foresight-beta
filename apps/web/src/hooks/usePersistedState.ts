@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useCallback, useRef, Dispatch, SetStateAction } from "react";
 
 /**
  * 持久化状态 Hook
@@ -108,44 +108,62 @@ export function useSessionState<T>(key: string, defaultValue: T): [T, Dispatch<S
 /**
  * 带过期时间的持久化状态 Hook
  *
+ * @param key - localStorage 键名
+ * @param defaultValue - 默认值
+ * @param expiryMs - 过期时间（毫秒）
+ * @param options - 可选配置
+ * @returns [状态, 设置函数]
+ *
  * @example
  * ```tsx
  * // 1 小时后过期
  * const [data, setData] = usePersistedStateWithExpiry('data', null, 3600000);
+ *
+ * // 带刷新回调
+ * const [data, setData] = usePersistedStateWithExpiry('data', null, 3600000, {
+ *   onExpired: () => fetchFreshData()
+ * });
  * ```
  */
 export function usePersistedStateWithExpiry<T>(
   key: string,
   defaultValue: T,
-  expiryMs: number
+  expiryMs: number,
+  options?: {
+    onExpired?: () => void;
+    onError?: (error: unknown) => void;
+  }
 ): [T, Dispatch<SetStateAction<T>>] {
-  // 初始化时使用默认值，确保 SSR 和客户端首次渲染一致
   const [state, setState] = useState<T>(defaultValue);
   const [isHydrated, setIsHydrated] = useState(false);
+  const expiredRef = useRef(false);
 
-  // 客户端 hydration 完成后，从 localStorage 恢复状态
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
-        const { value, expiry } = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        const { value, expiry } = parsed as { value: T; expiry: number };
         if (Date.now() < expiry) {
-          setState(value as T);
+          setState(value);
         } else {
-          // 已过期，删除
           localStorage.removeItem(key);
+          expiredRef.current = true;
+          options?.onExpired?.();
         }
+      } else if (defaultValue === undefined) {
+        expiredRef.current = true;
+        options?.onExpired?.();
       }
     } catch (error) {
-      console.error(`Error loading persisted state with expiry for key "${key}":`, error);
+      options?.onError?.(error);
     }
 
     setIsHydrated(true);
-  }, [key]);
+  }, [key, defaultValue, options]);
 
-  // 保存到 localStorage（仅在 hydration 完成后）
   useEffect(() => {
     if (typeof window === "undefined" || !isHydrated) return;
 
@@ -159,9 +177,9 @@ export function usePersistedStateWithExpiry<T>(
         })
       );
     } catch (error) {
-      console.error(`Error saving persisted state with expiry for key "${key}":`, error);
+      options?.onError?.(error);
     }
-  }, [key, state, expiryMs, isHydrated]);
+  }, [key, state, expiryMs, isHydrated, options]);
 
   return [state, setState];
 }
@@ -175,7 +193,9 @@ export function clearPersistedState(key: string): void {
   try {
     localStorage.removeItem(key);
   } catch (error) {
-    console.error(`Error clearing persisted state for key "${key}":`, error);
+    if (process.env.NODE_ENV === "development") {
+      console.error(`[persistedState] Failed to clear key:`, error);
+    }
   }
 }
 
@@ -187,17 +207,17 @@ export function clearAllPersistedStates(prefix?: string): void {
 
   try {
     if (prefix) {
-      // 只清除特定前缀的
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith(prefix)) {
           localStorage.removeItem(key);
         }
       });
     } else {
-      // 清除所有
       localStorage.clear();
     }
   } catch (error) {
-    console.error("Error clearing all persisted states:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[persistedState] Failed to clear states:", error);
+    }
   }
 }

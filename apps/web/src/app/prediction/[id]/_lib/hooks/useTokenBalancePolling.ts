@@ -21,6 +21,7 @@ export function useTokenBalancePolling({
 
   useEffect(() => {
     let cancelled = false;
+    let mounted = true;
     if (!market || !address || !walletProvider) return;
     const run = async () => {
       try {
@@ -34,15 +35,20 @@ export function useTokenBalancePolling({
         );
         const bal = await tokenContract.balanceOf(address);
         const human = Number(ethers.formatUnits(bal, decimals));
-        if (!cancelled) setBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
+        if (mounted && !cancelled) {
+          setBalance(Number.isFinite(human) ? human.toFixed(2) : "0.00");
+        }
       } catch {
-        if (!cancelled) setBalance("0.00");
+        if (mounted && !cancelled) {
+          setBalance("0.00");
+        }
       }
     };
     void run();
     const timer = setInterval(run, 15000);
     return () => {
       cancelled = true;
+      mounted = false;
       clearInterval(timer);
     };
   }, [market, address, walletProvider, switchNetwork]);

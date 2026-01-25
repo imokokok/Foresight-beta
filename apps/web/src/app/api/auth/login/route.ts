@@ -1,4 +1,5 @@
 import { ApiResponses } from "@/lib/apiResponse";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +17,10 @@ export async function POST(req: Request) {
     if (!email || !password) {
       return ApiResponses.invalidParameters("参数无效：缺少邮箱或密码");
     }
-    return ApiResponses.badRequest("该接口已弃用，请使用邮箱验证码或钱包登录");
+    return NextResponse.json(
+      { error: "该接口已弃用，请使用邮箱验证码或钱包登录", code: "DEPRECATED" },
+      { status: 410 }
+    );
   } catch (e: unknown) {
     const detail = e instanceof Error ? e.message : String(e);
     return ApiResponses.internalError("登录失败", detail);

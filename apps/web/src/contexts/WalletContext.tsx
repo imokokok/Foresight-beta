@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 
 export interface WalletState {
   address: string | null;
@@ -27,41 +27,112 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const disconnectRef = useRef<(() => Promise<void>) | null>(null);
 
   const checkConnection = async () => {
     try {
       if (
         typeof window !== "undefined" &&
-        (window as unknown as { ethereum?: { selectedAddress?: string } }).ethereum
+        (
+          window as unknown as {
+            ethereum?: {
+              selectedAddress?: string;
+              request?: (args: { method: string }) => Promise<unknown>;
+            };
+          }
+        ).ethereum
       ) {
         const ethereum = (
           window as unknown as {
             ethereum: {
               selectedAddress?: string;
-              chainId?: string;
               request?: (args: { method: string }) => Promise<unknown>;
             };
           }
         ).ethereum;
         const address = ethereum.selectedAddress;
         if (address) {
+          let chainId: number | null = null;
+          try {
+            if (typeof ethereum.request === "function") {
+              const chainIdHex = await ethereum.request({ method: "eth_chainId" });
+              if (typeof chainIdHex === "string") {
+                chainId = parseInt(chainIdHex, 16);
+              }
+            }
+          } catch {
+            chainId = null;
+          }
+          if (!mountedRef.current) return;
           setState({
             address: `0x${address}`,
-            chainId: null,
+            chainId,
             isConnected: true,
             provider: ethereum as { request: (args: { method: string }) => Promise<unknown> },
           });
         }
       }
     } catch {
+      if (!mountedRef.current) return;
       setError("Failed to check wallet connection");
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     checkConnection();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const eth = (window as unknown as { ethereum?: unknown }).ethereum;
+    if (!eth || typeof eth !== "object") return;
+
+    const ethereum = eth as Record<string, (...args: unknown[]) => void>;
+
+    const handleChainChanged = (...args: unknown[]) => {
+      const chainIdHex = args[0] as string;
+      const newChainId = parseInt(chainIdHex, 16);
+      setState((prev) => ({ ...prev, chainId: newChainId }));
+    };
+
+    const handleAccountsChanged = (...args: unknown[]) => {
+      const accounts = args[0] as string[];
+      if (accounts.length === 0) {
+        disconnect();
+      } else {
+        setState((prev) => ({
+          ...prev,
+          address: accounts[0],
+          isConnected: true,
+        }));
+      }
+    };
+
+    if (typeof ethereum.on === "function") {
+      ethereum.on("chainChanged", handleChainChanged);
+      ethereum.on("accountsChanged", handleAccountsChanged);
+    }
+
+    return () => {
+      if (typeof ethereum.removeListener === "function") {
+        ethereum.removeListener("chainChanged", handleChainChanged);
+        ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      }
+      if (typeof ethereum.off === "function") {
+        ethereum.off("chainChanged", handleChainChanged);
+        ethereum.off("accountsChanged", handleAccountsChanged);
+      }
+    };
   }, []);
 
   const connect = async () => {
@@ -83,9 +154,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         ).ethereum;
         const accounts = (await ethereum.request({ method: "eth_requestAccounts" })) as string[];
         if (accounts.length > 0) {
+          let chainId: number | null = null;
+          try {
+            const chainIdHex = await ethereum.request({ method: "eth_chainId" });
+            if (typeof chainIdHex === "string") {
+              chainId = parseInt(chainIdHex, 16);
+            }
+          } catch {
+            chainId = null;
+          }
           setState({
             address: accounts[0],
-            chainId: null,
+            chainId,
             isConnected: true,
             provider: ethereum as { request: (args: { method: string }) => Promise<unknown> },
           });

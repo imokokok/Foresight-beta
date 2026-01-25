@@ -92,6 +92,21 @@ export const ChatInputArea = memo(function ChatInputArea({
     const file = e.target.files?.[0];
     if (!file || !address) return;
 
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setLocalError(tChat("input.invalidFileType"));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      setLocalError(tChat("input.fileTooLarge"));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
     setLocalError(null);
     try {

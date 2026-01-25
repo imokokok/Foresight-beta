@@ -187,7 +187,9 @@ export function getCurrentLocale(): Locale {
   if (saved && typeof localStorage !== "undefined") {
     try {
       localStorage.removeItem("preferred-language");
-    } catch {}
+    } catch (e) {
+      console.warn("[i18n] Failed to clear invalid locale from localStorage:", e);
+    }
   }
 
   return defaultLocale;
@@ -215,7 +217,9 @@ export function t(key: string, locale?: Locale): string {
     if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
       try {
         console.warn("[i18n] Missing translation key:", key);
-      } catch {}
+      } catch (e) {
+        console.warn("[i18n] Failed to log missing translation key:", e);
+      }
     }
     return key;
   }
@@ -253,7 +257,9 @@ export function setLocale(nextLocale: Locale) {
       document.cookie = `preferred-language=${encodeURIComponent(
         nextLocale
       )}; path=/; max-age=31536000; SameSite=Lax`;
-    } catch {}
+    } catch (e) {
+      console.warn("[i18n] Failed to set locale cookie:", e);
+    }
   }
 
   window.dispatchEvent(
@@ -287,7 +293,9 @@ export function LocaleProvider({
       } else if (saved && typeof localStorage !== "undefined" && !isSupportedLocale(saved)) {
         localStorage.removeItem("preferred-language");
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[i18n] Failed to read locale from localStorage:", e);
+    }
   }, [locale]);
 
   useEffect(() => {
@@ -344,7 +352,9 @@ export function useLocale() {
       } else if (saved && typeof localStorage !== "undefined" && !isSupportedLocale(saved)) {
         localStorage.removeItem("preferred-language");
       }
-    } catch {}
+    } catch (e) {
+      console.warn("[i18n] Failed to read locale from localStorage:", e);
+    }
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "preferred-language" && e.newValue) {

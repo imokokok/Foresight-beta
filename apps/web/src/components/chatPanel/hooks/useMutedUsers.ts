@@ -19,7 +19,9 @@ export function useMutedUsers() {
         if (k) next[k] = true;
       });
       setMutedUsers(next);
-    } catch {}
+    } catch (error) {
+      console.error("[useMutedUsers] Failed to load muted users:", error);
+    }
   }, []);
 
   const isMuted = useCallback(
@@ -47,7 +49,9 @@ export function useMutedUsers() {
         if (typeof window !== "undefined") {
           window.localStorage.setItem(key, JSON.stringify(Object.keys(next)));
         }
-      } catch {}
+      } catch (error) {
+        console.error("[useMutedUsers] Failed to save muted users:", error);
+      }
       return next;
     });
   }, []);

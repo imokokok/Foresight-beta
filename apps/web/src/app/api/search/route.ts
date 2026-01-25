@@ -4,6 +4,13 @@ import { supabaseAnon } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
+function sanitizeSearchTerm(term: string): string {
+  return term
+    .replace(/[%_\\]/g, "\\$&")
+    .replace(/[\x00-\x1f\x7f]/g, "")
+    .slice(0, 100);
+}
+
 /**
  * 全局搜索 API
  *
@@ -41,8 +48,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 
-    const trimmed = String(query || "").trim();
-    if (!trimmed || trimmed.length < 2) {
+    const rawTrimmed = String(query || "").trim();
+    if (!rawTrimmed || rawTrimmed.length < 2) {
       return NextResponse.json(
         {
           error: "Search keyword must be at least 2 characters",
@@ -52,7 +59,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (trimmed.length > 64) {
+    if (rawTrimmed.length > 64) {
       return NextResponse.json(
         {
           error: "Search keyword is too long",
@@ -62,7 +69,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (/[(),]/.test(trimmed)) {
+    if (/[(),]/.test(rawTrimmed)) {
       return NextResponse.json(
         {
           error: "Search keyword contains invalid characters",
@@ -84,7 +91,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const searchTerm = `%${trimmed}%`;
+    const sanitizedTerm = sanitizeSearchTerm(rawTrimmed);
+    const searchTerm = `%${sanitizedTerm}%`;
 
     const [predictionsRes, proposalsRes, usersRes] = await Promise.all([
       supabaseAnon
@@ -177,7 +185,7 @@ export async function GET(request: NextRequest) {
     const allResults = [...predictionResults, ...proposalResults, ...userResults];
 
     allResults.sort((a, b) => {
-      const q = trimmed.toLowerCase();
+      const q = rawTrimmed.toLowerCase();
       const aTitle = String(a.title || "").toLowerCase();
       const bTitle = String(b.title || "").toLowerCase();
       const aScore = aTitle.includes(q) ? 2 : 1;
@@ -189,7 +197,7 @@ export async function GET(request: NextRequest) {
       {
         results: allResults,
         total: allResults.length,
-        query: trimmed,
+        query: rawTrimmed,
       },
       {
         status: 200,

@@ -3,17 +3,9 @@
 import { useEffect, useState } from "react";
 import { formatUnits } from "ethers";
 import { BIGINT_THRESHOLD } from "../utils/priceUtils";
+import { normalizeAddress } from "@/lib/address";
 
-function normalizeAddress(a: string | null | undefined) {
-  const s = String(a || "").trim();
-  if (!s) return null;
-  return s.toLowerCase();
-}
-
-function computeReservedUsdcFallback(
-  makerLower: string | null,
-  userOrders: any[]
-): number {
+function computeReservedUsdcFallback(makerLower: string | null, userOrders: any[]): number {
   if (!makerLower) return 0;
   let totalCost6 = 0n;
   for (const o of userOrders || []) {
@@ -49,7 +41,7 @@ export function useReservedBalance(
   const [reservedProxyUsdcBackend, setReservedProxyUsdcBackend] = useState<number | null>(null);
 
   useEffect(() => {
-    const addr = normalizeAddress(account || null);
+    const addr = account ? normalizeAddress(account) : "";
     const controller = new AbortController();
     if (!addr) {
       setReservedAccountUsdcBackend(null);
@@ -66,13 +58,15 @@ export function useReservedBalance(
         const n =
           typeof reservedRaw === "number" ? reservedRaw : parseFloat(String(reservedRaw || "0"));
         if (Number.isFinite(n) && n >= 0) setReservedAccountUsdcBackend(n);
-      } catch {}
+      } catch (error) {
+        console.error("[useReservedBalance] Failed to fetch account reserved balance:", error);
+      }
     })();
     return () => controller.abort();
   }, [account]);
 
   useEffect(() => {
-    const addr = normalizeAddress(proxyAddress || null);
+    const addr = proxyAddress ? normalizeAddress(proxyAddress) : "";
     const controller = new AbortController();
     if (!addr) {
       setReservedProxyUsdcBackend(null);
@@ -89,15 +83,19 @@ export function useReservedBalance(
         const n =
           typeof reservedRaw === "number" ? reservedRaw : parseFloat(String(reservedRaw || "0"));
         if (Number.isFinite(n) && n >= 0) setReservedProxyUsdcBackend(n);
-      } catch {}
+      } catch (error) {
+        console.error("[useReservedBalance] Failed to fetch proxy reserved balance:", error);
+      }
     })();
     return () => controller.abort();
   }, [proxyAddress]);
 
   const reservedAccountUsdc =
-    reservedAccountUsdcBackend ?? computeReservedUsdcFallback(normalizeAddress(account || null), userOrders);
+    reservedAccountUsdcBackend ??
+    computeReservedUsdcFallback(account ? normalizeAddress(account) : "", userOrders);
   const reservedProxyUsdc =
-    reservedProxyUsdcBackend ?? computeReservedUsdcFallback(normalizeAddress(proxyAddress || null), userOrders);
+    reservedProxyUsdcBackend ??
+    computeReservedUsdcFallback(proxyAddress ? normalizeAddress(proxyAddress) : "", userOrders);
 
   return {
     reservedAccountUsdc,

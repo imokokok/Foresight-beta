@@ -58,7 +58,7 @@ class MarketWebSocketManager {
   private ws: WebSocket | null = null;
   private url: string;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 10;
   private reconnectDelay = 1000;
   private subscriptions: Set<string> = new Set();
   private listeners: Map<string, Set<(data: any) => void>> = new Map();

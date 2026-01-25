@@ -19,6 +19,7 @@ export function useOrderbookDepthPolling(args: {
   const [depthSell, setDepthSell] = useState<Array<{ price: string; qty: string }>>([]);
   const [bestBid, setBestBid] = useState<string>("");
   const [bestAsk, setBestAsk] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
 
   // 构建 marketKey
   const marketKey =
@@ -46,6 +47,7 @@ export function useOrderbookDepthPolling(args: {
 
     const fetchDepth = async () => {
       try {
+        setError(null);
         const key = buildMarketKey(market.chain_id, predictionIdRaw);
         const { buys, sells } = await fetchOrderbookDepthApi(
           market.market,
@@ -57,7 +59,10 @@ export function useOrderbookDepthPolling(args: {
         setDepthSell(sells);
         setBestBid(buys.length > 0 ? buys[0].price : "");
         setBestAsk(sells.length > 0 ? sells[0].price : "");
-      } catch {}
+      } catch (e) {
+        console.error("[useOrderbookDepthPolling] Failed to fetch depth:", e);
+        setError(e instanceof Error ? e.message : "Failed to load orderbook depth");
+      }
     };
 
     // 首次加载
@@ -75,6 +80,7 @@ export function useOrderbookDepthPolling(args: {
     depthSell,
     bestBid,
     bestAsk,
+    error,
     setDepthBuy,
     setDepthSell,
     setBestBid,

@@ -23,7 +23,9 @@ async function reportTrade(chainId: number, txHash: string, contract: string) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chainId, txHash, contract }),
     });
-  } catch {}
+  } catch (e) {
+    console.error("[orderFlow] Failed to report trade:", e);
+  }
 }
 
 async function ensureProxyActivated(provider: ethers.BrowserProvider, proxyAddress: string) {

@@ -172,6 +172,7 @@ export default function Sidebar() {
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        suppressHydrationWarning
         className={`fixed lg:sticky top-0 lg:top-0 z-50 lg:z-30 h-screen lg:h-[calc(100vh)] w-[260px] flex-shrink-0 bg-white/40 backdrop-blur-2xl border-r border-white/40 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${
           mobileOpen ? "left-0" : "-left-[280px] lg:left-0"
         }`}

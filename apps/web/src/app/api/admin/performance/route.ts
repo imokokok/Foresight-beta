@@ -4,12 +4,13 @@
  */
 
 import type { NextRequest } from "next/server";
+import { withErrorHandler } from "@/lib/apiResponse";
 import { handleAdminPerformanceGet, handleAdminPerformancePost } from "./_lib/handlers";
 
-export async function GET(req: NextRequest) {
+export const GET = withErrorHandler(async (req: NextRequest) => {
   return handleAdminPerformanceGet(req);
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withErrorHandler(async (req: NextRequest) => {
   return handleAdminPerformancePost(req);
-}
+});

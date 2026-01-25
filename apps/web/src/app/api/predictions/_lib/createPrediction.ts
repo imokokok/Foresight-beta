@@ -499,6 +499,30 @@ export async function createPredictionFromRequest(
   // Validate deadline format
   parseResolutionTimeSeconds(deadline);
 
+  const MAX_TITLE_LENGTH = 200;
+  const MAX_DESCRIPTION_LENGTH = 2000;
+  const MAX_CRITERIA_LENGTH = 2000;
+
+  if (title.length > MAX_TITLE_LENGTH) {
+    const err = new Error(`Title exceeds maximum length of ${MAX_TITLE_LENGTH} characters`);
+    (err as any).status = 400;
+    throw err;
+  }
+
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    const err = new Error(
+      `Description exceeds maximum length of ${MAX_DESCRIPTION_LENGTH} characters`
+    );
+    (err as any).status = 400;
+    throw err;
+  }
+
+  if (criteria.length > MAX_CRITERIA_LENGTH) {
+    const err = new Error(`Criteria exceeds maximum length of ${MAX_CRITERIA_LENGTH} characters`);
+    (err as any).status = 400;
+    throw err;
+  }
+
   const { data: prof, error: profErr } = await (client as any)
     .from("user_profiles")
     .select("is_admin")

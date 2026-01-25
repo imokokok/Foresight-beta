@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 
 type ModalSize = "md" | "lg" | "fullscreen";
@@ -19,34 +19,6 @@ type ModalProps = {
   containerClassName?: string;
 };
 
-let scrollLockCount = 0;
-
-function lockScroll() {
-  if (typeof document === "undefined") return;
-  if (scrollLockCount === 0) {
-    const body = document.body;
-    body.dataset.prevOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-  }
-  scrollLockCount += 1;
-}
-
-function unlockScroll() {
-  if (typeof document === "undefined") return;
-  if (scrollLockCount === 0) return;
-  scrollLockCount -= 1;
-  if (scrollLockCount === 0) {
-    const body = document.body;
-    const prev = body.dataset.prevOverflow;
-    if (prev !== undefined) {
-      body.style.overflow = prev;
-    } else {
-      body.style.overflow = "";
-    }
-    delete body.dataset.prevOverflow;
-  }
-}
-
 export function Modal({
   open,
   onClose,
@@ -62,6 +34,32 @@ export function Modal({
 }: ModalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mountedRef = useRef(false);
+  const scrollLockedRef = useRef(false);
+
+  const lockScroll = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (!scrollLockedRef.current) {
+      const body = document.body;
+      body.dataset.prevOverflow = body.style.overflow;
+      body.style.overflow = "hidden";
+      scrollLockedRef.current = true;
+    }
+  }, []);
+
+  const unlockScroll = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (scrollLockedRef.current) {
+      const body = document.body;
+      const prev = body.dataset.prevOverflow;
+      if (prev !== undefined) {
+        body.style.overflow = prev;
+      } else {
+        body.style.overflow = "";
+      }
+      delete body.dataset.prevOverflow;
+      scrollLockedRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +69,7 @@ export function Modal({
       unlockScroll();
       mountedRef.current = false;
     };
-  }, [open]);
+  }, [open, lockScroll, unlockScroll]);
 
   useEffect(() => {
     if (!open) return;
