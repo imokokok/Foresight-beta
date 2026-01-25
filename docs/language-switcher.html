@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语言切换器 | Language Switcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .language-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            text-decoration: none;
+            color: #fff;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .language-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .flag {
+            font-size: 2rem;
+            line-height: 1;
+        }
+        
+        .language-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .language-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .language-native {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 2px;
+        }
+        
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 60px;
+        }
+        
+        .doc-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s ease;
+        }
+        
+        .doc-section:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .doc-section h2 {
+            color: #fff;
+            font-size: 1.3rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .doc-section p {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .doc-links {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .doc-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        
+        .doc-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+        
+        .doc-link .icon {
+            font-size: 1.2rem;
+        }
+        
+        .section-icon {
+            font-size: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .language-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .language-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Language Switcher / 语言切换器</h1>
+        
+        <div class="language-grid">
+            <a href="README.md" class="language-card">
+                <span class="flag">🇺🇸</span>
+                <div class="language-info">
+                    <span class="language-name">English</span>
+                    <span class="language-native">English</span>
+                </div>
+            </a>
+            
+            <a href="README.zh-CN.md" class="language-card">
+                <span class="flag">🇨🇳</span>
+                <div class="language-info">
+                    <span class="language-name">中文</span>
+                    <span class="language-native">简体中文</span>
+                </div>
+            </a>
+            
+            <a href="README.es.md" class="language-card">
+                <span class="flag">🇪🇸</span>
+                <div class="language-info">
+                    <span class="language-name">Español</span>
+                    <span class="language-native">Spanish</span>
+                </div>
+            </a>
+            
+            <a href="README.fr.md" class="language-card">
+                <span class="flag">🇫🇷</span>
+                <div class="language-info">
+                    <span class="language-name">Français</span>
+                    <span class="language-native">French</span>
+                </div>
+            </a>
+            
+            <a href="README.ko.md" class="language-card">
+                <span class="flag">🇰🇷</span>
+                <div class="language-info">
+                    <span class="language-name">한국어</span>
+                    <span class="language-native">Korean</span>
+                </div>
+            </a>
+        </div>
+        
+        <div class="docs-grid">
+            <div class="doc-section">
+                <h2><span class="section-icon">📚</span> Developer Documentation</h2>
+                <p>Complete technical reference manual covering smart contracts, frontend architecture, API design, and deployment.</p>
+                <div class="doc-links">
+                    <a href="DOCS.md" class="doc-link">
+                        <span class="icon">🇺🇸</span> DOCS.md (English)
+                    </a>
+                    <a href="DOCS.zh-CN.md" class="doc-link">
+                        <span class="icon">🇨🇳</span> DOCS.zh-CN.md (中文)
+                    </a>
+                </div>
+            </div>
+            
+            <div class="doc-section">
+                <h2><span class="section-icon">🔐</span> Security Policy</h2>
+                <p>Security guidelines, vulnerability reporting process, and best practices for the Foresight protocol.</p>
+                <div class="doc-links">
+                    <a href="SECURITY.md" class="doc-link">
+                        <span class="icon">🇺🇸</span> SECURITY.md (English)
+                    </a>
+                    <a href="SECURITY.zh-CN.md" class="doc-link">
+                        <span class="icon">🇨🇳</span> SECURITY.zh-CN.md (中文)
+                    </a>
+                </div>
+            </div>
+            
+            <div class="doc-section">
+                <h2><span class="section-icon">📜</span> Code of Conduct</h2>
+                <p>Community guidelines and participation rules for all contributors and community members.</p>
+                <div class="doc-links">
+                    <a href="CODE_OF_CONDUCT.md" class="doc-link">
+                        <span class="icon">🇺🇸</span> CODE_OF_CONDUCT.md (English)
+                    </a>
+                    <a href="CODE_OF_CONDUCT.zh-CN.md" class="doc-link">
+                        <span class="icon">🇨🇳</span> CODE_OF_CONDUCT.zh-CN.md (中文)
+                    </a>
+                    <a href="CODE_OF_CONDUCT.es.md" class="doc-link">
+                        <span class="icon">🇪🇸</span> CODE_OF_CONDUCT.es.md (Español)
+                    </a>
+                    <a href="CODE_OF_CONDUCT.fr.md" class="doc-link">
+                        <span class="icon">🇫🇷</span> CODE_OF_CONDUCT.fr.md (Français)
+                    </a>
+                    <a href="CODE_OF_CONDUCT.ko.md" class="doc-link">
+                        <span class="icon">🇰🇷</span> CODE_OF_CONDUCT.ko.md (한국어)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

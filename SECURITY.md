@@ -1,302 +1,274 @@
-# 🔐 安全政策
+# 🔐 Security Policy
 
-Foresight 团队高度重视安全问题。如果你发现了安全漏洞，请按照以下流程负责任地披露。
-
----
-
-## 📋 目录
-
-- [支持的版本](#支持的版本)
-- [报告漏洞](#报告漏洞)
-- [安全响应流程](#安全响应流程)
-- [安全最佳实践](#安全最佳实践)
-- [智能合约安全](#智能合约安全)
-- [漏洞奖励计划](#漏洞奖励计划)
+> Security guidelines, vulnerability reporting process, and best practices for the Foresight protocol.
 
 ---
 
-## 支持的版本
+## 📋 Table of Contents
 
-我们会对以下版本提供安全更新：
-
-| 版本           | 支持状态      |
-| -------------- | ------------- |
-| 最新版         | ✅ 支持       |
-| 上一个主要版本 | ⚠️ 仅安全更新 |
-| 更早版本       | ❌ 不支持     |
+- [Supported Versions](#supported-versions)
+- [Reporting Vulnerabilities](#reporting-vulnerabilities)
+- [Security Response Process](#security-response-process)
+- [Security Best Practices](#security-best-practices)
+- [Smart Contract Security](#smart-contract-security)
+- [Bug Bounty Program](#bug-bounty-program)
 
 ---
 
-## 报告漏洞
+## Supported Versions
 
-### ⚠️ 请勿公开披露
+We provide security updates for the following versions:
 
-在问题被修复之前，**请勿**在公开渠道（GitHub Issues、Discord、Twitter 等）讨论安全漏洞。
+| Version        | Support Status           |
+| -------------- | ------------------------ |
+| Latest         | ✅ Supported             |
+| Previous Major | ⚠️ Security Updates Only |
+| Older          | ❌ Not Supported         |
 
-### 📧 报告方式
+---
 
-请通过以下方式报告安全漏洞：
+## Reporting Vulnerabilities
+
+### ⚠️ Please Do Not Disclose Publicly
+
+**DO NOT** discuss security vulnerabilities in public channels (GitHub Issues, Discord, Twitter, etc.) before the issue is fixed.
+
+### 📧 Reporting Method
+
+Please report security vulnerabilities through:
 
 **Email**: [security@foresight.market](mailto:security@foresight.market)
 
-### 报告内容
+### Report Content
 
-请在报告中包含以下信息：
+Please include the following information in your report:
 
-1. **漏洞描述**：清晰描述漏洞的性质
-2. **影响范围**：受影响的组件/功能
-3. **复现步骤**：详细的复现步骤
-4. **概念验证**：PoC 代码或截图（如有）
-5. **严重程度评估**：你对漏洞严重程度的评估
-6. **建议修复方案**：如果有的话
+1. **Vulnerability Description**: Clear description of the vulnerability nature
+2. **Impact Scope**: Affected components/functions
+3. **Reproduction Steps**: Detailed reproduction steps
+4. **Proof of Concept**: PoC code or screenshots (if available)
+5. **Severity Assessment**: Your assessment of vulnerability severity
+6. **Suggested Fix**: If you have one
 
-### 报告模板
+### Report Template
 
 ```markdown
-## 漏洞描述
+## Vulnerability Description
 
-[简要描述漏洞]
+[Brief description of the vulnerability]
 
-## 影响范围
+## Impact Scope
 
-- 组件: [例如: 智能合约/前端/API]
-- 版本: [受影响的版本]
-- 严重程度: [Critical/High/Medium/Low]
+- Component: [e.g., Smart Contracts/Frontend/API]
+- Version: [Affected version]
+- Severity: [Critical/High/Medium/Low]
 
-## 复现步骤
+## Reproduction Steps
 
-1. [步骤 1]
-2. [步骤 2]
+1. [Step 1]
+2. [Step 2]
 3. ...
 
-## 概念验证
+## Proof of Concept
 
-[PoC 代码或详细说明]
+[PoC code or detailed explanation]
 
-## 潜在影响
+## Potential Impact
 
-[描述可能的攻击场景和影响]
+[Describe possible attack scenarios and impact]
 
-## 建议修复方案
+## Suggested Fix
 
-[如果有的话]
+[If available]
 ```
 
 ---
 
-## 安全响应流程
+## Security Response Process
 
-### 响应时间
+### Response Time
 
-| 阶段     | 时间目标     |
-| -------- | ------------ |
-| 初次响应 | 24 小时内    |
-| 漏洞确认 | 72 小时内    |
-| 修复计划 | 7 天内       |
-| 发布修复 | 根据严重程度 |
+| Phase                      | Time Target       |
+| -------------------------- | ----------------- |
+| Initial Response           | Within 24 hours   |
+| Vulnerability Confirmation | Within 72 hours   |
+| Fix Plan                   | Within 7 days     |
+| Fix Release                | Based on severity |
 
-### 严重程度定义
+### Severity Definition
 
-| 级别         | 描述             | 修复时间   |
-| ------------ | ---------------- | ---------- |
-| **Critical** | 可能导致资金损失 | 24-48 小时 |
-| **High**     | 严重功能受损     | 7 天内     |
-| **Medium**   | 中等影响         | 30 天内    |
-| **Low**      | 轻微问题         | 下个版本   |
+| Level        | Description                | Fix Time       |
+| ------------ | -------------------------- | -------------- |
+| **Critical** | May lead to financial loss | 24-48 hours    |
+| **High**     | Severe function impairment | Within 7 days  |
+| **Medium**   | Medium impact              | Within 30 days |
+| **Low**      | Minor issues               | Next release   |
 
-### 处理流程
+### Handling Process
 
 ```
-1. 收到报告
+1. Receive Report
    ↓
-2. 确认收到 (24h)
+2. Acknowledge (24h)
    ↓
-3. 漏洞验证 (72h)
+3. Vulnerability Verification (72h)
    ↓
-4. 评估严重程度
+4. Assess Severity
    ↓
-5. 制定修复计划
+5. Develop Fix Plan
    ↓
-6. 开发修复补丁
+6. Develop Fix Patch
    ↓
-7. 内部安全审查
+7. Internal Security Review
    ↓
-8. 发布修复版本
+8. Release Fix
    ↓
-9. 公开披露 (协调后)
+9. Public Disclosure (coordinated)
 ```
 
 ---
 
-## 安全最佳实践
+## Security Best Practices
 
-### 用户安全建议
+### User Security Suggestions
 
-#### 🔑 私钥安全
+#### 🔑 Private Key Security
 
-- **永远不要**分享你的私钥或助记词
-- 使用硬件钱包存储大额资产
-- 定期检查已授权的 DApp
+- **NEVER** share your private key or seed phrase
+- Use hardware wallet for large amounts
+- Regularly check authorized DApps
 
-#### 🌐 网络安全
+#### 🌐 Network Security
 
-- 只访问官方网站：[https://foresight.market](https://foresight.market)
-- 验证 URL 和 SSL 证书
-- 小心钓鱼网站和虚假社交账号
+- Only visit official website: [https://foresight.market](https://foresight.market)
+- Verify URL and SSL certificate
+- Beware of phishing websites and fake social accounts
 
-#### 💻 交易安全
+#### 💳 Transaction Security
 
-- 交易前仔细检查交易详情
-- 设置合理的滑点保护
-- 使用小额测试大额操作
+- Check transaction details carefully before trading
+- Set reasonable slippage protection
+- Use small amounts to test before large operations
 
-### 开发者安全建议
+### Developer Security Suggestions
 
-#### 环境变量
+#### Environment Variables
 
 ```bash
-# ✅ 正确做法
+# ✅ Correct
 cp .env.example .env.local
-# 编辑 .env.local
+# Edit .env.local
 
-# ❌ 错误做法
-# 永远不要将 .env.local 提交到 Git
+# ❌ Wrong
+# Never commit .env.local to Git
 ```
 
-#### 依赖管理
+#### Dependency Management
 
 ```bash
-# 定期检查依赖漏洞
+# Regularly check for dependency vulnerabilities
 npm audit
 
-# 更新有漏洞的依赖
+# Update vulnerable dependencies
 npm audit fix
 ```
 
 ---
 
-## 运行时安全与风控
+## Smart Contract Security
 
-### Web 应用安全头
+### Implemented Security Measures
 
-- 严格 CSP、HSTS、X-Frame-Options、X-Content-Type-Options、X-XSS-Protection、Referrer-Policy、Permissions-Policy
-- 生产环境移除不必要的内联与 eval
-- 参考实现: [next.config.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/next.config.ts#L70-L129)
-
-### 全局与业务限流
-
-- 全局中间件对 /api/siwe/verify 进行严格限流（5 次/分钟/每 IP）
-- 业务端点叠加细粒度限流（如邮箱 OTP 的钱包+IP、邮箱窗口、最小重发间隔、失败锁定）
-- 限流实现支持 Upstash Redis 或内存回退
-- 参考: [middleware.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/middleware.ts), [rateLimit.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/rateLimit.ts)
-
-### 认证与会话安全
-
-- SIWE 校验域名与来源、可用链、nonce 重放防护
-- 成功登录后设置 fs_session（7 天）与 fs_refresh（30 天），仅 HTTP-only
-- 参考: [verify/route.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/siwe/verify/route.ts#L7-L143), [session.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/session.ts)
-
-### 邮箱 OTP 风控
-
-- 严格限流：钱包+IP 组合、IP 窗口、同钱包多邮箱窗口、同邮箱小时窗口、最小重发间隔
-- 校验失败 3 次锁定 1 小时；验证码过期与回收策略
-- 参考: [email-otp/request](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/request/route.ts), [email-otp/verify](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/email-otp/verify/route.ts)
-
-### 事件与审计
-
-- 服务端事件在生产环境持久化到 Supabase analytics_events，支持按分钟 RED 聚合
-- 中间件注入 x-request-id 贯穿链路用于排错与审计
-- 参考: [serverUtils.ts](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/lib/serverUtils.ts#L139-L156), [analytics/events](file:///Users/imokokok/Documents/foresight-build/Foresight-beta/apps/web/src/app/api/analytics/events/route.ts)
-
----
-
-## 智能合约安全
-
-### 已实施的安全措施
-
-#### 访问控制
+#### Access Control
 
 - ✅ OpenZeppelin AccessControl
-- ✅ 多签钱包 (Gnosis Safe)
-- ✅ 24 小时 Timelock
+- ✅ Multi-signature Wallet (Gnosis Safe)
+- ✅ 24-hour Timelock
 
-#### 重入保护
+#### Reentrancy Protection
 
-- ✅ ReentrancyGuard 所有外部调用
-- ✅ Checks-Effects-Interactions 模式
+- ✅ ReentrancyGuard on all external calls
+- ✅ Checks-Effects-Interactions Pattern
 
-#### 签名安全
+#### Signature Security
 
-- ✅ EIP-712 结构化签名
-- ✅ ECDSA 可延展性保护
-- ✅ 订单 salt 唯一性检查
+- ✅ EIP-712 Structured Signatures
+- ✅ ECDSA Malleability Protection
+- ✅ Order Salt Uniqueness Check
 
-#### 经济安全
+#### Economic Security
 
-- ✅ 闪电贷攻击防护（单区块限额）
-- ✅ 批量操作大小限制
-- ✅ 最小订单生命周期
+- ✅ Flash Loan Attack Protection (single-block limit)
+- ✅ Batch Operation Size Limits
+- ✅ Minimum Order Lifetime
 
-#### 紧急措施
+#### Emergency Measures
 
-- ✅ 熔断机制（紧急暂停）
-- ✅ 分级权限系统
+- ✅ Circuit Breaker (Emergency Pause)
+- ✅ Hierarchical Permission System
 
-### 审计状态
+### Audit Status
 
-| 合约                 | 审计状态  | 审计方 |
-| -------------------- | --------- | ------ |
-| MarketFactory        | 🔄 准备中 | -      |
-| OffchainBinaryMarket | 🔄 准备中 | -      |
-| OffchainMultiMarket8 | 🔄 准备中 | -      |
-| OutcomeToken1155     | 🔄 准备中 | -      |
-| UMAOracleAdapterV2   | 🔄 准备中 | -      |
+| Contract             | Audit Status   | Auditor |
+| -------------------- | -------------- | ------- |
+| MarketFactory        | 🔄 In Progress | -       |
+| OffchainBinaryMarket | 🔄 In Progress | -       |
+| OffchainMultiMarket8 | 🔄 In Progress | -       |
+| OutcomeToken1155     | 🔄 In Progress | -       |
+| UMAOracleAdapterV2   | 🔄 In Progress | -       |
 
-### 已知限制
+### Known Limitations
 
-1. **预言机依赖**：市场结算依赖 UMA 预言机
-2. **管理员权限**：多签可以暂停合约和升级实现
-3. **Timelock 延迟**：紧急情况下需要等待 24 小时
+1. **Oracle Dependency**: Market settlement relies on UMA oracle
+2. **Admin Permissions**: Multi-sig can pause contracts and upgrade implementations
+3. **Timelock Delay**: Emergency situations require 24-hour wait
 
 ---
 
-## 漏洞奖励计划
+## Bug Bounty Program
 
-我们正在筹备正式的漏洞奖励计划。在此之前，有效的安全报告将根据严重程度获得以下奖励：
+We are preparing a formal bug bounty program. Before that, effective security reports will receive rewards based on severity:
 
-| 严重程度 | 奖励范围         |
+| Severity | Reward Range     |
 | -------- | ---------------- |
 | Critical | $5,000 - $20,000 |
 | High     | $2,000 - $5,000  |
 | Medium   | $500 - $2,000    |
 | Low      | $100 - $500      |
 
-### 奖励条件
+### Reward Conditions
 
-- ✅ 首次报告该漏洞
-- ✅ 提供有效的复现步骤
-- ✅ 遵循负责任披露流程
-- ✅ 未造成实际损失
+- ✅ First report of the vulnerability
+- ✅ Provide effective reproduction steps
+- ✅ Follow responsible disclosure process
+- ✅ No actual damage caused
 
-### 排除范围
+### Exclusion Scope
 
-以下情况不在奖励范围内：
+The following are not eligible for rewards:
 
-- ❌ 已知问题或已报告的漏洞
-- ❌ 社会工程学攻击
-- ❌ 物理攻击
-- ❌ DoS 攻击（除非有特殊影响）
-- ❌ 第三方服务的漏洞
-- ❌ 测试网上的问题
+- ❌ Known issues or already reported vulnerabilities
+- ❌ Social engineering attacks
+- ❌ Physical attacks
+- ❌ DoS attacks (unless special impact)
+- ❌ Third-party service vulnerabilities
+- ❌ Issues on testnets
 
 ---
 
-## 联系方式
+## Contact
 
-- **安全问题**: [security@foresight.market](mailto:security@foresight.market)
-- **一般咨询**: [hello@foresight.market](mailto:hello@foresight.market)
+- **Security Issues**: [security@foresight.market](mailto:security@foresight.market)
+- **General Inquiries**: [hello@foresight.market](mailto:hello@foresight.market)
 - **Discord**: [Foresight Community](https://discord.gg/foresight)
 
 ---
 
-感谢你帮助我们保护 Foresight 生态系统的安全！🛡️
+Thank you for helping us protect the Foresight ecosystem! 🛡️
+
+---
+
+**Languages / 语言切换:**
+
+- [🇺🇸 SECURITY.md](./SECURITY.md) - English
+- [🇨🇳 SECURITY.zh-CN.md](./SECURITY.zh-CN.md) - 简体中文

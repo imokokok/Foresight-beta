@@ -1,28 +1,28 @@
-# 📚 Foresight Developer Documentation
+# 📚 Foresight 开发者文档
 
-> Complete technical reference manual covering smart contracts, frontend architecture, API design, and deployment.
-
----
-
-## 📑 Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Smart Contracts](#smart-contracts)
-- [Frontend Architecture](#frontend-architecture)
-- [API Reference](#api-reference)
-- [Database Design](#database-design)
-- [Deployment Guide](#deployment-guide)
-- [Security Guidelines](#security-guidelines)
+> 完整的技术参考手册，涵盖智能合约、前端架构、API 设计和部署运维。
 
 ---
 
-## Architecture Overview
+## 📑 目录
 
-Foresight adopts an **off-chain matching + on-chain settlement** hybrid architecture, achieving user experience close to a centralized exchange while maintaining complete decentralized settlement.
+- [架构概览](#架构概览)
+- [智能合约](#智能合约)
+- [前端架构](#前端架构)
+- [API 参考](#api-参考)
+- [数据库设计](#数据库设计)
+- [部署指南](#部署指南)
+- [安全规范](#安全规范)
+
+---
+
+## 架构概览
+
+Foresight 采用 **链下撮合 + 链上结算** 的混合架构，实现了接近中心化交易所的用户体验，同时保持完全的去中心化结算。
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            User Interaction Layer                        │
+│                              用户交互层                                   │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
 │  │  Web App    │  │  Mobile App │  │  API Client │  │  Bot/SDK    │   │
 │  │  (Next.js)  │  │  (Future)   │  │  (REST)     │  │  (Future)   │   │
@@ -31,7 +31,7 @@ Foresight adopts an **off-chain matching + on-chain settlement** hybrid architec
           │                │                │                │
           ▼                ▼                ▼                ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            Service Layer                                 │
+│                              服务层                                      │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │                      Relayer Service                                ││
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 ││
@@ -39,26 +39,26 @@ Foresight adopts an **off-chain matching + on-chain settlement** hybrid architec
 │  │  │ Management  │  │  Engine     │  │  Ingestion  │                 ││
 │  │  └─────────────┘  └─────────────┘  └─────────────┘                 ││
 │  └─────────────────────────────────────────────────────────────────────┘│
-│                                    │                                     │
+│                                    │                                      │
 │  ┌─────────────────────────────────▼───────────────────────────────────┐│
 │  │                         Supabase                                    ││
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 ││
 │  │  │  Orders     │  │  Trades     │  │  Candles    │                 ││
-│  │  │  (Pending)  │  │  (History)  │  │  (OHLCV)    │                 ││
+│  │  │  (待成交)   │  │  (历史成交) │  │  (K线数据)  │                 ││
 │  │  └─────────────┘  └─────────────┘  └─────────────┘                 ││
 │  └─────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            Blockchain Layer                              │
+│                              区块链层                                    │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │                      Polygon Network                                ││
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 ││
 │  │  │ Market      │  │ Outcome     │  │ UMA Oracle  │                 ││
 │  │  │ Factory     │  │ Token 1155  │  │ Adapter V2  │                 ││
 │  │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘                 ││
-│  │         │                │                │                        ││
+│  │         │                │                │                         ││
 │  │  ┌──────▼────────────────▼────────────────▼──────┐                 ││
 │  │  │              Market Instances                 │                 ││
 │  │  └───────────────────────────────────────────────┘                 ││
@@ -68,88 +68,88 @@ Foresight adopts an **off-chain matching + on-chain settlement** hybrid architec
 
 ---
 
-## Smart Contracts
+## 智能合约
 
-### Contract Architecture
+### 合约架构
 
 ```
 contracts/
-├── MarketFactory.sol              # Market factory (UUPS upgradeable)
+├── MarketFactory.sol              # 市场工厂（UUPS 可升级）
 ├── interfaces/
-│   ├── IOracle.sol                # Oracle interface
-│   └── IOracleRegistrar.sol       # Market registration interface
+│   ├── IOracle.sol                # 预言机接口
+│   └── IOracleRegistrar.sol       # 市场注册接口
 ├── templates/
-│   ├── OffchainMarketBase.sol     # Base market contract
-│   ├── OffchainBinaryMarket.sol   # Binary market template
-│   └── OffchainMultiMarket8.sol   # Multi-outcome market template
+│   ├── OffchainMarketBase.sol     # 市场基础合约
+│   ├── OffchainBinaryMarket.sol   # 二元市场模板
+│   └── OffchainMultiMarket8.sol   # 多元市场模板
 ├── tokens/
-│   └── OutcomeToken1155.sol       # ERC-1155 outcome token
+│   └── OutcomeToken1155.sol       # ERC-1155 结果代币
 ├── oracles/
-│   └── UMAOracleAdapterV2.sol     # UMA oracle adapter
+│   └── UMAOracleAdapterV2.sol     # UMA 预言机适配器
 └── governance/
-    └── ForesightTimelock.sol      # Governance timelock
+    └── ForesightTimelock.sol      # 治理时间锁
 ```
 
 ### MarketFactory
 
-The market factory is responsible for creating and managing all prediction market instances.
+市场工厂负责创建和管理所有预测市场实例。
 
-**Core Functions:**
+**核心函数：**
 
 ```solidity
 function createMarket(
-    bytes32 templateId,          // Template ID (binary/multi8)
-    address oracle,              // Oracle address
-    address collateral,          // Collateral token (USDC)
-    uint256 resolutionTime,      // Settlement time
-    uint256 feeBps,              // Fee in basis points
-    bytes calldata initData      // Initialization data
+    bytes32 templateId,          // 模板ID（binary/multi8）
+    address oracle,              // 预言机地址
+    address collateral,          // 抵押代币（USDC）
+    uint256 resolutionTime,      // 结算时间
+    uint256 feeBps,              // 手续费（基点）
+    bytes calldata initData      // 初始化数据
 ) external returns (address market);
 ```
 
-### Order Structure
+### 订单结构
 
 ```solidity
 struct Order {
-    address maker;           // Order creator
-    uint256 outcomeIndex;    // Outcome index
-    bool isBuy;              // true=buy, false=sell
-    uint256 price;           // Price (USDC 6 decimals / 1e18 shares)
-    uint256 amount;          // Share amount (1e18 precision)
-    uint256 expiry;          // Expiration timestamp
-    uint256 salt;            // Unique identifier
+    address maker;           // 挂单者
+    uint256 outcomeIndex;    // 结果索引
+    bool isBuy;              // true=买入，false=卖出
+    uint256 price;           // 价格（USDC 6 decimals / 1e18 份额）
+    uint256 amount;          // 份额数量（1e18 精度）
+    uint256 expiry;          // 过期时间戳
+    uint256 salt;            // 唯一标识符
 }
 ```
 
-### Security Features
+### 安全特性
 
-- ✅ ReentrancyGuard reentrancy protection
-- ✅ Flash loan attack protection (single-block limit)
-- ✅ Batch operation size limit (DoS prevention)
-- ✅ ECDSA signature malleability protection
-- ✅ ERC-1271 smart contract wallet support
-- ✅ Circuit breaker mechanism (emergency pause)
+- ✅ ReentrancyGuard 重入保护
+- ✅ 闪电贷攻击防护（单区块限额）
+- ✅ 批量操作大小限制（防 DoS）
+- ✅ ECDSA 签名可延展性保护
+- ✅ ERC-1271 智能合约钱包支持
+- ✅ 熔断机制（紧急暂停）
 
 ---
 
-## Frontend Architecture
+## 前端架构
 
-### Tech Stack
+### 技术栈
 
-| Category  | Technology           | Version |
-| --------- | -------------------- | ------- |
-| Framework | Next.js (App Router) | 15.5.4  |
-| UI        | React                | 19      |
-| Language  | TypeScript           | 5.0     |
-| Styling   | Tailwind CSS         | 3.4     |
-| Animation | Framer Motion        | 11      |
-| State     | React Query          | 5       |
-| Web3      | ethers.js            | 6       |
-| i18n      | next-intl            | 3       |
+| 类别   | 技术                 | 版本   |
+| ------ | -------------------- | ------ |
+| 框架   | Next.js (App Router) | 15.5.4 |
+| UI     | React                | 19     |
+| 语言   | TypeScript           | 5.0    |
+| 样式   | Tailwind CSS         | 3.4    |
+| 动画   | Framer Motion        | 11     |
+| 状态   | React Query          | 5      |
+| Web3   | ethers.js            | 6      |
+| 国际化 | next-intl            | 3      |
 
-### Internationalization
+### 国际化
 
-Frontend uses `next-intl` for internationalization. Supported languages:
+前端使用 `next-intl` 进行国际化，支持的语言：
 
 - 🇨🇳 简体中文
 - 🇺🇸 English
@@ -159,63 +159,63 @@ Frontend uses `next-intl` for internationalization. Supported languages:
 
 ---
 
-## API Reference
+## API 参考
 
-### Authentication (SIWE)
+### 认证（SIWE）
 
-- **GET /api/siwe/nonce**: Generate and return siwe_nonce Cookie
-- **POST /api/siwe/verify**: Verify signature and create session
+- **GET /api/siwe/nonce**：生成并下发 siwe_nonce Cookie
+- **POST /api/siwe/verify**：验证签名并创建会话
 
-### Rate Limiting
+### 限流
 
-| Tier     | Requests/Minute |
-| -------- | --------------- |
-| strict   | 5               |
-| moderate | 20              |
-| relaxed  | 60              |
-| lenient  | 120             |
+| 档位     | 请求/分钟 |
+| -------- | --------- |
+| strict   | 5         |
+| moderate | 20        |
+| relaxed  | 60        |
+| lenient  | 120       |
 
-### Social System API
+### 社交系统 API
 
 ```text
-# User Follows
-POST /api/user-follows/user     # Follow/unfollow a user
-GET  /api/user-follows/counts   # Get follower/following counts
+# 用户关注
+POST /api/user-follows/user     # 关注/取消关注用户
+GET  /api/user-follows/counts   # 获取粉丝数和关注数
 
-# Discussions
+# 讨论
 GET  /api/discussions?proposalId=1
 POST /api/discussions
 PATCH /api/discussions/[id]
 DELETE /api/discussions/[id]
 ```
 
-### Forum API
+### 论坛 API
 
 ```text
-GET  /api/forum?eventId=1       # Get forum threads
-POST /api/forum                 # Create thread
-POST /api/forum/comments        # Create comment
-POST /api/forum/vote            # Vote on thread/comment
-GET  /api/forum/user-votes      # Get user's votes
+GET  /api/forum?eventId=1       # 获取论坛主题列表
+POST /api/forum                 # 创建主题
+POST /api/forum/comments        # 创建评论
+POST /api/forum/vote            # 对主题/评论投票
+GET  /api/forum/user-votes      # 获取用户的投票记录
 ```
 
-### Flag System API
+### Flag 系统 API
 
 ```text
-GET  /api/flags                 # Get flags
-POST /api/flags                 # Create flag
-POST /api/flags/[id]/checkin    # Check in to flag
-POST /api/flags/[id]/settle     # Settle flag
+GET  /api/flags                 # 获取 Flag 列表
+POST /api/flags                 # 创建 Flag
+POST /api/flags/[id]/checkin    # 打卡
+POST /api/flags/[id]/settle     # 结算 Flag
 ```
 
 ---
 
-## Database Design
+## 数据库设计
 
-### Core Tables
+### 核心表
 
 ```sql
--- Orders (written by Relayer)
+-- 订单（Relayer 写入）
 CREATE TABLE IF NOT EXISTS public.orders (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   verifying_contract TEXT NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Trades (on-chain events)
+-- 成交（链上事件）
 CREATE TABLE IF NOT EXISTS public.trades (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   network_id INTEGER NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS public.trades (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Candles (OHLCV)
+-- K线（OHLCV）
 CREATE TABLE IF NOT EXISTS public.candles (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   network_id INTEGER NOT NULL,
@@ -270,85 +270,85 @@ CREATE TABLE IF NOT EXISTS public.candles (
 
 ---
 
-## Deployment Guide
+## 部署指南
 
-### Smart Contracts
+### 智能合约
 
 ```bash
-# 1. Configure environment variables
+# 1. 配置环境变量
 export PRIVATE_KEY=your_deployer_private_key
 export RPC_URL=https://rpc-amoy.polygon.technology
 
-# 2. Compile contracts
+# 2. 编译合约
 npx hardhat compile
 
-# 3. Deploy
+# 3. 部署
 npx hardhat run scripts/deploy_offchain_sprint1.ts --network amoy
 ```
 
-### Frontend
+### 前端
 
 ```bash
-# 1. Build
+# 1. 构建
 cd apps/web
 npm run build
 
-# 2. Deploy to Vercel
+# 2. 部署到 Vercel
 vercel deploy --prod
 ```
 
 ### Relayer
 
 ```bash
-# 1. Build
+# 1. 构建
 cd services/relayer
 npm run build
 
-# 2. Run with PM2
+# 2. 使用 PM2 运行
 pm2 start dist/index.js --name foresight-relayer
 
-# 3. Or use Docker
+# 3. 或使用 Docker
 docker build -t foresight-relayer .
 docker run -d -p 3001:3001 foresight-relayer
 ```
 
 ---
 
-## Security Guidelines
+## 安全规范
 
-### Smart Contract Security
+### 智能合约安全
 
-1. **Reentrancy Protection**: All state-modifying functions use `ReentrancyGuard`
-2. **Access Control**: Using OpenZeppelin AccessControl
-3. **Flash Loan Protection**: Single-block transaction limit
-4. **Signature Security**: ECDSA malleability check
-5. **Circuit Breaker**: Emergency pause functionality
+1. **重入保护**：所有状态修改函数使用 `ReentrancyGuard`
+2. **访问控制**：使用 OpenZeppelin AccessControl
+3. **闪电贷防护**：单区块交易量限制
+4. **签名安全**：ECDSA 可延展性检查
+5. **熔断机制**：紧急暂停功能
 
-### Frontend Security
+### 前端安全
 
-1. **Input Validation**: Use `validateAndSanitize` to sanitize user input
-2. **XSS Protection**: Never render raw user input directly
-3. **CSRF Protection**: API uses signature verification
-4. **Rate Limiting**: Use `withRateLimit` wrapper for API routes
-
----
-
-## More Resources
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [React Query Documentation](https://tanstack.com/query/latest)
-- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
-- [UMA Protocol](https://docs.uma.xyz)
-- [EIP-712 Specification](https://eips.ethereum.org/EIPS/eip-712)
+1. **输入验证**：使用 `validateAndSanitize` 清理用户输入
+2. **XSS 防护**：不直接渲染用户原始输入
+3. **CSRF 防护**：API 使用签名验证
+4. **限流**：使用 `withRateLimit` 包装 API
 
 ---
 
-**Last Updated**: 2025-12-29  
-**Documentation Version**: v2.2
+## 更多资源
+
+- [Next.js 文档](https://nextjs.org/docs)
+- [React Query 文档](https://tanstack.com/query/latest)
+- [OpenZeppelin 合约](https://docs.openzeppelin.com/contracts)
+- [UMA 协议](https://docs.uma.xyz)
+- [EIP-712 规范](https://eips.ethereum.org/EIPS/eip-712)
 
 ---
 
-**Languages / 语言切换 / Idioma / Langue / 언어:**
+**最后更新**: 2025-12-29  
+**文档版本**: v2.2
+
+---
+
+**语言切换 / Languages / Idioma / Langue / 언어:**
 
 - [📚 DOCS.md](./DOCS.md) - English
 - [📚 DOCS.zh-CN.md](./DOCS.zh-CN.md) - 简体中文

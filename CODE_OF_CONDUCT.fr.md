@@ -1,94 +1,54 @@
-# 📜 社区行为准则
+# 📜 Code de Conduite de la Communauté
 
-> Foresight 预测市场社区的行为准则与参与指南。
+> Code de conduite et guide de participation pour la communauté Foresight.
 
-## 我们的承诺
+## Notre Engagement
 
-作为成员、贡献者和领导者，我们承诺让参与我们社区的每个人都能获得无骚扰的体验，无论年龄、体型、可见或不可见的残疾、民族、性别特征、性别认同和表达、经验水平、教育程度、社会经济地位、国籍、个人外表、种族、宗教或性取向如何。
+En tant que membres, contributeurs et dirigeants, nous nous engageons à faire de la participation à notre communauté une expérience sans harcèlement pour tous, quel que soit l'âge, la taille, le handicap visible ou invisible, l'origine ethnique, les caractéristiques de genre, l'identité et l'expression de genre, le niveau d'expérience, l'éducation, le statut socio-économique, la nationality, l'apparence personnelle, la race, la religion ou l'orientation sexuelle.
 
-我们承诺以有助于建设开放、友好、多元、包容和健康社区的方式行事和互动。
+## Nos Normes
 
-## 我们的标准
+### ✅ Comportements qui aident à créer un environnement positif
 
-### ✅ 有助于创造积极环境的行为
+- Faire preuve d'empathie et de gentillesse envers les autres
+- Respecter les différents points de vue, perspectives et expériences
+- Donner et accepter les retours constructifs
+- Prendre ses responsabilités et s'excuser pour les erreurs
 
-- 对其他人表示同理心和善意
-- 尊重不同的观点、视角和经验
-- 给予并优雅地接受建设性反馈
-- 承担责任，向受我们错误影响的人道歉，并从中学习
-- 关注对整个社区最有利的事情，而不仅仅是个人
+### ❌ Comportements inacceptables
 
-### ❌ 不可接受的行为
+- Langage ou images sexualisées, attention sexuelle non désirée
+- Commentaires insultants ou désobligeants, attaques personnelles ou politiques
+- Harcèlement public ou privé
+- Publication d'informations privées d'autrui sans permission
 
-- 使用性暗示的语言或图像，以及任何形式的性关注或挑逗
-- 挑衅、侮辱或贬低性评论，以及人身或政治攻击
-- 公开或私下骚扰
-- 未经明确许可发布他人的私人信息（如物理地址或电子邮件）
-- 其他在专业环境中可能被合理认为不当的行为
+## Application
 
-## 执行责任
+Les dirigeants de la communauté sont responsables de clarifier et d'appliquer notre code de conduite.
 
-社区领导者负责澄清和执行我们的行为标准，并对任何他们认为不当、威胁、冒犯或有害的行为采取适当和公正的纠正措施。
-
-社区领导者有权利和责任删除、编辑或拒绝与本行为准则不符的评论、提交、代码、wiki 编辑、问题和其他贡献，并在适当时候说明审核决定的原因。
-
-## 适用范围
-
-本行为准则适用于所有社区空间，也适用于个人在公共空间中代表社区时。代表我们社区的例子包括使用官方电子邮件地址、通过官方社交媒体账户发帖，或在线上或线下活动中担任指定代表。
-
-## 执行
-
-可以向负责执行的社区领导者报告辱骂、骚扰或其他不可接受的行为，报告方式：
+### Canaux de Signalement
 
 📧 **Email**: [conduct@foresight.market](mailto:conduct@foresight.market)
 
-所有投诉都将得到及时、公正的审查和调查。
+Toutes les plaintes seront examinées et étudiées rapidement et équitablement.
 
-所有社区领导者都有义务尊重任何事件报告者的隐私和安全。
+---
 
-## 执行指南
+## Attribution
 
-社区领导者将遵循以下社区影响指南来确定他们认为违反本行为准则的行为的后果：
+Ce code de conduite est adapté du [Contributor Covenant][homepage] version 2.0.
 
-### 1. 纠正
-
-**社区影响**: 使用不当语言或其他被认为不专业或不受社区欢迎的行为。
-
-**后果**: 社区领导者发出私人书面警告，明确说明违规性质，并解释为什么该行为不当。可能会要求公开道歉。
-
-### 2. 警告
-
-**社区影响**: 单次事件或一系列行为的违规。
-
-**后果**: 对持续行为发出警告并说明后果。在指定时间内不得与相关人员互动，包括不得与执行行为准则的人员进行主动互动。这包括避免在社区空间以及社交媒体等外部渠道的互动。违反这些条款可能导致临时或永久禁止。
-
-### 3. 临时禁止
-
-**社区影响**: 严重违反社区标准，包括持续的不当行为。
-
-**后果**: 在指定时间内暂时禁止与社区进行任何形式的互动或公开交流。在此期间，禁止与相关人员进行任何公开或私人互动，包括不得与执行行为准则的人员进行主动互动。违反这些条款可能导致永久禁止。
-
-### 4. 永久禁止
-
-**社区影响**: 表现出违反社区标准的模式，包括持续的不当行为、对个人的骚扰，或对某类人群的攻击或贬低。
-
-**后果**: 永久禁止在社区内进行任何形式的公开互动。
-
-## 归属
-
-本行为准则改编自 [Contributor Covenant][homepage] 2.0 版。
-
-社区影响指南的灵感来自 [Mozilla 的行为准则执行阶梯](https://github.com/mozilla/diversity)。
+Les directives d'impact communautaire sont inspirées de [l'échelle d'application du code de conduite de Mozilla](https://github.com/mozilla/diversity).
 
 [homepage]: https://www.contributor-covenant.org
 
 ---
 
-## 联系我们
+## Nous Contacter
 
-如果你有任何问题或需要报告违规行为：
+Si vous avez des questions ou besoin de signaler une violation:
 
 - 📧 Email: [conduct@foresight.market](mailto:conduct@foresight.market)
-- 💬 Discord: 私信管理员
+- 💬 Discord: Message direct à un administrateur
 
-我们致力于创建一个安全、友好的社区环境。感谢你的参与和合作！ 💜
+Nous nous engageons à créer un environnement communautaire sûr et convivial! 💜
