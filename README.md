@@ -356,17 +356,13 @@ Foresight-beta/
 
 ## 📚 文档导航
 
-| 文档                                                                       | 描述            |
-| -------------------------------------------------------------------------- | --------------- |
-| [DOCS.md](./DOCS.md)                                                       | 完整开发者文档  |
-| [聊天/讨论（Discussions）API](./apps/web/src/app/api/discussions/route.ts) | 聊天接口与限流  |
-| [Flag 系统 API](./DOCS.md#flag-系统-api)                                   | Flag 接口与流程 |
-| [论坛系统 API](./DOCS.md#论坛系统-api)                                     | 论坛接口与投票  |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)                                       | 贡献指南        |
-| [SECURITY.md](./SECURITY.md)                                               | 安全政策        |
-| [CHANGELOG.md](./CHANGELOG.md)                                             | 变更日志        |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)                                 | 行为准则        |
-| [Relayer 文档](./services/relayer/README.md)                               | 订单簿服务文档  |
+| 文档                                         | 描述           |
+| -------------------------------------------- | -------------- |
+| [DOCS.md](./DOCS.md)                         | 完整开发者文档 |
+| [SECURITY.md](./SECURITY.md)                 | 安全政策       |
+| [CHANGELOG.md](./CHANGELOG.md)               | 变更日志       |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)   | 行为准则       |
+| [Relayer 文档](./services/relayer/README.md) | 订单簿服务文档 |
 
 ---
 
