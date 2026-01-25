@@ -289,9 +289,9 @@ services/relayer/
 └── MONITORING.md
 ```
 
-## ⚡ Phase 2 已完成
+## ⚡ 高可用功能
 
-Phase 2 功能已实现，详见 [PHASE2.md](./PHASE2.md):
+高可用功能已集成到系统中：
 
 - [x] 撮合引擎主备切换 (Leader Election)
 - [x] WebSocket 集群化 (Redis Pub/Sub)

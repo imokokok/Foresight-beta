@@ -1,5 +1,7 @@
 # 📜 社区行为准则
 
+> Foresight 预测市场社区的行为准则与参与指南。
+
 ## 我们的承诺
 
 作为成员、贡献者和领导者，我们承诺让参与我们社区的每个人都能获得无骚扰的体验，无论年龄、体型、可见或不可见的残疾、民族、性别特征、性别认同和表达、经验水平、教育程度、社会经济地位、国籍、个人外表、种族、宗教或性取向如何。
@@ -74,16 +76,11 @@
 
 ## 归属
 
-本行为准则改编自 [Contributor Covenant][homepage] 2.0 版，
-可在 https://www.contributor-covenant.org/version/2/0/code_of_conduct.html 获取。
+本行为准则改编自 [Contributor Covenant][homepage] 2.0 版。
 
 社区影响指南的灵感来自 [Mozilla 的行为准则执行阶梯](https://github.com/mozilla/diversity)。
 
 [homepage]: https://www.contributor-covenant.org
-
-有关此行为准则常见问题的答案，请参阅
-https://www.contributor-covenant.org/faq。翻译版本可在
-https://www.contributor-covenant.org/translations 获取。
 
 ---
 

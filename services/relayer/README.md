@@ -149,6 +149,55 @@ npm run start:prod
 | GET  | `/metrics` | Prometheus 指标 |
 | GET  | `/version` | 版本信息        |
 
+**健康检查响应示例：**
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-12-27T10:00:00.000Z",
+  "uptime": 3600,
+  "version": "1.1.0",
+  "checks": {
+    "supabase": { "status": "pass", "latency": 45 },
+    "redis": { "status": "pass", "latency": 2 },
+    "rpc": { "status": "pass", "latency": 150 },
+    "matching_engine": { "status": "pass", "message": "Active markets: 5" }
+  }
+}
+```
+
+### Prometheus 指标
+
+```bash
+# 查看指标
+curl http://localhost:3001/metrics
+```
+
+**关键指标：**
+
+| 指标                                 | 描述             |
+| ------------------------------------ | ---------------- |
+| `foresight_orders_total`             | 订单提交总数     |
+| `foresight_orders_active`            | 活跃订单数       |
+| `foresight_matches_total`            | 撮合总数         |
+| `foresight_matching_latency_ms`      | 撮合延迟         |
+| `foresight_matched_volume_total`     | 成交量           |
+| `foresight_settlement_batches_total` | 结算批次数       |
+| `foresight_settlement_pending_fills` | 待结算撮合数     |
+| `foresight_settlement_latency_ms`    | 结算延迟         |
+| `foresight_ws_connections_active`    | WebSocket 连接数 |
+
+### Grafana Dashboard
+
+```bash
+# 启动监控栈
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# 访问 Grafana
+open http://localhost:3030
+# 账号: admin / foresight123
+```
+
 ### WebSocket
 
 ```javascript
@@ -239,11 +288,9 @@ kubectl apply -f k8s/ingress.yaml
 
 ## 📖 详细文档
 
-| 文档                             | 描述               |
-| -------------------------------- | ------------------ |
-| [MONITORING.md](./MONITORING.md) | Phase 1 监控指南   |
-| [PHASE2.md](./PHASE2.md)         | Phase 2 高可用架构 |
-| [PHASE3.md](./PHASE3.md)         | Phase 3 弹性架构   |
+| 文档                             | 描述         |
+| -------------------------------- | ------------ |
+| [MONITORING.md](./MONITORING.md) | 监控运维指南 |
 
 ---
 

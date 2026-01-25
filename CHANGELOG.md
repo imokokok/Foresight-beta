@@ -19,17 +19,20 @@
 
 ### 📖 文档
 
-- 📖 DOCS.md：新增“认证与会话”“限流与中间件”“可观测性与事件”“API 响应规范”
-- 📖 README.md：新增“运行时安全与可观测性”摘要
-- 📖 SECURITY.md：新增“运行时安全与风控”章节（CSP、限流、SIWE、OTP、事件审计）
-- 📖 CONTRIBUTING.md：补充提交前本地自检与脚本指引
+- 📖 DOCS.md：新增"认证与会话""限流与中间件""可观测性与事件""API 响应规范"
+- 📖 README.md：新增"运行时安全与可观测性"摘要
+- 📖 SECURITY.md：新增"运行时安全与风控"章节（CSP、限流、SIWE、OTP、事件审计）
+- 📖 docs: 清理内部开发文档，保留生产环境必需文档
+- 📖 relayer/README.md：合并监控端点与指标说明，优化文档结构
+- 📖 CODE_OF_CONDUCT.md：精简冗余链接，添加项目描述
 
-#### 社交系统 (Social Network)
+### 🗑️ 移除
 
-- ✨ **用户关注系统** - 实现用户间双向关注逻辑，新增 `user_follows` 数据库架构。
-- ✨ **UserHoverCard** - 全局通用的用户预览卡片，支持悬停显示资料、快速关注及个人中心跳转。
-- ✨ **个人中心深度集成** - 新增“粉丝”标签页，优化“关注”列表（区分事件与用户），支持实时社交统计。
-- ✨ **跨页面社交入口** - 在排行榜、详情页、评论区全面集成用户卡片入口。
+- 🗑️ 移除内部开发文档：TECH_DEBT.md, CONTRIBUTING.md, contracts_maturity_assessment.md, MAINNET_DEPLOYMENT_PLAN.md
+- 🗑️ 移除安全审计清单：docs/security-audit-checklist.md
+- 🗑️ 移除设计文档：docs/PERMISSION_MANAGEMENT_DESIGN.md, docs/EMERGENCY_RESPONSE_PLAN.md
+- 🗑️ 移除 ADR 目录：docs/adr/ 全部文件
+- 🗑️ 移除 Phase 2/3 架构文档：services/relayer/PHASE2.md, services/relayer/PHASE3.md
 
 #### 游戏化体验 (Gamification)
 
@@ -39,13 +42,13 @@
 
 #### 排行榜优化
 
-- ✨ **多维排序** - 实现按“盈利”、“胜率”、“连胜”分类切换的实时排序功能。
+- ✨ **多维排序** - 实现按"盈利"、"胜率"、"连胜"分类切换的实时排序功能。
 - ✨ **全局搜索** - 支持按用户名或钱包地址快速检索交易员。
 - ✨ **My Spot 模块** - 实装个人排名追踪，支持显示当前排名、盈利及与下一名的差距。
 
 #### 市场增强
 
-- ✨ **Trending Now** - 实装排行榜侧边栏的“正在流行”卡片，实时获取并展示高热度预测事件。
+- ✨ **Trending Now** - 实装排行榜侧边栏的"正在流行"卡片，实时获取并展示高热度预测事件。
 - ✨ **创建 Flag 模板** - 优化官方挑战模板系统，支持动态文案替换与专属主题色。
 
 ### ⚡ 性能与体验
