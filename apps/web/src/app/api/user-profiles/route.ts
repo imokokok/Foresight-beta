@@ -160,11 +160,12 @@ export async function GET(req: NextRequest) {
       },
       "Profile fetched successfully"
     );
-  } catch (e: any) {
-    logApiError("GET /api/user-profiles unhandled error", e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/user-profiles unhandled error", error);
     return ApiResponses.internalError(
       "Failed to fetch profile",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }
@@ -257,11 +258,12 @@ export async function POST(req: NextRequest) {
       });
     }
     return res;
-  } catch (e: any) {
-    logApiError("POST /api/user-profiles unhandled error", e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/user-profiles unhandled error", error);
     return ApiResponses.internalError(
       "Failed to save profile",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

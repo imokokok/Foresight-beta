@@ -10,6 +10,17 @@ import {
 } from "@/lib/serverUtils";
 import { getChainAddresses, getConfiguredChainId, getConfiguredRpcUrl } from "@/lib/runtimeConfig";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+import type { PostgrestError } from "@supabase/supabase-js";
+
+interface UserBalanceRow {
+  balance: string | null;
+  reserved: string | null;
+}
+
+interface UserProfileRow {
+  proxy_wallet_address: string | null;
+  is_admin: boolean | null;
+}
 
 function isMissingRelation(error?: { message?: string }) {
   const msg = String(error?.message || "").toLowerCase();
@@ -17,7 +28,7 @@ function isMissingRelation(error?: { message?: string }) {
 }
 
 async function canAccessUserBalance(
-  client: any,
+  client: NonNullable<Awaited<typeof supabaseAdmin>>,
   viewer: string,
   address: string
 ): Promise<boolean> {
@@ -36,8 +47,9 @@ async function canAccessUserBalance(
       return false;
     }
 
-    if ((data as any)?.is_admin) return true;
-    const proxy = normalizeAddress(String((data as any)?.proxy_wallet_address || ""));
+    const profile = data as UserProfileRow | null;
+    if (profile?.is_admin) return true;
+    const proxy = normalizeAddress(String(profile?.proxy_wallet_address || ""));
     return proxy === address;
   } catch {
     return false;
@@ -46,7 +58,7 @@ async function canAccessUserBalance(
 
 export async function GET(req: NextRequest) {
   try {
-    const client = supabaseAdmin as any;
+    const client = supabaseAdmin;
     if (!client) {
       if (process.env.NODE_ENV !== "production") {
         return successResponse({ address: null, balance: "0", reserved: "0" });
@@ -82,21 +94,25 @@ export async function GET(req: NextRequest) {
       return ApiResponses.databaseError("Failed to fetch user balance", error.message);
     }
 
-    const row = (data || {}) as any;
+    const row = data as UserBalanceRow | null;
     return successResponse({
       address,
-      balance: String(row.balance ?? "0"),
-      reserved: String(row.reserved ?? "0"),
+      balance: String(row?.balance ?? "0"),
+      reserved: String(row?.reserved ?? "0"),
     });
-  } catch (e: any) {
-    logApiError("GET /api/user-balance unhandled error", e);
-    return ApiResponses.internalError("Failed to fetch user balance", e?.message || String(e));
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/user-balance unhandled error", error);
+    return ApiResponses.internalError(
+      "Failed to fetch user balance",
+      error?.message || String(error)
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const client = supabaseAdmin as any;
+    const client = supabaseAdmin;
     if (!client) {
       if (process.env.NODE_ENV !== "production") {
         return successResponse({ address: null, balance: "0", reserved: "0" });
@@ -164,12 +180,10 @@ export async function POST(req: NextRequest) {
     const balance = ethers.formatUnits(bal, 6);
 
     const nowIso = new Date().toISOString();
-    const { error } = await client
-      .from("user_balances")
-      .upsert(
-        { user_address: address, balance, updated_at: nowIso },
-        { onConflict: "user_address" }
-      );
+    const { error } = await (client.from("user_balances") as any).upsert(
+      { user_address: address, balance, updated_at: nowIso },
+      { onConflict: "user_address" }
+    );
 
     if (error) {
       if (process.env.NODE_ENV !== "production" && isMissingRelation(error)) {
@@ -192,14 +206,18 @@ export async function POST(req: NextRequest) {
       return ApiResponses.databaseError("Failed to fetch synced user balance", fetchErr.message);
     }
 
-    const out = (row || {}) as any;
+    const balanceRow = row as UserBalanceRow | null;
     return successResponse({
       address,
-      balance: String(out.balance ?? balance ?? "0"),
-      reserved: String(out.reserved ?? "0"),
+      balance: String(balanceRow?.balance ?? balance ?? "0"),
+      reserved: String(balanceRow?.reserved ?? "0"),
     });
-  } catch (e: any) {
-    logApiError("POST /api/user-balance unhandled error", e);
-    return ApiResponses.internalError("Failed to sync user balance", e?.message || String(e));
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/user-balance unhandled error", error);
+    return ApiResponses.internalError(
+      "Failed to sync user balance",
+      error?.message || String(error)
+    );
   }
 }

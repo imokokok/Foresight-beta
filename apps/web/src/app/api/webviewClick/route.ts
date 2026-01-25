@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest) {
@@ -35,9 +35,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    console.error("webviewClick API error:", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    console.error("webviewClick API error:", error);
     return ApiResponses.internalError("webviewClick API error", detail);
   }
 }

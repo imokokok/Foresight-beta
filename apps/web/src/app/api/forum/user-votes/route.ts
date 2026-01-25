@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+
+interface ForumVoteRow {
+  content_type: string | null;
+  content_id: number | null;
+  vote_type: string | null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,21 +25,26 @@ export async function GET(req: NextRequest) {
     if (eventId === null || !Number.isFinite(eventId)) {
       return ApiResponses.invalidParameters("Invalid event ID");
     }
-    if (!supabaseAdmin) {
+    const client = supabaseAdmin;
+    if (!client) {
       return ApiResponses.internalError("Database not available");
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await client
       .from("forum_votes")
       .select("content_type, content_id, vote_type")
       .eq("user_id", address)
       .eq("event_id", eventId);
 
     if (error) {
+      logApiError("GET /api/forum/user-votes query failed", error);
       return ApiResponses.databaseError("Failed to fetch votes", error.message);
     }
-    return NextResponse.json({ votes: data || [] }, { status: 200 });
-  } catch (e: any) {
-    return ApiResponses.internalError("Failed to fetch user votes", e.message);
+    const votes = (data || []) as ForumVoteRow[];
+    return successResponse({ votes });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/forum/user-votes unhandled error", error);
+    return ApiResponses.internalError("Failed to fetch user votes", error.message);
   }
 }

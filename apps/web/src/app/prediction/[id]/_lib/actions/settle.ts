@@ -79,11 +79,12 @@ export async function assertOutcomeAction(args: {
     await tx.wait();
 
     setMsg(t("settlement.assertFlow.success"));
-  } catch (e: any) {
-    console.error(e);
+  } catch (e) {
+    const error = e as Error;
+    console.error(error);
     setMsg(
       formatTranslation(t("settlement.assertFlow.failed"), {
-        reason: String(e?.message || "Unknown error"),
+        reason: String(error?.message || "Unknown error"),
       })
     );
     throw e;
@@ -134,11 +135,12 @@ export async function settleAdapterAction(args: {
     await tx.wait();
 
     setMsg(t("settlement.settleFlow.success"));
-  } catch (e: any) {
-    console.error(e);
+  } catch (e) {
+    const error = e as Error;
+    console.error(error);
     setMsg(
       formatTranslation(t("settlement.settleFlow.failed"), {
-        reason: String(e?.message || "Unknown error"),
+        reason: String(error?.message || "Unknown error"),
       })
     );
     throw e;
@@ -181,11 +183,12 @@ export async function resolveMarketAction(args: {
     await tx.wait();
 
     setMsg(t("settlement.resolveFlow.success"));
-  } catch (e: any) {
-    console.error(e);
+  } catch (e) {
+    const error = e as Error;
+    console.error(error);
     setMsg(
       formatTranslation(t("settlement.resolveFlow.failed"), {
-        reason: String(e?.message || "Unknown error"),
+        reason: String(error?.message || "Unknown error"),
       })
     );
     throw e;

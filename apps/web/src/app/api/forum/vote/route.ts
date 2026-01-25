@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
@@ -125,10 +125,11 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (uerr) return ApiResponses.databaseError("更新失败", uerr.message);
     return NextResponse.json({ message: "ok", data: updated, voted: { type, id, dir } });
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "投票失败",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

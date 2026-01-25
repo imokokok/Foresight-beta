@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { logApiError, getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function isEvmAddress(value: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(value);
@@ -63,10 +63,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       })
     );
     return NextResponse.json({ items, total: items.length }, { status: 200 });
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "Request failed",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

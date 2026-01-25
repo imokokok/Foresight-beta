@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import { getSessionAddress, logApiError, logApiEvent, normalizeAddress } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
 import { normalizeCategory } from "@/lib/categories";
 import { createPrediction } from "../../../predictions/_lib/createPrediction";
@@ -504,9 +504,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return ApiResponses.invalidParameters("invalid_patch");
     }
     return ApiResponses.invalidParameters("invalid_action");
-  } catch (e: any) {
-    logApiError("POST /api/review/proposals/[id] unhandled error", e);
-    const detail = e?.message || String(e);
-    return ApiResponses.internalError("update_failed", detail);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/review/proposals/[id] unhandled error", error);
+    return ApiResponses.internalError("update_failed", error.message);
   }
 }

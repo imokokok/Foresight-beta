@@ -108,8 +108,9 @@ export function useSiweAuth(params: Params) {
         const res = await fetchNonce();
         nonce = res.nonce;
         messageToSign = res.message;
-      } catch (e: any) {
-        const status = typeof e?.status === "number" ? e.status : undefined;
+      } catch (e) {
+        const error = e as Error & { status?: number };
+        const status = typeof error?.status === "number" ? error.status : undefined;
         if (status === 429) {
           return { success: false, error: t("errors.api.429.description") };
         }

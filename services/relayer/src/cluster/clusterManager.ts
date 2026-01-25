@@ -414,9 +414,10 @@ export class ClusterManager extends EventEmitter {
     if (this.pubsub && this.pubsub.isReady()) {
       try {
         await this.pubsub.publishClusterEvent(eventType, data);
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         clusterEventPublishFailuresTotal.inc({ event_type: eventType });
-        throw e;
+        throw error;
       }
     }
   }

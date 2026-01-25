@@ -74,16 +74,18 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
         } else {
           opts.logger.warn("Redis connection failed, running without Redis");
         }
-      } catch (e: any) {
-        opts.logger.warn("Redis initialization failed", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Redis initialization failed", {}, error);
       }
     }
 
     try {
       await initDatabasePool();
       opts.logger.info("Database pool initialized");
-    } catch (e: any) {
-      opts.logger.warn("Database pool initialization failed, using single connection", {}, e);
+    } catch (e) {
+      const error = e as Error;
+      opts.logger.warn("Database pool initialization failed, using single connection", {}, error);
     }
 
     const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
@@ -105,8 +107,9 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
         });
         reconcilerStarted = true;
         opts.logger.info("Chain reconciler initialized");
-      } catch (e: any) {
-        opts.logger.warn("Chain reconciler initialization failed", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Chain reconciler initialization failed", {}, error);
       }
     };
 
@@ -162,8 +165,9 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
         });
         balanceCheckerStarted = true;
         opts.logger.info("Balance checker initialized");
-      } catch (e: any) {
-        opts.logger.warn("Balance checker initialization failed", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Balance checker initialization failed", {}, error);
       }
     };
 
@@ -204,11 +208,12 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
           await startReconciler();
           await startBalanceChecker();
         }
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         opts.logger.warn(
           "Cluster manager initialization failed, running in standalone mode",
           {},
-          e
+          error
         );
       }
     }
@@ -267,16 +272,18 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
       await Promise.resolve(wsServer.start());
       opts.setWsServer(wsServer);
       opts.logger.info("WebSocket server started", { port: wsPort });
-    } catch (e: any) {
+    } catch (e) {
+      const error = e as Error;
       opts.setWsServer(null);
-      opts.logger.error("WebSocket server failed to start", {}, e);
+      opts.logger.error("WebSocket server failed to start", {}, error);
     }
 
     try {
       await opts.matchingEngine.recoverFromDb();
       opts.logger.info("Order books recovered from database");
-    } catch (e: any) {
-      opts.logger.error("Failed to recover order books", {}, e);
+    } catch (e) {
+      const error = e as Error;
+      opts.logger.error("Failed to recover order books", {}, error);
     }
 
     try {
@@ -284,13 +291,14 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
       if (result.replayed > 0 || result.skipped > 0) {
         opts.logger.info("Order books replayed from matching event log", result);
       }
-    } catch (e: any) {
-      opts.logger.warn("Failed to replay matching event log", {}, e);
+    } catch (e) {
+      const error = e as Error;
+      opts.logger.warn("Failed to replay matching event log", {}, error);
     }
 
     opts
       .startMarketExpiryLoop()
-      .catch((e: any) => opts.logger.warn("Market expiry loop failed to start", {}, e));
+      .catch((e) => opts.logger.warn("Market expiry loop failed to start", {}, e as Error));
 
     opts
       .startAutoIngestLoop()

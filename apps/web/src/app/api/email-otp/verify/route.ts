@@ -526,9 +526,10 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
     return res;
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    logApiError("POST /api/email-otp/verify unhandled error", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    logApiError("POST /api/email-otp/verify unhandled error", error);
     return errorResponse(
       "邮箱验证码验证失败",
       ApiErrorCode.INTERNAL_ERROR,

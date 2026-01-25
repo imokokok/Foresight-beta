@@ -78,7 +78,8 @@ export function useChatActions({
         }
         setPartition(effectiveDebateMode ? "debate" : "chat");
         return true;
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         const msg = tChat("errors.sendFailed");
         setSendError(msg);
         toast.error(tCommon("error"), msg);
@@ -118,8 +119,9 @@ export function useChatActions({
         }
         setMessages((prev) => prev.filter((m) => String(m.id) !== String(msg.id)));
         toast.success(tCommon("success"), tChat("message.deleted"));
-      } catch (e: any) {
-        const msg = String(e?.message || "").trim();
+      } catch (e) {
+        const error = e as Error;
+        const msg = String(error?.message || "").trim();
         toast.error(
           tCommon("error"),
           msg && msg !== "delete_failed" ? msg : tChat("message.deleteFailed")
@@ -153,8 +155,9 @@ export function useChatActions({
           throw new Error(serverMsg || "report_failed");
         }
         toast.success(tCommon("success"), tChat("message.reported"));
-      } catch (e: any) {
-        const msg = String(e?.message || "").trim();
+      } catch (e) {
+        const error = e as Error;
+        const msg = String(error?.message || "").trim();
         toast.error(
           tCommon("error"),
           msg && msg !== "report_failed" ? msg : tChat("message.reportFailed")

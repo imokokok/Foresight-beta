@@ -311,10 +311,11 @@ CREATE TABLE IF NOT EXISTS public.event_follows (
     }
 
     return successResponse({ ok: true }, "Unfollowed successfully");
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "Failed to process request",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }
@@ -379,10 +380,11 @@ export async function handleFollowsGet(req: NextRequest) {
     }
 
     return successResponse({ following, followersCount: count || 0 });
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "Failed to process request",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

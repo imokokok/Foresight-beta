@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
-import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
 import { getPendingReviewCountForWitness, getTodayPendingCheckins } from "@/lib/flagRewards";
 
-type NotificationItem = {
+interface NotificationRow {
   id: string;
   type: string;
   title: string;
@@ -12,8 +12,20 @@ type NotificationItem = {
   url: string | null;
   created_at: string;
   read_at: string | null;
-  payload?: unknown;
-};
+}
+
+interface SyntheticNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  url: string;
+  created_at: string;
+  read_at: null;
+  payload?: {
+    sampleTitles: string[];
+  };
+}
 
 function parseCursor(raw: string | null) {
   if (!raw) return null;
@@ -66,8 +78,8 @@ export async function GET(req: NextRequest) {
     const { data, error } = await q;
     if (error) return ApiResponses.databaseError("Query failed", error.message);
 
-    const rows = (Array.isArray(data) ? data : []) as any[];
-    const items: NotificationItem[] = rows.map((r) => ({
+    const rows = (Array.isArray(data) ? data : []) as NotificationRow[];
+    const items: NotificationRow[] = rows.map((r) => ({
       id: String(r?.id ?? ""),
       type: String(r?.type || ""),
       title: String(r?.title || ""),
@@ -80,7 +92,7 @@ export async function GET(req: NextRequest) {
     let pendingReviewCount = 0;
     let todayPendingCheckins = 0;
     let sampleTitles: string[] = [];
-    const syntheticItems: NotificationItem[] = [];
+    const syntheticItems: SyntheticNotification[] = [];
 
     if (!cursor) {
       pendingReviewCount = await getPendingReviewCountForWitness({
@@ -119,7 +131,7 @@ export async function GET(req: NextRequest) {
           payload: {
             sampleTitles,
           },
-        } as any);
+        });
       }
     }
 
@@ -127,12 +139,14 @@ export async function GET(req: NextRequest) {
     const last = items[items.length - 1];
     const nextCursor = last ? buildCursor(last.created_at, Number(last.id)) : null;
 
-    return NextResponse.json({
+    return successResponse({
       notifications: combined,
       nextCursor,
       pendingReviewCount,
     });
-  } catch (error: any) {
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/notifications unhandled error", error);
     return ApiResponses.internalError(error?.message || "Request failed");
   }
 }

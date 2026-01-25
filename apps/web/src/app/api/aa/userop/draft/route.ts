@@ -91,20 +91,21 @@ export async function POST(req: NextRequest) {
         });
       },
     });
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     try {
       const session = await getSession(req);
       const owner =
         typeof session?.address === "string" ? String(session.address).toLowerCase() : "";
       await logApiEvent("aa_userop_draft_exception", {
         owner: owner ? owner.slice(0, 10) : "",
-        message: String(e?.message || e).slice(0, 300),
+        message: String(error?.message || error).slice(0, 300),
       });
     } catch {}
-    logApiError("POST /api/aa/userop/draft", e);
+    logApiError("POST /api/aa/userop/draft", error);
     return ApiResponses.internalError(
       "Failed to draft user operation",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

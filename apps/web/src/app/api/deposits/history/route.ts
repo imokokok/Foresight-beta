@@ -240,8 +240,9 @@ export async function GET(req: NextRequest) {
         "ok"
       )
     );
-  } catch (e: any) {
-    logApiError("GET /api/deposits/history", e);
-    return withNoStore(ApiResponses.internalError("加载入金记录失败", String(e?.message || e)));
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/deposits/history", error);
+    return withNoStore(ApiResponses.internalError("加载入金记录失败", error.message));
   }
 }

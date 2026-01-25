@@ -131,7 +131,8 @@ export async function GET(req: NextRequest) {
       : [];
 
     return withNoStore(successResponse({ events }));
-  } catch (e: any) {
-    return withNoStore(ApiResponses.internalError("Failed to load audit", String(e?.message || e)));
+  } catch (e) {
+    const error = e as Error;
+    return withNoStore(ApiResponses.internalError("Failed to load audit", error.message));
   }
 }

@@ -10,7 +10,7 @@ import {
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
 import { getFlagTierFromFlag, getTierConfig, issueRandomSticker } from "@/lib/flagRewards";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -210,10 +210,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "Check-in failed",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

@@ -363,8 +363,9 @@ export function usePredictionDetail() {
                 refreshUserOrders,
                 toast,
               });
-            } catch (e: any) {
-              handleOrderError(e, setOrderMsg);
+            } catch (e) {
+              const error = e as Error;
+              handleOrderError(error, setOrderMsg);
             } finally {
               setIsSubmitting(false);
             }
@@ -380,7 +381,8 @@ export function usePredictionDetail() {
       const provider = await createBrowserProvider(walletProvider);
       try {
         await ensureNetwork(provider, market.chain_id, switchChain);
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         throw createUserError(
           formatTranslation(tTrading("orderFlow.switchNetwork"), {
             chainId: market.chain_id,
@@ -502,8 +504,9 @@ export function usePredictionDetail() {
                 refreshUserOrders,
                 toast,
               });
-            } catch (e: any) {
-              handleOrderError(e, setOrderMsg);
+            } catch (e) {
+              const error = e as Error;
+              handleOrderError(error, setOrderMsg);
             } finally {
               setIsSubmitting(false);
             }
@@ -541,8 +544,9 @@ export function usePredictionDetail() {
         refreshUserOrders,
         toast,
       });
-    } catch (e: any) {
-      handleOrderError(e, setOrderMsg);
+    } catch (e) {
+      const error = e as Error;
+      handleOrderError(error, setOrderMsg);
     } finally {
       setIsSubmitting(false);
     }

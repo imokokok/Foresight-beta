@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase.server";
 
@@ -24,8 +24,9 @@ export async function POST(req: NextRequest) {
     } catch {}
     clearSession(res, req);
     return res;
-  } catch (e: any) {
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
     return ApiResponses.internalError("登出失败", detail);
   }
 }

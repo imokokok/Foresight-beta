@@ -183,9 +183,10 @@ export async function POST(req: NextRequest) {
       },
       "Proxy wallet ready"
     );
-  } catch (e: any) {
-    logApiError("POST /api/wallets/proxy", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/wallets/proxy", error);
+    const detail = error.message;
     return ApiResponses.internalError(
       "Failed to prepare proxy wallet",
       process.env.NODE_ENV === "development" ? detail : undefined

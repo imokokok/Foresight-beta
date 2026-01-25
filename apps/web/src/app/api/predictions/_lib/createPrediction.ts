@@ -63,8 +63,8 @@ async function loadDefaultDeployment(): Promise<DefaultDeployment | null> {
 function resolveChainId(): number {
   try {
     return getConfiguredChainId();
-  } catch (e: any) {
-    const err = new Error(String(e?.message || "Missing CHAIN_ID"));
+  } catch (e) {
+    const err = new Error(String((e as Error)?.message || "Missing CHAIN_ID"));
     (err as any).status = 500;
     throw err;
   }
@@ -110,8 +110,8 @@ function assertBytes32(value: string, label: string) {
 function resolveRpcUrl(chainId: number): string {
   try {
     return getConfiguredRpcUrl(chainId);
-  } catch (e: any) {
-    const err = new Error(String(e?.message || "RPC_URL is not configured"));
+  } catch (e) {
+    const err = new Error(String((e as Error)?.message || "RPC_URL is not configured"));
     (err as any).status = 500;
     throw err;
   }

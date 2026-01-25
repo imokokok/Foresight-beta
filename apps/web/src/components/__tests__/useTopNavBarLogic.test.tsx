@@ -78,48 +78,6 @@ describe("useTopNavBarLogic", () => {
     (globalThis as any).fetch = originalFetch;
   });
 
-  it("应该根据 chainId 计算 isSepolia", () => {
-    const { result, rerender } = renderHook(() => useTopNavBarLogic());
-
-    expect(result.current.isSepolia).toBe(true);
-
-    chainIdMock = "0x1";
-    rerender();
-
-    expect(result.current.isSepolia).toBe(false);
-  });
-
-  it("networkName 应该正确映射网络名称", () => {
-    const { result } = renderHook(() => useTopNavBarLogic());
-
-    expect(result.current.networkName(null)).toBe("unknownNetwork");
-    expect(result.current.networkName("0xaa36a7")).toBe("Sepolia");
-    expect(result.current.networkName("0x1")).toBe("Ethereum");
-    expect(result.current.networkName("0xunknown")).toBe("0xunknown");
-  });
-
-  it("walletTypeLabel 应该根据钱包类型返回标签", () => {
-    const { result, rerender } = renderHook(() => useTopNavBarLogic());
-
-    expect(result.current.walletTypeLabel).toBe("MetaMask");
-
-    currentWalletTypeMock = "coinbase";
-    rerender();
-    expect(result.current.walletTypeLabel).toBe("Coinbase");
-
-    currentWalletTypeMock = "binance";
-    rerender();
-    expect(result.current.walletTypeLabel).toBe("Binance");
-
-    currentWalletTypeMock = "kaia";
-    rerender();
-    expect(result.current.walletTypeLabel).toBe("Kaia");
-
-    currentWalletTypeMock = "trust";
-    rerender();
-    expect(result.current.walletTypeLabel).toBe("Trust");
-  });
-
   it("copyAddress 应该写入剪贴板并更新 copied 状态", async () => {
     const { result } = renderHook(() => useTopNavBarLogic());
 
@@ -132,7 +90,6 @@ describe("useTopNavBarLogic", () => {
   });
 
   it("openOnExplorer 应该打开浏览器并关闭菜单", () => {
-    chainIdMock = "0xaa36a7";
     const { result } = renderHook(() => useTopNavBarLogic());
 
     act(() => {
@@ -143,25 +100,9 @@ describe("useTopNavBarLogic", () => {
       result.current.openOnExplorer();
     });
 
-    const expectedUrl = `https://sepolia.etherscan.io/address/${accountMock}`;
+    const expectedUrl = `https://etherscan.io/address/${accountMock}`;
 
     expect(window.open).toHaveBeenCalledWith(expectedUrl, "_blank");
-    expect(result.current.menuOpen).toBe(false);
-  });
-
-  it("switchToSepolia 应该切换网络并刷新余额", async () => {
-    const { result } = renderHook(() => useTopNavBarLogic());
-
-    act(() => {
-      result.current.setMenuOpen(true);
-    });
-
-    await act(async () => {
-      await result.current.switchToSepolia();
-    });
-
-    expect(switchNetworkMock).toHaveBeenCalledWith(11155111);
-    expect(refreshBalanceMock).toHaveBeenCalled();
     expect(result.current.menuOpen).toBe(false);
   });
 
@@ -482,22 +423,5 @@ describe("useTopNavBarLogic", () => {
       expect(result.current.notificationsCount).toBe(0);
       expect(result.current.notificationsHasMore).toBe(false);
     });
-  });
-
-  it("switchToSepolia 出错时也应该关闭菜单", async () => {
-    switchNetworkMock.mockRejectedValueOnce(new Error("switch failed"));
-
-    const { result } = renderHook(() => useTopNavBarLogic());
-
-    act(() => {
-      result.current.setMenuOpen(true);
-    });
-
-    await act(async () => {
-      await result.current.switchToSepolia();
-    });
-
-    expect(switchNetworkMock).toHaveBeenCalledWith(11155111);
-    expect(result.current.menuOpen).toBe(false);
   });
 });

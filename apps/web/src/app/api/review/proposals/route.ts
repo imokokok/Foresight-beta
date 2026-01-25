@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { logApiError } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
+
+interface ReviewProposalRow {
+  id: number;
+  event_id: number;
+  title: string | null;
+  content: string | null;
+  category: string | null;
+  upvotes: number | null;
+  review_status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  wallet_address: string | null;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +29,7 @@ export async function GET(req: NextRequest) {
       }
       return ApiResponses.internalError("no_client");
     }
-    const client = supabaseAdmin as any;
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase not configured");
     }
@@ -40,10 +53,11 @@ export async function GET(req: NextRequest) {
       logApiError("GET /api/review/proposals query_failed", error);
       return ApiResponses.databaseError("query_failed", error.message);
     }
-    return NextResponse.json({ items: data || [] }, { status: 200 });
-  } catch (e: any) {
-    logApiError("GET /api/review/proposals unhandled error", e);
-    const detail = e?.message || String(e);
-    return ApiResponses.internalError("query_failed", detail);
+    const items = (data || []) as ReviewProposalRow[];
+    return successResponse({ items });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/review/proposals unhandled error", error);
+    return ApiResponses.internalError("query_failed", error.message);
   }
 }

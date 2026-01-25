@@ -163,11 +163,12 @@ export async function submitOrderV2(order: OrderSubmitInput): Promise<{
       success: false,
       error: (json as any).message || "Order submission failed",
     };
-  } catch (e: any) {
-    console.error("[orderbookApi] v2 order submit failed:", e);
+  } catch (e) {
+    const error = e as Error;
+    console.error("[orderbookApi] v2 order submit failed:", error);
     return {
       success: false,
-      error: e.message || "Network error",
+      error: error.message || "Network error",
     };
   }
 }

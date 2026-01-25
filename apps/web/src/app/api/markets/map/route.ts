@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import {
   getSessionAddress,
   isAdminAddress,
@@ -29,9 +29,10 @@ export async function GET(req: NextRequest) {
       return ApiResponses.databaseError("Failed to fetch market map", error.message);
     }
     return NextResponse.json({ success: true, data });
-  } catch (e: any) {
-    logApiError("GET /api/markets/map unhandled error", e);
-    const detail = e?.message || String(e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/markets/map unhandled error", error);
+    const detail = error?.message || String(error);
     return ApiResponses.internalError(
       "Failed to fetch market map",
       process.env.NODE_ENV === "development" ? detail : undefined
@@ -124,9 +125,10 @@ export async function POST(req: NextRequest) {
       return ApiResponses.databaseError("Failed to upsert market map", error.message);
     }
     return NextResponse.json({ success: true, data });
-  } catch (e: any) {
-    logApiError("POST /api/markets/map unhandled error", e);
-    const detail = e?.message || String(e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/markets/map unhandled error", error);
+    const detail = error?.message || String(error);
     return ApiResponses.internalError(
       "Failed to upsert market map",
       process.env.NODE_ENV === "development" ? detail : undefined

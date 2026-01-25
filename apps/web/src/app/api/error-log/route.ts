@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { logApiError } from "@/lib/serverUtils";
 
@@ -85,9 +85,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    logApiError("POST /api/error-log unhandled error", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    logApiError("POST /api/error-log unhandled error", error);
     return ApiResponses.internalError("Error in error logging", detail);
   }
 }

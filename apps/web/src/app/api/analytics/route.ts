@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { getSessionAddress, normalizeAddress } from "@/lib/serverUtils";
 
@@ -133,9 +133,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    console.error("Analytics error:", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    console.error("Analytics error:", error);
     return ApiResponses.internalError("Analytics error", detail);
   }
 }

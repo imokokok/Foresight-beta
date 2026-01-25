@@ -39,11 +39,12 @@ async function safeOp(op: string, fn: () => Promise<unknown>): Promise<OpResult>
   try {
     await fn();
     return { op, ok: true };
-  } catch (e: any) {
-    if (isMissingRelation(e) || isMissingColumn(e)) {
+  } catch (e) {
+    const error = e as Error;
+    if (isMissingRelation(error) || isMissingColumn(error)) {
       return { op, ok: true, skipped: true };
     }
-    return { op, ok: false, error: String(e?.message || e) };
+    return { op, ok: false, error: String(error?.message || error) };
   }
 }
 
@@ -211,7 +212,8 @@ export async function POST(req: NextRequest) {
       maxAge: 0,
     });
     return res;
-  } catch (e: any) {
-    return ApiResponses.internalError("Failed to delete account", String(e?.message || e));
+  } catch (e) {
+    const error = e as Error;
+    return ApiResponses.internalError("Failed to delete account", error.message);
   }
 }

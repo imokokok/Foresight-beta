@@ -199,8 +199,9 @@ export async function submitMarketOrderWithAa({
     await refreshUserOrders();
     toast.success(tTrading("toast.orderSuccessTitle"), tTrading("toast.orderSuccessDesc"));
     return true;
-  } catch (e: any) {
-    console.error("AA batchFill failed", e);
+  } catch (e) {
+    const error = e as Error;
+    console.error("AA batchFill failed", error);
     return false;
   }
 }

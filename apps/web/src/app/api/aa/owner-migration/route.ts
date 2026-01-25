@@ -119,9 +119,10 @@ export async function POST(req: NextRequest) {
       },
       "Owner migration prepared"
     );
-  } catch (e: any) {
-    logApiError("POST /api/aa/owner-migration", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/aa/owner-migration", error);
+    const detail = String(error?.message || error);
     return ApiResponses.internalError(
       "Failed to prepare owner migration",
       process.env.NODE_ENV === "development" ? detail : undefined

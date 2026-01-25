@@ -150,8 +150,9 @@ export async function GET(req: NextRequest) {
       outcomeCount,
       outcomes,
     });
-  } catch (e: any) {
-    logApiError("GET /api/markets/summary", e);
-    return ApiResponses.internalError("Failed to fetch market summary", e.message);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/markets/summary", error);
+    return ApiResponses.internalError("Failed to fetch market summary", error.message);
   }
 }

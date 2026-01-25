@@ -110,8 +110,9 @@ export async function mintAction(args: {
 
         setOrderMsg(t("trading.mintFlow.success"));
         return;
-      } catch (e: any) {
-        console.error("AA mint failed, falling back to EOA", e);
+      } catch (e) {
+        const error = e as Error;
+        console.error("AA mint failed, falling back to EOA", error);
       }
     }
 
@@ -127,10 +128,11 @@ export async function mintAction(args: {
 
     try {
       await marketContract.mintCompleteSet.estimateGas(amount18);
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as Error & { reason?: string; message?: string };
       throw new Error(
         formatTranslation(t("trading.mintFlow.estimateFailed"), {
-          reason: String(err?.reason || err?.message || ""),
+          reason: String(error?.reason || error?.message || ""),
         })
       );
     }
@@ -139,10 +141,11 @@ export async function mintAction(args: {
     await tx.wait();
 
     setOrderMsg(t("trading.mintFlow.success"));
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     setOrderMsg(
       formatTranslation(t("trading.mintFlow.failed"), {
-        reason: String(e?.message || t("trading.mintFlow.unknownError")),
+        reason: String(error?.message || t("trading.mintFlow.unknownError")),
       })
     );
   }

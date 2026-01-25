@@ -136,10 +136,9 @@ export async function GET(req: NextRequest) {
       : [];
 
     return withNoStore(successResponse({ sessions, currentSessionId }));
-  } catch (e: any) {
-    return withNoStore(
-      ApiResponses.internalError("Failed to load sessions", String(e?.message || e))
-    );
+  } catch (e) {
+    const error = e as Error;
+    return withNoStore(ApiResponses.internalError("Failed to load sessions", error.message));
   }
 }
 
@@ -202,10 +201,9 @@ export async function POST(req: NextRequest) {
       clearSession(res, req);
     }
     return res;
-  } catch (e: any) {
-    return withNoStore(
-      ApiResponses.internalError("Failed to revoke session", String(e?.message || e))
-    );
+  } catch (e) {
+    const error = e as Error;
+    return withNoStore(ApiResponses.internalError("Failed to revoke session", error.message));
   }
 }
 
@@ -261,9 +259,8 @@ export async function DELETE(req: NextRequest) {
     const res = withNoStore(NextResponse.json({ success: true, data: { ok: true } }));
     clearSession(res, req);
     return res;
-  } catch (e: any) {
-    return withNoStore(
-      ApiResponses.internalError("Failed to revoke sessions", String(e?.message || e))
-    );
+  } catch (e) {
+    const error = e as Error;
+    return withNoStore(ApiResponses.internalError("Failed to revoke sessions", error.message));
   }
 }

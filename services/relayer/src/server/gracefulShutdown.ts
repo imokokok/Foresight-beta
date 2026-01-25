@@ -35,57 +35,65 @@ export function registerGracefulShutdown(opts: {
       try {
         await opts.stopChainReconciler();
         opts.logger.info("Chain reconciler stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop chain reconciler", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop chain reconciler", {}, error);
       }
 
       try {
         await opts.stopBalanceChecker();
         opts.logger.info("Balance checker stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop balance checker", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop balance checker", {}, error);
       }
 
       try {
         await opts.stopContractEventListener();
         opts.logger.info("Contract event listener stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop contract event listener", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop contract event listener", {}, error);
       }
 
       try {
         await opts.stopChaosEngineering();
         opts.logger.info("Chaos engineering stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop chaos engineering", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop chaos engineering", {}, error);
       }
 
       try {
         await opts.stopClusterManager();
         opts.logger.info("Cluster manager stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop cluster manager", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop cluster manager", {}, error);
       }
 
       try {
         await opts.stopSnapshotService();
         opts.logger.info("Orderbook snapshot service stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop snapshot service", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop snapshot service", {}, error);
       }
 
       try {
         await opts.stopMatchingEngine();
         opts.logger.info("Matching engine stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop matching engine", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop matching engine", {}, error);
       }
 
       try {
         await opts.stopWebSocket();
         opts.logger.info("WebSocket server stopped");
-      } catch (e: any) {
-        opts.logger.error("Failed to stop WebSocket server", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to stop WebSocket server", {}, error);
       }
 
       try {
@@ -94,35 +102,40 @@ export function registerGracefulShutdown(opts: {
 
       try {
         opts.stopMetrics();
-      } catch (e: any) {
-        opts.logger.warn("Failed to stop metrics timers", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Failed to stop metrics timers", {}, error);
       }
 
       try {
         opts.stopRateLimiter();
-      } catch (e: any) {
-        opts.logger.warn("Failed to stop rate limiter", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Failed to stop rate limiter", {}, error);
       }
 
       try {
         await opts.stopRedis();
         opts.logger.info("Redis connection closed");
-      } catch (e: any) {
-        opts.logger.error("Failed to close Redis", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to close Redis", {}, error);
       }
 
       try {
         await opts.stopDatabasePool();
         opts.logger.info("Database pool closed");
-      } catch (e: any) {
-        opts.logger.error("Failed to close database pool", {}, e);
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.error("Failed to close database pool", {}, error);
       }
 
       clearTimeout(shutdownTimeout);
       opts.logger.info("Graceful shutdown completed");
       process.exit(0);
-    } catch (error: any) {
-      opts.logger.error("Error during shutdown", {}, error);
+    } catch (error) {
+      const err = error as Error;
+      opts.logger.error("Error during shutdown", {}, err);
       process.exit(1);
     }
   }

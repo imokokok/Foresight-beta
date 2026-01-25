@@ -7,11 +7,10 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { normalizeCategory } from "@/lib/categories";
 
-// 论坛数据可以短暂缓存
-export const revalidate = 30; // 30秒缓存
+export const revalidate = 30;
 
 function normalizeActionVerb(v: string): string {
   const s = String(v || "").trim();
@@ -30,11 +29,46 @@ function actionVerbLabel(v: string): string {
   return s;
 }
 
-// GET /api/forum?eventId=1
+interface ForumThreadRow {
+  id: number;
+  event_id: number;
+  title: string | null;
+  content: string | null;
+  user_id: string | null;
+  created_at: string | null;
+  upvotes: number | null;
+  downvotes: number | null;
+  category: string | null;
+  subject_name: string | null;
+  action_verb: string | null;
+  target_value: string | null;
+  deadline: string | null;
+  title_preview: string | null;
+  criteria_preview: string | null;
+  primary_source_url: string | null;
+  outcomes: string[] | null;
+  extra_links: string[] | null;
+  image_urls: string[] | null;
+  created_prediction_id: number | null;
+  review_status: string | null;
+  review_reason: string | null;
+}
+
+interface ForumCommentRow {
+  id: number;
+  thread_id: number;
+  event_id: number;
+  user_id: string | null;
+  content: string | null;
+  created_at: string | null;
+  upvotes: number | null;
+  downvotes: number | null;
+  parent_id: number | null;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const eventIdRaw = searchParams.get("eventId");
-  // Allow 0 for proposals
   const eventId = eventIdRaw === "0" ? 0 : normalizeId(eventIdRaw);
 
   if (eventId === null || eventId < 0) {
@@ -54,8 +88,9 @@ export async function GET(req: NextRequest) {
       logApiError("GET /api/forum query threads failed", tErr);
       return ApiResponses.databaseError("查询主题失败", tErr.message);
     }
-    const ids = (threads || []).map((t: any) => t.id);
-    let commentsByThread: Record<string, any[]> = {};
+    const threadList = (threads || []) as ForumThreadRow[] | null;
+    const ids = (threadList || []).map((t) => t.id);
+    let commentsByThread: Record<string, ForumCommentRow[]> = {};
     if (ids.length > 0) {
       const { data: comments, error: cErr } = await client
         .from("forum_comments")
@@ -66,14 +101,14 @@ export async function GET(req: NextRequest) {
         logApiError("GET /api/forum query comments failed", cErr);
         return ApiResponses.databaseError("查询评论失败", cErr.message);
       }
-      const commentsArr = comments || [];
-      commentsArr.forEach((c: any) => {
+      const commentsArr = (comments || []) as ForumCommentRow[];
+      commentsArr.forEach((c) => {
         const k = String(c.thread_id);
         (commentsByThread[k] = commentsByThread[k] || []).push(c);
       });
     }
 
-    const merged = (threads || []).map((t: any) => ({
+    const merged = (threadList || []).map((t) => ({
       id: Number(t.id),
       event_id: Number(t.event_id),
       title: String(t.title || ""),
@@ -97,7 +132,7 @@ export async function GET(req: NextRequest) {
         t.created_prediction_id == null ? null : Number(t.created_prediction_id),
       review_status: String(t.review_status || "pending_review"),
       review_reason: t.review_reason == null ? null : String(t.review_reason || ""),
-      comments: (commentsByThread[String(t.id)] || []).map((c: any) => ({
+      comments: (commentsByThread[String(t.id)] || []).map((c) => ({
         id: Number(c.id),
         thread_id: Number(c.thread_id),
         event_id: Number(c.event_id),
@@ -109,23 +144,25 @@ export async function GET(req: NextRequest) {
         parent_id: c.parent_id == null ? null : Number(c.parent_id),
       })),
     }));
-    return NextResponse.json({ threads: merged }, { status: 200 });
-  } catch (e: any) {
-    logApiError("GET /api/forum unhandled error", e);
-    const detail = String(e?.message || e);
+    return successResponse({ threads: merged });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("GET /api/forum unhandled error", error);
     return ApiResponses.internalError(
       "查询失败",
-      process.env.NODE_ENV === "development" ? detail : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }
 
-// POST /api/forum  body: { eventId, title, content, walletAddress }
 function textLengthWithoutSpaces(value: string): number {
   return value.replace(/\s+/g, "").length;
 }
 
-async function isUnderThreadRateLimit(client: any, walletAddress: string): Promise<boolean> {
+async function isUnderThreadRateLimit(
+  client: NonNullable<typeof supabaseAdmin>,
+  walletAddress: string
+): Promise<boolean> {
   const userId = walletAddress || "guest";
   const now = new Date();
   const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
@@ -160,7 +197,6 @@ async function isUnderThreadRateLimit(client: any, walletAddress: string): Promi
 export async function POST(req: NextRequest) {
   try {
     const body = await parseRequestBody(req);
-    // Allow 0 for proposals
     const eventIdRaw = body?.eventId;
     const eventId = eventIdRaw === 0 || eventIdRaw === "0" ? 0 : normalizeId(eventIdRaw);
 
@@ -178,7 +214,7 @@ export async function POST(req: NextRequest) {
     if (textLengthWithoutSpaces(title) < 5) {
       return ApiResponses.invalidParameters("标题过短，请补充关键信息");
     }
-    const client = supabaseAdmin as any;
+    const client = supabaseAdmin;
     if (!client) {
       return ApiResponses.internalError("Supabase 未配置");
     }
@@ -195,11 +231,12 @@ export async function POST(req: NextRequest) {
     let ok: boolean;
     try {
       ok = await isUnderThreadRateLimit(client, walletAddress);
-    } catch (e: any) {
-      logApiError("POST /api/forum rate limit check failed", e);
+    } catch (e) {
+      const error = e as Error;
+      logApiError("POST /api/forum rate limit check failed", error);
       return ApiResponses.internalError(
         "限流检查失败",
-        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+        process.env.NODE_ENV === "development" ? error.message : undefined
       );
     }
     if (!ok) return ApiResponses.rateLimit("发起提案过于频繁，请稍后再试");
@@ -314,20 +351,20 @@ export async function POST(req: NextRequest) {
         outcomes,
         extra_links: extraLinks,
         image_urls: imageUrls,
-      })
+      } as any)
       .select()
       .maybeSingle();
     if (error) {
       logApiError("POST /api/forum insert thread failed", error);
       return ApiResponses.databaseError("创建失败", error.message);
     }
-    return NextResponse.json({ message: "ok", data }, { status: 200 });
-  } catch (e: any) {
-    logApiError("POST /api/forum unhandled error", e);
-    const detail = String(e?.message || e);
+    return successResponse({ message: "ok", data });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/forum unhandled error", error);
     return ApiResponses.internalError(
       "创建失败",
-      process.env.NODE_ENV === "development" ? detail : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { getSessionAddress, normalizeAddress, logApiError } from "@/lib/serverUtils";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function toNum(v: unknown): number | null {
   const n = typeof v === "string" || typeof v === "number" ? Number(v) : NaN;
@@ -127,11 +127,12 @@ export async function POST(req: NextRequest) {
     let ok: boolean;
     try {
       ok = await isUnderCommentRateLimit(client, walletAddress);
-    } catch (e: any) {
-      logApiError("POST /api/forum/comments rate limit check failed", e);
+    } catch (e) {
+      const error = e as Error;
+      logApiError("POST /api/forum/comments rate limit check failed", error);
       return ApiResponses.internalError(
         "Failed to check rate limit",
-        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+        process.env.NODE_ENV === "development" ? error.message : undefined
       );
     }
     if (!ok) return ApiResponses.rateLimit("Too many comments, please try again later");
@@ -151,9 +152,10 @@ export async function POST(req: NextRequest) {
       return ApiResponses.databaseError("Failed to create comment", error.message);
     }
     return NextResponse.json({ message: "ok", data }, { status: 200 });
-  } catch (e: any) {
-    logApiError("POST /api/forum/comments unhandled error", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/forum/comments unhandled error", error);
+    const detail = String(error?.message || error);
     return ApiResponses.internalError(
       "Failed to create comment",
       process.env.NODE_ENV === "development" ? detail : undefined

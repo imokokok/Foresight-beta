@@ -32,7 +32,7 @@ export function useFollowPrediction(
         setFollowing(status.following);
         setFollowersCount(status.followersCount);
         setFollowError(null);
-      } catch (e: any) {
+      } catch (e) {
         if (cancelled) return;
         setFollowError(tErrors("loadFailed"));
       }
@@ -58,7 +58,7 @@ export function useFollowPrediction(
         const next = newStatus ? prev + 1 : prev - 1;
         return next < 0 ? 0 : next;
       });
-    } catch (e: any) {
+    } catch (e) {
       setFollowError(tErrors("followActionFailed"));
     } finally {
       setFollowLoading(false);

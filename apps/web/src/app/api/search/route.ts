@@ -3,6 +3,8 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { supabaseAnon } from "@/lib/supabase.server";
 import type { Database } from "@/lib/database.types";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
+import { ApiResponses } from "@/lib/apiResponse";
+import { logApiError } from "@/lib/serverUtils";
 
 function sanitizeSearchTerm(term: string): string {
   return term
@@ -40,55 +42,24 @@ export async function GET(request: NextRequest) {
     const ip = getIP(request);
     const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "search_get_ip");
     if (!rl.success) {
-      return NextResponse.json(
-        { error: "Too many requests", results: [], total: 0 },
-        { status: 429 }
-      );
+      return ApiResponses.rateLimit();
     }
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q");
 
     const rawTrimmed = String(query || "").trim();
     if (!rawTrimmed || rawTrimmed.length < 2) {
-      return NextResponse.json(
-        {
-          error: "Search keyword must be at least 2 characters",
-          results: [],
-          total: 0,
-        },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Search keyword must be at least 2 characters");
     }
     if (rawTrimmed.length > 64) {
-      return NextResponse.json(
-        {
-          error: "Search keyword is too long",
-          results: [],
-          total: 0,
-        },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Search keyword is too long");
     }
     if (/[(),]/.test(rawTrimmed)) {
-      return NextResponse.json(
-        {
-          error: "Search keyword contains invalid characters",
-          results: [],
-          total: 0,
-        },
-        { status: 400 }
-      );
+      return ApiResponses.badRequest("Search keyword contains invalid characters");
     }
 
     if (!supabaseAnon) {
-      return NextResponse.json(
-        {
-          error: "Database connection failed",
-          results: [],
-          total: 0,
-        },
-        { status: 500 }
-      );
+      return ApiResponses.internalError("Database connection failed");
     }
 
     const sanitizedTerm = sanitizeSearchTerm(rawTrimmed);
@@ -207,14 +178,10 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Search API error:", error);
-    return NextResponse.json(
-      {
-        error: "Search failed",
-        results: [],
-        total: 0,
-      },
-      { status: 500 }
+    logApiError("Search API error", error);
+    return ApiResponses.internalError(
+      "Search failed",
+      process.env.NODE_ENV === "development" ? String(error) : undefined
     );
   }
 }
@@ -231,7 +198,7 @@ export async function POST(request: NextRequest) {
     const ip = getIP(request);
     const rl = await checkRateLimit(ip || "unknown", RateLimits.lenient, "search_post_ip");
     if (!rl.success) {
-      return NextResponse.json({ suggestions: [] }, { status: 429 });
+      return ApiResponses.rateLimit();
     }
     const { query } = (await request.json().catch(() => ({}))) as {
       query?: string;
@@ -252,7 +219,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ suggestions: [] });
     }
 
-    // 只返回标题作为建议
     const searchTerm = `%${trimmed}%`;
     type TitleOnly = Pick<Database["public"]["Tables"]["predictions"]["Row"], "title">;
 
@@ -267,7 +233,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ suggestions });
   } catch (error) {
-    console.error("Search suggestions error:", error);
+    logApiError("Search suggestions error", error);
     return NextResponse.json({ suggestions: [] });
   }
 }

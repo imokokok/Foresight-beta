@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { Database } from "@/lib/database.types";
 import {
@@ -160,10 +160,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     });
 
     return NextResponse.json({ message: "ok", data: upd }, { status: 200 });
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return ApiResponses.internalError(
       "Failed to review check-in",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

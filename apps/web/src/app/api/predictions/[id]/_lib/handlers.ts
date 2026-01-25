@@ -5,7 +5,7 @@ import { requireAdmin } from "./admin";
 import { computeProbabilities, fetchPredictionStats, toPredictionStatsResponse } from "./stats";
 import { getTimeAgo, getTimeRemaining } from "./time";
 import { parseIncludeOutcomesParam, parseIncludeStatsParam, parsePredictionId } from "./validators";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 export async function handleGetPredictionDetail(request: NextRequest, id: string) {
   try {
@@ -149,9 +149,10 @@ export async function handlePatchPrediction(request: NextRequest, id: string) {
       { success: true, data, message: "Prediction updated successfully" },
       { status: 200 }
     );
-  } catch (e: any) {
-    logApiError("PATCH /api/predictions/[id] unhandled error", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("PATCH /api/predictions/[id] unhandled error", error);
+    const detail = String(error?.message || error);
     return ApiResponses.internalError(
       "Failed to update prediction",
       process.env.NODE_ENV === "development" ? detail : undefined
@@ -179,9 +180,10 @@ export async function handleDeletePrediction(request: NextRequest, id: string) {
       return ApiResponses.databaseError("Failed to delete prediction", error.message);
     }
     return NextResponse.json({ success: true, message: "Prediction deleted" }, { status: 200 });
-  } catch (e: any) {
-    logApiError("DELETE /api/predictions/[id] unhandled error", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("DELETE /api/predictions/[id] unhandled error", error);
+    const detail = String(error?.message || error);
     return ApiResponses.internalError(
       "Failed to delete prediction",
       process.env.NODE_ENV === "development" ? detail : undefined

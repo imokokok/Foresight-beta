@@ -188,8 +188,9 @@ export function useProposalDetail(id: string) {
               : { status: res.status };
           throw payload;
         }
-      } catch (e: any) {
-        handleApiError(e, "forum.errors.voteFailed");
+      } catch (e) {
+        const error = e as Error & { status?: number };
+        handleApiError(error, "forum.errors.voteFailed");
         refresh();
         queryClient.invalidateQueries({ queryKey: proposalsQueryKeys.userVotes(address) });
       }
@@ -222,8 +223,9 @@ export function useProposalDetail(id: string) {
         }
         toast.success(t("forum.reply.commentPosted"));
         refresh();
-      } catch (e: any) {
-        handleApiError(e, "forum.errors.commentFailed");
+      } catch (e) {
+        const error = e as Error & { status?: number };
+        handleApiError(error, "forum.errors.commentFailed");
       }
     },
     [address, thread, refresh]
@@ -252,8 +254,9 @@ export function useProposalDetail(id: string) {
       }
       toast.success(t("proposals.detail.resubmitSuccess"));
       refresh();
-    } catch (e: any) {
-      handleApiError(e, "proposals.detail.resubmitFailed");
+    } catch (e) {
+      const error = e as Error & { status?: number };
+      handleApiError(error, "proposals.detail.resubmitFailed");
     }
   }, [thread, canResubmit, refresh]);
 

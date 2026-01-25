@@ -135,8 +135,9 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     return res;
-  } catch (e: any) {
-    logApiError("POST /api/email-otp/complete-signup unhandled error", e);
-    return ApiResponses.internalError("Failed to complete signup", String(e?.message || e));
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/email-otp/complete-signup unhandled error", error);
+    return ApiResponses.internalError("Failed to complete signup", error.message);
   }
 }

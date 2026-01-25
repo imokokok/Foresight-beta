@@ -17,7 +17,7 @@ import {
   getTierSettleRule,
   issueRandomSticker,
 } from "@/lib/flagRewards";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function isEvmAddress(value: string) {
   return /^0x[a-f0-9]{40}$/.test(String(value || ""));
@@ -308,10 +308,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       },
       { status: 200 }
     );
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/flags/:id/settle unhandled error", error);
     return ApiResponses.internalError(
       "Failed to settle flag",
-      process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

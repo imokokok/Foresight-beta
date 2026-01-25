@@ -107,8 +107,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
             });
           }
         }
-      } catch (e: any) {
-        opts.logger.warn("Market expiry loop failed", { error: String(e?.message || e) });
+      } catch (e) {
+        const error = e as Error;
+        opts.logger.warn("Market expiry loop failed", { error: String(error?.message || error) });
       } finally {
         running = false;
       }
@@ -134,8 +135,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
     try {
       const net = await opts.provider.getNetwork();
       chainId = Number(net.chainId);
-    } catch (e: any) {
-      console.warn("[auto-ingest] failed to get network:", String(e?.message || e));
+    } catch (e) {
+      const error = e as Error;
+      console.warn("[auto-ingest] failed to get network:", String(error?.message || error));
       return;
     }
 
@@ -170,8 +172,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
         const raw = (data as any)?.last_processed_block;
         const n = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
         return Number.isFinite(n) ? n : 0;
-      } catch (e: any) {
-        console.warn("[auto-ingest] cursor load exception:", String(e?.message || e));
+      } catch (e) {
+        const error = e as Error;
+        console.warn("[auto-ingest] cursor load exception:", String(error?.message || error));
         return 0;
       }
     };
@@ -192,8 +195,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
           if (code === "42P01" || code === "42703") return;
           console.warn("[auto-ingest] cursor save error:", String(error.message || error));
         }
-      } catch (e: any) {
-        console.warn("[auto-ingest] cursor save exception:", String(e?.message || e));
+      } catch (e) {
+        const error = e as Error;
+        console.warn("[auto-ingest] cursor save exception:", String(error?.message || error));
       }
     };
 
@@ -233,10 +237,11 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
           processedTo = to;
           last = processedTo;
           await saveCursor(processedTo);
-        } catch (e: any) {
+        } catch (e) {
+          const error = e as Error;
           console.warn(
             "[auto-ingest] ingestTradesByLogs range error:",
-            String(e?.message || e),
+            String(error?.message || error),
             chainId,
             fromBlock,
             to
@@ -248,10 +253,11 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
               processedTo = b;
               last = processedTo;
               await saveCursor(processedTo);
-            } catch (e: any) {
+            } catch (e) {
+              const errorInner = e as Error;
               console.warn(
                 "[auto-ingest] ingestTradesByLogs error:",
-                String(e?.message || e),
+                String(errorInner?.message || errorInner),
                 chainId,
                 b
               );
@@ -270,8 +276,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
           "durationMs",
           duration
         );
-      } catch (e: any) {
-        console.warn("[auto-ingest] loop error:", String(e?.message || e));
+      } catch (e) {
+        const error = e as Error;
+        console.warn("[auto-ingest] loop error:", String(error?.message || error));
       } finally {
         ingestRunning = false;
       }

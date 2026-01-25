@@ -115,8 +115,9 @@ export async function redeemAction(args: {
         await trySubmitAaCalls({ chainId: market.chain_id, calls });
         setOrderMsg(t("trading.redeemFlow.success"));
         return;
-      } catch (e: any) {
-        console.error("AA redeem failed", e);
+      } catch (e) {
+        const error = e as Error;
+        console.error("AA redeem failed", error);
       }
     }
 
@@ -140,10 +141,11 @@ export async function redeemAction(args: {
     await tx.wait();
 
     setOrderMsg(t("trading.redeemFlow.success"));
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     setOrderMsg(
       formatTranslation(t("trading.redeemFlow.failed"), {
-        reason: String(e?.message || t("trading.redeemFlow.unknownError")),
+        reason: String(error?.message || t("trading.redeemFlow.unknownError")),
       })
     );
   }

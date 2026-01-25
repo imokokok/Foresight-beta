@@ -8,7 +8,7 @@ import {
   logApiError,
 } from "@/lib/serverUtils";
 import { normalizeId } from "@/lib/ids";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 function normalizeActionVerb(v: string): string {
   const s = String(v || "").trim();
@@ -198,9 +198,10 @@ export async function POST(req: NextRequest) {
       { message: "ok", prediction: pred, thread_id: top.id },
       { status: 200 }
     );
-  } catch (e: any) {
-    logApiError("POST /api/forum/triggers/run unhandled error", e);
-    const detail = String(e?.message || e);
+  } catch (e) {
+    const error = e as Error;
+    logApiError("POST /api/forum/triggers/run unhandled error", error);
+    const detail = String(error?.message || error);
     return ApiResponses.internalError(
       "触发失败",
       process.env.NODE_ENV === "development" ? detail : undefined

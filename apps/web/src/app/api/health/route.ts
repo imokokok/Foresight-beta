@@ -73,10 +73,11 @@ export async function GET(_req: NextRequest) {
         timestamp,
       };
       if (pingError) checks.database.message = pingError.message;
-    } catch (e: any) {
+    } catch (e) {
+      const error = e as Error;
       checks.database = {
         ok: false,
-        message: getErrorMessage(e),
+        message: getErrorMessage(error),
         latency: Date.now() - dbStart,
         timestamp,
       };
@@ -109,10 +110,11 @@ export async function GET(_req: NextRequest) {
           timestamp,
         };
       }
-    } catch (e: any) {
+    } catch (e) {
+      const error = e as Error;
       checks.relayer = {
         ok: false,
-        message: e?.name === "AbortError" ? "Timeout" : getErrorMessage(e),
+        message: error?.name === "AbortError" ? "Timeout" : getErrorMessage(error),
         latency: Date.now() - relayerStart,
         timestamp,
       };
@@ -128,10 +130,11 @@ export async function GET(_req: NextRequest) {
           .limit(0);
         checks[`table_${table}`] = { ok: !error, timestamp };
         if (error) checks[`table_${table}`].message = error.message;
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         checks[`table_${table}`] = {
           ok: false,
-          message: getErrorMessage(e),
+          message: getErrorMessage(error),
           timestamp,
         };
       }
@@ -148,7 +151,8 @@ export async function GET(_req: NextRequest) {
         message: error ? "Materialized views not created" : "OK",
         timestamp,
       };
-    } catch (e: any) {
+    } catch (e) {
+      const error = e as Error;
       checks.materialized_views = {
         ok: false,
         message: "Materialized views not created or not accessible",

@@ -8,13 +8,16 @@ import {
   parseRequestBody,
 } from "@/lib/serverUtils";
 import { normalizePositiveId } from "@/lib/ids";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 
 function textLengthWithoutSpaces(value: string): number {
   return value.replace(/\s+/g, "").length;
 }
 
-async function isUnderDiscussionRateLimit(client: any, walletAddress: string): Promise<boolean> {
+async function isUnderDiscussionRateLimit(
+  client: NonNullable<typeof supabaseAdmin>,
+  walletAddress: string
+): Promise<boolean> {
   const userId = walletAddress || "guest";
   const now = new Date();
   const threeSecondsAgo = new Date(now.getTime() - 3 * 1000).toISOString();
@@ -68,13 +71,13 @@ export async function GET(req: NextRequest) {
       logApiError("[discussions:get]", error);
       return ApiResponses.databaseError("查询失败", error.message);
     }
-    return NextResponse.json({ discussions: data || [] }, { status: 200 });
-  } catch (e: unknown) {
-    logApiError("[discussions:get] unhandled error", e);
-    const detail = e instanceof Error ? e.message : String(e);
+    return successResponse({ discussions: data || [] });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("[discussions:get] unhandled error", error);
     return ApiResponses.internalError(
       "请求失败",
-      process.env.NODE_ENV === "development" ? detail : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }
@@ -115,18 +118,25 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const ok = await isUnderDiscussionRateLimit(client as any, sessionWallet);
+      const ok = await isUnderDiscussionRateLimit(client, sessionWallet);
       if (!ok) return ApiResponses.rateLimit("发言过于频繁，请稍后再试");
-    } catch (e: any) {
-      logApiError("[discussions:post] rate limit check failed", e);
+    } catch (e) {
+      const error = e as Error;
+      logApiError("[discussions:post] rate limit check failed", error);
       return ApiResponses.internalError(
         "限流检查失败",
-        process.env.NODE_ENV === "development" ? String(e?.message || e) : undefined
+        process.env.NODE_ENV === "development" ? error.message : undefined
       );
     }
 
+    interface LastDiscussionRow {
+      content: string | null;
+      created_at: string | null;
+      proposal_id: number;
+    }
+
     try {
-      const { data: lastRow, error: lastErr } = await (client as any)
+      const { data: lastRow, error: lastErr } = await client
         .from("discussions")
         .select("content,created_at,proposal_id")
         .eq("proposal_id", proposalId)
@@ -135,9 +145,10 @@ export async function POST(req: NextRequest) {
         .limit(1)
         .maybeSingle();
       if (lastErr) throw lastErr;
-      const lastContent = String(lastRow?.content || "").trim();
+      const lastData = lastRow as LastDiscussionRow | null;
+      const lastContent = String(lastData?.content || "").trim();
       const nextContent = String(content || "").trim();
-      const lastCreatedAt = String(lastRow?.created_at || "");
+      const lastCreatedAt = String(lastData?.created_at || "");
       const lastTs = lastCreatedAt ? new Date(lastCreatedAt).getTime() : 0;
       if (
         lastContent &&
@@ -148,8 +159,9 @@ export async function POST(req: NextRequest) {
       ) {
         return ApiResponses.rateLimit("重复内容发送过快，请稍后再试");
       }
-    } catch (e: any) {
-      logApiError("[discussions:post] duplicate check failed", e);
+    } catch (e) {
+      const error = e as Error;
+      logApiError("[discussions:post] duplicate check failed", error);
     }
 
     const { data, error } = await client
@@ -170,13 +182,13 @@ export async function POST(req: NextRequest) {
       logApiError("[discussions:post]", error);
       return ApiResponses.databaseError("创建失败", error.message);
     }
-    return NextResponse.json({ discussion: data }, { status: 200 });
-  } catch (e: unknown) {
-    logApiError("[discussions:post] unhandled error", e);
-    const detail = e instanceof Error ? e.message : String(e);
+    return successResponse({ discussion: data });
+  } catch (e) {
+    const error = e as Error;
+    logApiError("[discussions:post] unhandled error", error);
     return ApiResponses.internalError(
       "请求失败",
-      process.env.NODE_ENV === "development" ? detail : undefined
+      process.env.NODE_ENV === "development" ? error.message : undefined
     );
   }
 }

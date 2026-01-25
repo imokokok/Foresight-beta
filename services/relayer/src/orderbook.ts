@@ -480,8 +480,15 @@ export async function ingestTrade(chainId: number, txHash: string, blockTimestam
         salt,
         result: data,
       });
-    } catch (e: any) {
-      console.warn("[ingestTrade] rpc error", String(e?.message || e), chainId, txHash, logIndex);
+    } catch (e) {
+      const error = e as Error;
+      console.warn(
+        "[ingestTrade] rpc error",
+        String(error?.message || error),
+        chainId,
+        txHash,
+        logIndex
+      );
       continue;
     }
   }
@@ -531,10 +538,11 @@ export async function ingestTradesByLogs(
         const tsNum = typeof ts === "bigint" ? Number(ts) : Number(ts || 0);
         if (!Number.isFinite(tsNum) || tsNum <= 0) return null;
         return new Date(tsNum * 1000).toISOString();
-      } catch (e: any) {
+      } catch (e) {
+        const error = e as Error;
         console.warn(
           "[ingestTradesByLogs] getBlock error",
-          String(e?.message || e),
+          String(error?.message || error),
           chainId,
           blockNumber,
           "attempt",
@@ -664,10 +672,11 @@ export async function ingestTradesByLogs(
             });
             done = true;
           }
-        } catch (e: any) {
+        } catch (e) {
+          const error = e as Error;
           console.warn(
             "[ingestTradesByLogs] rpc error",
-            String(e?.message || e),
+            String(error?.message || error),
             chainId,
             txHash,
             logIndex,

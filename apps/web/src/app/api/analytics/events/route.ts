@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
-import { ApiResponses } from "@/lib/apiResponse";
+import { ApiResponses, successResponse } from "@/lib/apiResponse";
 import { checkRateLimit, getIP, RateLimits } from "@/lib/rateLimit";
 import { getSessionAddress, isAdminAddress, normalizeAddress } from "@/lib/serverUtils";
 
@@ -91,9 +91,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    console.error("Analytics event error:", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    console.error("Analytics event error:", error);
     return ApiResponses.internalError("Analytics event error", detail);
   }
 }
@@ -185,9 +186,10 @@ export async function GET(req: NextRequest) {
         series,
       },
     });
-  } catch (e: any) {
-    const detail = String(e?.message || e);
-    console.error("Analytics events GET error:", e);
+  } catch (e) {
+    const error = e as Error;
+    const detail = String(error?.message || error);
+    console.error("Analytics events GET error:", error);
     return ApiResponses.internalError("Analytics events error", detail);
   }
 }
