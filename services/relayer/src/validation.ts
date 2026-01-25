@@ -99,13 +99,13 @@ export const AaUserOpSimulateSchema = z.object({
 
 export const AaUserOpSubmitSchema = z.object({
   owner: HexAddressSchema,
-  userOp: z.any(),
+  userOp: UserOperationSchema.passthrough(),
   signature: HexDataOrEmptySchema.optional(),
   entryPointAddress: HexAddressSchema.optional(),
 });
 
 export const CustodialSignSchema = z.object({
-  userOp: z.any(),
+  userOp: UserOperationSchema.passthrough(),
   owner: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
 });
 

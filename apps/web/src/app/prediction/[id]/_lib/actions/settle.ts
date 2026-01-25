@@ -70,7 +70,9 @@ export async function assertOutcomeAction(args: {
         await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: oracleAddress, data }] });
         setMsg(t("settlement.assertFlow.success"));
         return;
-      } catch {}
+      } catch (e) {
+        console.warn("AA assert flow failed, falling back to regular transaction", e);
+      }
     }
 
     const tx = await oracleContract.requestOutcome(marketId, outcomeIndex, claimBytes);
@@ -123,7 +125,9 @@ export async function settleAdapterAction(args: {
         await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: oracleAddress, data }] });
         setMsg(t("settlement.settleFlow.success"));
         return;
-      } catch {}
+      } catch (e) {
+        console.warn("AA settle flow failed, falling back to regular transaction", e);
+      }
     }
 
     const tx = await oracleContract.settleOutcome(marketId);
@@ -168,7 +172,9 @@ export async function resolveMarketAction(args: {
         await trySubmitAaCalls({ chainId: market.chain_id, calls: [{ to: market.market, data }] });
         setMsg(t("settlement.resolveFlow.success"));
         return;
-      } catch {}
+      } catch (e) {
+        console.warn("AA resolve flow failed, falling back to regular transaction", e);
+      }
     }
 
     const tx = await marketContract.resolve();

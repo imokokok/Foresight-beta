@@ -227,10 +227,8 @@ class OneSideBook {
    */
   private comparePrice(a: bigint, b: bigint): number {
     if (this.isBuy) {
-      // 买盘: 高价优先 (降序)
-      return a > b ? -1 : a < b ? 1 : 0;
+      return b > a ? -1 : b < a ? 1 : 0;
     } else {
-      // 卖盘: 低价优先 (升序)
       return a < b ? -1 : a > b ? 1 : 0;
     }
   }

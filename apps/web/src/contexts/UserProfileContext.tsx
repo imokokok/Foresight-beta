@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  ReactNode,
+  useMemo,
+} from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import type { Database } from "@/lib/database.types";
 import { useUserProfileInfo } from "@/hooks/useQueries";
@@ -84,14 +92,17 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     await profileQuery.refetch();
   }, [profileQuery]);
 
-  const value: UserProfileContextValue = {
-    profile,
-    loading: profileQuery.isLoading || profileQuery.isFetching,
-    error,
-    refreshProfile,
-    isAdmin: !!profile?.is_admin,
-    isReviewer: !!profile?.is_reviewer,
-  };
+  const value: UserProfileContextValue = useMemo(
+    () => ({
+      profile,
+      loading: profileQuery.isLoading || profileQuery.isFetching,
+      error,
+      refreshProfile,
+      isAdmin: !!profile?.is_admin,
+      isReviewer: !!profile?.is_reviewer,
+    }),
+    [profile, profileQuery.isLoading, profileQuery.isFetching, error, refreshProfile]
+  );
 
   return <UserProfileContext.Provider value={value}>{children}</UserProfileContext.Provider>;
 }

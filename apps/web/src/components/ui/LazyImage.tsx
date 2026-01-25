@@ -80,26 +80,31 @@ export default function LazyImage({
   useEffect(() => {
     if (!imgRef.current) return;
 
+    const disconnectObserver = () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+    };
+
+    disconnectObserver();
+
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setInView(true);
-          // 一旦进入视口就停止观察，节省资源
-          observerRef.current?.disconnect();
+          disconnectObserver();
         }
       },
       {
         rootMargin: `${rootMargin}px`,
-        threshold: 0.01, // 只要露出一点就开始加载
+        threshold: 0.01,
       }
     );
 
     observerRef.current.observe(imgRef.current);
 
-    // 清理函数
-    return () => {
-      observerRef.current?.disconnect();
-    };
+    return disconnectObserver;
   }, [rootMargin]);
 
   useEffect(() => {

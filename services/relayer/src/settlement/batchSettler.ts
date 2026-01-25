@@ -869,6 +869,14 @@ export class BatchSettler extends EventEmitter {
         fills: this.pendingFills.size,
       });
       await this.createBatch();
+      const fillsToSubmit = Array.from(this.batches.values()).filter(
+        (b) => b.status === "pending" || b.status === "retrying"
+      );
+      for (const batch of fillsToSubmit) {
+        if (batch.status === "pending") {
+          await this.submitBatch(batch);
+        }
+      }
     }
 
     // 等待所有 submitted 批次确认 (最多等 30 秒)

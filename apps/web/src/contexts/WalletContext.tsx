@@ -30,6 +30,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const disconnectRef = useRef<(() => Promise<void>) | null>(null);
 
+  const disconnect = async () => {
+    setState({
+      address: null,
+      chainId: null,
+      isConnected: false,
+      provider: null,
+    });
+    setError(null);
+  };
+
   const checkConnection = async () => {
     try {
       if (
@@ -178,16 +188,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const disconnect = async () => {
-    setState({
-      address: null,
-      chainId: null,
-      isConnected: false,
-      provider: null,
-    });
-    setError(null);
   };
 
   const switchChain = async (chainId: number) => {

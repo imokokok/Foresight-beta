@@ -61,17 +61,16 @@ class RedisClient {
   constructor(config: Partial<RedisConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
-    // 初始化熔断机制
+    const cbConfig = this.config.circuitBreaker || {};
     this.circuitBreaker = new CircuitBreaker({
       name: "redis-client",
-      failureThreshold: 5,
-      successThreshold: 3,
-      openDuration: this.config.circuitBreaker?.resetTimeout || 30000,
+      failureThreshold: cbConfig.failureThreshold ?? 5,
+      successThreshold: cbConfig.successThreshold ?? 3,
+      openDuration: cbConfig.resetTimeout || this.config.circuitBreaker?.resetTimeout || 30000,
       timeout: this.config.commandTimeout || 10000,
       windowSize: 60000,
-      errorRateThreshold: 0.5,
-      minRequests: 10,
-      // 移除fallback，使用默认行为
+      errorRateThreshold: cbConfig.errorRateThreshold ?? 0.5,
+      minRequests: cbConfig.minRequests ?? 10,
     });
   }
 

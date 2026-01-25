@@ -62,7 +62,7 @@ export interface CircuitBreakerConfig {
   /** 最小请求数 (达到后才计算错误率) */
   minRequests: number;
   /** 降级回调 */
-  fallback?: <T>(error: Error) => T | Promise<T>;
+  fallback?: (error: Error) => unknown;
 }
 
 interface CallResult {

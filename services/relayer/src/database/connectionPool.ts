@@ -327,7 +327,9 @@ export class DatabasePool {
    */
   getWriteClient(): SupabaseClient | null {
     if (!this.primaryHealthy) {
-      logger.debug("Primary database is unhealthy, write operations may fail");
+      logger.warn("Primary database is unhealthy, write operations may fail", {
+        failureCount: this.primaryFailureCount,
+      });
     }
     return this.primaryClient;
   }

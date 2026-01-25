@@ -159,6 +159,7 @@ export function useInfiniteScrollFull<T>(
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false); // 防止重复加载
+  const pageRef = useRef(1); // 使用 ref 跟踪页码，避免 loadMore 依赖变化
 
   // 加载更多数据
   const loadMore = useCallback(async () => {
@@ -169,13 +170,15 @@ export function useInfiniteScrollFull<T>(
     setError(null);
 
     try {
-      const newData = await fetchFn(page);
+      const currentPage = pageRef.current;
+      const newData = await fetchFn(currentPage);
 
       if (!newData || newData.length === 0) {
         setHasMore(false);
       } else {
         setData((prev) => [...prev, ...newData]);
-        setPage((prev) => prev + 1);
+        pageRef.current = currentPage + 1;
+        setPage(pageRef.current);
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to load more");
@@ -185,7 +188,7 @@ export function useInfiniteScrollFull<T>(
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [page, hasMore, enabled, fetchFn]);
+  }, [hasMore, enabled, fetchFn]);
 
   // 设置 IntersectionObserver
   useEffect(() => {

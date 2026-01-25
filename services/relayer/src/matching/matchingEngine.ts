@@ -65,6 +65,7 @@ import {
   getConfiguredUsdcAddress,
 } from "./utils.js";
 import { isValidErc1271Signature, getRpcProvider } from "./orderValidation.js";
+import { matchingLogger as logger } from "../monitoring/logger.js";
 
 // EIP-712 类型定义
 const ORDER_TYPES = {
@@ -187,9 +188,23 @@ export class MatchingEngine extends EventEmitter {
 
     const redis = getRedisClient();
     const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
-    const distributedLockToken = redis.isReady()
-      ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
-      : null;
+    let distributedLockToken: string | null = null;
+    try {
+      distributedLockToken = redis.isReady()
+        ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
+        : null;
+    } catch (error) {
+      orderbookLockBusyTotal.inc({
+        market_key: marketKey,
+        outcome_index: String(outcomeIndex),
+        operation: "lock_acquisition_error",
+      });
+      release();
+      if (this.bookLocks.get(lockKey) === current) {
+        this.bookLocks.delete(lockKey);
+      }
+      throw error;
+    }
 
     try {
       if (redis.isReady() && !distributedLockToken) {
@@ -204,7 +219,14 @@ export class MatchingEngine extends EventEmitter {
       return await fn();
     } finally {
       if (distributedLockToken) {
-        await redis.releaseLock(distributedLockKey, distributedLockToken);
+        try {
+          await redis.releaseLock(distributedLockKey, distributedLockToken);
+        } catch (releaseError) {
+          logger.warn("Failed to release distributed lock", {
+            lockKey: distributedLockKey,
+            releaseError,
+          });
+        }
       }
       release();
       if (this.bookLocks.get(lockKey) === current) {
@@ -231,9 +253,23 @@ export class MatchingEngine extends EventEmitter {
 
     const redis = getRedisClient();
     const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
-    const distributedLockToken = redis.isReady()
-      ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
-      : null;
+    let distributedLockToken: string | null = null;
+    try {
+      distributedLockToken = redis.isReady()
+        ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
+        : null;
+    } catch (error) {
+      orderbookLockBusyTotal.inc({
+        market_key: marketKey,
+        outcome_index: String(outcomeIndex),
+        operation: "lock_acquisition_error",
+      });
+      release();
+      if (this.bookLocks.get(lockKey) === current) {
+        this.bookLocks.delete(lockKey);
+      }
+      throw error;
+    }
 
     try {
       if (redis.isReady() && !distributedLockToken) {
@@ -247,7 +283,14 @@ export class MatchingEngine extends EventEmitter {
       return await fn();
     } finally {
       if (distributedLockToken) {
-        await redis.releaseLock(distributedLockKey, distributedLockToken);
+        try {
+          await redis.releaseLock(distributedLockKey, distributedLockToken);
+        } catch (releaseError) {
+          logger.warn("Failed to release distributed lock", {
+            lockKey: distributedLockKey,
+            releaseError,
+          });
+        }
       }
       release();
       if (this.bookLocks.get(lockKey) === current) {
@@ -679,13 +722,17 @@ export class MatchingEngine extends EventEmitter {
             if (order && reservedAtStartUsdc > 0n) {
               await finalizeUsdcReservationAfterSubmit(order, reservedAtStartUsdc, result);
             }
-            this.setClientOrderIdCachedResult(orderInput, result);
-            await this.setClientOrderIdCachedResultRemote(orderInput, result);
+            if (orderInput) {
+              this.setClientOrderIdCachedResult(orderInput, result);
+              await this.setClientOrderIdCachedResultRemote(orderInput, result);
+            }
           }
         }
       );
-      this.setClientOrderIdCachedResult(orderInput, result);
-      await this.setClientOrderIdCachedResultRemote(orderInput, result);
+      if (orderInput) {
+        this.setClientOrderIdCachedResult(orderInput, result);
+        await this.setClientOrderIdCachedResultRemote(orderInput, result);
+      }
       return result;
     } catch (error: any) {
       console.error("[MatchingEngine] submitOrder error:", error);

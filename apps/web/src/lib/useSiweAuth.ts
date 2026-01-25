@@ -159,6 +159,7 @@ export function useSiweAuth(params: Params) {
 
       let verifyRes: Response | null = null;
       let verifyJson: any = null;
+      let verifySuccess = false;
       try {
         verifyRes = await fetch("/api/auth/challenge/verify", {
           method: "POST",
@@ -172,27 +173,26 @@ export function useSiweAuth(params: Params) {
           }),
         });
         verifyJson = await verifyRes.json().catch(() => null);
+        verifySuccess = verifyRes.ok && verifyJson?.success;
+        if (!verifySuccess) {
+          return {
+            success: false,
+            error:
+              verifyJson?.error?.message ||
+              verifyJson?.message ||
+              verifyJson?.detail ||
+              t("errors.wallet.verifyFailed"),
+          };
+        }
+        return { success: true, address };
       } catch {
         return { success: false, error: t("errors.wallet.verifyFailed") };
       } finally {
-        nonceCache.value = null;
-        nonceCache.expiresAt = 0;
+        if (verifySuccess) {
+          nonceCache.value = null;
+          nonceCache.expiresAt = 0;
+        }
       }
-      if (!verifyRes) {
-        return { success: false, error: t("errors.wallet.verifyFailed") };
-      }
-      if (!verifyRes.ok || !verifyJson?.success) {
-        return {
-          success: false,
-          error:
-            verifyJson?.error?.message ||
-            verifyJson?.message ||
-            verifyJson?.detail ||
-            t("errors.wallet.verifyFailed"),
-        };
-      }
-
-      return { success: true, address };
     } catch (err: any) {
       console.error("[SIWE] Login error:", err);
       return { success: false, error: err?.message || t("errors.wallet.loginError") };

@@ -168,11 +168,17 @@ export async function expireOrdersInBook(
     }
 
     if (releaseByMaker.size > 0) {
-      await Promise.all(
-        Array.from(releaseByMaker.entries()).map(([maker, micro]) =>
-          releaseUsdcReservation(maker, micro)
-        )
-      );
+      const releasePromises = Array.from(releaseByMaker.entries()).map(async ([maker, micro]) => {
+        try {
+          await releaseUsdcReservation(maker, micro);
+        } catch (error) {
+          console.error(
+            `[OrderManagement] Failed to release USDC reservation for ${maker}:`,
+            error
+          );
+        }
+      });
+      await Promise.all(releasePromises);
     }
   }
 

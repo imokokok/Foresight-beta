@@ -144,11 +144,17 @@ export function usePersistedStateWithExpiry<T>(
     try {
       const saved = localStorage.getItem(key);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        const { value, expiry } = parsed as { value: T; expiry: number };
-        if (Date.now() < expiry) {
-          setState(value);
-        } else {
+        try {
+          const parsed = JSON.parse(saved);
+          const { value, expiry } = parsed as { value: T; expiry: number };
+          if (Date.now() < expiry) {
+            setState(value);
+          } else {
+            localStorage.removeItem(key);
+            expiredRef.current = true;
+            options?.onExpired?.();
+          }
+        } catch (parseError) {
           localStorage.removeItem(key);
           expiredRef.current = true;
           options?.onExpired?.();

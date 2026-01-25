@@ -233,6 +233,8 @@ class MarketWebSocketManager {
     }
     this.subscriptions.clear();
     this.listeners.clear();
+    this.statusListeners.clear();
+    this.status = "disconnected";
   }
 
   getStatus(): ConnectionStatus {

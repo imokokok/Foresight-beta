@@ -30,7 +30,7 @@ export default function MobileMenu({ className = "" }: MobileMenuProps) {
   const { address, connect, disconnect } = useWallet();
   const tNav = useTranslations("nav");
   const tMobileNav = useTranslations("mobileNav");
-  const firstItemRef = React.useRef<HTMLAnchorElement | null>(null);
+  const firstItemRef = React.useRef<HTMLAnchorElement>(null);
 
   // 路由变化时自动关闭菜单
   useEffect(() => {

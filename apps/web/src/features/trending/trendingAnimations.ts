@@ -1,12 +1,15 @@
 import type React from "react";
 import { TRENDING_CATEGORIES } from "./trendingModel";
 
-export const createSmartClickEffect = (event: React.MouseEvent) => {
+export const createSmartClickEffect = (event: React.MouseEvent): (() => void) => {
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) return;
+  if (reduceMotion) return () => {};
+
+  const cleanupFunctions: (() => void)[] = [];
+
   const button = event.currentTarget as HTMLElement;
   const rect = button.getBoundingClientRect();
   const buttonSize = Math.max(rect.width, rect.height);
@@ -41,7 +44,11 @@ export const createSmartClickEffect = (event: React.MouseEvent) => {
     ],
     { duration: 600, easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)" }
   );
-  setTimeout(() => glow.remove(), 600);
+  const glowTimeout = setTimeout(() => glow.remove(), 600);
+  cleanupFunctions.push(() => {
+    clearTimeout(glowTimeout);
+    glow.remove();
+  });
 
   const buttonRect = button.getBoundingClientRect();
   const clickX = event.clientX - buttonRect.left;
@@ -72,32 +79,47 @@ export const createSmartClickEffect = (event: React.MouseEvent) => {
     { duration: rippleDuration, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
   );
 
-  setTimeout(() => {
+  const rippleTimeout = setTimeout(() => {
     ripple.remove();
     button.style.position = originalPosition;
   }, rippleDuration);
+  cleanupFunctions.push(() => {
+    clearTimeout(rippleTimeout);
+    ripple.remove();
+    button.style.position = originalPosition;
+  });
 
   let scaleAmount = Math.max(0.85, Math.min(0.98, 0.95 - sizeMultiplier * 0.03));
   const bounceAmount = 1.05;
   button.style.transition = "transform 150ms ease-out";
   button.style.transform = `scale(${scaleAmount})`;
-  setTimeout(() => {
+
+  const t1 = setTimeout(() => {
     button.style.transform = `scale(${bounceAmount})`;
-    setTimeout(() => {
+    const t2 = setTimeout(() => {
       button.style.transform = "scale(1)";
-      setTimeout(() => {
+      const t3 = setTimeout(() => {
         button.style.transition = "";
       }, 150);
+      cleanupFunctions.push(() => clearTimeout(t3));
     }, 75);
+    cleanupFunctions.push(() => clearTimeout(t2));
   }, 75);
+  cleanupFunctions.push(() => clearTimeout(t1));
+
+  return () => {
+    cleanupFunctions.forEach((fn) => fn());
+  };
 };
 
-export const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean) => {
+export const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean): (() => void) => {
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) return;
+  if (reduceMotion) return () => {};
+
+  const cleanupFunctions: (() => void)[] = [];
 
   const rect = button.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
@@ -111,6 +133,7 @@ export const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean
   particlesContainer.style.height = "100vh";
 
   document.body.appendChild(particlesContainer);
+  cleanupFunctions.push(() => particlesContainer.remove());
 
   const particleCount = isUnfollowing ? 8 : 12;
   const particles: HTMLDivElement[] = [];
@@ -154,24 +177,36 @@ export const createHeartParticles = (button: HTMLElement, isUnfollowing: boolean
     );
   });
 
-  setTimeout(() => {
+  const cleanupTimeout = setTimeout(() => {
     particlesContainer.remove();
   }, 1000);
+  cleanupFunctions.push(() => {
+    clearTimeout(cleanupTimeout);
+    particlesContainer.remove();
+  });
+
+  return () => {
+    cleanupFunctions.forEach((fn) => fn());
+  };
 };
 
-export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, category?: string) => {
+export const createCategoryParticlesAtCardClick = (
+  event: React.MouseEvent,
+  category?: string
+): (() => void) => {
   const reduceMotion =
     typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) return;
+  if (reduceMotion) return () => {};
+
+  const cleanupFunctions: (() => void)[] = [];
 
   const card = event.currentTarget as HTMLElement;
   const rect = card.getBoundingClientRect();
   const x = event.clientX;
   const y = event.clientY;
 
-  // Calculate position relative to card for internal ripple
   const localX = x - rect.left;
   const localY = y - rect.top;
 
@@ -181,19 +216,19 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   const getColor = (cat: string) => {
     switch (cat) {
       case "科技":
-        return ["#60A5FA", "#22D3EE"]; // blue-400, cyan-400
+        return ["#60A5FA", "#22D3EE"];
       case "娱乐":
-        return ["#F472B6", "#FB7185"]; // pink-400, rose-400
+        return ["#F472B6", "#FB7185"];
       case "时政":
-        return ["#C084FC", "#818CF8"]; // purple-400, indigo-400
+        return ["#C084FC", "#818CF8"];
       case "天气":
-        return ["#4ADE80", "#34D399"]; // green-400, emerald-400
+        return ["#4ADE80", "#34D399"];
       case "体育":
-        return ["#FB923C", "#F87171"]; // orange-400, red-400
+        return ["#FB923C", "#F87171"];
       case "商业":
-        return ["#94A3B8", "#6B7280"]; // slate-400, gray-500
+        return ["#94A3B8", "#6B7280"];
       case "加密货币":
-        return ["#FACC15", "#F59E0B"]; // yellow-400, amber-500
+        return ["#FACC15", "#F59E0B"];
       default:
         return ["#8B5CF6", "#A78BFA"];
     }
@@ -202,7 +237,6 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   const colors = getColor(category || "");
   const primaryColor = colors[0];
 
-  // --- 1. Internal Ripple Effect (Linked to Card) ---
   const ripple = document.createElement("div");
   const size = Math.max(rect.width, rect.height) * 2;
 
@@ -218,37 +252,42 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   ripple.style.transition = "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s linear";
   ripple.style.opacity = "1";
 
-  // Append to card to ensure it's clipped and moves with card
   if (getComputedStyle(card).position === "static") {
     card.style.position = "relative";
   }
   card.appendChild(ripple);
 
-  // Trigger ripple animation
   requestAnimationFrame(() => {
     ripple.style.transform = "translate(-50%, -50%) scale(1)";
     ripple.style.opacity = "0";
   });
 
-  setTimeout(() => ripple.remove(), 500);
+  const rippleTimeout = setTimeout(() => ripple.remove(), 500);
+  cleanupFunctions.push(() => {
+    clearTimeout(rippleTimeout);
+    ripple.remove();
+  });
 
-  // --- 2. Card Highlight/Glow ---
   const originalTransition = card.style.transition;
   const originalBoxShadow = card.style.boxShadow;
   const originalBorderColor = card.style.borderColor;
 
-  // Add a temporary glow matching the category
   card.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
   card.style.borderColor = primaryColor;
   card.style.boxShadow = `0 0 0 1px ${primaryColor}40, 0 10px 25px -5px ${primaryColor}30`;
 
-  setTimeout(() => {
+  const cardStyleTimeout = setTimeout(() => {
     card.style.borderColor = originalBorderColor || "";
     card.style.boxShadow = originalBoxShadow || "";
     card.style.transition = originalTransition || "";
   }, 400);
+  cleanupFunctions.push(() => {
+    clearTimeout(cardStyleTimeout);
+    card.style.borderColor = originalBorderColor || "";
+    card.style.boxShadow = originalBoxShadow || "";
+    card.style.transition = originalTransition || "";
+  });
 
-  // --- 3. External Particles (Refined) ---
   const particlesContainer = document.createElement("div");
   particlesContainer.className = "fixed pointer-events-none z-[9999]";
   particlesContainer.style.left = "0";
@@ -256,8 +295,8 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   particlesContainer.style.width = "100vw";
   particlesContainer.style.height = "100vh";
   document.body.appendChild(particlesContainer);
+  cleanupFunctions.push(() => particlesContainer.remove());
 
-  // Shockwave (Softer)
   const shockwave = document.createElement("div");
   shockwave.style.position = "absolute";
   shockwave.style.left = `${x}px`;
@@ -267,7 +306,7 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
   shockwave.style.border = `2px solid ${colors[0]}`;
   shockwave.style.borderRadius = "50%";
   shockwave.style.transform = "translate(-50%, -50%)";
-  shockwave.style.opacity = "0.5"; // Reduced opacity
+  shockwave.style.opacity = "0.5";
   particlesContainer.appendChild(shockwave);
 
   shockwave.animate(
@@ -281,20 +320,19 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     }
   );
 
-  // Icon Particles
-  const iconCount = 12; // Increased count
+  const iconCount = 12;
   for (let i = 0; i < iconCount; i++) {
     const p = document.createElement("div");
     p.innerText = icon;
     p.style.position = "absolute";
     p.style.left = `${x}px`;
     p.style.top = `${y}px`;
-    p.style.fontSize = "24px"; // Larger icons
+    p.style.fontSize = "24px";
     p.style.transform = "translate(-50%, -50%) scale(0)";
     particlesContainer.appendChild(p);
 
     const angle = (i / iconCount) * Math.PI * 2 + (Math.random() - 0.5);
-    const velocity = 80 + Math.random() * 100; // Increased velocity
+    const velocity = 80 + Math.random() * 100;
     const tx = Math.cos(angle) * velocity;
     const ty = Math.sin(angle) * velocity;
 
@@ -317,21 +355,20 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     );
   }
 
-  // Confetti Particles
-  const confettiCount = 20; // Increased count
+  const confettiCount = 20;
   for (let i = 0; i < confettiCount; i++) {
     const p = document.createElement("div");
     p.style.position = "absolute";
     p.style.left = `${x}px`;
     p.style.top = `${y}px`;
-    p.style.width = `${4 + Math.random() * 4}px`; // Varied size
+    p.style.width = `${4 + Math.random() * 4}px`;
     p.style.height = `${4 + Math.random() * 4}px`;
     p.style.backgroundColor = colors[i % colors.length];
     p.style.borderRadius = i % 3 === 0 ? "50%" : i % 3 === 1 ? "0%" : "2px";
     particlesContainer.appendChild(p);
 
     const angle = Math.random() * Math.PI * 2;
-    const velocity = 60 + Math.random() * 120; // Increased velocity
+    const velocity = 60 + Math.random() * 120;
     const tx = Math.cos(angle) * velocity;
     const ty = Math.sin(angle) * velocity;
 
@@ -351,7 +388,15 @@ export const createCategoryParticlesAtCardClick = (event: React.MouseEvent, cate
     );
   }
 
-  setTimeout(() => {
+  const particlesTimeout = setTimeout(() => {
     particlesContainer.remove();
   }, 1000);
+  cleanupFunctions.push(() => {
+    clearTimeout(particlesTimeout);
+    particlesContainer.remove();
+  });
+
+  return () => {
+    cleanupFunctions.forEach((fn) => fn());
+  };
 };

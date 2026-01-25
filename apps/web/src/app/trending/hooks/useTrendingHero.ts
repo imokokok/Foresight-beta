@@ -58,6 +58,15 @@ function useImagePreloader(images: string[], currentIndex: number, preloadCount 
         imageObjectsRef.current.delete(key);
       }
     });
+
+    // 清理函数：组件卸载时清除所有预加载的图片
+    return () => {
+      imageObjectsRef.current.forEach((img) => {
+        img.src = "";
+      });
+      imageObjectsRef.current.clear();
+      preloadedRef.current.clear();
+    };
   }, [images, currentIndex, preloadCount]);
 
   return {

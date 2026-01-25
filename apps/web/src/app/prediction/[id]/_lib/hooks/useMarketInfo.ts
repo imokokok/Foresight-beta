@@ -11,6 +11,8 @@ export function useMarketInfo(predictionIdRaw: string | number | undefined) {
   useEffect(() => {
     if (!predictionIdRaw) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
     const loadMarket = async () => {
       try {
         const resp = await fetch(`${API_BASE}/markets/map?id=${predictionIdRaw}`);
@@ -19,11 +21,13 @@ export function useMarketInfo(predictionIdRaw: string | number | undefined) {
         if (j?.success && j?.data) setMarket(j.data);
       } catch {}
     };
+
     loadMarket();
-    const timer = setInterval(loadMarket, 10000);
+    timer = setInterval(loadMarket, 10000);
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
     };
   }, [predictionIdRaw]);
 

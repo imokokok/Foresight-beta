@@ -45,21 +45,27 @@ export function useOrderbookDepthPolling(args: {
     if (wsStatus === "connected") return;
     if (!market || !predictionIdRaw) return;
 
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
     const fetchDepth = async () => {
+      if (cancelled) return;
       try {
         setError(null);
-        const key = buildMarketKey(market.chain_id, predictionIdRaw);
+        const key = buildMarketKey(market!.chain_id, predictionIdRaw);
         const { buys, sells } = await fetchOrderbookDepthApi(
-          market.market,
-          market.chain_id,
+          market!.market,
+          market!.chain_id,
           key,
           tradeOutcome
         );
+        if (cancelled) return;
         setDepthBuy(buys);
         setDepthSell(sells);
         setBestBid(buys.length > 0 ? buys[0].price : "");
         setBestAsk(sells.length > 0 ? sells[0].price : "");
       } catch (e) {
+        if (cancelled) return;
         console.error("[useOrderbookDepthPolling] Failed to fetch depth:", e);
         setError(e instanceof Error ? e.message : "Failed to load orderbook depth");
       }
@@ -70,9 +76,12 @@ export function useOrderbookDepthPolling(args: {
 
     // 轮询间隔：WebSocket 断开时 2 秒，否则 5 秒 (作为备份)
     const interval = wsStatus === "disconnected" ? 2000 : 5000;
-    const timer = setInterval(fetchDepth, interval);
+    timer = setInterval(fetchDepth, interval);
 
-    return () => clearInterval(timer);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
   }, [market, tradeOutcome, predictionIdRaw, wsStatus]);
 
   return {

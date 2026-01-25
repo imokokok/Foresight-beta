@@ -250,6 +250,9 @@ export async function matchOrder(
     } else {
       order.status = "partially_filled";
     }
+    if (order.status === "partially_filled" || order.status === "filled") {
+      await updateOrderInDb(order, order.status, "pending");
+    }
     return {
       success: true,
       matches,
@@ -262,6 +265,9 @@ export async function matchOrder(
       order.status = "partially_filled";
     } else {
       order.status = "open";
+    }
+    if (order.remainingAmount > 0n) {
+      await updateOrderInDb(order, order.status, "pending");
     }
     return {
       success: true,

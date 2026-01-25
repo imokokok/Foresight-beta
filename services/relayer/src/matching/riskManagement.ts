@@ -161,6 +161,18 @@ export async function checkBalanceAndRisk(
         };
       }
 
+      const expectedOutcomeTokenAddress = getConfiguredOutcomeTokenAddress();
+      if (
+        expectedOutcomeTokenAddress &&
+        outcomeTokenAddress.toLowerCase() !== expectedOutcomeTokenAddress.toLowerCase()
+      ) {
+        return {
+          valid: false,
+          error: "Invalid outcome token address",
+          errorCode: "BALANCE_CHECK_FAILED",
+        };
+      }
+
       const { data: openOrders } = await supabaseAdmin
         .from("orders")
         .select("remaining")

@@ -190,6 +190,10 @@ export async function validateOrder(
     return { valid: false, error: "Price out of range", errorCode: "INVALID_PRICE" };
   }
 
+  if (input.price < 0n) {
+    return { valid: false, error: "Price cannot be negative", errorCode: "INVALID_PRICE" };
+  }
+
   const tickOffset = input.price - config.minPrice;
   if (tickOffset % config.priceTickSize !== 0n) {
     return {
