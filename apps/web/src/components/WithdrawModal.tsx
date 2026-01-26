@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ArrowUpRight } from "lucide-react";
 import { ethers } from "ethers";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/toast";
@@ -9,6 +9,15 @@ import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import { useWallet } from "@/contexts/WalletContext";
 import { erc20Abi } from "@/app/prediction/[id]/_lib/abis";
 import { useTranslations } from "@/lib/i18n";
+
+interface WithdrawalHistoryItem {
+  id: string;
+  amount: string;
+  destination_address: string;
+  transaction_hash: string;
+  status: string;
+  created_at: string;
+}
 
 type WithdrawModalProps = {
   open: boolean;
@@ -43,6 +52,8 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
 
   const [amount, setAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [history, setHistory] = useState<WithdrawalHistoryItem[]>([]);
 
   const fetchProxy = useCallback(async () => {
     if (!address) return;
@@ -88,6 +99,28 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     }
   }, [proxyAddress]);
 
+  const fetchWithdrawalHistory = useCallback(async () => {
+    if (!address) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/withdraw", {
+        method: "GET",
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.success && Array.isArray(json.data?.withdrawals)) {
+        setHistory(json.data.withdrawals);
+      } else {
+        setHistory([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch withdrawal history:", error);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [address]);
+
   const fetchBalance = useCallback(async () => {
     if (!proxyAddress || !usdcAddress) return;
     setBalanceLoading(true);
@@ -114,8 +147,9 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     if (open) {
       fetchProxy();
       setAmount("");
+      fetchWithdrawalHistory();
     }
-  }, [open, fetchProxy]);
+  }, [open, fetchProxy, fetchWithdrawalHistory]);
 
   useEffect(() => {
     if (open && proxyAddress) {
@@ -125,6 +159,9 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       return () => clearInterval(timer);
     }
   }, [open, proxyAddress, fetchBalance, fetchOffchain]);
+
+  // 手续费率（可以从配置中获取，这里暂时硬编码为0.1%）
+  const FEE_RATE = 0.001;
 
   const availableRawBalance = useMemo(() => {
     if (!offchainOk) return rawBalance;
@@ -142,32 +179,101 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     return ethers.formatUnits(availableRawBalance, tokenDecimals);
   }, [availableRawBalance, tokenDecimals]);
 
+  // 计算手续费
+  const feeHuman = useMemo(() => {
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) return "0";
+    const fee = amountNum * FEE_RATE;
+    return fee.toFixed(6);
+  }, [amount]);
+
+  // 计算实际到账金额
+  const netAmountHuman = useMemo(() => {
+    const amountNum = parseFloat(amount);
+    const feeNum = parseFloat(feeHuman);
+    return (amountNum - feeNum).toFixed(6);
+  }, [amount, feeHuman]);
+
+  // 计算扣除手续费后的实际可用余额
+  const netAvailableBalance = useMemo(() => {
+    const balanceNum = parseFloat(balanceHuman);
+    // 计算扣除手续费后的最大可提取金额：maxAmount = balanceNum / (1 + FEE_RATE)
+    const maxAmount = balanceNum / (1 + FEE_RATE);
+    return maxAmount.toFixed(6);
+  }, [balanceHuman]);
+
+  // 计算最终可用余额
+  const finalAvailableBalance = useMemo(() => {
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum) || amountNum <= 0) return balanceHuman;
+    const availableNum = parseFloat(balanceHuman);
+    const feeNum = amountNum * FEE_RATE;
+    const totalNum = amountNum + feeNum;
+    return (availableNum - totalNum).toFixed(6);
+  }, [amount, balanceHuman]);
+
   const handleWithdraw = async () => {
     if (!address || !proxyAddress || !usdcAddress) return;
 
     try {
       setIsWithdrawing(true);
-      const amountBN = ethers.parseUnits(amount, tokenDecimals);
-      if (amountBN <= 0n) {
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
         toast.error(tWithdraw("errors.invalidAmount"));
         return;
       }
-      if (amountBN > availableRawBalance) {
+
+      // 计算总金额（包括手续费）
+      const feeNum = amountNum * FEE_RATE;
+      const totalNum = amountNum + feeNum;
+
+      // 检查余额是否足够支付总金额
+      const availableNum = parseFloat(balanceHuman);
+      if (totalNum > availableNum) {
         toast.error(tWithdraw("errors.insufficientBalance"));
         return;
       }
 
-      toast.success(tWithdraw("success"));
+      const amountBN = ethers.parseUnits(amount, tokenDecimals);
+
+      // 调用取款API
+      const response = await fetch("/api/withdraw", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount,
+          destination: address,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        toast.success(tWithdraw("success"), result.message || "取款请求已提交");
+        if (result.transactionHash) {
+          console.log("Withdrawal transaction hash:", result.transactionHash);
+        }
+        // 刷新余额和历史记录
+        fetchBalance();
+        fetchOffchain();
+        fetchWithdrawalHistory();
+        setAmount("");
+      } else {
+        toast.error(tWithdraw("errors.withdrawalFailed"), result.message || "取款失败");
+      }
     } catch (e) {
       console.error(e);
-      toast.error(tWithdraw("errors.withdrawalFailed"));
+      toast.error(tWithdraw("errors.withdrawalFailed"), "网络错误，请稍后重试");
     } finally {
       setIsWithdrawing(false);
     }
   };
 
   const setMax = () => {
-    setAmount(balanceHuman);
+    // 设置扣除手续费后的最大可提取金额
+    setAmount(netAvailableBalance);
   };
 
   return (
@@ -214,6 +320,26 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
               </button>
             </div>
             <div className="h-px bg-gray-100 w-full" />
+
+            {/* 手续费信息 */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>{tWithdraw("fee")}</span>
+                <span className="font-mono">
+                  {feeHuman} {tokenSymbol}
+                </span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>{tWithdraw("netAmount")}</span>
+                <span className="font-mono font-medium">
+                  {netAmountHuman} {tokenSymbol}
+                </span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>{tWithdraw("feeRate")}</span>
+                <span>{(FEE_RATE * 100).toFixed(2)}%</span>
+              </div>
+            </div>
           </div>
 
           <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 space-y-1">
@@ -237,6 +363,74 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
             {isWithdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
             {isWithdrawing ? tWithdraw("withdrawing") : tCommon("confirm")}
           </button>
+
+          {/* 取款历史记录 */}
+          <div className="pt-4 mt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-900">{tWithdraw("history.title")}</h3>
+              <button
+                onClick={fetchWithdrawalHistory}
+                disabled={historyLoading}
+                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 transition-colors disabled:opacity-50"
+              >
+                {historyLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                {tCommon("refresh")}
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-4 text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-4 text-sm text-gray-500">
+                {tWithdraw("history.empty")}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold text-gray-900">
+                          -{item.amount} {tokenSymbol}
+                        </span>
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded-full ${
+                            item.status === "pending"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {item.status === "pending"
+                            ? tWithdraw("history.pending")
+                            : tWithdraw("history.confirmed")}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {new Date(item.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                    {item.transaction_hash && (
+                      <button
+                        onClick={() => {
+                          // 这里可以添加查看交易详情的逻辑，比如跳转到区块链浏览器
+                          console.log("View transaction:", item.transaction_hash);
+                        }}
+                        className="text-purple-600 hover:text-purple-800 transition-colors"
+                        aria-label={tCommon("view")}
+                      >
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Modal>
