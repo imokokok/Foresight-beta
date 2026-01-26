@@ -17,7 +17,7 @@
     "preinstall": "node -e \"const major=Number((process.versions.node||'').split('.')[0]); if(major!==20){console.error('Node.js 20 required. Current:', process.versions.node); process.exit(1)}\"",
     "postinstall": "node -e \"const fs=require('fs');const p='node_modules/next/dist/compiled/@vercel/nft/index.js';if(!fs.existsSync(p))process.exit(0);let s=fs.readFileSync(p,'utf8');const from='r[\\\"import.meta\\\"]={url:Q};const s=await(0,c.evaluate)(e,r,t);return s';const to='r[\\\"import.meta\\\"]={url:Q};let s;try{s=await(0,c.evaluate)(e,r,t)}catch(e){if(e&&e.name===\\\"RangeError\\\"&&String(e.message||\\\"\\\").includes(\\\"Division by zero\\\"))return undefined;throw e}return s';if(s.includes(to))process.exit(0);if(!s.includes(from))process.exit(0);fs.writeFileSync(p,s.replace(from,to));\"",
     "dev:web": "dotenv -e ./.env.local -e ./apps/web/.env.local -- npm run dev -w apps/web",
-    "build:web": "npm run build -w apps/web",
+    "build:web": "npm run build -w packages/shared && npm run build -w apps/web",
     "start:web": "npm run start -w apps/web",
     "dev:relayer": "dotenv -e ./.env -e ./.env.local -- npm run start -w services/relayer",
     "build:relayer": "npm run build -w services/relayer",
