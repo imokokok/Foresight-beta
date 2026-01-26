@@ -340,7 +340,7 @@ export async function getSession(req: NextRequest): Promise<JWTPayload | null> {
   if (token) {
     const payload = await verifyToken(token);
     if (payload) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
+      const sid = typeof payload.sid === "string" ? String(payload.sid) : "";
       if (sid && (await isSessionRevoked(payload.address, sid))) return null;
       return payload;
     }
@@ -350,7 +350,7 @@ export async function getSession(req: NextRequest): Promise<JWTPayload | null> {
   if (refreshToken) {
     const payload = await verifyToken(refreshToken);
     if (payload) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
+      const sid = typeof payload.sid === "string" ? String(payload.sid) : "";
       if (sid && (await isSessionRevoked(payload.address, sid))) return null;
       // 从refresh token获取payload后，创建新的session token并设置cookie
       // 创建一个临时响应对象来设置cookie
@@ -361,14 +361,8 @@ export async function getSession(req: NextRequest): Promise<JWTPayload | null> {
         authMethod: "refresh",
       });
 
-      // 将临时响应中的cookie复制到原始请求的cookie中
-      const cookies = tempRes.cookies.getAll();
-      cookies.forEach((cookie) => {
-        req.cookies.set(cookie.name, cookie.value, cookie.attributes);
-      });
-
-      // 返回新创建的session token的payload
-      return await getSession(req);
+      // 刷新 token 后，直接返回新创建的 session token 的 payload
+      return payload;
     }
   }
 
@@ -384,7 +378,7 @@ export async function getSessionFromCookies(): Promise<JWTPayload | null> {
   if (token) {
     const payload = await verifyToken(token);
     if (payload) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
+      const sid = typeof payload.sid === "string" ? String(payload.sid) : "";
       if (sid && (await isSessionRevoked(payload.address, sid))) return null;
       return payload;
     }
@@ -394,7 +388,7 @@ export async function getSessionFromCookies(): Promise<JWTPayload | null> {
   if (refreshToken) {
     const payload = await verifyToken(refreshToken);
     if (payload) {
-      const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
+      const sid = typeof payload.sid === "string" ? String(payload.sid) : "";
       if (sid && (await isSessionRevoked(payload.address, sid))) return null;
       // 服务端组件无法直接修改响应，所以只能返回refresh token的payload
       // 这是一个特殊情况，客户端应该在后续请求中使用新的session token
@@ -421,7 +415,7 @@ export async function refreshSession(req: NextRequest, response: NextResponse): 
     return false;
   }
 
-  const sid = typeof (payload as any)?.sid === "string" ? String((payload as any).sid) : "";
+  const sid = typeof payload.sid === "string" ? String(payload.sid) : "";
   if (sid && (await isSessionRevoked(payload.address, sid))) {
     return false;
   }
