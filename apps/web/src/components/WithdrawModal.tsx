@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { toast } from "@/lib/toast";
 import { getRuntimeConfig } from "@/lib/runtimeConfig";
 import { useWallet } from "@/contexts/WalletContext";
-import { erc20Abi } from "@/app/prediction/[id]/_lib/abis";
+import { erc20Abi, safeAbi } from "@/app/prediction/[id]/_lib/abis";
 import { useTranslations } from "@/lib/i18n";
 
 interface WithdrawalHistoryItem {
@@ -24,21 +24,36 @@ type WithdrawModalProps = {
   onClose: () => void;
 };
 
-type ProxyWalletInfo = {
-  smart_account_address: string;
-};
+interface WithdrawResponseData {
+  success: boolean;
+  withdrawId: string;
+  transactionData: string;
+  amount: string;
+  fee: string;
+  tokenAddress: string;
+  proxyWalletAddress: string;
+  proxyWalletType: string;
+  message: string;
+}
+
+interface WithdrawConfirmResponseData {
+  success: boolean;
+  transactionHash: string;
+  message: string;
+}
 
 export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   const tWithdraw = useTranslations("withdrawModal");
   const tCommon = useTranslations("common");
 
-  const { address: address } = useWallet();
+  const { address: address, provider, chainId } = useWallet();
   const runtime = useMemo(() => getRuntimeConfig(), []);
-  const chainId = runtime.chainId;
+  const configuredChainId = runtime.chainId;
   const usdcAddress = runtime.addresses.usdc || "";
 
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyAddress, setProxyAddress] = useState<string | null>(null);
+  const [proxyWalletType, setProxyWalletType] = useState<string>("safe");
 
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [tokenSymbol, setTokenSymbol] = useState<string>("USDC");
@@ -63,14 +78,17 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       const json = await res.json();
       if (json?.success && json?.data?.smart_account_address) {
         setProxyAddress(json.data.smart_account_address);
+        setProxyWalletType(json.data.type || "safe");
         setOffchainOk(false);
       } else {
         setProxyAddress(null);
+        setProxyWalletType("safe");
         setOffchainOk(false);
       }
     } catch (e) {
       console.error(e);
       setProxyAddress(null);
+      setProxyWalletType("safe");
       setOffchainOk(false);
     } finally {
       setProxyLoading(false);
@@ -179,7 +197,6 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     return ethers.formatUnits(availableRawBalance, tokenDecimals);
   }, [availableRawBalance, tokenDecimals]);
 
-  // 计算手续费
   const feeHuman = useMemo(() => {
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) return "0";
@@ -194,26 +211,81 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
     return (amountNum - feeNum).toFixed(6);
   }, [amount, feeHuman]);
 
-  // 计算扣除手续费后的实际可用余额
   const netAvailableBalance = useMemo(() => {
     const balanceNum = parseFloat(balanceHuman);
-    // 计算扣除手续费后的最大可提取金额：maxAmount = balanceNum / (1 + FEE_RATE)
     const maxAmount = balanceNum / (1 + FEE_RATE);
     return maxAmount.toFixed(6);
   }, [balanceHuman]);
 
-  // 计算最终可用余额
-  const finalAvailableBalance = useMemo(() => {
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum) || amountNum <= 0) return balanceHuman;
-    const availableNum = parseFloat(balanceHuman);
-    const feeNum = amountNum * FEE_RATE;
-    const totalNum = amountNum + feeNum;
-    return (availableNum - totalNum).toFixed(6);
-  }, [amount, balanceHuman]);
+  const setMax = () => {
+    setAmount(netAvailableBalance);
+  };
+
+  const sendTransactionWithProxy = async (
+    signer: ethers.Signer,
+    proxyAddress: string,
+    to: string,
+    data: string
+  ): Promise<string> => {
+    const safeContract = new ethers.Contract(proxyAddress, safeAbi, signer);
+    const nonce = await safeContract.nonce();
+
+    const txArgs = {
+      to,
+      value: 0n,
+      data,
+      operation: 0,
+      safeTxGas: 0,
+      baseGas: 0,
+      gasPrice: 0,
+      gasToken: ethers.ZeroAddress,
+      refundReceiver: ethers.ZeroAddress,
+      nonce,
+    };
+
+    const safeTxHash = await safeContract.getTransactionHash(
+      txArgs.to,
+      txArgs.value,
+      txArgs.data,
+      txArgs.operation,
+      txArgs.safeTxGas,
+      txArgs.baseGas,
+      txArgs.gasPrice,
+      txArgs.gasToken,
+      txArgs.refundReceiver,
+      txArgs.nonce
+    );
+
+    const signature = await signer.signMessage(ethers.getBytes(safeTxHash));
+    const sig = ethers.Signature.from(signature);
+    let finalSig = signature;
+    if (sig.v === 27 || sig.v === 28) {
+      const v = sig.v + 4;
+      finalSig = ethers.concat([sig.r, sig.s, new Uint8Array([v])]);
+    }
+
+    const tx = await safeContract.execTransaction(
+      txArgs.to,
+      txArgs.value,
+      txArgs.data,
+      txArgs.operation,
+      txArgs.safeTxGas,
+      txArgs.baseGas,
+      txArgs.gasPrice,
+      txArgs.gasToken,
+      txArgs.refundReceiver,
+      finalSig
+    );
+
+    const receipt = await tx.wait();
+    return receipt.hash;
+  };
 
   const handleWithdraw = async () => {
-    if (!address || !proxyAddress || !usdcAddress) return;
+    if (!address || !proxyAddress || !usdcAddress || !provider) {
+      toast.error(tWithdraw("errors.default"));
+      return;
+    }
 
     try {
       setIsWithdrawing(true);
@@ -223,57 +295,87 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
         return;
       }
 
-      // 计算总金额（包括手续费）
       const feeNum = amountNum * FEE_RATE;
       const totalNum = amountNum + feeNum;
 
-      // 检查余额是否足够支付总金额
       const availableNum = parseFloat(balanceHuman);
       if (totalNum > availableNum) {
         toast.error(tWithdraw("errors.insufficientBalance"));
         return;
       }
 
-      const amountBN = ethers.parseUnits(amount, tokenDecimals);
-
-      // 调用取款API
       const response = await fetch("/api/withdraw", {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount,
-          destination: address,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
       });
 
       const result = await response.json();
-      if (response.ok && result.success) {
-        toast.success(tWithdraw("success"), result.message || "取款请求已提交");
-        if (result.transactionHash) {
-          console.log("Withdrawal transaction hash:", result.transactionHash);
-        }
-        // 刷新余额和历史记录
-        fetchBalance();
-        fetchOffchain();
-        fetchWithdrawalHistory();
-        setAmount("");
-      } else {
-        toast.error(tWithdraw("errors.withdrawalFailed"), result.message || "取款失败");
+      if (!response.ok || !result.success) {
+        toast.error(tWithdraw("errors.withdrawalFailed"), result.message || "创建取款请求失败");
+        return;
       }
+
+      const withdrawData = result.data;
+      const browserProvider = new ethers.BrowserProvider(provider);
+      const signer = await browserProvider.getSigner();
+      let txHash: string;
+
+      if (proxyWalletType === "safe" || proxyWalletType === "safe4337") {
+        txHash = await sendTransactionWithProxy(
+          signer,
+          withdrawData.proxyWalletAddress,
+          withdrawData.tokenAddress,
+          withdrawData.transactionData
+        );
+      } else {
+        const tokenContract = new ethers.Contract(withdrawData.tokenAddress, erc20Abi, signer);
+        const tx = await tokenContract.transfer(
+          withdrawData.proxyWalletAddress,
+          ethers.parseUnits(amount, tokenDecimals)
+        );
+        const receipt = await tx.wait();
+        txHash = receipt.hash;
+      }
+
+      toast.loading(tWithdraw("confirming"), "正在确认交易...");
+
+      const confirmResponse = await fetch("/api/withdraw", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          withdrawId: withdrawData.withdrawId,
+          transactionHash: txHash,
+        }),
+      });
+
+      const confirmResult = await confirmResponse.json();
+      if (!confirmResponse.ok || !confirmResult.success) {
+        toast.error(
+          tWithdraw("errors.confirmationFailed"),
+          confirmResult.message || "交易确认失败"
+        );
+        return;
+      }
+
+      toast.success(tWithdraw("success"), "取款成功！资金已转出");
+      fetchBalance();
+      fetchOffchain();
+      fetchWithdrawalHistory();
+      setAmount("");
     } catch (e) {
-      console.error(e);
-      toast.error(tWithdraw("errors.withdrawalFailed"), "网络错误，请稍后重试");
+      console.error("Withdrawal error:", e);
+      const error = e as Error;
+      if (error.message?.includes("User rejected")) {
+        toast.error(tWithdraw("errors.rejected"), "您拒绝了交易");
+      } else {
+        toast.error(tWithdraw("errors.withdrawalFailed"), error.message || "网络错误，请稍后重试");
+      }
     } finally {
       setIsWithdrawing(false);
     }
-  };
-
-  const setMax = () => {
-    // 设置扣除手续费后的最大可提取金额
-    setAmount(netAvailableBalance);
   };
 
   return (
@@ -356,13 +458,18 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
               parseFloat(amount) <= 0 ||
               proxyLoading ||
               balanceLoading ||
-              (offchainOk && offchainLoading)
+              (offchainOk && offchainLoading) ||
+              chainId !== configuredChainId
             }
             className="w-full py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
           >
             {isWithdrawing && <Loader2 className="w-4 h-4 animate-spin" />}
             {isWithdrawing ? tWithdraw("withdrawing") : tCommon("confirm")}
           </button>
+
+          {chainId !== configuredChainId && (
+            <div className="text-center text-sm text-amber-600">请切换到正确的网络</div>
+          )}
 
           {/* 取款历史记录 */}
           <div className="pt-4 mt-4 border-t border-gray-100">
@@ -402,12 +509,16 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
                           className={`text-xs px-1.5 py-0.5 rounded-full ${
                             item.status === "pending"
                               ? "bg-amber-100 text-amber-700"
-                              : "bg-emerald-100 text-emerald-700"
+                              : item.status === "confirmed"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-red-100 text-red-700"
                           }`}
                         >
                           {item.status === "pending"
                             ? tWithdraw("history.pending")
-                            : tWithdraw("history.confirmed")}
+                            : item.status === "confirmed"
+                              ? tWithdraw("history.confirmed")
+                              : tWithdraw("history.failed")}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
@@ -415,16 +526,15 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
                       </div>
                     </div>
                     {item.transaction_hash && (
-                      <button
-                        onClick={() => {
-                          // 这里可以添加查看交易详情的逻辑，比如跳转到区块链浏览器
-                          console.log("View transaction:", item.transaction_hash);
-                        }}
+                      <a
+                        href={`https://www.oklink.com/amoy/tx/${item.transaction_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-purple-600 hover:text-purple-800 transition-colors"
                         aria-label={tCommon("view")}
                       >
                         <ArrowUpRight className="w-4 h-4" />
-                      </button>
+                      </a>
                     )}
                   </div>
                 ))}
