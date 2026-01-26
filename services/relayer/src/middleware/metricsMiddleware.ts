@@ -7,12 +7,27 @@ import { randomUUID } from "crypto";
 import { apiRequestsTotal, apiRequestLatency, apiRateLimitHits } from "../monitoring/metrics.js";
 import { logger } from "../monitoring/logger.js";
 
+const IGNORED_PATHS = new Set(["/health", "/ready", "/metrics", "/favicon.ico"]);
+
+function shouldIgnorePath(path: string): boolean {
+  if (IGNORED_PATHS.has(path)) return true;
+  if (path.startsWith("/internal/")) return true;
+  return false;
+}
+
 /**
  * API 请求指标中间件
  */
 export function metricsMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const normalizedPath = normalizePath(req.path);
+
+  if (shouldIgnorePath(normalizedPath)) {
+    next();
+    return;
+  }
+
   const startTime = Date.now();
-  const path = normalizePath(req.path);
+  const path = normalizedPath;
   const method = req.method;
 
   // 响应结束时记录指标

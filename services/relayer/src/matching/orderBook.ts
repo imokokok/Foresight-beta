@@ -10,17 +10,29 @@ import type { Order, PriceLevel, DepthSnapshot, OrderBookStats } from "./types.j
  */
 class PriceLevelNode {
   price: bigint;
-  orders: Map<string, Order> = new Map(); // orderId -> Order
-  orderQueue: string[] = []; // 按时间优先排序的订单ID列表
+  orders: Map<string, Order> = new Map();
+  orderQueue: string[] = [];
+  private deletedOrders: Set<string> = new Set();
+  private readonly REBUILD_THRESHOLD = 100;
   totalQuantity: bigint = 0n;
 
   constructor(price: bigint) {
     this.price = price;
   }
 
+  private rebuildQueue(): void {
+    const validOrders: string[] = [];
+    for (const orderId of this.orderQueue) {
+      if (!this.deletedOrders.has(orderId)) {
+        validOrders.push(orderId);
+      }
+    }
+    this.orderQueue = validOrders;
+    this.deletedOrders.clear();
+  }
+
   addOrder(order: Order): void {
     if (this.orders.has(order.id)) {
-      // 更新现有订单
       const oldOrder = this.orders.get(order.id)!;
       this.totalQuantity -= oldOrder.remainingAmount;
     } else {
@@ -36,20 +48,31 @@ class PriceLevelNode {
 
     this.orders.delete(orderId);
     this.totalQuantity -= order.remainingAmount;
-    this.orderQueue = this.orderQueue.filter((id) => id !== orderId);
+    this.deletedOrders.add(orderId);
+
+    if (this.deletedOrders.size >= this.REBUILD_THRESHOLD) {
+      this.rebuildQueue();
+    }
+
     return order;
   }
 
   getFirstOrder(): Order | null {
     while (this.orderQueue.length > 0) {
       const orderId = this.orderQueue[0];
+      if (this.deletedOrders.has(orderId)) {
+        this.orderQueue.shift();
+        continue;
+      }
       const order = this.orders.get(orderId);
       if (order && order.remainingAmount > 0n) {
         return order;
       }
-      // 移除无效订单
       this.orderQueue.shift();
-      if (order) this.orders.delete(orderId);
+      if (order) {
+        this.orders.delete(orderId);
+        this.deletedOrders.add(orderId);
+      }
     }
     return null;
   }
@@ -58,10 +81,17 @@ class PriceLevelNode {
     const excluded = excludedMaker ? excludedMaker.toLowerCase() : null;
     for (let i = 0; i < this.orderQueue.length; ) {
       const orderId = this.orderQueue[i];
+      if (this.deletedOrders.has(orderId)) {
+        this.orderQueue.splice(i, 1);
+        continue;
+      }
       const order = this.orders.get(orderId);
       if (!order || order.remainingAmount <= 0n) {
         this.orderQueue.splice(i, 1);
-        if (order) this.orders.delete(orderId);
+        if (order) {
+          this.orders.delete(orderId);
+          this.deletedOrders.add(orderId);
+        }
         continue;
       }
       if (excluded && order.maker === excluded) {

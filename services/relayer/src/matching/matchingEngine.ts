@@ -98,6 +98,7 @@ export class MatchingEngine extends EventEmitter {
   private snapshotQueueLastAtMs: Map<string, number> = new Map();
   private snapshotFullLastAtMs: Map<string, number> = new Map();
   private clientOrderIdCache: Map<string, { expiresAtMs: number; result: MatchResult }> = new Map();
+  private clientOrderIdCacheCleanupCounter = 0;
   private expirySweepTimer: ReturnType<typeof setInterval> | null = null;
   private expirySweepRunning = false;
 
@@ -189,32 +190,42 @@ export class MatchingEngine extends EventEmitter {
     const redis = getRedisClient();
     const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
     let distributedLockToken: string | null = null;
+    let lockAcquisitionError: Error | null = null;
+
     try {
-      distributedLockToken = redis.isReady()
-        ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
-        : null;
-    } catch (error) {
-      orderbookLockBusyTotal.inc({
-        market_key: marketKey,
-        outcome_index: String(outcomeIndex),
-        operation: "lock_acquisition_error",
-      });
-      release();
-      if (this.bookLocks.get(lockKey) === current) {
-        this.bookLocks.delete(lockKey);
+      if (redis.isReady()) {
+        try {
+          distributedLockToken = await redis.acquireLock(distributedLockKey, 30000, 200, 50);
+        } catch (error) {
+          lockAcquisitionError = error as Error;
+          orderbookLockBusyTotal.inc({
+            market_key: marketKey,
+            outcome_index: String(outcomeIndex),
+            operation: "lock_acquisition_error",
+          });
+        }
       }
-      throw error;
+    } finally {
+      if (lockAcquisitionError || (redis.isReady() && !distributedLockToken)) {
+        release();
+        if (this.bookLocks.get(lockKey) === current) {
+          this.bookLocks.delete(lockKey);
+        }
+        if (lockAcquisitionError) {
+          throw lockAcquisitionError;
+        }
+        if (redis.isReady() && !distributedLockToken) {
+          orderbookLockBusyTotal.inc({
+            market_key: marketKey,
+            outcome_index: String(outcomeIndex),
+            operation: "book_lock",
+          });
+          throw new Error("Orderbook busy");
+        }
+      }
     }
 
     try {
-      if (redis.isReady() && !distributedLockToken) {
-        orderbookLockBusyTotal.inc({
-          market_key: marketKey,
-          outcome_index: String(outcomeIndex),
-          operation: "book_lock",
-        });
-        throw new Error("Orderbook busy");
-      }
       await this.loadSnapshotIfNeeded(marketKey, outcomeIndex);
       return await fn();
     } finally {
@@ -254,32 +265,42 @@ export class MatchingEngine extends EventEmitter {
     const redis = getRedisClient();
     const distributedLockKey = `orderbook:lock:${marketKey}:${outcomeIndex}`;
     let distributedLockToken: string | null = null;
+    let lockAcquisitionError: Error | null = null;
+
     try {
-      distributedLockToken = redis.isReady()
-        ? await redis.acquireLock(distributedLockKey, 30000, 200, 50)
-        : null;
-    } catch (error) {
-      orderbookLockBusyTotal.inc({
-        market_key: marketKey,
-        outcome_index: String(outcomeIndex),
-        operation: "lock_acquisition_error",
-      });
-      release();
-      if (this.bookLocks.get(lockKey) === current) {
-        this.bookLocks.delete(lockKey);
+      if (redis.isReady()) {
+        try {
+          distributedLockToken = await redis.acquireLock(distributedLockKey, 30000, 200, 50);
+        } catch (error) {
+          lockAcquisitionError = error as Error;
+          orderbookLockBusyTotal.inc({
+            market_key: marketKey,
+            outcome_index: String(outcomeIndex),
+            operation: "lock_acquisition_error",
+          });
+        }
       }
-      throw error;
+    } finally {
+      if (lockAcquisitionError || (redis.isReady() && !distributedLockToken)) {
+        release();
+        if (this.bookLocks.get(lockKey) === current) {
+          this.bookLocks.delete(lockKey);
+        }
+        if (lockAcquisitionError) {
+          throw lockAcquisitionError;
+        }
+        if (redis.isReady() && !distributedLockToken) {
+          orderbookLockBusyTotal.inc({
+            market_key: marketKey,
+            outcome_index: String(outcomeIndex),
+            operation: "book_lock",
+          });
+          throw new Error("Orderbook busy");
+        }
+      }
     }
 
     try {
-      if (redis.isReady() && !distributedLockToken) {
-        orderbookLockBusyTotal.inc({
-          market_key: marketKey,
-          outcome_index: String(outcomeIndex),
-          operation: "book_lock",
-        });
-        throw new Error("Orderbook busy");
-      }
       return await fn();
     } finally {
       if (distributedLockToken) {
@@ -621,17 +642,18 @@ export class MatchingEngine extends EventEmitter {
               this.bookManager,
               this.emitDepthUpdate.bind(this)
             );
-            reservedAtStartUsdc = await reserveUsdcForOrder(order);
-            if (reservedAtStartUsdc < 0n) {
+            const reserveResult = await reserveUsdcForOrder(order);
+            if (!reserveResult.success) {
               result = {
                 success: false,
                 matches: [],
                 remainingOrder: null,
-                error: "Insufficient balance",
+                error: reserveResult.error || "Insufficient balance",
                 errorCode: "INSUFFICIENT_BALANCE",
               };
               return result;
             }
+            reservedAtStartUsdc = reserveResult.amount;
 
             if (order.postOnly) {
               const book = this.bookManager.getOrCreateBook(order.marketKey, order.outcomeIndex);
@@ -1644,10 +1666,25 @@ export class MatchingEngine extends EventEmitter {
     if (!key) return;
     const ttlMs = Math.max(1000, Number(process.env.RELAYER_CLIENT_ORDER_ID_TTL_MS || "60000"));
     this.clientOrderIdCache.set(key, { expiresAtMs: Date.now() + ttlMs, result });
-    if (this.clientOrderIdCache.size > 20000) {
-      const now = Date.now();
-      for (const [k, v] of this.clientOrderIdCache.entries()) {
-        if (v.expiresAtMs <= now) this.clientOrderIdCache.delete(k);
+
+    this.clientOrderIdCacheCleanupCounter++;
+    if (this.clientOrderIdCacheCleanupCounter >= 100) {
+      this.clientOrderIdCacheCleanupCounter = 0;
+      if (this.clientOrderIdCache.size > 25000) {
+        const now = Date.now();
+        let cleaned = 0;
+        for (const [k, v] of this.clientOrderIdCache.entries()) {
+          if (v.expiresAtMs <= now) {
+            this.clientOrderIdCache.delete(k);
+            cleaned++;
+          }
+        }
+        if (cleaned > 0) {
+          logger.debug("Cleaned expired cache entries", {
+            count: cleaned,
+            remaining: this.clientOrderIdCache.size,
+          });
+        }
       }
     }
   }

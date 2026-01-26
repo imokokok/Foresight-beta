@@ -89,10 +89,36 @@ export class LocalSlidingWindowLimiter {
       skipIps: config.skipIps || [],
     };
 
-    // 定期清理过期窗口
-    this.cleanupTimer = setInterval(() => {
-      this.cleanup();
-    }, this.config.windowMs);
+    this.cleanupTimer = setInterval(
+      () => {
+        this.cleanup();
+      },
+      Math.min(this.config.windowMs, 60000)
+    );
+  }
+
+  /**
+   * 清理过期窗口
+   */
+  private cleanup(): void {
+    const now = Date.now();
+    const windowStart = now - this.config.windowMs;
+    let cleaned = 0;
+    const keysToDelete: string[] = [];
+
+    for (const [key, entries] of this.windows.entries()) {
+      const validEntries = entries.filter((e) => e.windowStart > windowStart);
+      if (validEntries.length === 0) {
+        keysToDelete.push(key);
+      } else if (validEntries.length < entries.length) {
+        this.windows.set(key, validEntries);
+      }
+      cleaned++;
+    }
+
+    for (const key of keysToDelete) {
+      this.windows.delete(key);
+    }
   }
 
   /**
@@ -173,23 +199,6 @@ export class LocalSlidingWindowLimiter {
       return true;
     }
     return false;
-  }
-
-  /**
-   * 清理过期窗口
-   */
-  private cleanup(): void {
-    const now = Date.now();
-    const windowStart = now - this.config.windowMs;
-
-    for (const [key, entries] of this.windows.entries()) {
-      const validEntries = entries.filter((e) => e.windowStart > windowStart);
-      if (validEntries.length === 0) {
-        this.windows.delete(key);
-      } else {
-        this.windows.set(key, validEntries);
-      }
-    }
   }
 
   /**

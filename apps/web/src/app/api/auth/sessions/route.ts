@@ -95,6 +95,15 @@ export async function GET(req: NextRequest) {
     }
     if (!supabaseAdmin) return withNoStore(ApiResponses.internalError("Missing service key"));
 
+    const rlKey = `wallet:${address}:session_list`;
+    const rl = await checkRateLimit(rlKey, RateLimits.relaxed, "session_list");
+    if (!rl.success) {
+      const waitSec = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      return withNoStore(
+        errorResponse(`请求过于频繁，请 ${waitSec} 秒后重试`, ApiErrorCode.RATE_LIMIT, 429)
+      );
+    }
+
     const { data, error } = await (supabaseAdmin as any)
       .from("user_sessions")
       .select(
@@ -107,15 +116,9 @@ export async function GET(req: NextRequest) {
     if (error) {
       if (isMissingRelation(error)) {
         return withNoStore(
-          errorResponse(
-            "缺少 user_sessions/login_audit_events 表",
-            ApiErrorCode.DATABASE_ERROR,
-            500,
-            {
-              setupRequired: true,
-              sql: SQL_CREATE_AUTH_TABLES,
-            }
-          )
+          errorResponse("数据库配置错误，请联系管理员", ApiErrorCode.DATABASE_ERROR, 500, {
+            setupRequired: true,
+          })
         );
       }
       return withNoStore(ApiResponses.databaseError("Failed to load sessions", error.message));

@@ -64,10 +64,12 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
     await opts.initContractListener();
 
     const redisEnabled = process.env.REDIS_ENABLED !== "false";
+    let redisConnected = false;
     if (redisEnabled) {
       try {
         const connected = await initRedis();
         if (connected) {
+          redisConnected = true;
           opts.logger.info("Redis connected successfully");
           const snapshotService = getOrderbookSnapshotService();
           snapshotService.startSync(5000);
@@ -76,8 +78,13 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
         }
       } catch (e) {
         const error = e as Error;
-        opts.logger.warn("Redis initialization failed", {}, error);
+        opts.logger.warn("Redis initialization failed, running without Redis", {}, error);
       }
+    }
+
+    const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisConnected;
+    if (clusterEnabled === false && process.env.CLUSTER_ENABLED === "true") {
+      opts.logger.warn("Cluster mode disabled because Redis is not connected");
     }
 
     try {
@@ -88,7 +95,6 @@ export function startRelayerServer(opts: StartRelayerServerOptions) {
       opts.logger.warn("Database pool initialization failed, using single connection", {}, error);
     }
 
-    const clusterEnabled = process.env.CLUSTER_ENABLED === "true" && redisEnabled;
     const reconciliationEnabled = process.env.RECONCILIATION_ENABLED === "true";
     const shouldInitReconciler = reconciliationEnabled && !!RPC_URL && !!process.env.MARKET_ADDRESS;
     let reconcilerStarted = false;

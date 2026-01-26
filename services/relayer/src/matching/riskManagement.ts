@@ -337,13 +337,28 @@ export async function checkBalanceAndRisk(
 }
 
 /**
+ * 预留USDC余额结果
+ */
+export interface ReserveResult {
+  success: boolean;
+  amount: bigint;
+  error?: string;
+}
+
+/**
  * 预留USDC余额
  */
-export async function reserveUsdcForOrder(order: any): Promise<bigint> {
-  if (!supabaseAdmin) return 0n;
-  if (!order.isBuy) return 0n;
+export async function reserveUsdcForOrder(order: any): Promise<ReserveResult> {
+  if (!supabaseAdmin) {
+    return { success: false, amount: 0n, error: "Supabase admin not configured" };
+  }
+  if (!order.isBuy) {
+    return { success: true, amount: 0n };
+  }
   const reserveMicro = orderNotionalUsdc(order.remainingAmount, order.price);
-  if (reserveMicro <= 0n) return 0n;
+  if (reserveMicro <= 0n) {
+    return { success: true, amount: 0n };
+  }
 
   try {
     const { data, error } = await supabaseAdmin.rpc("reserve_user_balance", {
@@ -352,14 +367,20 @@ export async function reserveUsdcForOrder(order: any): Promise<bigint> {
     });
     if (error) {
       const code = String((error as any).code || "");
-      if (code === "42883") return 0n;
-      return -1n;
+      if (code === "42883") {
+        return { success: false, amount: 0n, error: "Function not found" };
+      }
+      return { success: false, amount: 0n, error: error.message };
     }
     const row = Array.isArray(data) ? (data[0] as any) : (data as any);
     const ok = row && (row.success === true || row.success === "true");
-    return ok ? reserveMicro : -1n;
-  } catch {
-    return 0n;
+    if (ok) {
+      return { success: true, amount: reserveMicro };
+    }
+    return { success: false, amount: 0n, error: "Reservation failed" };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, amount: 0n, error: errorMessage };
   }
 }
 

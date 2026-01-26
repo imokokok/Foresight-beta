@@ -97,12 +97,20 @@ export async function parseRequestBody(req: Request): Promise<Record<string, unk
   }
 }
 
-export function parseNumericIds(raw: unknown) {
+export function parseNumericIds(raw: unknown, debugLog?: boolean) {
   if (!Array.isArray(raw)) return [];
   const ids: number[] = [];
+  const skipped: unknown[] = [];
   for (const x of raw) {
     const n = typeof x === "number" ? x : typeof x === "string" ? Number(x) : NaN;
-    if (Number.isFinite(n) && n > 0) ids.push(n);
+    if (Number.isFinite(n) && n > 0) {
+      ids.push(n);
+    } else if (debugLog) {
+      skipped.push(x);
+    }
+  }
+  if (skipped.length > 0 && debugLog) {
+    console.debug("[parseNumericIds] Skipped invalid values:", skipped);
   }
   return Array.from(new Set(ids));
 }

@@ -73,6 +73,10 @@ export class ClusteredWebSocketServer {
   private nodeId: string;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 10;
+  private readonly RECONNECT_BACKOFF_MS = 5000;
+  private reconnectTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private port: number = 3006,
@@ -160,8 +164,43 @@ export class ClusteredWebSocketServer {
 
     wsClusterMessagesTotal.inc({ direction: "broadcast", type: payload.type });
 
-    // 向本地订阅了该频道的客户端广播
     this.localBroadcast(payload.channel, payload.data);
+  }
+
+  private async attemptPubsubReconnect(): Promise<void> {
+    if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+      logger.error("Max reconnection attempts reached for Pub/Sub, giving up");
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(
+      this.RECONNECT_BACKOFF_MS * Math.pow(2, this.reconnectAttempts - 1),
+      60000
+    );
+
+    logger.info(
+      `Attempting Pub/Sub reconnection in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`
+    );
+
+    this.reconnectTimer = setTimeout(async () => {
+      try {
+        const newPubsub = new RedisPubSub({}, this.nodeId);
+        const connected = await newPubsub.connect();
+
+        if (connected) {
+          this.pubsub = newPubsub;
+          this.reconnectAttempts = 0;
+          logger.info("Pub/Sub reconnected successfully");
+          await this.subscribeToBroadcastChannels();
+        } else {
+          this.attemptPubsubReconnect();
+        }
+      } catch (error) {
+        logger.error("Pub/Sub reconnection failed", undefined, error);
+        this.attemptPubsubReconnect();
+      }
+    }, delay);
   }
 
   /**
@@ -580,6 +619,11 @@ export class ClusteredWebSocketServer {
     if (this.wss) {
       this.wss.close();
       this.wss = null;
+    }
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
     }
 
     if (this.pubsub) {

@@ -90,13 +90,13 @@ export class CircuitBreaker extends EventEmitter {
 
     this.config = {
       name: config.name,
-      failureThreshold: config.failureThreshold ?? 5,
-      successThreshold: config.successThreshold ?? 3,
+      failureThreshold: config.failureThreshold ?? 10,
+      successThreshold: config.successThreshold ?? 5,
       openDuration: config.openDuration ?? 30000,
       timeout: config.timeout ?? 10000,
       windowSize: config.windowSize ?? 60000,
       errorRateThreshold: config.errorRateThreshold ?? 0.5,
-      minRequests: config.minRequests ?? 10,
+      minRequests: config.minRequests ?? 20,
       fallback: config.fallback,
     };
 
@@ -206,7 +206,9 @@ export class CircuitBreaker extends EventEmitter {
       timestamp: Date.now(),
       duration,
     });
-    this.cleanupResults();
+    if (this.results.length > this.config.minRequests * 2) {
+      this.cleanupResults();
+    }
 
     switch (this.state) {
       case CircuitState.CLOSED:
@@ -232,20 +234,20 @@ export class CircuitBreaker extends EventEmitter {
       duration,
       error,
     });
-    this.cleanupResults();
+    if (this.results.length > this.config.minRequests * 2) {
+      this.cleanupResults();
+    }
 
     switch (this.state) {
       case CircuitState.CLOSED:
         this.failureCount++;
 
-        // 检查是否应该熔断
         if (this.shouldTrip()) {
           this.transitionTo(CircuitState.OPEN);
         }
         break;
 
       case CircuitState.HALF_OPEN:
-        // 半开状态下失败，立即熔断
         this.transitionTo(CircuitState.OPEN);
         break;
     }

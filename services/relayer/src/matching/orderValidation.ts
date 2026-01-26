@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import type { OrderInput } from "./matchingEngine.js";
 import { supabaseAdmin } from "../supabase.js";
 import type { MatchingEngineConfig } from "./types.js";
+import { logger } from "../monitoring/logger.js";
 
 // EIP-712 类型定义
 const ORDER_TYPES = {
@@ -18,6 +19,9 @@ const ORDER_TYPES = {
 
 // 导出函数: 获取RPC提供者
 export const providerByChainId = new Map<number, ethers.JsonRpcProvider>();
+const PROVIDER_CHECK_INTERVAL = 300000;
+let lastProviderCheck = 0;
+
 export function getRpcProvider(chainId: number): ethers.JsonRpcProvider {
   const pickFirstNonEmptyString = (...values: unknown[]): string | undefined => {
     for (const v of values) {
@@ -54,11 +58,22 @@ export function getRpcProvider(chainId: number): ethers.JsonRpcProvider {
 
     return "http://127.0.0.1:8545";
   }
+
+  const now = Date.now();
+  if (now - lastProviderCheck > PROVIDER_CHECK_INTERVAL) {
+    lastProviderCheck = now;
+    providerByChainId.clear();
+  }
+
   const cached = providerByChainId.get(chainId);
   if (cached) return cached;
   const provider = new ethers.JsonRpcProvider(getConfiguredRpcUrl(chainId));
   providerByChainId.set(chainId, provider);
   return provider;
+}
+
+export function resetRpcProvider(chainId: number): void {
+  providerByChainId.delete(chainId);
 }
 
 // 导出函数: 验证ERC-1271签名
@@ -67,7 +82,7 @@ export async function isValidErc1271Signature(args: {
   digest: string;
   signature: string;
   chainId: number;
-}) {
+}): Promise<boolean> {
   const maker = args.maker.toLowerCase();
   const provider = getRpcProvider(args.chainId);
   const erc1271 = new ethers.Contract(
@@ -75,8 +90,23 @@ export async function isValidErc1271Signature(args: {
     ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
     provider
   );
-  const magic = await erc1271.isValidSignature(args.digest, args.signature);
-  return String(magic).toLowerCase() === "0x1626ba7e";
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const magic = await erc1271.isValidSignature(args.digest, args.signature, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return String(magic).toLowerCase() === "0x1626ba7e";
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      logger.warn("ERC-1271 signature verification timed out", { maker });
+    }
+    return false;
+  }
 }
 
 /**

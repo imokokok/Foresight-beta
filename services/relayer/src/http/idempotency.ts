@@ -13,19 +13,28 @@ export function createIdempotency(readIntEnv: (name: string, fallback: number) =
   let idempotencyLastCleanupAtMs = 0;
 
   function cleanupIdempotencyStore(nowMs: number, maxScan: number) {
-    if (!idempotencyCleanupIter) {
-      idempotencyCleanupIter = idempotencyStore.entries();
-    }
-    let scanned = 0;
-    while (scanned < maxScan) {
-      const n = idempotencyCleanupIter.next();
-      if (n.done) {
-        idempotencyCleanupIter = null;
-        break;
+    try {
+      if (!idempotencyCleanupIter) {
+        idempotencyCleanupIter = idempotencyStore.entries();
       }
-      scanned += 1;
-      const [k, v] = n.value;
-      if (v.expiresAtMs <= nowMs) idempotencyStore.delete(k);
+      let scanned = 0;
+      while (scanned < maxScan) {
+        try {
+          const n = idempotencyCleanupIter.next();
+          if (n.done) {
+            idempotencyCleanupIter = null;
+            break;
+          }
+          scanned += 1;
+          const [k, v] = n.value;
+          if (v.expiresAtMs <= nowMs) idempotencyStore.delete(k);
+        } catch {
+          idempotencyCleanupIter = null;
+          break;
+        }
+      }
+    } catch {
+      idempotencyCleanupIter = null;
     }
   }
 

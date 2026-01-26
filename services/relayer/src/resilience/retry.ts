@@ -84,7 +84,7 @@ export async function retry<T>(
   let lastError: Error | null = null;
   let attempt = 0;
 
-  while (attempt <= fullConfig.maxRetries) {
+  while (attempt < fullConfig.maxRetries) {
     try {
       const result = await fn();
 

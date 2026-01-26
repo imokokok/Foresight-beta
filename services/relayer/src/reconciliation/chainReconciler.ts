@@ -11,51 +11,7 @@ import { Counter, Gauge, Histogram } from "prom-client";
 import { metricsRegistry } from "../monitoring/metrics.js";
 import { getDatabasePool } from "../database/connectionPool.js";
 import { getRedisClient } from "../redis/client.js";
-
-function pickFirstNonEmptyString(...values: unknown[]): string | undefined {
-  for (const v of values) {
-    const s = typeof v === "string" ? v.trim() : "";
-    if (s) return s;
-  }
-  return undefined;
-}
-
-function getConfiguredChainId(): number {
-  const raw = String(process.env.NEXT_PUBLIC_CHAIN_ID || process.env.CHAIN_ID || "").trim();
-  const n = raw ? Number(raw) : NaN;
-  if (Number.isFinite(n) && n > 0) return Math.floor(n);
-  return 80002;
-}
-
-function getConfiguredRpcUrl(chainId?: number): string {
-  const id = chainId ?? getConfiguredChainId();
-
-  const generic = pickFirstNonEmptyString(process.env.RPC_URL, process.env.NEXT_PUBLIC_RPC_URL);
-  if (generic) return generic;
-
-  if (id === 80002) {
-    return (
-      pickFirstNonEmptyString(
-        process.env.NEXT_PUBLIC_RPC_POLYGON_AMOY,
-        "https://rpc-amoy.polygon.technology/"
-      ) || "https://rpc-amoy.polygon.technology/"
-    );
-  }
-  if (id === 137) {
-    return (
-      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_POLYGON, "https://polygon-rpc.com") ||
-      "https://polygon-rpc.com"
-    );
-  }
-  if (id === 11155111) {
-    return (
-      pickFirstNonEmptyString(process.env.NEXT_PUBLIC_RPC_SEPOLIA, "https://rpc.sepolia.org") ||
-      "https://rpc.sepolia.org"
-    );
-  }
-
-  return "http://127.0.0.1:8545";
-}
+import { getConfiguredChainId, getConfiguredRpcUrl } from "../utils/rpcConfig.js";
 
 // ============================================================
 // 指标定义
@@ -806,23 +762,40 @@ export class ChainReconciler extends EventEmitter {
    */
   private async fixStatusMismatch(discrepancy: Discrepancy): Promise<void> {
     const { tradeId, txHash } = discrepancy.details;
-    if (!tradeId) return;
+    if (!tradeId && !txHash) return;
 
     const pool = getDatabasePool();
     const client = pool.getWriteClient();
     if (!client) return;
 
-    // 检查链上状态
-    if (txHash) {
-      const receipt = await this.provider.getTransactionReceipt(txHash);
+    try {
+      if (txHash) {
+        const receipt = await this.provider.getTransactionReceipt(txHash);
 
-      if (receipt && receipt.status === 1) {
-        logger.info("Trade receipt confirmed", {
-          tradeId,
-          txHash,
-          blockNumber: receipt.blockNumber,
-        });
+        if (receipt) {
+          const onchainStatus = receipt.status === 1 ? "confirmed" : "failed";
+
+          logger.info("Fixing status mismatch", {
+            tradeId,
+            txHash,
+            onchainStatus,
+            blockNumber: receipt.blockNumber,
+          });
+
+          if (tradeId) {
+            await client.from("trades").update({ status: onchainStatus }).eq("id", tradeId);
+          } else {
+            await client.from("trades").update({ status: onchainStatus }).eq("tx_hash", txHash);
+          }
+        } else {
+          logger.warn("Transaction receipt not found for status fix", { txHash });
+        }
+      } else if (tradeId) {
+        await client.from("trades").update({ status: "unknown" }).eq("id", tradeId);
       }
+    } catch (error) {
+      logger.error("Failed to fix status mismatch", { tradeId, txHash }, error as Error);
+      throw error;
     }
   }
 

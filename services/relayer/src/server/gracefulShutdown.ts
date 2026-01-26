@@ -26,11 +26,37 @@ export function registerGracefulShutdown(opts: {
   async function gracefulShutdown(signal: string) {
     opts.logger.info("Graceful shutdown initiated", { signal });
 
+    const forceShutdown = async () => {
+      opts.logger.error("Shutdown timeout, attempting forced cleanup");
+
+      try {
+        opts.stopMatchingEngine();
+      } catch {}
+      try {
+        opts.stopWebSocket();
+      } catch {}
+      try {
+        opts.stopMetrics();
+      } catch {}
+      try {
+        opts.stopRateLimiter();
+      } catch {}
+      try {
+        opts.stopAutoIngest();
+      } catch {}
+      try {
+        opts.stopRedis();
+      } catch {}
+      try {
+        opts.stopDatabasePool();
+      } catch {}
+
+      opts.logger.error("Forced shutdown completed");
+      process.exit(1);
+    };
+
     try {
-      const shutdownTimeout = setTimeout(() => {
-        opts.logger.error("Shutdown timeout, forcing exit");
-        process.exit(1);
-      }, opts.shutdownTimeoutMs ?? 30000);
+      const shutdownTimeout = setTimeout(forceShutdown, opts.shutdownTimeoutMs ?? 30000);
 
       try {
         await opts.stopChainReconciler();

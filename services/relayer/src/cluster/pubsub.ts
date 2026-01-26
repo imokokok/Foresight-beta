@@ -85,14 +85,20 @@ export class RedisPubSub extends EventEmitter {
   private subscriptions: Set<string> = new Set();
   private isConnected: boolean = false;
 
+  private static parseEnvInt(envValue: string | undefined, defaultValue: number): number {
+    if (envValue === undefined) return defaultValue;
+    const parsed = parseInt(envValue, 10);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+  }
+
   constructor(config: Partial<PubSubConfig> = {}, nodeId?: string) {
     super();
 
     this.config = {
       host: config.host || process.env.REDIS_HOST || "localhost",
-      port: config.port || parseInt(process.env.REDIS_PORT || "6379", 10),
+      port: config.port || RedisPubSub.parseEnvInt(process.env.REDIS_PORT, 6379),
       password: config.password || process.env.REDIS_PASSWORD,
-      db: config.db || parseInt(process.env.REDIS_DB || "0", 10),
+      db: config.db || RedisPubSub.parseEnvInt(process.env.REDIS_DB, 0),
       channelPrefix: config.channelPrefix || "foresight:",
       url: config.url || process.env.REDIS_URL,
     };

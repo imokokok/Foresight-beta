@@ -76,6 +76,7 @@ export interface ClusterNode {
   isLeader: boolean;
   lastSeen: number;
   metadata?: Record<string, unknown>;
+  consecutiveMissedHeartbeats: number;
 }
 
 export type ClusterEventType =
@@ -370,10 +371,12 @@ export class ClusterManager extends EventEmitter {
    * 注册节点
    */
   private registerNode(nodeId: string, isLeader: boolean): void {
+    const existing = this.nodes.get(nodeId);
     this.nodes.set(nodeId, {
       nodeId,
       isLeader,
       lastSeen: Date.now(),
+      consecutiveMissedHeartbeats: 0,
     });
 
     clusterNodesTotal.set(this.nodes.size);
@@ -384,6 +387,9 @@ export class ClusterManager extends EventEmitter {
    * 启动心跳
    */
   private startHeartbeat(): void {
+    const heartbeatInterval = 15000;
+    const missedThreshold = 3;
+
     this.heartbeatTimer = setInterval(async () => {
       if (!this.isRunning) return;
       try {
@@ -393,11 +399,29 @@ export class ClusterManager extends EventEmitter {
         });
 
         const now = Date.now();
-        const timeout = 60000;
 
         for (const [nodeId, node] of this.nodes.entries()) {
-          if (nodeId !== this.nodeId && now - node.lastSeen > timeout) {
+          if (nodeId === this.nodeId) continue;
+
+          const timeSinceLastSeen = now - node.lastSeen;
+
+          if (timeSinceLastSeen > heartbeatInterval * missedThreshold) {
+            logger.warn("Node missed multiple heartbeats, removing", {
+              nodeId,
+              lastSeen: node.lastSeen,
+              consecutiveMissed: node.consecutiveMissedHeartbeats + 1,
+            });
             this.handleNodeLeft({ nodeId });
+          } else if (timeSinceLastSeen > heartbeatInterval * 1.5) {
+            node.consecutiveMissedHeartbeats++;
+            if (node.consecutiveMissedHeartbeats >= missedThreshold) {
+              logger.warn("Node missed consecutive heartbeats, removing", {
+                nodeId,
+                lastSeen: node.lastSeen,
+                consecutiveMissed: node.consecutiveMissedHeartbeats,
+              });
+              this.handleNodeLeft({ nodeId });
+            }
           }
         }
       } catch (error: any) {

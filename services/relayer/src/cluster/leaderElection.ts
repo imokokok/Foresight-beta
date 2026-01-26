@@ -80,9 +80,9 @@ export class LeaderElection extends EventEmitter {
 
     this.config = {
       lockKey: config.lockKey || "foresight:leader:matching-engine",
-      lockTtlMs: config.lockTtlMs || 30000, // 30 秒
-      renewIntervalMs: config.renewIntervalMs || 10000, // 10 秒
-      retryIntervalMs: config.retryIntervalMs || 5000, // 5 秒
+      lockTtlMs: config.lockTtlMs || 30000,
+      renewIntervalMs: config.renewIntervalMs || 20000,
+      retryIntervalMs: config.retryIntervalMs || 5000,
       nodeId: config.nodeId || this.generateNodeId(),
     };
 

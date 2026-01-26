@@ -30,7 +30,8 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
     const supabase = supabaseAdmin;
 
     const pollMs = Math.max(5000, readIntEnv("RELAYER_MARKET_EXPIRY_POLL_MS", 30000));
-    let running = false;
+    let runningPromise: Promise<void> | null = null;
+    let runningResolve: (() => void) | null = null;
 
     if (marketExpiryTimer) {
       clearInterval(marketExpiryTimer);
@@ -38,12 +39,22 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
     }
 
     const loop = async () => {
-      if (running) return;
-      running = true;
+      if (runningPromise) return;
+
+      let resolveRunning: (() => void) | undefined;
+      runningPromise = new Promise((resolve) => {
+        resolveRunning = resolve;
+      });
+      runningResolve = resolveRunning!;
+
       try {
         if (opts.isClusterActive()) {
           const cluster = getClusterManager();
-          if (!cluster.isLeader()) return;
+          if (!cluster.isLeader()) {
+            runningPromise = null;
+            runningResolve = null;
+            return;
+          }
         }
 
         const nowIso = new Date().toISOString();
@@ -111,7 +122,9 @@ export function createBackgroundLoops(opts: BackgroundLoopOptions) {
         const error = e as Error;
         opts.logger.warn("Market expiry loop failed", { error: String(error?.message || error) });
       } finally {
-        running = false;
+        runningPromise = null;
+        runningResolve = null;
+        if (resolveRunning) resolveRunning();
       }
     };
 

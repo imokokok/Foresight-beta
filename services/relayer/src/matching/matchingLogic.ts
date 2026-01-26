@@ -129,6 +129,16 @@ export async function matchOrder(
     }
   }
 
+  // 检查订单是否已过期
+  if (isExpired(order)) {
+    order.status = "expired";
+    return {
+      success: true,
+      matches,
+      remainingOrder: null,
+    };
+  }
+
   // 开始撮合循环
   while (order.remainingAmount > 0n) {
     // 获取对手盘最优订单

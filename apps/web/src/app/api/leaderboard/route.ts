@@ -24,6 +24,7 @@ type Category = "profit" | "winrate" | "streak";
 // 简单的内存缓存
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 1000; // 1分钟缓存
+const MAX_CACHE_SIZE = 100; // 最大缓存条目数
 
 function getCacheKey(range: TimeRange, category: Category, limit: number): string {
   return `leaderboard:${range}:${category}:${limit}`;
@@ -40,6 +41,17 @@ function getFromCache(key: string): any | null {
 
 function setCache(key: string, data: any): void {
   cache.set(key, { data, timestamp: Date.now() });
+  if (cache.size > MAX_CACHE_SIZE) {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [k, v] of cache.entries()) {
+      if (v.timestamp < now - CACHE_TTL || cleaned < MAX_CACHE_SIZE * 0.2) {
+        cache.delete(k);
+        cleaned++;
+      }
+      if (cache.size <= MAX_CACHE_SIZE) break;
+    }
+  }
 }
 
 export async function GET(req: NextRequest) {

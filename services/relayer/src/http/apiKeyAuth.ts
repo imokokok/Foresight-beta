@@ -67,6 +67,20 @@ function parseApiKeysEnv(): ApiKeyEntry[] {
 const apiKeys: ApiKeyEntry[] = parseApiKeysEnv();
 const apiKeyPositiveCache = new Map<string, MicroCacheEntry<ResolvedApiKey>>();
 const apiKeyNegativeCache = new Map<string, MicroCacheEntry<true>>();
+const API_KEY_NEG_CACHE_MAX_SIZE = 5000;
+
+function enforceApiKeyNegCacheLimit(): void {
+  if (apiKeyNegativeCache.size <= API_KEY_NEG_CACHE_MAX_SIZE) return;
+  const now = Date.now();
+  let deleted = 0;
+  for (const [key, entry] of apiKeyNegativeCache.entries()) {
+    if (entry.expiresAtMs <= now || deleted < API_KEY_NEG_CACHE_MAX_SIZE * 0.1) {
+      apiKeyNegativeCache.delete(key);
+      deleted++;
+    }
+    if (apiKeyNegativeCache.size <= API_KEY_NEG_CACHE_MAX_SIZE) break;
+  }
+}
 
 export function createApiKeyAuth(
   readIntEnv: (name: string, fallback: number) => number,
@@ -196,6 +210,7 @@ export function createApiKeyAuth(
         true,
         20000
       );
+      enforceApiKeyNegCacheLimit();
       return null;
     }
 
@@ -208,6 +223,7 @@ export function createApiKeyAuth(
         true,
         20000
       );
+      enforceApiKeyNegCacheLimit();
       return null;
     }
 
@@ -220,6 +236,7 @@ export function createApiKeyAuth(
         true,
         20000
       );
+      enforceApiKeyNegCacheLimit();
       return null;
     }
 

@@ -54,9 +54,18 @@ export async function verifyOrderSignature(
             ["function isValidSignature(bytes32,bytes) view returns (bytes4)"],
             provider
           );
-          const magic = await erc1271.isValidSignature(digest, signature);
-          if (String(magic).toLowerCase() === "0x1626ba7e") {
-            return { valid: true, recoveredAddress };
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          try {
+            const magic = await erc1271.isValidSignature(digest, signature, {
+              signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            if (String(magic).toLowerCase() === "0x1626ba7e") {
+              return { valid: true, recoveredAddress };
+            }
+          } catch {
+            clearTimeout(timeoutId);
           }
         } catch {}
       }

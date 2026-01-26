@@ -65,6 +65,12 @@ export class BatchSettler extends EventEmitter {
   private checkConfirmationsInFlight = false;
   private retryFailedFillsInFlight = false;
 
+  private batchTimerFailureCount = 0;
+  private confirmTimerFailureCount = 0;
+  private failedFillTimerFailureCount = 0;
+  private readonly MAX_CONSECUTIVE_FAILURES = 5;
+  private readonly FAILURE_BACKOFF_MS = 5000;
+
   constructor(
     private chainId: number,
     private marketAddress: string,
@@ -88,25 +94,75 @@ export class BatchSettler extends EventEmitter {
    * 启动结算服务
    */
   start(): void {
-    // 定期检查是否需要创建批次
-    this.batchTimer = setInterval(() => {
-      void this.checkAndCreateBatch().catch((error) => {
-        settlementLogger.error("BatchSettler checkAndCreateBatch failed", undefined, error);
-      });
-    }, 1000);
+    const startBatchTimer = () => {
+      this.batchTimerFailureCount = 0;
+      this.batchTimer = setInterval(() => {
+        void this.checkAndCreateBatch()
+          .then(() => {
+            this.batchTimerFailureCount = 0;
+          })
+          .catch((error) => {
+            this.batchTimerFailureCount++;
+            settlementLogger.error("BatchSettler checkAndCreateBatch failed", undefined, error);
+            if (this.batchTimerFailureCount >= this.MAX_CONSECUTIVE_FAILURES) {
+              settlementLogger.warn("BatchSettler batch timer entering backoff mode");
+              if (this.batchTimer) {
+                clearInterval(this.batchTimer);
+                this.batchTimer = null;
+                setTimeout(startBatchTimer, this.FAILURE_BACKOFF_MS);
+              }
+            }
+          });
+      }, 1000);
+    };
 
-    // 定期检查待确认的交易
-    this.confirmTimer = setInterval(() => {
-      void this.checkConfirmations().catch((error) => {
-        settlementLogger.error("BatchSettler checkConfirmations failed", undefined, error);
-      });
-    }, 3000);
+    const startConfirmTimer = () => {
+      this.confirmTimerFailureCount = 0;
+      this.confirmTimer = setInterval(() => {
+        void this.checkConfirmations()
+          .then(() => {
+            this.confirmTimerFailureCount = 0;
+          })
+          .catch((error) => {
+            this.confirmTimerFailureCount++;
+            settlementLogger.error("BatchSettler checkConfirmations failed", undefined, error);
+            if (this.confirmTimerFailureCount >= this.MAX_CONSECUTIVE_FAILURES) {
+              settlementLogger.warn("BatchSettler confirm timer entering backoff mode");
+              if (this.confirmTimer) {
+                clearInterval(this.confirmTimer);
+                this.confirmTimer = null;
+                setTimeout(startConfirmTimer, this.FAILURE_BACKOFF_MS);
+              }
+            }
+          });
+      }, 3000);
+    };
 
-    this.failedFillTimer = setInterval(() => {
-      void this.retryFailedFills().catch((error) => {
-        settlementLogger.error("BatchSettler retryFailedFills failed", undefined, error);
-      });
-    }, this.config.failedFillRetryIntervalMs);
+    const startFailedFillTimer = () => {
+      this.failedFillTimerFailureCount = 0;
+      this.failedFillTimer = setInterval(() => {
+        void this.retryFailedFills()
+          .then(() => {
+            this.failedFillTimerFailureCount = 0;
+          })
+          .catch((error) => {
+            this.failedFillTimerFailureCount++;
+            settlementLogger.error("BatchSettler retryFailedFills failed", undefined, error);
+            if (this.failedFillTimerFailureCount >= this.MAX_CONSECUTIVE_FAILURES) {
+              settlementLogger.warn("BatchSettler failedFill timer entering backoff mode");
+              if (this.failedFillTimer) {
+                clearInterval(this.failedFillTimer);
+                this.failedFillTimer = null;
+                setTimeout(startFailedFillTimer, this.FAILURE_BACKOFF_MS);
+              }
+            }
+          });
+      }, this.config.failedFillRetryIntervalMs);
+    };
+
+    startBatchTimer();
+    startConfirmTimer();
+    startFailedFillTimer();
 
     settlementLogger.info("BatchSettler started");
   }
@@ -727,6 +783,19 @@ export class BatchSettler extends EventEmitter {
               error: "Missing or invalid payload",
             });
           }
+          continue;
+        }
+
+        if (this.pendingFills.has(fill.id)) {
+          const nextRetryAt = new Date(Date.now() + this.config.retryDelayMs).toISOString();
+          await supabaseAdmin
+            .from("failed_fills")
+            .update({
+              retry_count: attempt,
+              next_retry_at: nextRetryAt,
+            })
+            .eq("id", rowAny.id)
+            .is("resolved_at", null);
           continue;
         }
 

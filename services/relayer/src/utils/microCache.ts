@@ -20,7 +20,22 @@ export function microCacheSet<T>(
   if (!Number.isFinite(ttlMs) || ttlMs <= 0) return;
   cache.set(key, { expiresAtMs: Date.now() + ttlMs, value });
   if (cache.size > maxSize) {
-    const oldestKey = cache.keys().next().value;
-    if (oldestKey) cache.delete(oldestKey);
+    const cleanupThreshold = maxSize * 0.2;
+    const targetSize = maxSize * 0.8;
+    let cleaned = 0;
+    const now = Date.now();
+    const entriesToDelete: string[] = [];
+
+    for (const [k, v] of cache.entries()) {
+      if (v.expiresAtMs <= now || (cache.size > targetSize && cleaned < cleanupThreshold)) {
+        entriesToDelete.push(k);
+        cleaned++;
+      }
+      if (cache.size - entriesToDelete.length <= targetSize) break;
+    }
+
+    for (const k of entriesToDelete) {
+      cache.delete(k);
+    }
   }
 }
