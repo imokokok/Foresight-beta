@@ -115,7 +115,7 @@ export class CircuitBreaker extends EventEmitter {
       const error = new Error(`Circuit breaker ${this.config.name} is OPEN`);
 
       if (this.config.fallback) {
-        return this.config.fallback(error);
+        return this.config.fallback(error) as T;
       }
 
       throw error;
@@ -138,7 +138,7 @@ export class CircuitBreaker extends EventEmitter {
       circuitBreakerLatency.observe({ name: this.config.name }, Date.now() - start);
 
       if (this.config.fallback) {
-        return this.config.fallback(error);
+        return this.config.fallback(error as Error) as T;
       }
 
       throw error;
