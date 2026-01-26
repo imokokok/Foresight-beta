@@ -22,6 +22,9 @@ function useImagePreloader(images: string[], currentIndex: number, preloadCount 
   useEffect(() => {
     if (typeof window === "undefined" || images.length === 0) return;
 
+    const imageObjects = imageObjectsRef.current;
+    const preloaded = preloadedRef.current;
+
     // 计算需要预加载的索引范围
     const indicesToPreload: number[] = [];
     for (let offset = -preloadCount; offset <= preloadCount; offset++) {
@@ -32,40 +35,40 @@ function useImagePreloader(images: string[], currentIndex: number, preloadCount 
     // 预加载图片
     indicesToPreload.forEach((index) => {
       const src = images[index];
-      if (!src || preloadedRef.current.has(src)) return;
+      if (!src || preloaded.has(src)) return;
 
       const img = new Image();
       img.src = src;
       img.onload = () => {
-        preloadedRef.current.add(src);
+        preloaded.add(src);
       };
       img.onerror = () => {
         // 加载失败时尝试 fallback 图片
         const fallback = getFallbackEventImage(`hero-${index}`);
-        if (!preloadedRef.current.has(fallback)) {
+        if (!preloaded.has(fallback)) {
           const fallbackImg = new Image();
           fallbackImg.src = fallback;
-          imageObjectsRef.current.set(fallback, fallbackImg);
+          imageObjects.set(fallback, fallbackImg);
         }
       };
-      imageObjectsRef.current.set(src, img);
+      imageObjects.set(src, img);
     });
 
     // 清理过期的预加载图片（保留最近访问的）
     const recentImages = new Set(indicesToPreload.map((i) => images[i]));
-    imageObjectsRef.current.forEach((_, key) => {
-      if (!recentImages.has(key) && imageObjectsRef.current.size > 10) {
-        imageObjectsRef.current.delete(key);
+    imageObjects.forEach((_, key) => {
+      if (!recentImages.has(key) && imageObjects.size > 10) {
+        imageObjects.delete(key);
       }
     });
 
     // 清理函数：组件卸载时清除所有预加载的图片
     return () => {
-      imageObjectsRef.current.forEach((img) => {
+      imageObjects.forEach((img) => {
         img.src = "";
       });
-      imageObjectsRef.current.clear();
-      preloadedRef.current.clear();
+      imageObjects.clear();
+      preloaded.clear();
     };
   }, [images, currentIndex, preloadCount]);
 
