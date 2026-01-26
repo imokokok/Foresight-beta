@@ -91,6 +91,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       );
     }
 
+    if (flag.status === "success" || flag.status === "failed") {
+      return NextResponse.json(
+        {
+          status: flag.status,
+          metrics: null,
+          sticker_earned: false,
+          sticker_id: null,
+          sticker: null,
+        },
+        { status: 200 }
+      );
+    }
+
     const end = new Date(String(flag.deadline));
     if (Number.isNaN(end.getTime())) return ApiResponses.internalError("Invalid flag deadline");
 
@@ -144,38 +157,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-
-    if (flag.status === "success" || flag.status === "failed") {
-      const { data: existingSettlement } = await client
-        .from("flag_settlements")
-        .select("*")
-        .eq("flag_id", flagId)
-        .order("settled_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existingSettlement) {
-        return NextResponse.json(
-          {
-            status: existingSettlement.status,
-            metrics: existingSettlement.metrics,
-            sticker_earned: false,
-            sticker_id: null,
-            sticker: null,
-          },
-          { status: 200 }
-        );
-      }
-      return NextResponse.json(
-        {
-          status: flag.status,
-          metrics: null,
-          sticker_earned: false,
-          sticker_id: null,
-          sticker: null,
-        },
-        { status: 200 }
-      );
-    }
 
     let startDay: Date;
     if (flag.created_at) {

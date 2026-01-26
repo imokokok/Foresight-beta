@@ -282,6 +282,10 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
   };
 
   const handleWithdraw = async () => {
+    if (isWithdrawing) {
+      return;
+    }
+
     if (!address || !proxyAddress || !usdcAddress || !provider) {
       toast.error(tWithdraw("errors.default"));
       return;
@@ -292,6 +296,14 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       const amountNum = parseFloat(amount);
       if (isNaN(amountNum) || amountNum <= 0) {
         toast.error(tWithdraw("errors.invalidAmount"));
+        setIsWithdrawing(false);
+        return;
+      }
+
+      const decimalPart = amount.split(".")[1];
+      if (decimalPart && decimalPart.length > 6) {
+        toast.error(tWithdraw("errors.invalidAmount"));
+        setIsWithdrawing(false);
         return;
       }
 
@@ -301,6 +313,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       const availableNum = parseFloat(balanceHuman);
       if (totalNum > availableNum) {
         toast.error(tWithdraw("errors.insufficientBalance"));
+        setIsWithdrawing(false);
         return;
       }
 
@@ -314,6 +327,7 @@ export default function WithdrawModal({ open, onClose }: WithdrawModalProps) {
       const result = await response.json();
       if (!response.ok || !result.success) {
         toast.error(tWithdraw("errors.withdrawalFailed"), result.message || "创建取款请求失败");
+        setIsWithdrawing(false);
         return;
       }
 

@@ -258,7 +258,7 @@ export async function POST(req: NextRequest) {
 
     const existingRes = await client
       .from("orders")
-      .select("id, market_key")
+      .select("id, market_key, status")
       .eq("chain_id", chainIdNum)
       .eq("verifying_contract", vc.toLowerCase())
       .eq("maker_address", orderData.maker.toLowerCase())
@@ -266,7 +266,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const existingOrder =
-      (existingRes.data as { id?: number; market_key?: unknown } | null) ?? null;
+      (existingRes.data as { id?: number; market_key?: unknown; status?: string } | null) ?? null;
 
     if (existingOrder) {
       const existingMk = existingOrder.market_key ? String(existingOrder.market_key) : "";
@@ -275,7 +275,9 @@ export async function POST(req: NextRequest) {
           "Salt conflict: existing order uses same salt with different marketKey"
         );
       }
-      return ApiResponses.conflict("Order already exists with the same salt");
+      if (existingOrder.status === "open" || existingOrder.status === "partially_filled") {
+        return ApiResponses.conflict("Order already exists with the same salt");
+      }
     }
 
     const expiryIso = orderData.expiry > 0 ? new Date(orderData.expiry * 1000).toISOString() : null;
@@ -296,26 +298,44 @@ export async function POST(req: NextRequest) {
     };
     if (mk) insertRow.market_key = mk;
 
-    const tryInsert = async (row: OrderInsert) => client.from("orders").insert(row as never);
-    let { error: insertError } = await tryInsert(insertRow);
-    if (insertError) {
-      const pgError = insertError as PostgrestError;
+    const tryUpsert = async (row: OrderInsert) =>
+      client.from("orders").upsert(row as never, {
+        onConflict: "chain_id,verifying_contract,maker_address,maker_salt",
+        ignoreDuplicates: false,
+      });
+
+    let { data: upsertResult, error: upsertError } = await tryUpsert(insertRow);
+
+    if (upsertError) {
+      const pgError = upsertError as PostgrestError;
       const msg = String(pgError.message || "");
       const code = String(pgError.code || "");
       const isDup = code === "23505" || /duplicate key/i.test(msg);
-      if (isDup) return ApiResponses.conflict("Order already exists with the same salt");
+      if (isDup) {
+        const { data: existing } = await client
+          .from("orders")
+          .select("id, status")
+          .eq("chain_id", chainIdNum)
+          .eq("verifying_contract", vc.toLowerCase())
+          .eq("maker_address", orderData.maker.toLowerCase())
+          .eq("maker_salt", orderData.salt)
+          .maybeSingle();
+        if (existing && (existing.status === "open" || existing.status === "partially_filled")) {
+          return ApiResponses.conflict("Order already exists with the same salt");
+        }
+      }
       if (mk && /market_key/i.test(msg)) {
         const fallbackRow: OrderInsert = { ...insertRow, market_key: undefined };
-        ({ error: insertError } = await tryInsert(fallbackRow));
+        ({ error: upsertError } = await tryUpsert(fallbackRow));
       }
     }
 
-    if (insertError) {
-      console.error("Error creating order:", insertError);
+    if (upsertError) {
+      console.error("Error creating order:", upsertError);
       try {
-        await logApiEvent("order_create_db_error", { code: (insertError as any)?.code || "" });
+        await logApiEvent("order_create_db_error", { code: (upsertError as any)?.code || "" });
       } catch {}
-      return ApiResponses.databaseError("Failed to create order", insertError.message);
+      return ApiResponses.databaseError("Failed to create order", upsertError.message);
     }
 
     try {

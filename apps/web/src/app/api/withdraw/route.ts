@@ -161,7 +161,7 @@ async function verifyTransactionOnChain(
       const args = eventLog.args;
       if (args && args[1].toLowerCase() === destinationAddress.toLowerCase()) {
         const transferAmount = args[2];
-        if (transferAmount >= amountEth) {
+        if (transferAmount === amountEth) {
           return true;
         }
       }
@@ -204,6 +204,11 @@ export async function POST(req: NextRequest) {
       return ApiResponses.badRequest("无效的取款金额");
     }
 
+    const decimalPart = body.amount.split(".")[1];
+    if (decimalPart && decimalPart.length > 6) {
+      return ApiResponses.badRequest("金额最多支持6位小数");
+    }
+
     const proxyInfo = await getUserProxyInfo(client, viewer);
     if (!proxyInfo?.proxyWalletAddress) {
       return ApiResponses.badRequest("代理钱包地址未配置");
@@ -217,13 +222,13 @@ export async function POST(req: NextRequest) {
       return ApiResponses.internalError("USDC address not configured");
     }
 
-    const amountNum = parseFloat(body.amount);
-    const feeNum = amountNum * FEE_RATE;
-    const totalAmountNum = amountNum + feeNum;
-
     const amountEth = ethers.parseUnits(body.amount, 6);
-    const feeEth = ethers.parseUnits(feeNum.toFixed(6), 6);
+    const feeEth = amountEth / 1000n;
     const totalAmountEth = amountEth + feeEth;
+
+    const amountNum = parseFloat(body.amount);
+    const feeNum = parseFloat(ethers.formatUnits(feeEth, 6));
+    const totalAmountNum = amountNum + feeNum;
 
     const destination = body.destination || viewer;
     if (!ethers.isAddress(destination)) {
@@ -236,6 +241,18 @@ export async function POST(req: NextRequest) {
     const balance = await tokenContract.balanceOf(proxyInfo.proxyWalletAddress);
     if (balance < totalAmountEth) {
       return ApiResponses.badRequest("余额不足，无法支付取款金额和手续费");
+    }
+
+    if (proxyInfo.proxyWalletType === "safe" || proxyInfo.proxyWalletType === "safe4337") {
+      const nativeBalance = await provider.getBalance(proxyInfo.proxyWalletAddress);
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice || 0n;
+      const estimatedGas = 150000n;
+      const gasCost = estimatedGas * gasPrice;
+
+      if (nativeBalance < gasCost) {
+        return ApiResponses.badRequest("原生代币余额不足，无法支付交易Gas费");
+      }
     }
 
     const withdrawRecord = await createWithdrawRecord(client, {
@@ -302,6 +319,16 @@ export async function PUT(req: NextRequest) {
       return ApiResponses.badRequest("该取款请求已被处理");
     }
 
+    const { data: existingTx } = await (client.from("withdrawals") as any)
+      .select("id")
+      .eq("transaction_hash", body.transactionHash)
+      .eq("status", "confirmed")
+      .single();
+
+    if (existingTx) {
+      return ApiResponses.badRequest("该交易已被确认");
+    }
+
     const configuredChainId = getConfiguredChainId();
     const rpcUrl = getConfiguredRpcUrl(configuredChainId);
     const usdcAddress = getChainAddresses(configuredChainId).usdc;
@@ -334,11 +361,32 @@ export async function PUT(req: NextRequest) {
         new ethers.JsonRpcProvider(rpcUrl)
       ).balanceOf(String(withdrawRecord.proxy_wallet_address))
     );
+
+    const { data: existingBalance } = await (client.from("user_balances") as any)
+      .select("reserved")
+      .eq("user_address", String(withdrawRecord.proxy_wallet_address))
+      .single();
+
+    const reservedEth = existingBalance?.reserved
+      ? ethers.parseUnits(String(existingBalance.reserved), 6)
+      : 0n;
+
+    const finalBalanceEth = newBalanceEth < reservedEth ? newBalanceEth : reservedEth;
+
     await syncBalance(
       client,
       String(withdrawRecord.proxy_wallet_address),
       ethers.formatUnits(newBalanceEth, 6)
     );
+
+    if (finalBalanceEth < reservedEth) {
+      await (client.from("user_balances") as any)
+        .update({
+          reserved: ethers.formatUnits(finalBalanceEth, 6),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_address", String(withdrawRecord.proxy_wallet_address));
+    }
 
     return successResponse({
       success: true,

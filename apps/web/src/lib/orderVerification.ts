@@ -64,10 +64,17 @@ export async function verifyOrderSignature(
             if (String(magic).toLowerCase() === "0x1626ba7e") {
               return { valid: true, recoveredAddress };
             }
-          } catch {
+          } catch (err) {
             clearTimeout(timeoutId);
+            if (process.env.NODE_ENV === "development") {
+              console.warn("ERC-1271 verification failed:", err);
+            }
           }
-        } catch {}
+        } catch (err) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("ERC-1271 contract call failed:", err);
+          }
+        }
       }
       return {
         valid: false,

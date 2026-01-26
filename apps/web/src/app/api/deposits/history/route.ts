@@ -226,6 +226,8 @@ export async function GET(req: NextRequest) {
           })
         : items;
 
+    const hasMore = storedRows && storedRows.length === limit;
+
     return withNoStore(
       successResponse(
         {
@@ -236,6 +238,10 @@ export async function GET(req: NextRequest) {
           fromBlock,
           toBlock: latest,
           items: mappedItems,
+          pagination: {
+            limit,
+            hasMore,
+          },
         },
         "ok"
       )

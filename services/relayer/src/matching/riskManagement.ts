@@ -324,7 +324,14 @@ export async function checkBalanceAndRisk(
 
           return { valid: true };
         }
-      } catch {}
+      } catch (error) {
+        console.error("[RiskManagement] Onchain balance check failed:", error);
+        return {
+          valid: false,
+          error: "Unable to verify balance, please try again",
+          errorCode: "BALANCE_VERIFICATION_FAILED",
+        };
+      }
 
       return { valid: false, error: "Insufficient balance", errorCode: "INSUFFICIENT_BALANCE" };
     }

@@ -233,6 +233,17 @@ export async function validateOrder(
     };
   }
 
+  if (config.priceTickSize > 0n) {
+    const precisionMod = input.price % config.priceTickSize;
+    if (precisionMod !== 0n) {
+      return {
+        valid: false,
+        error: "Price has too many decimal places",
+        errorCode: "INVALID_PRICE_PRECISION",
+      };
+    }
+  }
+
   if (input.amount < config.minOrderAmount) {
     return { valid: false, error: "Amount below minimum", errorCode: "INVALID_AMOUNT" };
   }
