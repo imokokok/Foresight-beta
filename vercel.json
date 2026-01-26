@@ -2,6 +2,6 @@
   "version": 2,
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "buildCommand": "node -e \"require.resolve('siwe');require.resolve('@tailwindcss/postcss');\" && npm run build -w apps/web",
+  "buildCommand": "npm run build -w apps/web",
   "outputDirectory": "apps/web/.next"
 }
