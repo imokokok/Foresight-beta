@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerClient as getClient } from "@/lib/supabase.server";
 import { ApiResponses } from "@/lib/apiResponse";
 import { getErrorMessage, logApiError } from "@/lib/serverUtils";
+import { CATEGORY_MAPPING, ID_TO_CATEGORY_NAME } from "@/lib/categories";
 
 // 分类统计数据可以短暂缓存
 export const revalidate = 60; // 1分钟缓存
@@ -12,16 +13,6 @@ export async function GET() {
     const client = getClient();
     if (!client) {
       return ApiResponses.internalError("Supabase is not configured");
-    }
-    const { data: rawCategories, error: categoriesError } = await client
-      .from("categories")
-      .select("name");
-
-    const categories = rawCategories as Array<{ name: string }> | null;
-
-    if (categoriesError) {
-      logApiError("GET /api/categories/counts fetch categories failed", categoriesError);
-      return ApiResponses.databaseError("Failed to fetch category list", categoriesError.message);
     }
 
     const categoryCounts = [];
@@ -45,13 +36,13 @@ export async function GET() {
       }
     }
 
-    if (categories) {
-      for (const category of categories) {
-        categoryCounts.push({
-          category: category.name,
-          count: countMap.get(category.name) || 0,
-        });
-      }
+    // 使用预定义的分类映射，确保所有分类都被包含
+    const categoryIds = Object.keys(ID_TO_CATEGORY_NAME);
+    for (const categoryId of categoryIds) {
+      categoryCounts.push({
+        category: categoryId,
+        count: countMap.get(categoryId) || 0,
+      });
     }
 
     return NextResponse.json(

@@ -12,6 +12,7 @@ export type HeroEvent = {
 
 export type TrendingCategory = {
   name: string;
+  id?: string;
   icon: string;
   color: string;
   label?: string;
@@ -409,7 +410,7 @@ export function buildTrendingCategories(tTrending: (key: string) => string) {
   return TRENDING_CATEGORIES.map((cat) => {
     const id = CATEGORY_MAPPING[cat.name];
     const label = id ? tTrending(`category.${id}`) : cat.name;
-    return { ...cat, label };
+    return { ...cat, id, label };
   });
 }
 

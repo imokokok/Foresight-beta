@@ -404,7 +404,9 @@ export function HeroCategoryList({
       <div className="flex flex-wrap items-center gap-3 md:gap-4">
         {categories.map((category) => {
           const isActive = String(activeCategory || "") === category.name;
-          const count = categoryCounts[category.name] || 0;
+          // 使用分类的英文 ID 来查找计数，而不是中文名称
+          const categoryId = category.id || category.name;
+          const count = categoryCounts[categoryId] || 0;
           return (
             <button
               key={category.name}
