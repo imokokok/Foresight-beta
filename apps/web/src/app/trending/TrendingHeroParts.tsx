@@ -17,6 +17,7 @@ import { formatInteger } from "@/lib/format";
 
 export type Category = {
   name: string;
+  id?: string;
   label: string;
   icon: React.ReactNode;
 };
