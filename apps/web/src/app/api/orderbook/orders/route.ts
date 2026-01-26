@@ -320,10 +320,10 @@ export async function POST(req: NextRequest) {
           .eq("maker_address", orderData.maker.toLowerCase())
           .eq("maker_salt", orderData.salt)
           .maybeSingle();
-        const existingOrder = existing as { id?: number; status?: string } | null;
+        const existingOrderData = existing as { id?: number; status?: string } | null;
         if (
-          existingOrder &&
-          (existingOrder.status === "open" || existingOrder.status === "partially_filled")
+          existingOrderData &&
+          (existingOrderData.status === "open" || existingOrderData.status === "partially_filled")
         ) {
           return ApiResponses.conflict("Order already exists with the same salt");
         }
