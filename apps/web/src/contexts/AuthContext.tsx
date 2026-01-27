@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { useTranslations } from "@/lib/i18n";
 import { getFeatureFlags } from "@/lib/runtimeConfig";
 import { isApiErrorResponse, type ApiResponse } from "@foresight/shared/api";
-import { createUnauthorizedError } from "@/lib/errorHandling";
+import { createUnauthorizedError, getErrorMessage } from "@/lib/errorHandling";
 
 interface EmailOtpRequestResponse {
   expiresInSec: number;
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, mode: "login" }),
       });
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorMessage = getErrorMessage(e);
       const raw = errorMessage ? errorMessage : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
@@ -161,9 +161,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ email, code: token, mode: "login" }),
         }
       );
+      if (data && data.ok && data.address) {
+        const address = data.address;
+        let userEmail: string | null = null;
+        let username: string | undefined;
+        try {
+          const profileRes = await fetch(
+            `/api/user-profiles?address=${encodeURIComponent(address)}`
+          );
+          if (profileRes.ok) {
+            const profileJson = await profileRes.json().catch(() => null);
+            const profile =
+              (profileJson as any)?.data?.profile ?? (profileJson as any)?.profile ?? null;
+            if (profile) {
+              userEmail = String(profile.email || "") || null;
+              username = String(profile.username || "") || undefined;
+            }
+          }
+        } catch {}
+        setUser({
+          id: address,
+          email: userEmail,
+          user_metadata: username ? { username } : undefined,
+        });
+        setIsAuthenticated(true);
+      }
       return data;
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorMessage = getErrorMessage(e);
       const raw = errorMessage ? errorMessage : tWalletModal("errors.otpVerifyFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);
@@ -185,7 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, redirect }),
       });
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorMessage = getErrorMessage(e);
       const raw = errorMessage ? errorMessage : tWalletModal("errors.otpSendFailed");
       const msg = typeof raw === "string" ? normalizeHttpErrorMessage(raw) : raw;
       setError(msg);

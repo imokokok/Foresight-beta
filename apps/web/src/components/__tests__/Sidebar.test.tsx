@@ -84,6 +84,10 @@ vi.mock("@/contexts/UserProfileContext", () => ({
   useUserProfileOptional: useUserProfileOptionalMock,
 }));
 
+vi.mock("@/contexts/UserContext", () => ({
+  useUser: () => ({ user: null }),
+}));
+
 describe("Sidebar Component", () => {
   let Sidebar: ComponentType;
 

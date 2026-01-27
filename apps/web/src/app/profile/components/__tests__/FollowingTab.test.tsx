@@ -5,6 +5,7 @@ import { FollowingTab } from "../FollowingTab";
 
 const useFollowingEventsMock = vi.fn();
 const useFollowingUsersMock = vi.fn();
+const TEST_ADDRESS = "0xabc0000000000000000000000000000000000000";
 
 vi.mock("@/lib/i18n", () => ({
   useTranslations: vi.fn((namespace?: string) => {
@@ -84,7 +85,7 @@ describe("FollowingTab 组件", () => {
       refetch: vi.fn(),
     });
 
-    const { container } = render(<FollowingTab address="0x123" />);
+    const { container } = render(<FollowingTab address={TEST_ADDRESS} />);
 
     const skeletons = container.querySelectorAll(".animate-pulse");
     expect(skeletons.length).toBeGreaterThan(0);
@@ -100,7 +101,7 @@ describe("FollowingTab 组件", () => {
       refetch,
     });
 
-    render(<FollowingTab address="0x123" />);
+    render(<FollowingTab address={TEST_ADDRESS} />);
 
     expect(screen.getByText("common.loadFailed")).toBeInTheDocument();
     expect(screen.getByText("common.retry")).toBeInTheDocument();
@@ -123,7 +124,7 @@ describe("FollowingTab 组件", () => {
       refetch: vi.fn(),
     });
 
-    render(<FollowingTab address="0x123" />);
+    render(<FollowingTab address={TEST_ADDRESS} />);
 
     expect(screen.getByText("event-1")).toBeInTheDocument();
     expect(screen.getByText("event-6")).toBeInTheDocument();
@@ -159,7 +160,7 @@ describe("FollowingTab 组件", () => {
       refetch: vi.fn(),
     });
 
-    render(<FollowingTab address="0x123" />);
+    render(<FollowingTab address={TEST_ADDRESS} />);
 
     fireEvent.click(screen.getByText("profile.following.tabUsers"));
 

@@ -21,6 +21,7 @@ let originalFetch: any;
 
 vi.mock("@/contexts/WalletContext", () => ({
   useWallet: () => ({
+    address: accountMock,
     account: accountMock,
     isConnecting: false,
     connectError: null,
@@ -29,6 +30,7 @@ vi.mock("@/contexts/WalletContext", () => ({
     balanceEth: "1.23",
     balanceLoading: false,
     refreshBalance: refreshBalanceMock,
+    connect: connectWalletMock,
     connectWallet: connectWalletMock,
     disconnectWallet: disconnectWalletMock,
     formatAddress: (addr: string) => addr,

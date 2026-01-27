@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Bell } from "lucide-react";
 import WalletModal from "./WalletModal";
@@ -24,6 +25,7 @@ export default function TopNavBar() {
     message: string;
     onConfirm: () => void;
   }>(null);
+  const modal = (nav as any).modal as ReactNode | null | undefined;
 
   const closeConfirm = useCallback(() => setConfirmState(null), []);
 
@@ -176,6 +178,7 @@ export default function TopNavBar() {
       {mounted && (
         <WalletModal isOpen={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
       )}
+      {modal && typeof document !== "undefined" && createPortal(modal, document.body)}
     </header>
   );
 }

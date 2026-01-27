@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase.server";
 import { logApiError } from "@/lib/serverUtils";
-import { ApiResponses, successResponse } from "@/lib/apiResponse";
+import { ApiResponses } from "@/lib/apiResponse";
 import { getReviewerSession } from "@/lib/reviewAuth";
 
 interface ReviewProposalRow {
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       return ApiResponses.databaseError("query_failed", error.message);
     }
     const items = (data || []) as ReviewProposalRow[];
-    return successResponse({ items });
+    return NextResponse.json({ items }, { status: 200 });
   } catch (e) {
     const error = e as Error;
     logApiError("GET /api/review/proposals unhandled error", error);

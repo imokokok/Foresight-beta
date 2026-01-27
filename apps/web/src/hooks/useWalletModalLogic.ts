@@ -17,6 +17,7 @@ export interface UseWalletModalOptions {
 
 export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) {
   const { address } = useWallet();
+  const auth = useAuthOptional();
   const normalizedAccount = address ? normalizeAddress(address) : undefined;
   const tWalletModal = useTranslations("walletModal");
   const tLogin = useTranslations("login");
@@ -64,6 +65,14 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
+
+  const hasUserWithoutWallet = !!(auth?.user && !address);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!hasUserWithoutWallet) return;
+    onClose();
+  }, [isOpen, hasUserWithoutWallet, onClose]);
 
   useEffect(() => {
     if (!isOpen) {
