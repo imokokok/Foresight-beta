@@ -173,6 +173,13 @@ npm audit
 npm audit fix
 ```
 
+### Runtime Security & Rate Limiting
+
+- Authentication endpoints use SIWE, email OTP, and magic links instead of passwords where possible
+- High-risk routes (such as `/api/siwe/verify`) are protected by strict IP-based rate limiting
+- Security headers and CSP are configured at the framework level to reduce XSS risk
+- Authentication and risk-control events are logged for auditability and anomaly detection
+
 ---
 
 ## Smart Contract Security

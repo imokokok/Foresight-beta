@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity" alt="Solidity" />
   <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React" />
-  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Polygon-Amoy-8247E5?logo=polygon" alt="Polygon" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License" />
 </p>
@@ -163,7 +163,7 @@ GET  /api/forum/user-votes?eventId=1
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.x (LTS)
 - npm (recommended)
 - Git
 
@@ -355,25 +355,21 @@ Foresight-beta/
 
 ## 📚 Documentation Navigation
 
-| Document                                               | Description             |
-| ------------------------------------------------------ | ----------------------- |
-| [DOCS.md](./DOCS.md)                                   | Developer documentation |
-| [DOCS.zh-CN.md](./DOCS.zh-CN.md)                       | 开发者文档 (Chinese)    |
-| [DOCS.es.md](./DOCS.es.md)                             | Documentación (Spanish) |
-| [DOCS.fr.md](./DOCS.fr.md)                             | Documentation (French)  |
-| [DOCS.ko.md](./DOCS.ko.md)                             | 문서 (Korean)           |
-| [SECURITY.md](./SECURITY.md)                           | Security policy         |
-| [SECURITY.zh-CN.md](./SECURITY.zh-CN.md)               | 安全政策 (Chinese)      |
-| [CHANGELOG.md](./CHANGELOG.md)                         | Changelog               |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)             | Code of conduct         |
-| [CODE_OF_CONDUCT.zh-CN.md](./CODE_OF_CONDUCT.zh-CN.md) | 行为准则 (Chinese)      |
-| [Relayer README](./services/relayer/README.md)         | Relayer documentation   |
+| Document                                       | Description             |
+| ---------------------------------------------- | ----------------------- |
+| [DOCS.md](./DOCS.md)                           | Developer documentation |
+| [SECURITY.md](./SECURITY.md)                   | Security policy         |
+| [CHANGELOG.md](./CHANGELOG.md)                 | Changelog               |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)     | Code of conduct         |
+| [Relayer README](./services/relayer/README.md) | Relayer documentation   |
+
+Localized developer and policy documents will be added in future releases.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome community contributions! Please see [CONTRIBUTING](./CONTRIBUTING.md) for detailed guidelines (if available in your language).
+We welcome community contributions! Contribution guidelines will be published in this repository; in the meantime, feel free to open issues or pull requests directly.
 
 ```bash
 # Fork this repository

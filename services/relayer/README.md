@@ -20,7 +20,7 @@ Relayer 是 Foresight 预测市场的核心基础设施，负责：
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 20.x (LTS)
 - Redis (可选，用于高可用部署)
 - Docker (可选)
 

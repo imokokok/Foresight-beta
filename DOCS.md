@@ -1162,15 +1162,11 @@ open http://localhost:3030
 
 ---
 
-**Last Updated**: 2025-01-26  
+**Last Updated**: 2026-01-27  
 **Documentation Version**: v3.0
 
 ---
 
-**Languages / 语言切换 / Idioma / Langue / 언어:**
+**Languages:**
 
-- [📚 DOCS.md](./DOCS.md) - English
-- [📚 DOCS.zh-CN.md](./DOCS.zh-CN.md) - 简体中文
-- [📚 DOCS.es.md](./DOCS.es.md) - Español
-- [📚 DOCS.fr.md](./DOCS.fr.md) - Français
-- [📚 DOCS.ko.md](./DOCS.ko.md) - 한국어
+- English (this document)
