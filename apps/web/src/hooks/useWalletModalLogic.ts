@@ -66,6 +66,16 @@ export function useWalletModalLogic({ isOpen, onClose }: UseWalletModalOptions) 
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+    emailVerification.setEmail("");
+    emailVerification.setOtp("");
+    emailVerification.setOtpRequested(false);
+    emailVerification.setEmailVerified(false);
+  }, [isOpen, emailVerification]);
+
   const hasUserWithoutWallet = !!(auth?.user && !address);
 
   useEffect(() => {

@@ -64,7 +64,12 @@ export function useProfileForm({
           if (!p?.username || !p?.email) {
             setShowProfileForm(true);
             setUsername(String(p?.username || ""));
-            setEmail(String(p?.email || ""));
+            const nextEmail = String(p?.email || "");
+            const verified = Boolean(nextEmail && /.+@.+\..+/.test(nextEmail));
+            verifiedEmailRef.current = verified ? nextEmail.trim().toLowerCase() : null;
+            if (nextEmail) {
+              setEmail(nextEmail);
+            }
           }
         } catch {
         } finally {
@@ -72,7 +77,7 @@ export function useProfileForm({
         }
       })();
     }
-  }, [address, isOpen, normalizedAccount, showProfileForm, setEmail]);
+  }, [address, isOpen, normalizedAccount, showProfileForm, setEmail, verifiedEmailRef]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -93,13 +98,16 @@ export function useProfileForm({
           const nextEmail = String(p.email || "");
           const verified = Boolean(nextEmail && /.+@.+\..+/.test(nextEmail));
           verifiedEmailRef.current = verified ? nextEmail.trim().toLowerCase() : null;
+          if (nextEmail) {
+            setEmail(nextEmail);
+          }
         }
       } catch {
       } finally {
         setProfileLoading(false);
       }
     })();
-  }, [isOpen, showProfileForm, isNewUserFlow, normalizedAccount, verifiedEmailRef]);
+  }, [isOpen, showProfileForm, isNewUserFlow, normalizedAccount, verifiedEmailRef, setEmail]);
 
   const canSubmitProfile =
     username.length >= 3 &&
@@ -160,7 +168,11 @@ export function useProfileForm({
         body: JSON.stringify({ signupToken, username }),
       });
 
-      verifiedEmailRef.current = email.trim().toLowerCase();
+      const norm = email.trim().toLowerCase();
+      verifiedEmailRef.current = norm || null;
+      if (norm) {
+        setEmail(email);
+      }
       setRequireUsername(false);
       setSignupToken(null);
     } catch (error: any) {
@@ -169,7 +181,7 @@ export function useProfileForm({
     } finally {
       setProfileLoading(false);
     }
-  }, [username, signupToken, email, verifiedEmailRef]);
+  }, [username, signupToken, email, verifiedEmailRef, setEmail]);
 
   return {
     showProfileForm,
